@@ -58,12 +58,13 @@ stays under the commitment above.
   | `ORKEXP001` | A2A (agent-to-agent protocol) |
   | `ORKEXP002` | Autonomous orchestration |
   | `ORKEXP003` | Corrective RAG |
-  | `ORKEXP004` | MCP integration |
+  | `ORKEXP004` | MCP integration (the JSON-RPC envelope types are stable) |
   | `ORKEXP005` | Per-model capabilities |
   | `ORKEXP006` | Host HTTP security |
   | `ORKEXP007` | Run history ports |
   | `ORKEXP008` | System One's pick for a caller that runs no task (`ctx.llm.pick`, `ctx.services.get("pick")`) |
   | `ORKEXP009` | Conversation pruning port |
+  | `ORKEXP010` | The `agent-cli` provider |
 
 - **Internal types**: anything not listed in a `PublicAPI.Shipped.txt`.
 - **The run event protocol** (`--events jsonl`) is a versioned protocol: every line carries

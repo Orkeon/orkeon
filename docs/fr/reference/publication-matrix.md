@@ -7,7 +7,7 @@ workflows (`ci.yml` validation, `publish.yml` pack + push sur tag et canal dev s
 vert, `release.yml` installateurs)
 ne divergent pas.
 
-> **Statut.** La distribution est un paquet `Orkeon` plus treize opt-ins — quatorze paquets, la
+> **Statut.** La distribution est un paquet `Orkeon` plus quatorze opt-ins — quinze paquets, la
 > liste que pousse `publish.yml` — gardés par la porte `scripts/check-package-closure.py` et
 > poussés vers NuGet.org par Trusted Publishing. Le nommage du scripting est fixé par
 > l'[ADR-007](../adr/ADR-007-d3-renommage-cli-commands-scripting.md) : la bibliothèque de
@@ -30,6 +30,7 @@ un amont en pré-release).
 | `Orkeon.Scripting.Cli` | Le tool dotnet `orkeon` (`PackAsTool` ; le PackageId est la commande d'installation — ADR-007). Publiable sur NuGet.org : les natifs onnxruntime iOS/Android qu'un tool CLI ne peut jamais charger sont exclus, dans chaque paquet tool : environ 187 Mo avec les natifs de chaque runtime de bureau (win, linux, osx), sous la limite de 250 Mo de nuget.org. |
 | `Orkeon.Compliance.Vfs` | L'analyseur Roslyn qui refuse `System.IO` direct dans votre propre code (règles `ORKVFS001`–`ORKVFS007`, `analyzers/dotnet/cs`, `DevelopmentDependency`). Autonome par conception : il ne dépend de rien d'Orkeon et fonctionne dans n'importe quel projet C# — ajoutez le `PackageReference`, compilez, et chaque appel `File.*`/`Directory.*` devient un diagnostic. |
 | `Orkeon.Interop.AgentFramework` | Le pont vers Microsoft Agent Framework, dans les deux sens : un crew Orkeon comme `AIAgent` MAF (`CrewAgent`), un `AIAgent` MAF comme cerveau (`WithAgentFrameworkAgent`) ou comme outil (`WithAgentFrameworkTool`) d'un agent Orkeon. Séparé de `Orkeon` parce que la dépendance `Microsoft.Agents.AI.Abstractions` est un choix du consommateur. Dépend de `Orkeon`. |
+| `Orkeon.Interop.AgentCli` | **Expérimental** (`ORKEXP010`, [ADR-020](../adr/ADR-020-agent-cli-provider.md)) : le module de fournisseur LLM `agent-cli`, une CLI d'agent connectée à son propre abonnement (`claude -p`) avec les outils d'Orkeon derrière un pont MCP, et son relais (`Orkeon.Interop.AgentCli.Relay.dll`, lancé par `dotnet exec`). Le tool `orkeon`, le REPL et `orkeon-host` l'embarquent déjà. Dépend d'`Orkeon`. |
 | `Orkeon.Hosting.Aspire` | L'intégration d'hébergement .NET Aspire : `AddOrkeonHost` (le démon `orkeon-host`) et `AddOrkeonCrewRun` (un `orkeon run`) comme ressources d'AppHost, `WithOrkeonModel` / `WithOrkeonSetting` pour l'environnement `ORKEON_`, export OTLP câblé pour que le dashboard lise le run. Séparé de `Orkeon` parce que `Aspire.Hosting` est un choix de l'AppHost. Dépend de `Orkeon`. |
 | `Orkeon.Cli.Abstractions` | Les contrats des runners interactifs et des registres de commandes (`IConsoleAdapter`, le registre de commandes, les options de runner). Aucune dépendance Orkeon : deux abstractions `Microsoft.Extensions` seulement, packé directement depuis son projet. |
 | `Orkeon.Cli.TerminalGui` | La console Terminal.Gui v2 en panneaux (REPL + panneau de logs) sur laquelle s'appuient des applications terminal. Séparé d'`Orkeon` pour sa dépendance `Terminal.Gui`. Dépend d'`Orkeon` (qui porte l'`Orkeon.Constants.Configuration` qu'il lit) et d'`Orkeon.Cli.Abstractions`. |
@@ -38,9 +39,9 @@ un amont en pré-release).
 ### Comment les projets d'empaquetage sont construits
 
 - Les nupkgs du lineup sortent de **projets d'empaquetage** dédiés sous `src/packaging/` —
-  neuf au total : les ombrelles `Orkeon` et `Orkeon.Tools`, le paquet de contenu `Orkeon.Templates`, plus les **wrappers**
+  dix au total : les ombrelles `Orkeon` et `Orkeon.Tools`, le paquet de contenu `Orkeon.Templates`, plus les **wrappers**
   `Orkeon.Rag.Onnx.Package`, `Orkeon.Tools.Embeddings.Local.Package`,
-  `Orkeon.Interop.AgentFramework.Package`, `Orkeon.Hosting.Aspire.Package`,
+  `Orkeon.Interop.AgentFramework.Package`, `Orkeon.Interop.AgentCli.Package`, `Orkeon.Hosting.Aspire.Package`,
   `Orkeon.Scripting.Package` et `Orkeon.Cli.TerminalGui.Package`, qui packent les assemblies
   opt-in avec une dépendance nuspec sur
   l'ombrelle `Orkeon` — et, pour `Orkeon.Scripting`, sur `Orkeon.Tools`,

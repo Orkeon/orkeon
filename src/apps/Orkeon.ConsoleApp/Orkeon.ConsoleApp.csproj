@@ -62,6 +62,8 @@
          CLI and orkeon-host carry it; the .Model companion embeds the int8 weights (offline). -->
     <ProjectReference Include="..\..\rag\Orkeon.Rag.Onnx\Orkeon.Rag.Onnx.csproj" />
     <ProjectReference Include="..\..\rag\Orkeon.Rag.Onnx.Model\Orkeon.Rag.Onnx.Model.csproj" />
+    <!-- ADR-020: the experimental agent-cli provider module (Llm:Provider = agent-cli) and its relay. -->
+    <ProjectReference Include="..\..\interop\Orkeon.Interop.AgentCli\Orkeon.Interop.AgentCli.csproj" />
     <ProjectReference Include="..\..\tools\Orkeon.Tools.Code\Orkeon.Tools.Code.csproj" />
     <!-- RaggableTree semantic-codebase tools + on-device embeddings (for codebase_search) -->
     <ProjectReference Include="..\..\tools\Orkeon.Tools.Analysis\Orkeon.Tools.Analysis.csproj" />

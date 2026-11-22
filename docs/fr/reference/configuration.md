@@ -225,7 +225,7 @@ qu'elle accepte quand leur liste est fermée, et son sens.
 <!-- settings-index -->
 | Catégorie | Sections | Clés |
 |---|---|---|
-| [Modèles](#modèles) | [`Evaluation`](#evaluation), [`Llm`](#llm), [`LlmLogging`](#llmlogging), [`Orkeon:CostTracking`](#orkeoncosttracking), [`Orkeon:Decision`](#orkeondecision), [`Orkeon:Decision:Effort`](#orkeondecisioneffort), [`Orkeon:Decision:Route`](#orkeondecisionroute), [`Orkeon:Kev`](#orkeonkev), [`Orkeon:Liquid`](#orkeonliquid), [`Orkeon:TokenCounter`](#orkeontokencounter), [`Orkeon:TypeSafe`](#orkeontypesafe) | 109 |
+| [Modèles](#modèles) | [`Evaluation`](#evaluation), [`Llm`](#llm), [`Llm:AgentCli`](#llmagentcli), [`LlmLogging`](#llmlogging), [`Orkeon:CostTracking`](#orkeoncosttracking), [`Orkeon:Decision`](#orkeondecision), [`Orkeon:Decision:Effort`](#orkeondecisioneffort), [`Orkeon:Decision:Route`](#orkeondecisionroute), [`Orkeon:Kev`](#orkeonkev), [`Orkeon:Liquid`](#orkeonliquid), [`Orkeon:TokenCounter`](#orkeontokencounter), [`Orkeon:TypeSafe`](#orkeontypesafe) | 115 |
 | [Débit et budgets](#débit-et-budgets) | [`RateLimiting`](#ratelimiting), [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting) | 11 |
 | [Mémoire et vecteurs](#mémoire-et-vecteurs) | [`Memory`](#memory), [`Orkeon:ChromaDb`](#orkeonchromadb), [`Orkeon:CognitiveMemory`](#orkeoncognitivememory), [`Orkeon:CrewMemory`](#orkeoncrewmemory), [`Orkeon:EmbeddingCache`](#orkeonembeddingcache), [`Orkeon:Embeddings`](#orkeonembeddings), [`Orkeon:Encryption`](#orkeonencryption), [`Orkeon:LanceDb`](#orkeonlancedb), [`Orkeon:Pinecone`](#orkeonpinecone), [`Orkeon:Redis`](#orkeonredis), [`Orkeon:Sqlite`](#orkeonsqlite), [`Orkeon:VectorSearch`](#orkeonvectorsearch) | 69 |
 | [RAG](#rag) | [`Orkeon:Rag`](#orkeonrag), [`Orkeon:Rag:Ingestion`](#orkeonragingestion), [`Orkeon:Rag:QueryRouting`](#orkeonragqueryrouting), [`Orkeon:Rag:Retrieval:Hybrid`](#orkeonragretrievalhybrid), [`Orkeon:Rag:WebFallback`](#orkeonragwebfallback) | 34 |
@@ -237,7 +237,7 @@ qu'elle accepte quand leur liste est fermée, et son sens.
 | [Hôte de service et A2A](#hôte-de-service-et-a2a) | [`A2A`](#a2a), [`A2A:Security`](#a2asecurity), [`A2A:Security:AzureAD`](#a2asecurityazuread), [`A2A:Security:Oidc`](#a2asecurityoidc), [`Orkeon:Host`](#orkeonhost), [`Orkeon:Host:Discord`](#orkeonhostdiscord) | 59 |
 | [Observabilité](#observabilité) | [`Logging`](#logging), [`Orkeon:Monitoring`](#orkeonmonitoring), [`Telemetry`](#telemetry) | 8 |
 
-87 sections, 568 clés. Lues par aucun binaire livré, seulement par un hôte écrit en C# (6) : [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting), [`Orkeon:VectorSearch`](#orkeonvectorsearch), [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Monitoring`](#orkeonmonitoring).
+88 sections, 574 clés. Lues par aucun binaire livré, seulement par un hôte écrit en C# (6) : [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting), [`Orkeon:VectorSearch`](#orkeonvectorsearch), [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Monitoring`](#orkeonmonitoring).
 <!-- /settings-index -->
 
 Lire un tableau :
@@ -498,7 +498,7 @@ n'est pas celle qui est lue : elle n'est pas jugée. Les réglages jugés, tiré
 |---|---|
 | `Llm:ApiKey`, `Llm:Profiles:<nom>:ApiKey`, `Orkeon:Embeddings:ApiKey` | écrire `"ApiKeyEnvVar": "<NOM>"` à la place |
 | `Llm:ApiKeyEnvVar`, `Llm:Profiles:<nom>:ApiKeyEnvVar`, `Orkeon:Rag:WebFallback:ApiKeyEnvVar`, `Orkeon:Embeddings:ApiKeyEnvVar`, `Orkeon:Host:Discord:TokenEnvironmentVariable`, `Orkeon:Tools:Bridge:TokenEnvVar`, `Orkeon:Bridge:TokenEnvVar`, `A2A:Security:ApiKeySecretNames:<i>`, `Orkeon:Encryption:SecretName`, `Orkeon:Tools:GitHub:TokenVariable` | écrire le nom seul, sans `${` ni `}` |
-| `MCP:Servers:<id>:Command`, `:Args:<i>`, `:Url` ; `Orkeon:Redis:ConnectionString`, `Orkeon:Sqlite:ConnectionString` ; `RaggableTree:Embedding:ApiKey`, `Orkeon:Pinecone:ApiKey`, `Orkeon:LanceDb:ApiKey` ; `Llm:BaseUrl`, `Llm:Profiles:<nom>:BaseUrl`, `RaggableTree:Embedding:BaseUrl`, `Orkeon:ChromaDb:BaseUrl`, `Orkeon:Pinecone:Host`, `Orkeon:LanceDb:Endpoint`, `Orkeon:Embeddings:Endpoint`, `Orkeon:Rag:WebFallback:Endpoint`, `Telemetry:OtlpEndpoint` ; `Security:Vault:AzureKeyVaultUri`, `A2A:Security:AzureAD:Authority`, `A2A:Security:Oidc:Authority` ; `Orkeon:Tools:GitHub:Token` | écrire la valeur, ou la garder hors du fichier par la couche d'environnement `ORKEON_<chemin avec __>` |
+| `MCP:Servers:<id>:Command`, `:Args:<i>`, `:Url` ; `Llm:AgentCli:Command` ; `Orkeon:Redis:ConnectionString`, `Orkeon:Sqlite:ConnectionString` ; `RaggableTree:Embedding:ApiKey`, `Orkeon:Pinecone:ApiKey`, `Orkeon:LanceDb:ApiKey` ; `Llm:BaseUrl`, `Llm:Profiles:<nom>:BaseUrl`, `RaggableTree:Embedding:BaseUrl`, `Orkeon:ChromaDb:BaseUrl`, `Orkeon:Pinecone:Host`, `Orkeon:LanceDb:Endpoint`, `Orkeon:Embeddings:Endpoint`, `Orkeon:Rag:WebFallback:Endpoint`, `Telemetry:OtlpEndpoint` ; `Security:Vault:AzureKeyVaultUri`, `A2A:Security:AzureAD:Authority`, `A2A:Security:Oidc:Authority` ; `Orkeon:Tools:GitHub:Token` | écrire la valeur, ou la garder hors du fichier par la couche d'environnement `ORKEON_<chemin avec __>` |
 | `MCP:Servers:<id>:Env:<nom>` | retirer l'entrée : le serveur hérite de l'environnement où tourne Orkeon, y poser la variable |
 | `Secrets:<nom>` | retirer l'entrée et poser `ORKEON_<nom>`, que la chaîne des secrets lit en premier |
 | `BRAVE_API_KEY` | retirer l'entrée, Orkeon lit la variable |
@@ -581,6 +581,27 @@ aussi pour le profil RAG et pour celui d'un agent manager.
 vide reste vide, sa clé est la sienne —, et chaque rôle ci-dessus qui tourne sur le défaut tourne
 dessus. Un identifiant que la configuration ne définit pas refuse le run, en listant ceux qu'elle
 définit. C'est ce que passent les lanceurs d'une équipe planifiée.
+
+### `Llm:AgentCli`
+
+Expérimental (`ORKEXP010`, [ADR-020](../adr/ADR-020-agent-cli-provider.md)). Le fournisseur `agent-cli`
+(`"Provider": "agent-cli"`) répond à travers une CLI d'agent connectée à son propre abonnement, `claude -p`
+aujourd'hui, et lui remet les outils d'Orkeon par un pont ; cette section lui dit comment démarrer cette CLI.
+Tous les profils du fournisseur la partagent. Le fournisseur est fait pour un usage personnel, sur
+l'abonnement de qui le lance.
+
+<!-- settings:Llm:AgentCli -->
+**Lue par** : `orkeon`, `orkeon-host`, `orkeon-repl`.
+
+| Clé | Type | Défaut | Sens |
+|---|---|---|---|
+| `AutocompactTokens` | entier | `100000000` | La taille de contexte à laquelle la CLI compacterait elle-même la conversation (`--autocompact`), 100000000 par défaut : au-dessus de toute fenêtre, puisqu'Orkeon garde l'historique et le compacte le premier. Une valeur plus basse est relevée à 100000, le minimum que prend la CLI. |
+| `Command` | chaîne | `"claude"` | L'exécutable de la CLI : un nom cherché dans le `PATH`, ou un chemin complet. `claude` par défaut. Elle tourne sur sa propre connexion (`claude /login`) : les variables de clé d'API de l'hôte sont retirées de son environnement. |
+| `Engine` | chaîne | `"claude"` | Le moteur qui répond : la CLI dont le fournisseur parle la ligne de commande et le flux. `claude` (Claude Code, `claude -p` en stream-json) est le seul. |
+| `MaxProcesses` | entier | `4` | Combien de processus CLI peuvent vivre à la fois dans l'hôte, 4 par défaut. Jamais une attente : au-delà, une session inactive est fermée d'abord, et quand aucune ne l'est la nouvelle démarre avec un avertissement. |
+| `MaxToolResultCharacters` | entier | `100000` | Le plus long résultat d'outil remis à la CLI, en caractères, 100000 par défaut : un résultat plus long est coupé avec une note qui le dit. La limite propre de la CLI est relevée au-dessus, pour qu'un résultat ne soit jamais remplacé par un fichier que le modèle ne peut pas lire. |
+| `RequireLogin` | booléen | `true` | Si une CLI qui répond sur une clé d'API plutôt que sur sa connexion est refusée, vrai par défaut : le fournisseur existe pour tourner sur l'abonnement auquel la CLI est connectée. |
+<!-- /settings -->
 
 ### `LlmLogging`
 

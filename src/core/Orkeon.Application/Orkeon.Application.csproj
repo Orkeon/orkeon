@@ -16,6 +16,8 @@
 
   <ItemGroup>
     <InternalsVisibleTo Include="Orkeon.Application.Tests" />
+    <!-- AgentCliLoopTests drives the crew's chat loop on the agent-cli provider. -->
+    <InternalsVisibleTo Include="Orkeon.Interop.AgentCli.Tests" />
   </ItemGroup>
 
   <ItemGroup>

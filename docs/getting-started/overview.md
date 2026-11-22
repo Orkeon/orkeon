@@ -274,7 +274,7 @@ Agents collaborate through delegation: the `AskQuestionTool` and `DelegateWorkTo
 
 ```
 Orkeon.sln
-├── src/                            # 48 projects, 14 zones
+├── src/                            # 51 projects, 14 zones
 │   ├── core/
 │   │   ├── Orkeon.Domain/          # Entities, value objects, interfaces, events
 │   │   ├── Orkeon.Application/     # CQRS, services, orchestration, ports
@@ -297,14 +297,14 @@ Orkeon.sln
 │   ├── cli/                        # CLI building blocks (Abstractions, Cli, Commands.Scripting, TerminalGui)
 │   ├── hosting/                    # Orkeon.Hosting (RunnerHost), Orkeon.Host (`orkeon-host` daemon), Orkeon.Hosting.Aspire
 │   ├── plugins/                    # Orkeon.Plugins (runtime plugin loading)
-│   ├── interop/                    # Orkeon.Interop.AgentFramework (Microsoft Agent Framework bridge)
+│   ├── interop/                    # Orkeon.Interop.AgentFramework (Microsoft Agent Framework bridge), Orkeon.Interop.AgentCli (+ Relay, ADR-020)
 │   ├── generators/                 # Orkeon.Generators (source generators)
 │   ├── constants/                  # Satellites of SHARED constants, zero runtime dependency (ADR-009)
 │   ├── analyzers/                  # Orkeon.Compliance.Vfs (Roslyn analyzer)
-│   ├── packaging/                  # NuGet packaging projects (Orkeon, Orkeon.Tools, 6 opt-in wrappers and Orkeon.Templates)
+│   ├── packaging/                  # NuGet packaging projects (Orkeon, Orkeon.Tools, 7 opt-in wrappers and Orkeon.Templates)
 │   └── apps/
 │       └── Orkeon.ConsoleApp/      # Interactive REPL (`orkeon-repl`)
-├── tests/                          # 34 projects (src mirrors + e2e, shared)
+├── tests/                          # 35 projects (src mirrors + e2e, shared)
 ├── examples/                       # 104 numbered examples in 9 categories, plus showcases
 └── docs/                           # Documentation (EN + docs/fr mirror)
 ```

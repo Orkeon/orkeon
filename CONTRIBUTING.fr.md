@@ -106,12 +106,12 @@ dotnet test Orkeon.sln --no-build --filter "Category!=Integration&Category!=Slow
 
 ## Structure du projet
 
-La solution compte **48 projets src répartis en 14 zones** et **34 projets de tests**.
-Trente-deux projets src ont un projet de tests miroir ; `tests/e2e` et `tests/shared`
-forment les deux autres. Seize projets src n'ont volontairement pas de miroir : les cinq
+La solution compte **51 projets src répartis en 14 zones** et **35 projets de tests**.
+Trente-trois projets src ont un projet de tests miroir ; `tests/e2e` et `tests/shared`
+forment les deux autres. Dix-huit projets src n'ont volontairement pas de miroir : les cinq
 satellites `Orkeon.Constants.*` et `Orkeon.Rag.Onnx.Model` ne portent que des constantes et
 des ressources embarquées, `Orkeon.Analysis.Abstractions` est exercé via
-`Orkeon.Analysis.Tests`, et les neuf projets `src/packaging/` sont de pur empaquetage :
+`Orkeon.Analysis.Tests`, `Orkeon.Interop.AgentCli.Relay` via `Orkeon.Interop.AgentCli.Tests`, et les dix projets `src/packaging/` sont de pur empaquetage :
 
 ```
 src/
@@ -127,13 +127,14 @@ src/
 ├── hosting/     # Orkeon.Hosting (RunnerHost) + Orkeon.Host (le daemon `orkeon-host`)
 │                #   + Orkeon.Hosting.Aspire (intégration AppHost .NET Aspire, ADR-011)
 ├── plugins/     # Orkeon.Plugins (chargement de plugins au runtime)
-├── interop/     # Orkeon.Interop.AgentFramework (pont Microsoft Agent Framework, ADR-010)
+├── interop/     # Orkeon.Interop.AgentFramework (pont Microsoft Agent Framework, ADR-010),
+│                #   Interop.AgentCli + son Relay (le fournisseur expérimental agent-cli, ADR-020)
 ├── generators/  # Orkeon.Generators (générateurs de source)
 ├── analyzers/   # Orkeon.Compliance.Vfs (analyseur Roslyn VFS-only)
 ├── packaging/   # Projets d'empaquetage NuGet : Orkeon (le framework en un nupkg), Orkeon.Tools,
 │                #   Orkeon.Templates (modèles `dotnet new`),
 │                #   + les wrappers Rag.Onnx / Tools.Embeddings.Local / Interop.AgentFramework /
-│                #   Hosting.Aspire / Scripting / Cli.TerminalGui dépendant de l'ombrelle Orkeon
+│                #   Interop.AgentCli / Hosting.Aspire / Scripting / Cli.TerminalGui dépendant de l'ombrelle Orkeon
 └── apps/        # Orkeon.ConsoleApp (orkeon-repl)
 
 examples/        # 104 exemples embarqués (9 catégories + vitrines) — solution dédiée
@@ -479,10 +480,10 @@ une affaire d'opinion — elle est **consignée dans le dépôt** et vérifiée 
    en-tête ; après le pack, il exécute aussi `scripts/check-package-closure.py` sur les
    nupkgs eux-mêmes.
 7. Taguer `v<version>` et pousser le tag. Cela déclenche : `publish.yml` (packe tout ;
-   pousse **les quatorze paquets de la gamme v1 sur NuGet.org** — `Orkeon`, `Orkeon.Tools`,
+   pousse **les quinze paquets de la gamme v1 sur NuGet.org** — `Orkeon`, `Orkeon.Tools`,
    `Orkeon.Rag.Onnx`, `Orkeon.Rag.Onnx.Model`, `Orkeon.Tools.Embeddings.Local`, `Orkeon.Constants.Cli`,
    `Orkeon.Scripting`, `Orkeon.Scripting.Cli`, `Orkeon.Compliance.Vfs`, `Orkeon.Interop.AgentFramework`,
-   `Orkeon.Hosting.Aspire`, `Orkeon.Cli.Abstractions`, `Orkeon.Cli.TerminalGui`, `Orkeon.Templates`, l'ombrelle en premier puisque les autres en dépendent, via
+   `Orkeon.Interop.AgentCli`, `Orkeon.Hosting.Aspire`, `Orkeon.Cli.Abstractions`, `Orkeon.Cli.TerminalGui`, `Orkeon.Templates`, l'ombrelle en premier puisque les autres en dépendent, via
    Trusted Publishing — et chaque projet packable sur GitHub Packages, les paquets et un
    SBOM CycloneDX couverts par une attestation de provenance de build ; voir
    [la matrice de publication](docs/fr/reference/publication-matrix.md)),

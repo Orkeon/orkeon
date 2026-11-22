@@ -433,6 +433,41 @@ public sealed class HostStartupSequenceTests : IDisposable
         }
     }
 
+    private string SettingsWithLlm(string llm)
+    {
+        var path = Path.Combine(_scratch, "host.json");
+        File.WriteAllText(path, $$"""
+            {
+              "RaggableTree": { "Enabled": false },
+              "Llm": { {{llm}} },
+              "Orkeon": { "Host": { "Crews": [ { "Name": "support", "Path": "crews/support.yaml" } ] } }
+            }
+            """);
+        return path;
+    }
+
+    [Theory]
+    [InlineData("custom")]
+    [InlineData("docker-model-runner")]
+    [InlineData("azure")]
+    [InlineData("openai")]
+    public void ShouldRefuseOnceWith78_WhenProviderNamesACatalogueVendor(string vendor)
+    {
+        var launch = Prepare(SettingsWithLlm($"\"Provider\": \"{vendor}\""));
+
+        AssertRefused(launch, "Llm:Provider names a vendor of the catalogue");
+        Assert.DoesNotContain(vendor, Assert.Single(_failures.Reported), StringComparison.Ordinal);
+        Assert.DoesNotContain("names no provider of this host", Assert.Single(_failures.Reported), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ShouldRefuseWith78_WhenTheAgentCliEngineIsUnknown()
+    {
+        var launch = Prepare(SettingsWithLlm("\"AgentCli\": { \"Engine\": \"codex\" }"));
+
+        AssertRefused(launch, "Llm:AgentCli:Engine is not an engine of the agent-cli provider: write claude");
+    }
+
     private void AssertRefused(HostLaunch launch, string named)
     {
         Assert.Null(launch.Host);

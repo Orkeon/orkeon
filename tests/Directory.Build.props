@@ -18,5 +18,6 @@
     <NoWarn>$(NoWarn);ORKEXP006;ORKEXP007</NoWarn>
     <NoWarn>$(NoWarn);ORKEXP008</NoWarn>
     <NoWarn>$(NoWarn);ORKEXP009</NoWarn>
+    <NoWarn>$(NoWarn);ORKEXP010</NoWarn>
   </PropertyGroup>
 </Project>
