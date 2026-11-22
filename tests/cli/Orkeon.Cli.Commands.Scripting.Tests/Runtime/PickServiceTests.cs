@@ -32,8 +32,11 @@ public sealed class PickServiceTests
         return services;
     }
 
-    private static Task<string> RunAsync(ISystemOnePicker picker, string body, CancellationToken? ct = null) =>
-        RunAsync(WithRunScope(new ServiceCollection()).AddSingleton(picker).BuildServiceProvider(), body, ct ?? Ct);
+    private static async Task<string> RunAsync(ISystemOnePicker picker, string body, CancellationToken? ct = null)
+    {
+        await using var services = WithRunScope(new ServiceCollection()).AddSingleton(picker).BuildServiceProvider();
+        return await RunAsync(services, body, ct ?? Ct);
+    }
 
     /// <summary>Writes the command whose handler body is <paramref name="body"/> under <c>cmd/</c> of a new directory.</summary>
     private static async Task<string> WriteCommandAsync(string body)
