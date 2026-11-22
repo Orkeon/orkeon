@@ -308,6 +308,7 @@ tout autre modèle prend `Orkeon:Cli:Session:ContextWindowTokens`.
 |---|---|---|---|
 | `ApiKey` | chaîne, secret | — | La clé d'API, en clair. Préférez `ApiKeyEnvVar` : une clé écrite ici est dans le fichier de réglages. |
 | `ApiKeyEnvVar` | chaîne | — | Le nom de la variable d'environnement qui contient la clé d'API, lue quand `ApiKey` n'en résout aucune : l'environnement du processus, puis la portée utilisateur de Windows. |
+| `WorkspaceId` | chaîne | — | Le workspace Anthropic où agit la clé, envoyé dans l'en-tête `anthropic-workspace-id` : une clé liée à une identité refuse tout appel sans lui. Ce n'est pas un secret ; sa forme variable d'environnement est celle du binder (`Llm__WorkspaceId`). Un fournisseur autre qu'Anthropic ne l'envoie pas et journalise l'avertissement structuré d'option non honorée (événement `110`). |
 | `AvailableModels` | liste de chaînes | `[]` | Les modèles qu'un `/model` scripté peut proposer : une liste, ou une seule valeur séparée par des virgules. |
 | `BaseUrl` | chaîne | — | L'adresse du point d'accès du fournisseur, `http://` ou `https://`. Omise, l'adresse du fournisseur que désigne le nom du modèle ou la clé. |
 | `Cache:SystemPrompt` | booléen | — | Marque le prompt système comme cachable pour chaque agent qui ne fixe aucun cache, sur un fournisseur dont le cache de prompt est explicite (Anthropic). Omis, il ne l'est pas. |
@@ -327,6 +328,7 @@ tout autre modèle prend `Orkeon:Cli:Session:ContextWindowTokens`.
 | `ModelCapabilities:<nom>:Vision` | booléen | — | Si le modèle accepte des parties image en entrée. Omis, la valeur intégrée du modèle (faux si la table ne le connaît pas). |
 | `Profiles:<nom>:ApiKey` | chaîne, secret | — | La clé d'API, en clair. Préférez `ApiKeyEnvVar` : une clé écrite ici est dans le fichier de réglages. |
 | `Profiles:<nom>:ApiKeyEnvVar` | chaîne | — | Le nom de la variable d'environnement qui contient la clé d'API, lue quand `ApiKey` n'en résout aucune : l'environnement du processus, puis la portée utilisateur de Windows. |
+| `Profiles:<nom>:WorkspaceId` | chaîne | — | Le workspace Anthropic de la clé de ce profil (`Llm__Profiles__<nom>__WorkspaceId`), comme `WorkspaceId` ci-dessus. |
 | `Profiles:<nom>:BaseUrl` | chaîne | — | L'adresse du point d'accès du fournisseur, `http://` ou `https://`. Omise, l'adresse du fournisseur que désigne le nom du modèle ou la clé. |
 | `Profiles:<nom>:Cache:SystemPrompt` | booléen | — | Marque le prompt système comme cachable pour chaque agent qui ne fixe aucun cache, sur un fournisseur dont le cache de prompt est explicite (Anthropic). Omis, il ne l'est pas. |
 | `Profiles:<nom>:Cache:Tools` | booléen | — | Marque les définitions d'outils comme cachables pour chaque agent qui ne fixe aucun cache, sur un fournisseur dont le cache de prompt est explicite (Anthropic). Omis, elles ne le sont pas. |

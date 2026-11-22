@@ -133,6 +133,12 @@ internal class LlmProfileShape
     /// </summary>
     public string? ApiKeyEnvVar { get; set; }
 
+    /// <summary>
+    /// The Anthropic workspace the key acts in, sent as <c>anthropic-workspace-id</c>: an identity-linked key
+    /// refuses every call without it. Not a secret. Another provider warns that it does not send it.
+    /// </summary>
+    public string? WorkspaceId { get; set; }
+
     /// <summary>The model's name. Left out, the provider runs its own default model.</summary>
     public string? Model { get; set; }
 

@@ -129,6 +129,8 @@ public sealed partial class JsonlMockLlmProvider : ILlmProvider, IStreamingLlmPr
             LogUnsupportedOption("thinking", "the mock does not reason");
         if (config.Temperature is not null)
             LogUnsupportedOption("temperature", "the mock does not sample");
+        if (!string.IsNullOrWhiteSpace(config.WorkspaceId))
+            LogUnsupportedOption("WorkspaceId", "the mock calls no workspace-scoped API");
     }
 
     [LoggerMessage(EventId = 1, Level = LogLevel.Warning,

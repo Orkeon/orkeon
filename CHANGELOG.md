@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — `Llm:WorkspaceId`, the Anthropic workspace from the settings (#468)
+
+An Anthropic identity-linked key refuses every call that does not name its workspace (`anthropic-workspace-id`).
+`LlmConfig.WorkspaceId` and the header existed, but only `orkeon llm --workspace-id` set them: `orkeon run`,
+`orkeon-host`, the forge and a crew could not use such a key. `LlmSettings` now reads `WorkspaceId` under `Llm` and
+under `Llm:Profiles:<name>` (environment form `Llm__WorkspaceId`, `Llm__Profiles__<name>__WorkspaceId`); the
+command's option still wins. A provider other than Anthropic, the mock included, does not send it and logs the
+structured unhonoured-option warning once (event `110`) instead of dropping it in silence.
+
 ### Added — an off decision circuit's sentence on `run.decision` and the forge's events (`detail`, #467)
 
 `run.decision` carries `detail` beside `cause` when the circuit is off and its cause has a sentence: for `no-key`, the

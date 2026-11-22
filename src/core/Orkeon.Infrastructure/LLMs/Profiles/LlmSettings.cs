@@ -14,7 +14,7 @@ namespace Orkeon.Infrastructure.LLMs.Profiles;
 /// Reads the host's LLM settings: the <c>Llm</c> section — the default profile — and its named
 /// profiles under <c>Llm:Profiles:&lt;name&gt;</c>, each of the same shape (GAP-17). One reader
 /// for both, so a profile accepts exactly the keys the default section does: <c>BaseUrl</c>,
-/// <c>ApiKey</c>, <c>ApiKeyEnvVar</c>, <c>Model</c>, <c>Temperature</c>, <c>MaxTokens</c>, <c>ContextWindowTokens</c>,
+/// <c>ApiKey</c>, <c>ApiKeyEnvVar</c>, <c>WorkspaceId</c>, <c>Model</c>, <c>Temperature</c>, <c>MaxTokens</c>, <c>ContextWindowTokens</c>,
 /// <c>TimeoutSeconds</c>, <c>StreamIdleSeconds</c>, <c>MaxRetries</c>, <c>MaxRateLimitWait</c>, <c>CallMode</c>,
 /// <c>Thinking:{Enabled,Effort}</c> and <c>Grammar</c>.
 /// A key left out sets nothing: no <c>Temperature</c> sends none, and the model applies its own
@@ -302,6 +302,8 @@ public static class LlmSettings
         {
             BaseUrl = ReadBaseUrl(section),
             ApiKey = ResolveApiKey(section, environment).Key,
+            // Absent = no workspace: an Anthropic identity-linked key needs one (#468), a classic key none.
+            WorkspaceId = string.IsNullOrWhiteSpace(section["WorkspaceId"]) ? null : section["WorkspaceId"]!.Trim(),
             // Invariant parse: configuration values are written invariant ("0.7"), and a
             // culture-sensitive read turns that into 7 on a comma-decimal locale (fr-FR).
             // Absent = not set: none is sent, the model applies its own (GAP-36).

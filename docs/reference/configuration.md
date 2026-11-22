@@ -289,6 +289,7 @@ every other model takes `Orkeon:Cli:Session:ContextWindowTokens`.
 |---|---|---|---|
 | `ApiKey` | string, secret | — | The API key, in clear text. Prefer `ApiKeyEnvVar`: a key written here is in the settings file. |
 | `ApiKeyEnvVar` | string | — | The name of the environment variable that holds the API key, read when `ApiKey` resolves none: the process environment, then the Windows user scope. |
+| `WorkspaceId` | string | — | The Anthropic workspace the key acts in, sent as the `anthropic-workspace-id` header: an identity-linked key refuses every call without it. Not a secret; its environment-variable form is the binder's (`Llm__WorkspaceId`). A provider other than Anthropic does not send it and logs the structured unhonoured-option warning (event `110`). |
 | `AvailableModels` | list of string | `[]` | The models a scripted `/model` may offer: a list, or one comma-separated value. |
 | `BaseUrl` | string | — | The address of the provider's endpoint, `http://` or `https://`. Left out, the address of the provider the model's name or the key points to. |
 | `Cache:SystemPrompt` | boolean | — | Marks the system prompt cacheable for every agent that sets no cache of its own, on a provider whose prompt cache is explicit (Anthropic). Left out, it is not. |
@@ -308,6 +309,7 @@ every other model takes `Orkeon:Cli:Session:ContextWindowTokens`.
 | `ModelCapabilities:<name>:Vision` | boolean | — | Whether the model takes image parts as input. Left out, the built-in value of the model (false when the table does not know it). |
 | `Profiles:<name>:ApiKey` | string, secret | — | The API key, in clear text. Prefer `ApiKeyEnvVar`: a key written here is in the settings file. |
 | `Profiles:<name>:ApiKeyEnvVar` | string | — | The name of the environment variable that holds the API key, read when `ApiKey` resolves none: the process environment, then the Windows user scope. |
+| `Profiles:<name>:WorkspaceId` | string | — | The Anthropic workspace of this profile's key (`Llm__Profiles__<name>__WorkspaceId`), as `WorkspaceId` above. |
 | `Profiles:<name>:BaseUrl` | string | — | The address of the provider's endpoint, `http://` or `https://`. Left out, the address of the provider the model's name or the key points to. |
 | `Profiles:<name>:Cache:SystemPrompt` | boolean | — | Marks the system prompt cacheable for every agent that sets no cache of its own, on a provider whose prompt cache is explicit (Anthropic). Left out, it is not. |
 | `Profiles:<name>:Cache:Tools` | boolean | — | Marks the tool definitions cacheable for every agent that sets no cache of its own, on a provider whose prompt cache is explicit (Anthropic). Left out, they are not. |

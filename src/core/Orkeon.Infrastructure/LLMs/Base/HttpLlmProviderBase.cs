@@ -55,6 +55,9 @@ public abstract partial class HttpLlmProviderBase : ILlmProvider, IStreamingLlmP
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1051", Justification = "Must remain a protected field: the [LoggerMessage] source generator in derived partial classes resolves the inherited ILogger via a field; a property breaks generation (SYSLIB1019).")]
     protected readonly ILogger Logger;
 
+    // 1 once the WorkspaceId this provider cannot send has been reported (#468).
+    private int _workspaceIdReported;
+
     /// <summary>Shared JSON serializer options with camelCase and unsafe relaxed escaping.</summary>
     protected JsonSerializerOptions JsonOptions { get; }
 
@@ -243,6 +246,17 @@ public abstract partial class HttpLlmProviderBase : ILlmProvider, IStreamingLlmP
 
             // Allow derived classes to add headers
             ConfigureHttpClient(client, effectiveConfig);
+
+            // Llm:WorkspaceId reaches only a provider that writes the workspace header (Anthropic): any other
+            // says it once rather than drop it in silence (#468).
+            if (!string.IsNullOrWhiteSpace(effectiveConfig.WorkspaceId)
+                && !client.DefaultRequestHeaders.Contains(HttpDefaults.AnthropicWorkspaceIdHeader)
+                && Interlocked.Exchange(ref _workspaceIdReported, 1) == 0)
+            {
+                LogReasoningOptionDropped(
+                    "WorkspaceId", Name,
+                    "Only Anthropic scopes a key to a workspace; remove Llm:WorkspaceId (or the profile's) for this provider");
+            }
         }
         catch (InvalidOperationException)
         {
