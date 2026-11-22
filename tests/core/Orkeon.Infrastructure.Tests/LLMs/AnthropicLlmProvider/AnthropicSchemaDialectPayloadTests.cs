@@ -173,7 +173,112 @@ public sealed class AnthropicSchemaDialectPayloadTests : IDisposable
         { """{"type":"object","properties":{"a":{"$ref":"https://example.com/a.json"}}}""", "external `$ref` at `#/properties/a`" },
         { """{"type":"object","properties":{"child":{"$ref":"#"}}}""", "recursive `$ref` at `#/properties/child`" },
         { """{"type":"object","properties":{"root":{"$ref":"#/$defs/node"}},"$defs":{"node":{"type":"object","properties":{"next":{"$ref":"#/$defs/node"}}}}}""", "recursive `$ref` at `#/$defs/node/properties/next`" },
+        // A free-form object: closing it would leave the model nothing to answer but {}.
+        { """{"type":"object","properties":{"metadata":{"type":"object"}}}""", "the object at `#/properties/metadata` declares no `properties`" },
+        { """{"type":"object","properties":{"bag":{"type":"object","properties":{}}}}""", "the object at `#/properties/bag` declares no `properties`" },
+        { """{"type":"object","properties":{"bag":{"type":["object","null"]}}}""", "the object at `#/properties/bag` declares no `properties`" },
+        { """{"type":"object"}""", "the object at `#` declares no `properties`" },
+        // Keywords whose sub-schemas are not walked: an object below them would stay open.
+        { """{"type":"object","properties":{"a":{"type":"string"}},"if":{"properties":{"a":{"const":"x"}}},"then":{"required":["a"]}}""", "`if` at `#`" },
+        { """{"type":"object","properties":{"a":{"type":"string"}},"then":{"required":["a"]}}""", "`then` at `#`" },
+        { """{"type":"object","properties":{"a":{"type":"string"}},"else":{"required":["a"]}}""", "`else` at `#`" },
+        { """{"type":"object","properties":{"a":{"type":"string"}},"patternProperties":{"^x":{"type":"object"}}}""", "`patternProperties` at `#`" },
+        { """{"type":"object","properties":{"a":{"type":"string"}},"dependentSchemas":{"a":{"type":"object"}}}""", "`dependentSchemas` at `#`" },
+        { """{"type":"object","properties":{"a":{"type":"string"}},"dependencies":{"a":{"type":"object"}}}""", "`dependencies` at `#`" },
+        { """{"type":"object","properties":{"l":{"type":"array","contains":{"type":"object"}}}}""", "`contains` at `#/properties/l`" },
+        { """{"type":"object","properties":{"a":{"type":"string"}},"propertyNames":{"pattern":"^a"}}""", "`propertyNames` at `#`" },
+        { """{"type":"object","properties":{"a":{"type":"string"}},"unevaluatedProperties":false}""", "`unevaluatedProperties` at `#`" },
+        { """{"type":"object","properties":{"l":{"type":"array","prefixItems":[{"type":"string"}],"unevaluatedItems":false}}}""", "`unevaluatedItems` at `#/properties/l`" },
+        { """{"type":"object","properties":{"l":{"type":"array","items":[{"type":"string"}],"additionalItems":{"type":"object"}}}}""", "`additionalItems` at `#/properties/l`" },
+        // A description that is not a string is not a valid schema; the moved constraints would overwrite it.
+        { """{"type":"object","properties":{"n":{"type":"integer","minimum":1,"description":{"en":"count"}}}}""", "`description` at `#/properties/n` must be a string" },
+        { """{"type":"object","properties":{"n":{"type":"integer","description":null}}}""", "`description` at `#/properties/n` must be a string" },
     };
+
+    [Fact]
+    public async Task ShouldSendAnEmptyObject_WhenTheCallerClosesItThemselves()
+    {
+        var schema = await SendAndReadSchemaAsync("""
+            {"type":"object","properties":{
+              "none":{"type":"object","properties":{},"additionalProperties":false},
+              "bare":{"type":"object","additionalProperties":false}
+            }}
+            """);
+
+        var properties = schema.GetProperty("properties");
+        Assert.False(properties.GetProperty("none").GetProperty("additionalProperties").GetBoolean());
+        Assert.False(properties.GetProperty("bare").GetProperty("additionalProperties").GetBoolean());
+    }
+
+    [Fact]
+    public async Task ShouldMoveTheNumericAndArrayConstraints_IntoTheDescription()
+    {
+        var schema = await SendAndReadSchemaAsync("""
+            {"type":"object","properties":{
+              "price":{"type":"number","multipleOf":0.5,"exclusiveMinimum":0,"exclusiveMaximum":1000},
+              "set":{"type":"array","items":{"type":"string"},"uniqueItems":true},
+              "list":{"type":"array","items":{"type":"string"},"uniqueItems":false},
+              "huge":{"type":"array","items":{"type":"string"},"minItems":1e40},
+              "beyond":{"type":"array","items":{"type":"string"},"minItems":1e400}
+            }}
+            """);
+
+        var properties = schema.GetProperty("properties");
+        var price = properties.GetProperty("price");
+        Assert.False(price.TryGetProperty("multipleOf", out _));
+        Assert.False(price.TryGetProperty("exclusiveMinimum", out _));
+        Assert.Equal("{multipleOf: 0.5, exclusiveMinimum: 0, exclusiveMaximum: 1000}", price.GetProperty("description").GetString());
+
+        var set = properties.GetProperty("set");
+        Assert.False(set.TryGetProperty("uniqueItems", out _));
+        Assert.Equal("{uniqueItems: true}", set.GetProperty("description").GetString());
+
+        var list = properties.GetProperty("list");
+        Assert.False(list.TryGetProperty("uniqueItems", out _));
+        Assert.False(list.TryGetProperty("description", out _));
+
+        Assert.Equal("{minItems: 1e40}", properties.GetProperty("huge").GetProperty("description").GetString());
+        Assert.Equal("{minItems: 1e400}", properties.GetProperty("beyond").GetProperty("description").GetString());
+    }
+
+    [Fact]
+    public async Task ShouldCloseTheObjects_InANullableObjectATupleAndAnAllOf()
+    {
+        var schema = await SendAndReadSchemaAsync("""
+            {"type":"object","properties":{
+              "maybe":{"type":["object","null"],"properties":{"a":{"type":"string"}}},
+              "pair":{"type":"array","items":[{"type":"object","properties":{"k":{"type":"string"}}},{"type":"string"}]},
+              "both":{"allOf":[{"type":"object","properties":{"id":{"type":"integer"}}}]}
+            }}
+            """);
+
+        var properties = schema.GetProperty("properties");
+        Assert.False(properties.GetProperty("maybe").GetProperty("additionalProperties").GetBoolean());
+        var pair = properties.GetProperty("pair").GetProperty("items");
+        Assert.False(pair[0].GetProperty("additionalProperties").GetBoolean());
+        Assert.False(pair[1].TryGetProperty("additionalProperties", out _));
+        Assert.False(properties.GetProperty("both").GetProperty("allOf")[0].GetProperty("additionalProperties").GetBoolean());
+    }
+
+    [Fact]
+    public async Task ShouldWalkARootThatIsNotAnObject_AndCloseTheObjectsBelowIt()
+    {
+        var schema = await SendAndReadSchemaAsync(
+            """{"type":"array","items":{"type":"object","properties":{"n":{"type":"string","maxLength":3}}}}""");
+
+        Assert.False(schema.TryGetProperty("additionalProperties", out _));
+        var item = schema.GetProperty("items");
+        Assert.False(item.GetProperty("additionalProperties").GetBoolean());
+        Assert.Equal("{maxLength: 3}", item.GetProperty("properties").GetProperty("n").GetProperty("description").GetString());
+    }
+
+    [Fact]
+    public async Task ShouldSendARootThatIsNotAJsonObject_AsWritten()
+    {
+        var schema = await SendAndReadSchemaAsync("true");
+
+        Assert.Equal(JsonValueKind.True, schema.ValueKind);
+    }
 
     [Theory]
     [MemberData(nameof(RefusedSchemas))]
