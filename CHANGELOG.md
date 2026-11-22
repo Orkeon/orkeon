@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — an off decision circuit's sentence on `run.decision` and the forge's events (`detail`, #467)
+
+`run.decision` carries `detail` beside `cause` when the circuit is off and its cause has a sentence: for `no-key`, the
+environment variable and the setting the decision provider's key is read from
+(`no Liquid API key: set the environment variable LIQUID_API_KEY, or Orkeon:Liquid:ApiKey`), never the key. A client
+(Studio, Orkeon Code) shows the remedy without parsing stderr. The forge carries the same sentence as
+`forgeCircuitDetail` on `session.started` and as `detail` on its `FORGE-DECISION-UNAVAILABLE` error. Every other cause
+writes none, and the key is absent from the line when there is none: the fields are additive.
+
 ### Added — the forge's `error` event says whether the process goes on (`terminal`, #453)
 
 Every `error` line of `orkeon forge --events jsonl` now carries `terminal` beside `recoverable`, and the two have a

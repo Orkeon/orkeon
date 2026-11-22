@@ -54,10 +54,11 @@ internal sealed class ForgeSystemOne
 
     private readonly IDecisionModel? _model;
 
-    private ForgeSystemOne(IDecisionModel? model, string? cause)
+    private ForgeSystemOne(IDecisionModel? model, string? cause, string? detail = null)
     {
         _model = model;
         Cause = cause;
+        Detail = detail;
     }
 
     /// <summary>The circuit of a forge that asks nothing, for the stages built without one.</summary>
@@ -69,6 +70,12 @@ internal sealed class ForgeSystemOne
     /// <summary>Why the forge asks nothing (<c>switch</c>, <c>settings</c>, <c>no-provider</c>); null when on.</summary>
     public string? Cause { get; }
 
+    /// <summary>
+    /// The host circuit's sentence when off (#467), such as where a missing key is read from — the variable's and
+    /// the setting's names, never the key; null when on or when the cause has none.
+    /// </summary>
+    public string? Detail { get; }
+
     /// <summary>The spelling of the circuit in <c>session.started</c>: <c>on</c> or <c>off</c>.</summary>
     public string CircuitName => Enabled ? Orkeon.Constants.Protocol.DecisionCircuitStates.On : Orkeon.Constants.Protocol.DecisionCircuitStates.Off;
 
@@ -76,8 +83,8 @@ internal sealed class ForgeSystemOne
     public static ForgeSystemOne On(IDecisionModel model) =>
         new(model ?? throw new ArgumentNullException(nameof(model)), null);
 
-    /// <summary>An off circuit, by <paramref name="cause"/>.</summary>
-    public static ForgeSystemOne Off(string cause) => new(null, cause);
+    /// <summary>An off circuit, by <paramref name="cause"/>, with the host circuit's <paramref name="detail"/> when it has one.</summary>
+    public static ForgeSystemOne Off(string cause, string? detail = null) => new(null, cause, detail);
 
     /// <summary>
     /// The forge's circuit in <paramref name="services"/>: off by <c>switch</c> under <c>--no-decision</c>, which
@@ -94,7 +101,7 @@ internal sealed class ForgeSystemOne
         var host = DecisionCircuit.Of(services);
         return host.Enabled
             ? On(services.GetRequiredService<IDecisionModel>())
-            : Off(ForgeCrewDecision.CauseName(host) ?? ForgeCrewDecision.CauseName(DecisionCircuit.OffBy(DecisionCircuitCause.Settings))!);
+            : Off(ForgeCrewDecision.CauseName(host) ?? ForgeCrewDecision.CauseName(DecisionCircuit.OffBy(DecisionCircuitCause.Settings))!, host.Detail);
     }
 
     /// <summary>

@@ -659,7 +659,7 @@ internal static class ForgeCommand
 
         events.SessionStarted(session, resumed);
         if (options.Events)
-            events.ErrorWithCause(ForgeCrewDecision.UnavailableCode, message, recoverable: false, terminal: true, cause);
+            events.ErrorWithCause(ForgeCrewDecision.UnavailableCode, message, recoverable: false, terminal: true, cause, hostCircuit.Detail);
         events.SessionFinished(resumed ? StatusWord(session) : "failed", ExitError);
         await console.ErrorOutput.WriteLineAsync($"orkeon forge: {message} ({ForgeCrewDecision.UnavailableCode})").ConfigureAwait(false);
         return ExitError;

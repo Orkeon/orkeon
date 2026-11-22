@@ -66,6 +66,8 @@ internal sealed class ForgeEventWriter : OrkeonEventWriter
             // The forge's own System One circuit (#435), next to the crew's mode and orthogonal to it.
             forgeCircuit = SystemOne?.CircuitName,
             forgeCircuitCause = SystemOne?.Cause,
+            // The host circuit's sentence when it has one (#467): where a missing key is read from, never the key.
+            forgeCircuitDetail = SystemOne?.Detail,
             // The use case the session is composed from: what a client reopening the
             // session shows again. Absent for a session started from nothing.
             reference = session.Document.Reference,
@@ -103,9 +105,10 @@ internal sealed class ForgeEventWriter : OrkeonEventWriter
     /// An anomaly with its <paramref name="cause"/>: the machine-readable reason a refusal
     /// happened — the decision circuit's <c>disabled</c> or <c>no-key</c> when the crew's
     /// decision mode is <c>required</c>. Same <paramref name="terminal"/> obligation as the others.
+    /// <paramref name="detail"/> is the circuit's own sentence when it has one (#467), omitted otherwise.
     /// </summary>
-    public void ErrorWithCause(string code, string message, bool recoverable, bool terminal, string? cause) =>
-        Emit("error", new { code, message, recoverable, terminal, cause });
+    public void ErrorWithCause(string code, string message, bool recoverable, bool terminal, string? cause, string? detail = null) =>
+        Emit("error", new { code, message, recoverable, terminal, cause, detail });
 
     /// <summary>
     /// Where a team folder's schedule stands after <c>forge schedule</c>, <c>--check</c> or

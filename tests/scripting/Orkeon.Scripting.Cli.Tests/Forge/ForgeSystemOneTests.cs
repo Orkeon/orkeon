@@ -174,6 +174,38 @@ public sealed class ForgeSystemOneTests : IDisposable
         Assert.Equal(cause, started.TryGetProperty("forgeCircuitCause", out var c) ? c.GetString() : null);
     }
 
+    /// <summary>#467 — the host circuit's sentence reaches session.started beside its cause.</summary>
+    [Fact]
+    [Trait("BR", "CH-467")]
+    public async Task Session_started_carries_the_host_circuits_detail_when_off_by_no_key()
+    {
+        const string Detail = "no Liquid API key: set the environment variable LIQUID_API_KEY, or Orkeon:Liquid:ApiKey";
+        var services = new ServiceCollection()
+            .AddSingleton(DecisionCircuit.OffBy(DecisionCircuitCause.NoKey) with { Detail = Detail })
+            .BuildServiceProvider();
+        var systemOne = ForgeSystemOne.Resolve(noDecision: false, services);
+
+        var cycle = await RunAsync("started", systemOne);
+
+        var started = Assert.Single(cycle.Events("session.started"));
+        Assert.Equal("no-key", started.GetProperty("forgeCircuitCause").GetString());
+        Assert.Equal(Detail, started.GetProperty("forgeCircuitDetail").GetString());
+    }
+
+    /// <summary>#467 — an on circuit, or a cause without a sentence, writes no detail.</summary>
+    [Theory]
+    [Trait("BR", "CH-467")]
+    [InlineData(null)]
+    [InlineData("settings")]
+    public async Task Session_started_leaves_the_detail_out_when_the_circuit_has_none(string? cause)
+    {
+        var systemOne = cause is null ? ForgeSystemOne.On(new StubDecisionModel()) : ForgeSystemOne.Off(cause);
+
+        var cycle = await RunAsync("nodetail", systemOne);
+
+        Assert.False(Assert.Single(cycle.Events("session.started")).TryGetProperty("forgeCircuitDetail", out _));
+    }
+
     // --- off: nothing changes ------------------------------------------------------------------
 
     [Fact]

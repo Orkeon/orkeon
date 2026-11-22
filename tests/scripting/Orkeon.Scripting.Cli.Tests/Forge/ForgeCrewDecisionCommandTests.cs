@@ -168,6 +168,33 @@ public sealed class ForgeCrewDecisionCommandTests : IDisposable
             .Select(line => JsonElement.Parse(line))
             .Single(e => e.GetProperty("kind").GetString() == "error");
         Assert.Equal((ForgeCrewDecision.UnavailableCode, "settings"), (error.GetProperty("code").GetString(), error.GetProperty("cause").GetString()));
+        // #467: a cause without a sentence writes no detail.
+        Assert.False(error.TryGetProperty("detail", out _));
+    }
+
+    /// <summary>#467 — a hosted decision provider without its key: the refusal on the stream carries where the key is read from.</summary>
+    [Fact]
+    [Trait("BR", "CH-467")]
+    public async Task A_required_crew_refusal_for_a_missing_key_carries_the_circuits_detail()
+    {
+        const string Variable = "ORKEON_TEST_467_NO_SUCH_KEY";
+        Directory.CreateDirectory(_workspace);
+        var settings = Path.Combine(_workspace, "settings-no-key.json");
+        await File.WriteAllTextAsync(settings,
+            $$"""{ "Llm": { "Model": "never-called", "BaseUrl": "http://127.0.0.1:9" }, "Orkeon": { "Liquid": { "Model": "lfm", "ApiKeyEnvVar": "{{Variable}}" } } }""",
+            TestContext.Current.CancellationToken);
+        SessionAtDryPause(ForgeCrewDecision.Required);
+        using var console = new TestConsole();
+
+        await ForgeCommand.DispatchAsync(console, ["resume", "tri", "--events", "jsonl", "--settings", settings], _workspace);
+
+        var error = console.Stdout.Split('\n', StringSplitOptions.RemoveEmptyEntries)
+            .Select(line => JsonElement.Parse(line))
+            .Single(e => e.GetProperty("kind").GetString() == "error");
+        Assert.Equal((ForgeCrewDecision.UnavailableCode, "no-key"), (error.GetProperty("code").GetString(), error.GetProperty("cause").GetString()));
+        Assert.Equal(
+            $"no Liquid API key: set the environment variable {Variable}, or Orkeon:Liquid:ApiKey",
+            error.GetProperty("detail").GetString());
     }
 
     /// <summary>A missing key is not cured by turning the circuit on: the refusal names the key to give, not the switch.</summary>
