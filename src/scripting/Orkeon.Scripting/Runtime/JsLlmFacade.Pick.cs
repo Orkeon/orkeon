@@ -25,6 +25,7 @@ public sealed partial class JsLlmFacade
     private JsValue? _pickJs;
 
     /// <summary><c>pick</c> as the script calls it: <see cref="PickAsync"/> behind the async bridge.</summary>
+    [System.Diagnostics.CodeAnalysis.Experimental("ORKEXP008", UrlFormat = "https://github.com/Orkeon/orkeon/blob/main/docs/reference/experimental-apis.md")]
     public JsValue pick => _pickJs ??= JsHostError.BridgeAsync(_engine, PickAsync);
 
     /// <summary>

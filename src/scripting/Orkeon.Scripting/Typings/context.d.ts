@@ -212,8 +212,11 @@ declare global {
          * `LlmConfig` is not accepted here (it throws): its temperature and token cap would not apply.
          */
         llm?: { profile?: string; model?: string; provider?: never };
-        /** Turns the provider's thinking on at this effort for the call. */
-        effort?: EffortLevel;
+        /**
+         * Turns the provider's thinking on at this effort for the call. `null` means "not set", as
+         * absent: a pick's `effort.value` (`EffortLevel | null`) is handed over as it is.
+         */
+        effort?: EffortLevel | null;
         /**
          * The prompt-cache request of the call, as `agentBuilder().cache(...)` takes it; it wins over the
          * agent's own. `{}` turns caching off for the call.
@@ -380,11 +383,11 @@ declare global {
          * and the run warns once. Refused next to `onContextPressure` or `contextPressure`.
          */
         prune?: boolean | {
-            /** The share of the usable window from which results are judged, above 0 and at most 1. Default 0.4. */
+            /** The share of the usable window from which results are judged, above 0 and at most 1. The host's setting, 0.4 unless set. */
             fillShare?: number;
-            /** The last messages whose results are never offered, 0 or more. Default 6. */
+            /** The last messages whose results are never offered, 0 or more. The host's setting, 6 unless set. */
             keepRecentMessages?: number;
-            /** Characters a cut result keeps, 1 or more. Default 300. */
+            /** Characters a cut result keeps, 1 or more. The host's setting, 300 unless set. */
             headChars?: number;
         };
         /**

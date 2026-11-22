@@ -141,9 +141,14 @@ public static class ScriptingCliServiceCollectionExtensions
         services.TryAddSingleton<Orkeon.Application.Interfaces.Ports.ILlmRetryObserver>(
             sp => sp.GetRequiredService<LlmRetryProgressObserver>());
 
+        services.TryAddSingleton(sp => new ScriptEngineRunScope(sp));
         services.TryAddSingleton(sp =>
         {
             var cliLimits = sp.GetRequiredService<IOptions<ScriptCommandsConfiguration>>().Value.Limits;
+            // ctx.llm.pick (#460) and act's prune (#461) are scoped; this factory is a singleton for the REPL's life,
+            // so both come from one scope of the same life, which the container disposes (a scoped service is never
+            // resolved from the root).
+            var runScope = sp.GetRequiredService<ScriptEngineRunScope>().Services;
             return new JsEngineFactory(
                 Options.Create(cliLimits.ToScriptingLimits()),
                 sp.GetService<ILoggerFactory>(),
@@ -161,12 +166,10 @@ public static class ScriptingCliServiceCollectionExtensions
                     AgentMemoryStore = sp.GetService<Orkeon.Application.Interfaces.Ports.IScriptAgentMemoryStore>(),
                     ToolLimits = sp.GetService<IOptions<Orkeon.Domain.Tools.ToolResultLimitsOptions>>()?.Value,
                     // #461: what an act's prune option asks for, the pruning stage of the crew loops.
-                    ConversationPruner = sp.GetService<Orkeon.Application.Crew.Compaction.IConversationPruner>(),
+                    ConversationPruner = runScope.GetService<Orkeon.Application.Crew.Compaction.IConversationPruner>(),
                     AgentInstances = sp.GetService<IOptions<Orkeon.Scripting.Configuration.ScriptAgentInstanceOptions>>()?.Value,
                     FileSystem = sp.GetService<IFileSystemService>(),
-                    // ctx.llm.pick (#460): the pick is scoped; this factory is a singleton for the REPL's life, so
-                    // the pick takes one scope of the same life (a scoped service is never resolved from the root).
-                    SystemOnePicker = sp.CreateScope().ServiceProvider.GetService<Orkeon.Application.Crew.Routing.ISystemOnePicker>(),
+                    SystemOnePicker = runScope.GetService<Orkeon.Application.Crew.Routing.ISystemOnePicker>(),
                 },
                 ragBackend: Orkeon.Scripting.Bindings.RagScriptingBackendFactory.Build(sp));
         });

@@ -41,9 +41,12 @@ public sealed class RunCommandPickEventsTests
             .Select(line => JsonElement.Parse(line))
             .ToList();
         var effort = Assert.Single(events, e => e.GetProperty("kind").GetString() == "agent.effort");
-        Assert.Equal(JsonValueKind.Null, effort.TryGetProperty("taskId", out var taskId) ? taskId.ValueKind : JsonValueKind.Null);
+        // A pick belongs to no task: the wire omits a null property, so the line carries no taskId at all.
+        Assert.False(effort.TryGetProperty("taskId", out _));
         Assert.Equal("Planner", effort.GetProperty("agentRole").GetString());
         Assert.Equal("circuit-off", effort.GetProperty("reason").GetString());
-        Assert.Single(events, e => e.GetProperty("kind").GetString() == "agent.route");
+        var route = Assert.Single(events, e => e.GetProperty("kind").GetString() == "agent.route");
+        Assert.False(route.TryGetProperty("taskId", out _));
+        Assert.Equal("Planner", route.GetProperty("agentRole").GetString());
     }
 }

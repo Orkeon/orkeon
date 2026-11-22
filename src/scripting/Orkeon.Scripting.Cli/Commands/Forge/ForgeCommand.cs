@@ -810,8 +810,11 @@ internal static class ForgeCommand
         var knownTools = crewTools.Select(tool => tool.Name).ToHashSet(StringComparer.Ordinal);
 
         var packPath = ForgePack.Ensure(session.Directory, options.PackDirectory);
+        // The interview's scoped ports (act's prune, #461) come from one scope of the session's life, left before the host.
+        using var assistantScope = host.Services.CreateScope();
         var assistant = new ForgeCrewAssistant(
-            host.Services, session, packPath, reference: reference, language: options.Language, crewTools: crewTools);
+            host.Services, session, packPath, reference: reference, language: options.Language, crewTools: crewTools,
+            scopeServices: assistantScope.ServiceProvider);
 
         observer.Attach(events, withCalls: options.Events);
         IForgeUserChannel channel = options.Events

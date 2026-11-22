@@ -49,14 +49,19 @@ public sealed class HostPublishesRunEventsTests : IDisposable
 
     private string CrewPath => Path.Combine(_root, "crews", "support.yaml");
 
-    private IHost Build(HeldLlmProvider llm, bool? history = null, bool ladder = false, Action<IServiceCollection>? configure = null)
+    private string ScriptCrewPath => Path.Combine(_root, "crews", "support.ork.ts");
+
+    private IHost Build(
+        Orkeon.Domain.SharedKernel.ILlmProvider llm, bool? history = null, bool ladder = false, Action<IServiceCollection>? configure = null,
+        string? crewPath = null, bool validateScopes = true)
     {
+        crewPath ??= CrewPath;
         var root = new Dictionary<string, object?>
         {
             ["RaggableTree"] = new { Enabled = false },
             ["Orkeon"] = new Dictionary<string, object?>
             {
-                ["Host"] = new Dictionary<string, object?> { ["Crews"] = new object[] { new { Name = "support", Path = CrewPath } } },
+                ["Host"] = new Dictionary<string, object?> { ["Crews"] = new object[] { new { Name = "support", Path = crewPath } } },
             },
         };
         if (history is { } enabled)
@@ -67,7 +72,7 @@ public sealed class HostPublishesRunEventsTests : IDisposable
 
         var settings = Path.Combine(_root, $"{Guid.NewGuid():N}.json");
         File.WriteAllText(settings, JsonSerializer.Serialize(root));
-        var crewPlan = HostCrewMounts.For([new HostedCrewOptions { Name = "support", Path = CrewPath }]);
+        var crewPlan = HostCrewMounts.For([new HostedCrewOptions { Name = "support", Path = crewPath }]);
 
         // What HostStartup builds: the daemon asks for the history by default.
         return RunnerHost.Build(
@@ -90,7 +95,7 @@ public sealed class HostPublishesRunEventsTests : IDisposable
             },
             configureBuilder: builder => builder.UseDefaultServiceProvider(options =>
             {
-                options.ValidateScopes = true;
+                options.ValidateScopes = validateScopes;
                 options.ValidateOnBuild = true;
             }));
     }
@@ -302,6 +307,62 @@ public sealed class HostPublishesRunEventsTests : IDisposable
         var pruned = Assert.Single(events, e => e.Kind == RunEventKinds.AgentPruned);
         Assert.Equal(("Helper", summary.RunId), (compacted.Payload?["agentRole"]?.GetValue<string>(), compacted.CorrelationId));
         Assert.Equal(("Helper", summary.RunId), (pruned.Payload?["agentRole"]?.GetValue<string>(), pruned.CorrelationId));
+        Assert.Equal(Enumerable.Range(1, events.Count), events.Select(e => e.Seq));
+    }
+
+    // #461: a .ork.ts crew whose agent's onAgentStart hook - run as the crew is built, so during the hosted load -
+    // calls ctx.llm.act with prune over three reads of a large result; the load awaits it before handing the crew over.
+    private void WriteActPruneScript() => File.WriteAllText(ScriptCrewPath, """
+        /// <reference orkeon-script="1.0" />
+        let pending: Promise<unknown> | undefined;
+        const reader = agentBuilder().name("reader").role("Reader").goal("Read").tools(["probe_read"])
+            .onAgentStart((ctx) => {
+                pending = ctx.llm.act("Read the probe three times.", { prune: { fillShare: 0.0001, keepRecentMessages: 0 } });
+            })
+            .build();
+        const answer = taskBuilder().agent(reader).description("Answer the question.").expectedOutput("An answer.").build();
+        const crew = crewBuilder().name("support").goal("Answer one question offline").withAgent(reader).withTask(answer).build();
+        await pending;
+        (globalThis as any).crew = crew;
+        """);
+
+    // Validating scopes (a Development host), a pruner read from the root failed the run; not validating (a production
+    // host), it wrote to a root recording no run opens, and every agent.pruned of the act was lost.
+    [Theory]
+    [Trait("BR", "CH-461")]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task ShouldWriteTheAgentPrunedEventOfAScriptsActInTheRunHistory_WhenTheDaemonHostsTheScript(bool validateScopes)
+    {
+        // Arrange
+        WriteActPruneScript();
+        var llm = new FakeToolCallingLlmProvider { ToolName = "probe_read" };
+        var model = new StubPruneDecisionModel();
+        using var host = Build(llm, crewPath: ScriptCrewPath, validateScopes: validateScopes, configure: services =>
+        {
+            services.AddSingleton<Orkeon.Application.Interfaces.Ports.IDecisionModel>(model);
+            services.AddSingleton<Orkeon.Domain.Tools.IBaseTool>(new StubLargeResultTool("probe_read", 8_000));
+        });
+        var runner = host.Services.GetRequiredService<ICrewRunner>();
+
+        // Act
+        var result = await runner.RunAsync("support", "What changed?", "test");
+
+        // Assert: the act's two prunings are the run's, with the agent's role and no task.
+        Assert.Equal(HostedRunOutcome.Completed, result.Outcome);
+        Assert.True(model.Requests > 0);
+        var reader = host.Services.GetRequiredService<IRunHistoryReader>();
+        var summary = Assert.Single(await reader.ListAsync(new RunQuery(), Ct));
+        var events = await reader.ReadEventsAsync(summary.RunId, 1, Ct);
+        var pruned = events.Where(e => e.Kind == RunEventKinds.AgentPruned).ToList();
+        Assert.NotEmpty(pruned);
+        Assert.All(pruned, e =>
+        {
+            Assert.Equal(("Reader", summary.RunId), (e.Payload?["agentRole"]?.GetValue<string>(), e.CorrelationId));
+            // The wire omits a null property: an act's event carries no taskId at all, never an empty one.
+            Assert.False(e.Payload!.ContainsKey("taskId"));
+            Assert.True(e.Payload["dropped"]!.GetValue<int>() > 0);
+        });
         Assert.Equal(Enumerable.Range(1, events.Count), events.Select(e => e.Seq));
     }
 

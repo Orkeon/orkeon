@@ -216,7 +216,7 @@ internal sealed class ForgeCrewTestBench : IForgeTestBench
         // converge on the same CrewConfiguration, the same factory, the same kickoff
         // (SPEC §8.3's single pipeline, extended to execution).
         var configuration = ForgeSession.IsScriptFormat(session.Document.Format)
-            ? await LoadScriptConfigurationAsync(session, cancellationToken).ConfigureAwait(false)
+            ? await LoadScriptConfigurationAsync(session, scope.ServiceProvider, cancellationToken).ConfigureAwait(false)
             : await _services.GetRequiredService<ICrewDefinitionLoader>()
                 .LoadFromDirectoryAsync(_crewVirtualPath, cancellationToken).ConfigureAwait(false);
 
@@ -295,10 +295,11 @@ internal sealed class ForgeCrewTestBench : IForgeTestBench
     /// <c>globalThis.crew</c> → <c>JsCrewConfigurationAdapter</c> — the same
     /// CrewConfiguration surface the YAML loader produces — with the same host ports, the host's
     /// LLM profiles included: a crew naming one (<c>llm.profile(name)</c>) failed its trial with
-    /// "Known profiles: default." and ran once promoted (GAP-27).
+    /// "Known profiles: default." and ran once promoted (GAP-27). The scoped ports - System One's pick (#460) and the
+    /// pruning an act's <c>prune</c> asks for (#461) - come from <paramref name="trialServices"/>, the trial's scope.
     /// </summary>
     private async Task<Orkeon.Domain.Configuration.CrewConfiguration> LoadScriptConfigurationAsync(
-        ForgeSession session, CancellationToken cancellationToken)
+        ForgeSession session, IServiceProvider trialServices, CancellationToken cancellationToken)
     {
         var loggerFactory = _services.GetRequiredService<Microsoft.Extensions.Logging.ILoggerFactory>();
         var engineFactory = new Orkeon.Scripting.JsEngineFactory(
@@ -315,6 +316,9 @@ internal sealed class ForgeCrewTestBench : IForgeTestBench
                 // The trial's mounts (it follows the ambient scope Enter opens): a body's working root is
                 // checked against them and its ctx.fileSystem.prompt names them, as under orkeon run (#378).
                 FileSystem = _services.GetService<Orkeon.Domain.FileSystem.IFileSystemService>(),
+                // ctx.llm.pick and act's prune, as under orkeon run: the trial's scope, its circuit and its observers.
+                SystemOnePicker = trialServices.GetService<Orkeon.Application.Crew.Routing.ISystemOnePicker>(),
+                ConversationPruner = trialServices.GetService<Orkeon.Application.Crew.Compaction.IConversationPruner>(),
             });
 
         var transpiler = _transpilerFactory();
