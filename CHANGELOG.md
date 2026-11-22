@@ -461,6 +461,20 @@ host's circuit.
 
 ### Fixed
 
+- **The Anthropic provider sends a `json_schema` response format in Anthropic's own dialect (#459).** It used to
+  send the caller's schema unchanged, and Anthropic answers a 400 to an object that does not say
+  `additionalProperties: false`: `ctx.llm.extract`, `withResponseSchema`, a YAML `response_format`, a
+  `structured_output` deliverable and the decision circuit failed on any ordinary schema. The provider now works on
+  a copy: it closes every object that does not set `additionalProperties`, and moves the constraints the API does
+  not take (`minimum`, `maximum`, `exclusiveMinimum`, `exclusiveMaximum`, `multipleOf`, `minLength`, `maxLength`,
+  `maxItems`, `uniqueItems`, a `minItems` above 1, a `format` off Anthropic's list) into the node's `description`.
+  What would change the schema's meaning — `oneOf`, `not`, an `additionalProperties` set to `true` or to a schema,
+  an external `$ref`, a recursive schema, messages ending on an `assistant` turn — is refused before any HTTP call,
+  naming the keyword and its path (``ctx.llm.extract: the provider failed: Anthropic cannot take the response schema
+  'extract': `oneOf` at `#/properties/pick` is not supported; use `anyOf`.``); these requests were refused by the API
+  before. The refusal's error type is `UnsupportedResponseSchema`, classed as refused: no retry, no fallback. A
+  task's `output_json` is still validated against the author's schema. See `docs/guides/llm-response-format.md`,
+  "Anthropic's schema dialect".
 - **The `firefox` tool no longer fails to start on a loaded machine whose `StartupTimeoutSeconds` covers the
   start (#437).** Firefox announces its remote protocol early and answers `session.new` only once its first
   window has loaded; that wait was bounded by `CommandTimeoutSeconds` (30 s), not by the start's timeout, so a
