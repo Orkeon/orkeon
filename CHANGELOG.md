@@ -37,8 +37,12 @@ reports the section's id when the factory builds it.
 environment variable and the setting the decision provider's key is read from
 (`no Liquid API key: set the environment variable LIQUID_API_KEY, or Orkeon:Liquid:ApiKey`), never the key. A client
 (Studio, Orkeon Code) shows the remedy without parsing stderr. The forge carries the same sentence as
-`forgeCircuitDetail` on `session.started` and as `detail` on its `FORGE-DECISION-UNAVAILABLE` error. Every other cause
-writes none, and the key is absent from the line when there is none: the fields are additive.
+`forgeCircuitDetail` on `session.started` and as `detail` on its `FORGE-DECISION-UNAVAILABLE` error, its
+`FORGE-DECISION-PASS-SKIPPED` warning and the off pass's `run.started`. Every other cause writes none, and the key is
+absent from the line when there is none: the fields are additive. When `Orkeon:<Provider>:ApiKeyEnvVar` holds no
+environment variable name (a key pasted there by mistake), the sentence, and a call's refusal, name the setting and
+never repeat its value: `no Liquid API key: Orkeon:Liquid:ApiKeyEnvVar does not hold an environment variable name;
+set it to one, or set Orkeon:Liquid:ApiKey`.
 
 ### Added — the forge's `error` event says whether the process goes on (`terminal`, #453)
 

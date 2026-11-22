@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Orkeon.Scripting.Cli.Commands;
 
 namespace Orkeon.Scripting.Cli.Tests.Run;
@@ -87,6 +88,50 @@ public sealed class DecisionCircuitAtStartTests
             "crew 'triage-crew' requires System One (decision.mode: required) and " + NoKeyReason,
             console.Stderr + console.Stdout,
             StringComparison.Ordinal);
+    }
+
+    private static JsonElement RunDecision(TestConsole console) =>
+        Assert.Single(
+            console.Stdout.Split('\n', StringSplitOptions.RemoveEmptyEntries)
+                .Where(line => line.StartsWith('{'))
+                .Select(line => JsonElement.Parse(line)),
+            e => e.GetProperty("kind").GetString() == "run.decision");
+
+    [Fact]
+    [Trait("BR", "CH-467")]
+    public async Task ShouldCarryTheCircuitsSentenceOnRunDecision_WhenAWatchedRunHasNoKey()
+    {
+        // Act
+        var (exit, console) = await RunAsync(RequiredCrew, NoKeySettings, validate: false);
+
+        // Assert
+        using var _ = console;
+        Assert.True(exit == 69, $"exit {exit}: {console.Stderr}{console.Stdout}");
+        var decision = RunDecision(console);
+        Assert.Equal(
+            ("no-key", $"no Liquid API key: set the environment variable {NoKeyVariable}, or Orkeon:Liquid:ApiKey"),
+            (decision.GetProperty("cause").GetString(), decision.GetProperty("detail").GetString()));
+    }
+
+    [Fact]
+    [Trait("BR", "CH-467")]
+    public async Task ShouldNeverWriteAKeyPastedIntoTheVariableSetting_WhenAWatchedRunHasNoKey()
+    {
+        // Arrange: the shape of a real key, built at run time.
+        var pasted = string.Concat("sk", "-ant-test-", "0123456789abcdef");
+        var settings =
+            $$"""{ "RaggableTree": { "Enabled": false }, "Orkeon": { "Liquid": { "Model": "lfm", "ApiKeyEnvVar": "{{pasted}}" } } }""";
+
+        // Act
+        var (exit, console) = await RunAsync(RequiredCrew, settings, validate: false);
+
+        // Assert
+        using var _ = console;
+        Assert.True(exit == 69, $"exit {exit}: {console.Stderr}{console.Stdout}");
+        Assert.Equal(
+            "no Liquid API key: Orkeon:Liquid:ApiKeyEnvVar does not hold an environment variable name; set it to one, or set Orkeon:Liquid:ApiKey",
+            RunDecision(console).GetProperty("detail").GetString());
+        Assert.DoesNotContain(pasted, console.Stdout + console.Stderr, StringComparison.Ordinal);
     }
 
     [Fact]

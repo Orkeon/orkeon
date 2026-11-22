@@ -362,14 +362,16 @@ cause est nommée dans chaque message, sous la forme `the decision circuit is of
 étant `--no-decision`, `Orkeon:Decision:Enabled=false`, `no decision provider resolved` ou, pour un fournisseur
 hébergé (TypeSafe, Liquid) dont la clé n'est ni dans son réglage ni dans sa variable d'environnement, `no Liquid API
 key: set the environment variable LIQUID_API_KEY, or Orkeon:Liquid:ApiKey` (cause `no-key`, qui nomme la variable
-que choisit `ApiKeyEnvVar`), et, dans le passage par les relais d'un essai de la forge, `the forge's trial pass
+que choisit `ApiKeyEnvVar` ; quand `ApiKeyEnvVar` ne contient pas un nom de variable d'environnement, une clé
+collée là par erreur, `no Liquid API key: Orkeon:Liquid:ApiKeyEnvVar does not hold an environment variable name; set it to one, or set Orkeon:Liquid:ApiKey`, jamais sa valeur), et, dans le passage par les relais d'un essai de la forge, `the forge's trial pass
 without System One` (cause `trial`) ; quand l'option et le réglage valent tous deux, c'est l'option qui est nommée.
 La clé est cherchée là où le fournisseur la lit à chaque appel, le réglage d'abord, quand l'hôte résout son
 circuit, sans aucun appel réseau, et seulement quand le modèle de décision est ce fournisseur System One : un
 fournisseur local (Kev) et un modèle de décision qui n'est pas un fournisseur System One ne sont jamais coupés par elle.
 Un essai de la forge n'émet aucun
 `run.decision` : son passage indique `circuit` et `cause` sur les lignes `run.started`, `task.completed` et
-`llm.call.*` du flux de la forge. Chaque consommateur qui se
+`llm.call.*` du flux de la forge, et `run.started` y ajoute `detail`, la phrase du circuit, seulement quand le circuit du
+passage est coupé faute de clé (`no-key`). Chaque consommateur qui se
 dégrade le dit en un avertissement :
 
 | Consommateur | Circuit coupé |
@@ -436,7 +438,8 @@ tâche de décision reçoit la réponse de son relais `without:` ([plus bas](#le
 qu'un run rencontrerait par une ligne `WARNING:` et sort en `0` ([le CLI](../reference/cli.md#orkeon-run)), et un run
 émet un événement `run.decision` avec le mode, le circuit que suit le run et sa cause : `off` avec la cause
 `no-provider` sur un hôte dont le circuit est allumé mais qui n'a pas de modèle de décision, et `no-key` sur un hôte
-dont le fournisseur hébergé n'a pas de clé, comme le dit le refus ([le bus d'événements](./run-event-bus.md)).
+dont le fournisseur hébergé n'a pas de clé, comme le dit le refus, avec `detail`, la phrase du circuit, absent sauf
+quand le circuit est coupé faute de clé ([le bus d'événements](./run-event-bus.md)).
 
 #### Circuit coupé, selon le mode
 
@@ -605,7 +608,8 @@ seule, jamais de lui-même.
   `systemone.answered`, ses jetons sont imputés au budget de la session (`systemOneTokens` dans `cost.updated`), et un
   appel en échec donne un avertissement `FORGE-SYSTEMONE-FAILED`. Ces appels sont ceux de la forge, séparés de ceux
   de l'essai : `--no-decision` (annoncé dans `session.started` par `forgeCircuit: off`, `forgeCircuitCause: switch`,
-  comme `settings`, `no-provider` et `no-key`) les éteint sans toucher le circuit de l'hôte du moteur, que suit l'essai d'une
+  comme `settings`, `no-provider` et `no-key`, et `forgeCircuitDetail`, la phrase du circuit, absent sauf quand le
+  circuit est coupé faute de clé) les éteint sans toucher le circuit de l'hôte du moteur, que suit l'essai d'une
   équipe `optional` ou `required` ([la CLI](../reference/cli.md#orkeon-forge)). L'assistant et le juge ne nomment
   aucun profil de décision.
 

@@ -114,6 +114,7 @@ public sealed class ForgeRephraseTests
 
     /// <summary>#453: with no LLM configured the verb refuses on the stream, and its error says the process ends.</summary>
     [Fact]
+    [Trait("BR", "CH-466")]
     public async Task Without_an_llm_the_refusal_on_the_stream_is_terminal()
     {
         var workspace = Path.Combine(Path.GetTempPath(), "orkeon-forge-rephrase-" + Guid.NewGuid().ToString("N"));
@@ -127,11 +128,43 @@ public sealed class ForgeRephraseTests
             var exitCode = await ForgeCommand.DispatchAsync(console, ["rephrase", "un besoin", "--events", "jsonl", "--settings", settings], workspace);
 
             Assert.Equal(1, exitCode);
-            var error = JsonElement.Parse(Assert.Single(console.Stdout.Split('\n', StringSplitOptions.RemoveEmptyEntries),
-                l => l.Contains("\"kind\":\"error\"", StringComparison.Ordinal)));
+            var lines = console.Stdout.Split('\n', StringSplitOptions.RemoveEmptyEntries);
+            var error = JsonElement.Parse(Assert.Single(lines, l => l.Contains("\"kind\":\"error\"", StringComparison.Ordinal)));
+            Assert.Contains("\"kind\":\"error\"", lines[^1], StringComparison.Ordinal);
             Assert.Equal(ForgeRephrase.LlmUnavailableCode, error.GetProperty("code").GetString());
+            Assert.Equal(NoLlmMessage, error.GetProperty("message").GetString());
             Assert.False(error.GetProperty("recoverable").GetBoolean());
             Assert.True(error.GetProperty("terminal").GetBoolean());
+        }
+        finally
+        {
+            Directory.Delete(workspace, recursive: true);
+        }
+    }
+
+    private const string NoLlmMessage = "no LLM is configured — run `orkeon init`, or pass --settings.";
+
+    /// <summary>#466: through the real dispatch, settings wiring no LLM and no --events: one stderr line, exit 1.</summary>
+    [Fact]
+    [Trait("BR", "CH-466")]
+    public async Task Without_an_llm_through_the_dispatch_the_terminal_refusal_is_one_error_line()
+    {
+        var workspace = Path.Combine(Path.GetTempPath(), "orkeon-forge-rephrase-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(workspace);
+        try
+        {
+            var settings = Path.Combine(workspace, "settings.json");
+            await File.WriteAllTextAsync(settings, "{}", TestContext.Current.CancellationToken);
+            using var console = new TestConsole();
+
+            var exitCode = await ForgeCommand.DispatchAsync(console, ["rephrase", "un besoin", "--settings", settings], workspace);
+
+            // The host's own warning on the missing Llm section comes first; the refusal is the last line.
+            Assert.Equal(1, exitCode);
+            var errors = console.Stderr.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            Assert.Equal("orkeon forge: " + NoLlmMessage, errors[^1]);
+            Assert.Single(errors, l => l.StartsWith("orkeon forge:", StringComparison.Ordinal));
+            Assert.Empty(console.Stdout);
         }
         finally
         {
@@ -154,7 +187,9 @@ public sealed class ForgeRephraseTests
         Assert.Equal(1, exitCode);
         var lines = console.Stdout.Split('\n', StringSplitOptions.RemoveEmptyEntries);
         var error = JsonElement.Parse(Assert.Single(lines, l => l.Contains("\"kind\":\"error\"", StringComparison.Ordinal)));
+        Assert.Contains("\"kind\":\"error\"", lines[^1], StringComparison.Ordinal);
         Assert.Equal(ForgeRephrase.EmptyCode, error.GetProperty("code").GetString());
+        Assert.Equal("the model gave no rewritten request.", error.GetProperty("message").GetString());
         Assert.False(error.GetProperty("recoverable").GetBoolean());
         Assert.True(error.GetProperty("terminal").GetBoolean());
         Assert.DoesNotContain(lines, l => l.Contains(ForgeRephrase.EventKind, StringComparison.Ordinal));

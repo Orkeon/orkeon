@@ -277,6 +277,7 @@ internal sealed class TestStage : IForgeStageRunner
                 code = ForgeCrewDecision.PassSkippedWarning,
                 message = $"The crew is 'optional' and {host.OffReason}: its trial runs without System One only.",
                 cause = ForgeCrewDecision.CauseName(host),
+                detail = host.Detail,
             });
         }
 
@@ -302,6 +303,7 @@ internal sealed class TestStage : IForgeStageRunner
             pass,
             circuit,
             cause,
+            detail = plan.Shown?.Detail,
         });
 
         ForgeTestRun run;

@@ -1,6 +1,10 @@
+using System.Collections.Immutable;
+using System.Text.Json.Nodes;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Orkeon.Application.Crew.Execution;
+using Orkeon.Application.Decision;
+using Orkeon.Application.Decision.DTOs;
 using Orkeon.Application.Interfaces.Ports;
 using Orkeon.Infrastructure.Decision.SystemOne;
 using Orkeon.Infrastructure.DependencyInjection;
@@ -205,5 +209,81 @@ public class DecisionCircuitRegistrationTests
         Assert.Equal(
             ("no Liquid API key: set the environment variable LIQUID_API_KEY, or Orkeon:Liquid:ApiKey", (string?)null),
             (before, after));
+    }
+
+    [Fact]
+    [Trait("BR", "CH-467")]
+    public void ShouldNameTheVariable_WhenApiKeyEnvVarHoldsAWellFormedName()
+    {
+        // Act
+        var circuit = HostCircuit(
+            DecisionProviderDescriptor.Liquid,
+            new() { ["Orkeon:Liquid:Model"] = "lfm", ["Orkeon:Liquid:ApiKeyEnvVar"] = " _My_Liquid_Key2 " });
+
+        // Assert
+        Assert.Equal(
+            "the decision circuit is off: no Liquid API key: set the environment variable _My_Liquid_Key2, or Orkeon:Liquid:ApiKey",
+            circuit.OffReason);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-467")]
+    public void ShouldNameTheSettingAndNeverItsValue_WhenApiKeyEnvVarHoldsAKey()
+    {
+        // Act
+        var circuit = HostCircuit(
+            DecisionProviderDescriptor.Liquid,
+            new() { ["Orkeon:Liquid:Model"] = "lfm", ["Orkeon:Liquid:ApiKeyEnvVar"] = FakeKeys.Pasted });
+
+        // Assert
+        Assert.Equal(
+            (DecisionCircuitCause.NoKey, FakeKeys.LiquidSentence),
+            (circuit.Cause, circuit.Detail));
+        Assert.DoesNotContain(FakeKeys.Pasted, circuit.OffReason, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-467")]
+    public async Task ShouldNeverRepeatTheValueInTheCallsRefusal_WhenApiKeyEnvVarHoldsAKey()
+    {
+        // Arrange
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["Orkeon:Liquid:Model"] = "lfm",
+                ["Orkeon:Liquid:ApiKeyEnvVar"] = FakeKeys.Pasted,
+            })
+            .Build();
+        var services = new ServiceCollection()
+            .AddLogging()
+            .AddSingleton<IConfiguration>(configuration)
+            .AddSingleton(new LlmKeyEnvironment(_ => null, _ => null));
+        services.AddOrkeonDecisionProvider(configuration, DecisionProviderDescriptor.Liquid);
+        using var container = services.BuildServiceProvider();
+        var model = container.GetRequiredService<SystemOneDecisionModel>();
+        var request = new DecisionRequest
+        {
+            State = JsonValue.Create("a ticket"),
+            Questions = ImmutableDictionary<string, DecisionQuestion>.Empty
+                .Add("refund", new NoulQuestion { Instructions = JsonValue.Create("Is it a refund?") }),
+        };
+
+        // Act
+        var error = await Assert.ThrowsAsync<DecisionModelException>(
+            () => model.DecideAsync(request, TestContext.Current.CancellationToken));
+
+        // Assert
+        Assert.Equal(
+            "No liquid API key: Orkeon:Liquid:ApiKeyEnvVar does not hold an environment variable name; set it to one, or set Orkeon:Liquid:ApiKey.",
+            error.Message);
+    }
+
+    /// <summary>A key pasted into <c>ApiKeyEnvVar</c> by mistake: the shape of a real key, built at run time.</summary>
+    private static class FakeKeys
+    {
+        public static readonly string Pasted = string.Concat("sk", "-ant-test-", "0123456789abcdef");
+
+        public const string LiquidSentence =
+            "no Liquid API key: Orkeon:Liquid:ApiKeyEnvVar does not hold an environment variable name; set it to one, or set Orkeon:Liquid:ApiKey";
     }
 }

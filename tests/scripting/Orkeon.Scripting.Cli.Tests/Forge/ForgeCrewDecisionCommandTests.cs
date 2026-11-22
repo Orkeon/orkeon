@@ -188,13 +188,42 @@ public sealed class ForgeCrewDecisionCommandTests : IDisposable
 
         await ForgeCommand.DispatchAsync(console, ["resume", "tri", "--events", "jsonl", "--settings", settings], _workspace);
 
-        var error = console.Stdout.Split('\n', StringSplitOptions.RemoveEmptyEntries)
+        var events = console.Stdout.Split('\n', StringSplitOptions.RemoveEmptyEntries)
             .Select(line => JsonElement.Parse(line))
-            .Single(e => e.GetProperty("kind").GetString() == "error");
+            .ToList();
+        var error = events.Single(e => e.GetProperty("kind").GetString() == "error");
+        var started = events.Single(e => e.GetProperty("kind").GetString() == "session.started");
+        const string Sentence = $"no Liquid API key: set the environment variable {Variable}, or Orkeon:Liquid:ApiKey";
         Assert.Equal((ForgeCrewDecision.UnavailableCode, "no-key"), (error.GetProperty("code").GetString(), error.GetProperty("cause").GetString()));
-        Assert.Equal(
-            $"no Liquid API key: set the environment variable {Variable}, or Orkeon:Liquid:ApiKey",
-            error.GetProperty("detail").GetString());
+        Assert.Equal(Sentence, error.GetProperty("detail").GetString());
+        Assert.Equal(("no-key", Sentence), (started.GetProperty("forgeCircuitCause").GetString(), started.GetProperty("forgeCircuitDetail").GetString()));
+    }
+
+    /// <summary>#467 — a key pasted into <c>ApiKeyEnvVar</c> never reaches the forge's events: the sentence names the setting.</summary>
+    [Fact]
+    [Trait("BR", "CH-467")]
+    public async Task A_key_pasted_into_the_variable_setting_never_reaches_the_forges_events()
+    {
+        var pasted = string.Concat("sk", "-ant-test-", "0123456789abcdef");
+        Directory.CreateDirectory(_workspace);
+        var settings = Path.Combine(_workspace, "settings-pasted-key.json");
+        await File.WriteAllTextAsync(settings,
+            $$"""{ "Llm": { "Model": "never-called", "BaseUrl": "http://127.0.0.1:9" }, "Orkeon": { "Liquid": { "Model": "lfm", "ApiKeyEnvVar": "{{pasted}}" } } }""",
+            TestContext.Current.CancellationToken);
+        SessionAtDryPause(ForgeCrewDecision.Required);
+        using var console = new TestConsole();
+
+        await ForgeCommand.DispatchAsync(console, ["resume", "tri", "--events", "jsonl", "--settings", settings], _workspace);
+
+        var events = console.Stdout.Split('\n', StringSplitOptions.RemoveEmptyEntries)
+            .Select(line => JsonElement.Parse(line))
+            .ToList();
+        var error = events.Single(e => e.GetProperty("kind").GetString() == "error");
+        var started = events.Single(e => e.GetProperty("kind").GetString() == "session.started");
+        const string Sentence =
+            "no Liquid API key: Orkeon:Liquid:ApiKeyEnvVar does not hold an environment variable name; set it to one, or set Orkeon:Liquid:ApiKey";
+        Assert.Equal((Sentence, Sentence), (error.GetProperty("detail").GetString(), started.GetProperty("forgeCircuitDetail").GetString()));
+        Assert.DoesNotContain(pasted, console.Stdout + console.Stderr, StringComparison.Ordinal);
     }
 
     /// <summary>A missing key is not cured by turning the circuit on: the refusal names the key to give, not the switch.</summary>

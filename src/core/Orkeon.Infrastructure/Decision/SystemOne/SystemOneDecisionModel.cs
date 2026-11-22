@@ -186,7 +186,7 @@ public sealed partial class SystemOneDecisionModel : IDecisionModel
             return key;
         return _provider.KeyRequired
             ? throw new DecisionModelException(
-                $"No {Name} API key: set the environment variable {DecisionApiKey.Variable(_provider, _options)}, or {_provider.Section}:ApiKey.",
+                $"No {Name} API key: {DecisionApiKey.Remedy(_provider, _options)}.",
                 null, isTransient: false)
             : null;
     }

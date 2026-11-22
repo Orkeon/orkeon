@@ -190,6 +190,23 @@ public sealed class ForgeCrewDecisionTrialTests : IDisposable
         var warning = Events().Single(e => e.GetProperty("kind").GetString() == "warning"
             && e.GetProperty("code").GetString() == ForgeCrewDecision.PassSkippedWarning);
         Assert.Equal("no-provider", warning.GetProperty("cause").GetString());
+        Assert.False(warning.TryGetProperty("detail", out _));
+    }
+
+    /// <summary>#467 — the off circuit's sentence rides the skipped-pass warning and the off pass's run.started.</summary>
+    [Fact]
+    [Trait("BR", "CH-467")]
+    public async Task An_optional_trial_without_a_key_carries_the_circuits_detail_on_the_warning_and_run_started()
+    {
+        const string Sentence = "no Liquid API key: set the environment variable LIQUID_API_KEY, or Orkeon:Liquid:ApiKey";
+        var host = DecisionCircuit.OffBy(DecisionCircuitCause.NoKey) with { Detail = Sentence };
+
+        await TryOptionalAsync(new FakeCircuitRecordingTestBench(), new FakeJudge().Approves(), host);
+
+        var warning = Events().Single(e => e.GetProperty("kind").GetString() == "warning"
+            && e.GetProperty("code").GetString() == ForgeCrewDecision.PassSkippedWarning);
+        var started = Events().Single(e => e.GetProperty("kind").GetString() == "run.started");
+        Assert.Equal((Sentence, "no-key", Sentence), (warning.GetProperty("detail").GetString(), started.GetProperty("cause").GetString(), started.GetProperty("detail").GetString()));
     }
 
     [Fact]
