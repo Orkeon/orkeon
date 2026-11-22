@@ -86,6 +86,23 @@ public sealed class EmailOptionsBinderTests
         Assert.Equal([problem], options.AccountProblems["perso"]);
     }
 
+    [Theory]
+    [Trait("BR", "CH-464")]
+    [InlineData("Rights", "3", "Rights '3' is not a list of Read, Organize, Draft, Send, Delete, Purge, separated by commas")]
+    [InlineData("Rights", "Read, 4", "Rights 'Read, 4' is not a list of Read, Organize, Draft, Send, Delete, Purge, separated by commas")]
+    [InlineData("Provider", "1", "Provider '1' is not one of Custom, Gmail, Outlook")]
+    public void Should_refuse_a_number_even_one_the_enumeration_defines(string key, string value, string problem)
+    {
+        var options = Bind(new Dictionary<string, string?>
+        {
+            ["Accounts:perso:Address"] = "me@example.com",
+            ["Accounts:perso:Rights"] = "Read",
+            [$"Accounts:perso:{key}"] = value,
+        });
+
+        Assert.Equal([problem], options.AccountProblems["perso"]);
+    }
+
     [Fact]
     public void Should_report_every_unreadable_value_of_an_account_at_once()
     {
@@ -115,7 +132,8 @@ public sealed class EmailOptionsBinderTests
     }
 
     [Fact]
-    public void Should_accept_the_rights_in_any_case_and_as_a_number()
+    [Trait("BR", "CH-464")]
+    public void Should_accept_the_rights_in_any_case_and_never_as_a_number()
     {
         var options = Bind(new Dictionary<string, string?>
         {
@@ -123,9 +141,9 @@ public sealed class EmailOptionsBinderTests
             ["Accounts:number:Rights"] = "3",
         });
 
-        Assert.Empty(options.AccountProblems);
+        Assert.False(options.AccountProblems.ContainsKey("words"));
         Assert.Equal(EmailRights.Read | EmailRights.Organize, options.Accounts["words"].Rights);
-        Assert.Equal(EmailRights.Read | EmailRights.Organize, options.Accounts["number"].Rights);
+        Assert.True(options.AccountProblems.ContainsKey("number"));
     }
 
     [Fact]

@@ -174,6 +174,24 @@ public class DriveAccountResolverTests
         Assert.Contains(options.AccountProblems["typo"], problem => problem.StartsWith("Roots is not an account setting", StringComparison.Ordinal));
     }
 
+    [Theory]
+    [Trait("BR", "CH-464")]
+    [InlineData("3")]
+    [InlineData("Read, 4")]
+    public void Binder_should_refuse_rights_written_as_numbers(string rights)
+    {
+        var section = Section(new()
+        {
+            ["Accounts:numbers:Provider"] = "GoogleDrive",
+            ["Accounts:numbers:Rights"] = rights,
+        });
+        var options = new DriveToolsOptions();
+
+        DriveOptionsBinder.Bind(section, options);
+
+        Assert.Contains(options.AccountProblems["numbers"], problem => problem.StartsWith($"Rights '{rights}' is not a list of", StringComparison.Ordinal));
+    }
+
     [Fact]
     public void Binder_should_read_the_share_policy_and_the_section_settings()
     {

@@ -254,6 +254,60 @@ public sealed class RunnerHostSettingsValueTests : IDisposable
         Assert.DoesNotContain("'NaN'", refusal, StringComparison.Ordinal);
     }
 
+    /// <summary>#464 — an enumeration written as a number is refused, naming the members, never the value.</summary>
+    [Theory]
+    [Trait("BR", "CH-464")]
+    [InlineData("\"Orkeon\": { \"Guardian\": { \"Llm\": { \"FailMode\": \"1\" } } }", "Orkeon:Guardian:Llm:FailMode", "Closed, Open")]
+    [InlineData("\"Orkeon\": { \"Guardian\": { \"Llm\": { \"FailMode\": \"-1\" } } }", "Orkeon:Guardian:Llm:FailMode", "Closed, Open")]
+    [InlineData("\"Security\": { \"Audit\": { \"EnabledCategories\": [ \"LlmCall\", \"2\" ] } }", "Security:Audit:EnabledCategories:1", "LlmCall")]
+    public void ShouldRefuseAnEnumerationWrittenAsANumber_NamingTheMembers(string sections, string key, string member)
+    {
+        var refusals = RefusalsOfFile($$"""{ "RaggableTree": { "Enabled": false }, {{sections}} }""");
+
+        var refusal = Assert.Single(refusals);
+        Assert.StartsWith($"{key} is a number where a name is expected: write one of ", refusal, StringComparison.Ordinal);
+        Assert.Contains(member, refusal, StringComparison.Ordinal);
+    }
+
+    /// <summary>#464 — a phase written as a number is refused once, by the walk or by the phases' own check.</summary>
+    [Fact]
+    [Trait("BR", "CH-464")]
+    public void ShouldRefuseAPhaseWrittenAsANumber_Once()
+    {
+        var refusal = Assert.Single(Refusals("""
+            "Guardian": { "Llm": { "Phases": [ "1" ] } }
+            """));
+
+        Assert.Contains("Orkeon:Guardian:Llm:Phases", refusal, StringComparison.Ordinal);
+    }
+
+    /// <summary>#464 — a comma list binds a combination of members: refused for an enumeration that is not [Flags].</summary>
+    [Fact]
+    [Trait("BR", "CH-464")]
+    public void ShouldRefuseACommaListForAnEnumerationThatIsNotFlags()
+    {
+        var refusal = Assert.Single(Refusals("""
+            "Guardian": { "Llm": { "FailMode": "Closed, Open" } }
+            """));
+
+        Assert.Equal("Orkeon:Guardian:Llm:FailMode is a list where a single name is expected: write one of Closed, Open.", refusal);
+    }
+
+    /// <summary>#464 — a member's name is accepted in any case, in a value, a list and a dictionary.</summary>
+    [Fact]
+    [Trait("BR", "CH-464")]
+    public void ShouldAcceptAMembersName_InAnyCase()
+    {
+        var refusals = RefusalsOfFile("""
+            { "RaggableTree": { "Enabled": false },
+              "Orkeon": { "Guardian": { "Llm": { "FailMode": "open", "Phases": [ "Input" ] } } },
+              "Security": { "Audit": { "EnabledCategories": [ "LlmCall", "fileaccess" ] } },
+              "Logging": { "LogLevel": { "Default": "Warning" } } }
+            """);
+
+        Assert.Empty(refusals);
+    }
+
     /// <summary>#454 — a profile written as a string, a key in the wrong place, is refused without its value.</summary>
     [Fact]
     [Trait("BR", "CH-454")]

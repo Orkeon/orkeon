@@ -465,8 +465,8 @@ internal static class SettingsValidation
     /// binder would take without a word: written without a value on a setting it would then bind to
     /// its type's default (#450), a single value where a list or a section is expected (#454, #455),
     /// a number that is not finite, and, below a list or a dictionary, where the binder drops the item
-    /// it cannot convert, a value that is not of its type (#454). An enumeration is left to its
-    /// reader, which may take its own spellings.
+    /// it cannot convert, a value that is not of its type (#454), and an enumeration written as a number
+    /// or, unless it is <c>[Flags]</c>, as a comma list (#464).
     /// </summary>
     private static IEnumerable<(string Path, string Refusal, Found Kind)> Walk(
         IConfigurationSection section, SettingsShape shape, bool inCollection)
@@ -525,6 +525,9 @@ internal static class SettingsValidation
             // The value is not echoed (#465): every refusal of the check leaves out what the key holds.
             return $"{child.Path} is not a finite number: NaN, an infinity and a number past the type's range are refused.";
 
+        if (NotAMemberName(child.Path, value, below.Values) is { } notAName)
+            return notAName;
+
         if (!inCollection)
             return null;
 
@@ -554,6 +557,47 @@ internal static class SettingsValidation
 
     private static bool IsNumber(Type type) =>
         !type.IsEnum && Type.GetTypeCode(type) is >= TypeCode.SByte and <= TypeCode.Decimal;
+
+    /// <summary>
+    /// The refusal of an enumeration's value the binder would read without a word (#464): a number, which it
+    /// takes as the member holding it (<c>Guardian:Llm:FailMode: "1"</c> binds <c>Open</c>), and a comma list
+    /// where the enumeration is not <c>[Flags]</c>, which it takes as a combination of members. A
+    /// <c>[Flags]</c> enumeration keeps its comma list of names, never of numbers. Any other spelling is left to
+    /// the binder, which refuses a name it does not know, or to a reader that takes its own
+    /// (<c>oauth2-device</c>). Null when a declaration of the key is not an enumeration. The value is not
+    /// echoed, as no refusal of the check does.
+    /// </summary>
+    private static string? NotAMemberName(string path, string value, HashSet<Type> declared)
+    {
+        if (value.Trim().Length == 0 || declared.Count == 0)
+            return null;
+
+        var enums = declared.Select(type => Nullable.GetUnderlyingType(type) ?? type).Distinct().ToList();
+        if (!enums.TrueForAll(type => type.IsEnum))
+            return null;
+
+        foreach (var type in enums)
+        {
+            var names = string.Join(", ", Enum.GetNames(type));
+            if (type.IsDefined(typeof(FlagsAttribute), inherit: false))
+            {
+                if (value.Split(',').Any(IsNumber))
+                    return $"{path} holds a number where {type.Name} takes names: write one or more of {names}, separated by commas.";
+                continue;
+            }
+
+            if (IsNumber(value))
+                return $"{path} is a number where a name is expected: write one of {names}.";
+            if (value.Contains(',', StringComparison.Ordinal))
+                return $"{path} is a list where a single name is expected: write one of {names}.";
+        }
+
+        return null;
+
+        static bool IsNumber(string token) =>
+            long.TryParse(token.Trim(), NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture, out _)
+            || ulong.TryParse(token.Trim(), NumberStyles.None, CultureInfo.InvariantCulture, out _);
+    }
 
     /// <summary>
     /// The refusal of <paramref name="value"/> as <paramref name="declared"/>, worded as the binder words

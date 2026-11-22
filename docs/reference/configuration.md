@@ -142,8 +142,11 @@ refusals on the same file, one `runner-settings` row each. What is refused:
   `Llm:Profiles:<name>:Fallback`, `Orkeon:Tools:Firefox:AllowedProfiles` and `:DeniedProfiles`
   (`Llm__AvailableModels=gpt-4o,claude`); inside a list or a dictionary, an entry the binder would drop because it cannot
   convert it (a decision profile whose `FailClosed` is `"maybe"`, a stage whose threshold is no
-  number). The guardian's phases and a stage's `Phase` and `Steps` are written by name, never as a
-  number. A value quoted in a refusal is written in the invariant culture (`1.5`, never `1,5`), and
+  number); an enumeration written as a number (`Orkeon:Guardian:Llm:FailMode: "1"`, which the binder
+  would take as `Open`), in a value, a list or a dictionary, or written as a comma list where it takes one
+  name — the refusal names its members, never the value. Every enumeration is written by its name, in
+  any case; a `[Flags]` one (an e-mail or drive account's `Rights`) as a comma list of names, and a number
+  there makes the account misconfigured. A value quoted in a refusal is written in the invariant culture (`1.5`, never `1,5`), and
   each threshold of `Orkeon:Guardian:Llm` outside [0, 1] has its own sentence, with its value. Only
   settings are keys: a computed property (`IsEnabled`, `NeedsBrowserGuard`) is an unknown key.
 

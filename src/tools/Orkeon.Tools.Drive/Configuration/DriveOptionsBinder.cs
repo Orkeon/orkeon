@@ -125,9 +125,13 @@ internal static class DriveOptionsBinder
 
     // The converter the configuration binder itself uses, so a value accepted here binds. A
     // number the enum does not define is refused too: the converter takes "5" for a security
-    // mode that does not exist, which no later check would then recognise.
+    // mode that does not exist, which no later check would then recognise. A number is refused
+    // even when the enum defines it (#464): a right is written by its name, never by its value.
     private static bool Converts(Type type, string value)
     {
+        if (type.IsEnum && value.Split(',').Any(token => long.TryParse(token.Trim(), NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture, out _)))
+            return false;
+
         object? converted;
         try
         {

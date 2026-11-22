@@ -151,8 +151,12 @@ une ligne qui nomme la clé — code de sortie `1` pour `orkeon` et `orkeon-repl
   `Llm:ModelCapabilities:<id>:ReasoningEfforts`, `Llm:Profiles:<name>:Fallback`,
   `Orkeon:Tools:Firefox:AllowedProfiles` et `:DeniedProfiles` (`Llm__AvailableModels=gpt-4o,claude`) ; dans une liste ou un dictionnaire, une entrée que
   le binder écarterait faute de pouvoir la convertir (un profil de décision dont un `FailClosed`
-  vaut `"peut-être"`, une étape dont un seuil n'est pas un nombre). Les phases du gardien et la
-  `Phase` et les `Steps` d'une étape s'écrivent par leur nom, jamais par un nombre. Une valeur
+  vaut `"peut-être"`, une étape dont un seuil n'est pas un nombre) ; une énumération écrite comme un
+  nombre (`Orkeon:Guardian:Llm:FailMode: "1"`, que le binder prendrait pour `Open`), dans une valeur, une
+  liste ou un dictionnaire, ou comme une liste à virgules là où elle prend un seul nom — le refus nomme
+  ses membres, jamais la valeur. Toute énumération s'écrit par son nom, dans n'importe quelle casse ;
+  une énumération `[Flags]` (les `Rights` d'un compte e-mail ou drive) comme une liste de noms séparés
+  par des virgules, et un nombre y rend le compte mal configuré. Une valeur
   citée dans un refus l'est dans la culture invariante (`1.5`, jamais `1,5`), et chaque seuil de
   `Orkeon:Guardian:Llm` hors de [0, 1] a sa propre phrase, avec sa valeur. Seuls les réglages sont
   des clés : une propriété calculée (`IsEnabled`, `NeedsBrowserGuard`) est une clé inconnue.

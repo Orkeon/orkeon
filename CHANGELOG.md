@@ -36,6 +36,22 @@ the cap the two `error` lines stay two, both `terminal: true`, and a brief refus
 `terminal: true` too, the interview ending there. The values of `recoverable` do not change, the envelope stays at
 `v: 2`, and the run's own `error` event is unchanged. For a client of the forge stream the field is additive.
 
+### Changed — an enumeration setting is written by its name, never as a number **[breaking]** (#464)
+
+**Before**: the binder took a number as the member holding it (`Orkeon:Guardian:Llm:FailMode: "1"` bound `Open`, the
+fail-open policy), and a comma list as a combination of members, without a word; an e-mail or drive account took its
+`Rights` as a number (`"3"` for `Read, Organize`). **Now**: the host refuses at start an enumeration setting written as
+a number — in a value, a list or a dictionary — or as a comma list where it takes one name, and the refusal names the
+key and the members, never the value (`Orkeon:Guardian:Llm:FailMode is a number where a name is expected: write one of
+Closed, Open.`). A name is still read in any case. An account whose `Rights` or other enumeration holds a number is
+misconfigured, as one holding an unknown name.
+
+| Before | Now |
+|---|---|
+| `"FailMode": "1"` | `"FailMode": "Open"` |
+| `"EnabledCategories": [ "0", "2" ]` | `"EnabledCategories": [ "LlmCall", "FileAccess" ]` |
+| `"Rights": "3"` (an e-mail or drive account) | `"Rights": "Read, Organize"` |
+
 ### Changed — a hosted decision provider without its key turns the circuit off (`no-key`) **[breaking]** (#451)
 
 **Before**: a host whose decision provider is hosted (TypeSafe, Liquid) and has no key started with its circuit on, and
