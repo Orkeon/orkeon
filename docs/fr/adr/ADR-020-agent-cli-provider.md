@@ -40,15 +40,24 @@ périmètre du framework est gelé à ses seize fournisseurs ; un nouveau demand
    prolonge ce que la CLI tient déjà ; tout autre historique — réécrit, compacté par Orkeon, ou une CLI qui s'est
    compactée elle-même — démarre un nouveau processus amorcé avec l'historique en texte. La compaction propre de la
    CLI est repoussée au-delà de toute fenêtre (`Llm:AgentCli:AutocompactTokens`).
-5. **Sur la connexion, jamais une clé.** Les variables `ANTHROPIC_API_KEY` et `ANTHROPIC_AUTH_TOKEN` de l'hôte, et
-   les bascules vers le compte d'un vendeur de cloud (`CLAUDE_CODE_USE_BEDROCK`, `CLAUDE_CODE_USE_VERTEX`,
-   `CLAUDE_CODE_USE_FOUNDRY`), sont retirées de l'environnement de la CLI, et une réponse sur une clé plutôt que sur
-   la connexion est refusée (`Llm:AgentCli:RequireLogin`). Le coût vaut
+5. **Sur la connexion, jamais une clé.** Toute variable `ANTHROPIC_*` de l'hôte (`ANTHROPIC_API_KEY` et
+   `ANTHROPIC_AUTH_TOKEN`, qui mettraient la CLI sur une clé, mais aussi `ANTHROPIC_BASE_URL`, qui enverrait la CLI et
+   sa connexion vers un proxy réglé pour le fournisseur `anthropic` d'Orkeon, `ANTHROPIC_CUSTOM_HEADERS`,
+   `ANTHROPIC_MODEL` et les autres) et les bascules vers le compte d'un vendeur de cloud (`CLAUDE_CODE_USE_BEDROCK`,
+   `CLAUDE_CODE_USE_VERTEX`, `CLAUDE_CODE_USE_FOUNDRY`) sont retirées de l'environnement de la CLI, par nom et sans
+   égard à la casse sous Windows ; le reste demeure (`PATH`, le dossier personnel, les proxys, les magasins de
+   certificats, `CLAUDE_CONFIG_DIR` où vit la connexion). Une réponse sur une clé plutôt que sur la connexion est
+   refusée (`Llm:AgentCli:RequireLogin`). Le coût vaut
    0 : le chiffre du vendeur est gardé sous `agent_cli_notional_cost_usd`. Une limite d'abonnement
    (`rate_limit_event` refusé) est une limite de débit, donc `Fallback` prend le relais.
 6. **Les processus sont bornés et ne survivent jamais à l'hôte.** `Llm:AgentCli:MaxProcesses` (4) ferme d'abord une
-   session inactive et n'attend jamais ; un appel annulé interrompt le tour et ferme son processus ; le relais tue
+   session inactive et n'attend jamais ; un appel annulé interrompt le tour et ferme son processus, de même qu'un
+   appel qui dépasse `Llm:TimeoutSeconds` ou reste muet pendant `Llm:StreamIdleSeconds`, qui échoue avec le type
+   d'erreur que lui donnent les fournisseurs HTTP (`TaskCanceledException`, `StreamIdleTimeout`) ; le relais tue
    l'arbre de processus de la CLI quand la socket de l'hôte se ferme, même après un `kill -9` de l'hôte.
+   `Llm:AgentCli` est jugée au démarrage de l'hôte : une `Command` vide ou en `.cmd`/`.bat` (que Windows lance par
+   `cmd.exe`), un `MaxProcesses` ou un `AutocompactTokens` inférieur à 1 et un `MaxToolResultCharacters` inférieur à
+   1000 sont refusés, en nommant la clé.
 7. **Expérimental.** Chaque type et membre public d'`Orkeon.Interop.AgentCli` porte `[Experimental("ORKEXP010")]`
    — sauf `AgentCliDiagnostics`, qui tient cet identifiant, et la classe qui tient `AddOrkeonAgentCli`, elle-même
    expérimentale. La couture de la décision 1 (`ILlmProviderModule`, `LlmProviderModuleContext`,
@@ -62,8 +71,9 @@ périmètre du framework est gelé à ses seize fournisseurs ; un nouveau demand
 - Un appel coûte le démarrage d'un processus CLI sur une nouvelle conversation, et le prompt système et les règles
   d'outils du vendeur entourent ceux d'Orkeon ; les réponses peuvent différer de celles du même modèle derrière l'API.
 - Les options que la CLI ne peut pas recevoir (température, nombre maximal de tokens, top-p, les pénalités, une
-  graine, des séquences d'arrêt, un format de réponse, un budget de réflexion, une grammaire, des points de cache)
-  font chacune l'objet d'un avertissement par run et ne sont pas envoyées.
+  graine, des séquences d'arrêt, un format de réponse, un budget de réflexion, une grammaire, des points de cache,
+  `Llm:WorkspaceId`, un mode d'outils `Required`) font chacune l'objet d'un avertissement par run et ne sont pas
+  envoyées. Un mode d'outils `None` ne propose aucun outil à la CLI.
 - Le flux de la CLI est le protocole d'un vendeur, qui peut changer avec ses versions ; le statut expérimental le
   couvre.
 - Laissé pour plus tard : les outils propres de la CLI derrière la barrière d'Orkeon, un fournisseur qui tient le

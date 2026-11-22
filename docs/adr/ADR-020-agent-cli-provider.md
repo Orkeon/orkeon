@@ -39,15 +39,22 @@ a new one needs a motivated exception.
    already holds; any other history — rewritten, compacted by Orkeon, or a CLI that compacted itself — starts a new
    process seeded with the history as text. The CLI's own compaction is pushed beyond every window
    (`Llm:AgentCli:AutocompactTokens`).
-5. **On the login, never a key.** The host's `ANTHROPIC_API_KEY` and `ANTHROPIC_AUTH_TOKEN`, and the switches to a
-   cloud vendor's account (`CLAUDE_CODE_USE_BEDROCK`, `CLAUDE_CODE_USE_VERTEX`, `CLAUDE_CODE_USE_FOUNDRY`), are
-   removed from the CLI's environment, and an answer on a key rather than the login is refused
-   (`Llm:AgentCli:RequireLogin`). The cost is 0: the vendor's
+5. **On the login, never a key.** Every `ANTHROPIC_*` variable of the host (`ANTHROPIC_API_KEY` and
+   `ANTHROPIC_AUTH_TOKEN`, which would put the CLI on a key, but also `ANTHROPIC_BASE_URL`, which would send the CLI
+   and its login to a proxy set for Orkeon's own `anthropic` provider, `ANTHROPIC_CUSTOM_HEADERS`, `ANTHROPIC_MODEL`
+   and the others) and the switches to a cloud vendor's account (`CLAUDE_CODE_USE_BEDROCK`, `CLAUDE_CODE_USE_VERTEX`,
+   `CLAUDE_CODE_USE_FOUNDRY`) are removed from the CLI's environment, by name and case-insensitively on Windows; the
+   rest stays (`PATH`, the home folder, the proxies, the certificate bundles, `CLAUDE_CONFIG_DIR` where the login
+   lives). An answer on a key rather than the login is refused (`Llm:AgentCli:RequireLogin`). The cost is 0: the vendor's
    figure is kept as `agent_cli_notional_cost_usd`. A subscription limit (`rate_limit_event` rejected) is a rate
    limit, so `Fallback` takes over.
 6. **Processes are bounded and never outlive the host.** `Llm:AgentCli:MaxProcesses` (4) closes an idle session
-   first and never waits; a cancelled call interrupts the turn and closes its process; the relay kills the CLI's
-   process tree when the host's socket closes, even after a `kill -9` of the host.
+   first and never waits; a cancelled call interrupts the turn and closes its process, and so does a call that
+   outlives `Llm:TimeoutSeconds` or stays silent for `Llm:StreamIdleSeconds`, which fails with the error type the HTTP
+   providers give it (`TaskCanceledException`, `StreamIdleTimeout`); the relay kills the CLI's process tree when the
+   host's socket closes, even after a `kill -9` of the host. `Llm:AgentCli` is judged when the host starts: an empty
+   `Command` or a `.cmd`/`.bat` one (which Windows runs through `cmd.exe`), a `MaxProcesses` or `AutocompactTokens`
+   under 1 and a `MaxToolResultCharacters` under 1000 are refused, naming the key.
 7. **Experimental.** Every public type and member of `Orkeon.Interop.AgentCli` carries `[Experimental("ORKEXP010")]`
    — but `AgentCliDiagnostics`, which holds that identifier, and the class that holds `AddOrkeonAgentCli`, itself
    experimental. The seam of decision 1 (`ILlmProviderModule`, `LlmProviderModuleContext`,
@@ -61,6 +68,7 @@ a new one needs a motivated exception.
 - A call costs a CLI process start on a new conversation, and the vendor's system prompt and tool rules surround
   Orkeon's; the answers may differ from the same model behind the API.
 - Options the CLI cannot receive (temperature, max tokens, top-p, the penalties, a seed, stop sequences, a response
-  format, a thinking budget, a grammar, cache breakpoints) are each warned about once per run and not sent.
+  format, a thinking budget, a grammar, cache breakpoints, `Llm:WorkspaceId`, a `Required` tool mode) are each warned
+  about once per run and not sent. A `None` tool mode offers the CLI no tool.
 - The CLI's stream is a vendor's protocol that may change with its releases; the experimental status covers it.
 - Left for later: the CLI's own tools behind Orkeon's gate, a provider that keeps the context itself, more engines.

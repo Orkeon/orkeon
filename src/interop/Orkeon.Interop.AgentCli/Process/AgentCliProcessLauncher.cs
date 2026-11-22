@@ -87,7 +87,7 @@ internal sealed partial class AgentCliProcessLauncher : IAgentCliLauncher
     /// package's <c>lib/</c> folder carries the assembly alone. Looked for next to the host
     /// (<see cref="AppContext.BaseDirectory"/>), then next to this assembly.
     /// </summary>
-    private (string Command, IReadOnlyList<string> Arguments) RelayCommand(string socketPath, string folder)
+    internal (string Command, IReadOnlyList<string> Arguments) RelayCommand(string socketPath, string folder)
     {
         if (_relayOverride is { } overridden)
             return overridden.EndsWith(".dll", StringComparison.OrdinalIgnoreCase)
@@ -179,6 +179,43 @@ internal sealed partial class AgentCliProcessLauncher : IAgentCliLauncher
         return File.Exists(muxer) ? muxer : null;
     }
 
+    /// <summary>
+    /// What the CLI is started with: its command line, its standard streams redirected, and the host's
+    /// environment less the variables and the prefixes the engine removes - by name, and case-insensitively
+    /// on Windows, where a variable's name has no case - then plus the ones it sets.
+    /// </summary>
+    internal static SysProcessStartInfo StartInfo(AgentCliCommandLine commandLine, string workingDirectory)
+    {
+        var startInfo = new SysProcessStartInfo
+        {
+            // OUT-OF-SCOPE: the CLI's executable is looked up on the PATH, as a shell would.
+            FileName = commandLine.FileName,
+            WorkingDirectory = workingDirectory,
+            RedirectStandardInput = true,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            UseShellExecute = false,
+            CreateNoWindow = true,
+            StandardInputEncoding = new UTF8Encoding(false),
+            StandardOutputEncoding = new UTF8Encoding(false),
+            StandardErrorEncoding = new UTF8Encoding(false),
+        };
+        foreach (var argument in commandLine.Arguments)
+            startInfo.ArgumentList.Add(argument);
+
+        var comparison = OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
+        foreach (var name in startInfo.Environment.Keys.ToList())
+        {
+            if (commandLine.RemovedEnvironment.Any(removed => string.Equals(name, removed, comparison))
+                || commandLine.RemovedEnvironmentPrefixes.Any(prefix => name.StartsWith(prefix, comparison)))
+                startInfo.Environment.Remove(name);
+        }
+
+        foreach (var (name, value) in commandLine.Environment)
+            startInfo.Environment[name] = value;
+        return startInfo;
+    }
+
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "Best effort: a folder left behind in the temporary directory is not a failure of the call.")]
     internal static void TryDelete(string folder)
     {
@@ -216,10 +253,14 @@ internal sealed partial class AgentCliProcessLauncher : IAgentCliLauncher
 
         internal static void Forget(string folder) => s_folders.TryRemove(folder, out _);
 
-        internal static void RemoveAll()
+        /// <summary>Removes every folder tracked, or those <paramref name="only"/> keeps (a test's own).</summary>
+        internal static void RemoveAll(Func<string, bool>? only = null)
         {
             foreach (var folder in s_folders.Keys)
-                TryDelete(folder);
+            {
+                if (only is null || only(folder))
+                    TryDelete(folder);
+            }
         }
     }
 
@@ -267,26 +308,7 @@ internal sealed partial class AgentCliProcessLauncher : IAgentCliLauncher
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "Best-effort cleanup on start failure: the original failure is rethrown.")]
         public static RunningAgentCli Start(AgentCliCommandLine commandLine, string workingDirectory, Socket listener, string folder, ILogger logger)
         {
-            var startInfo = new SysProcessStartInfo
-            {
-                // OUT-OF-SCOPE: the CLI's executable is looked up on the PATH, as a shell would.
-                FileName = commandLine.FileName,
-                WorkingDirectory = workingDirectory,
-                RedirectStandardInput = true,
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-                UseShellExecute = false,
-                CreateNoWindow = true,
-                StandardInputEncoding = new UTF8Encoding(false),
-                StandardOutputEncoding = new UTF8Encoding(false),
-                StandardErrorEncoding = new UTF8Encoding(false),
-            };
-            foreach (var argument in commandLine.Arguments)
-                startInfo.ArgumentList.Add(argument);
-            foreach (var removed in commandLine.RemovedEnvironment)
-                startInfo.Environment.Remove(removed);
-            foreach (var (name, value) in commandLine.Environment)
-                startInfo.Environment[name] = value;
+            var startInfo = StartInfo(commandLine, workingDirectory);
 
             var process = new SysProcess { StartInfo = startInfo };
             try
@@ -358,10 +380,20 @@ internal sealed partial class AgentCliProcessLauncher : IAgentCliLauncher
             {
                 var socket = await _listener.AcceptAsync(_stop.Token).ConfigureAwait(false);
                 var connection = new BridgeConnection(socket, _stop.Token);
-                // The relay's own first line: the process it kills should this host go away.
-                await connection.WriteLineAsync(
-                    new JsonObject { ["orkeon_relay"] = new JsonObject { ["pid"] = _process.Id } }.ToJsonString(),
-                    _stop.Token).ConfigureAwait(false);
+                try
+                {
+                    // The relay's own first line: the process it kills should this host go away.
+                    await connection.WriteLineAsync(
+                        new JsonObject { ["orkeon_relay"] = new JsonObject { ["pid"] = _process.Id } }.ToJsonString(),
+                        _stop.Token).ConfigureAwait(false);
+                }
+                catch
+                {
+                    // Never handed to the session: nothing else would close it.
+                    connection.Dispose();
+                    throw;
+                }
+
                 _connection = connection;
                 connection.Begin();
                 _bridge.TrySetResult(connection);

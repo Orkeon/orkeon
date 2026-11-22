@@ -42,7 +42,8 @@ internal sealed partial class AgentCliBridge : IAsyncDisposable
     public AgentCliBridge(IAgentCliLineChannel channel, int maxResultCharacters, ILogger logger)
     {
         _channel = channel;
-        _maxResultCharacters = Math.Max(1_000, maxResultCharacters);
+        // The host refuses less at start (AgentCliOptionsValidator); the floor only guards a direct caller.
+        _maxResultCharacters = Math.Max(AgentCliOptionsValidator.MinToolResultCharacters, maxResultCharacters);
         _logger = logger;
         _loop = Task.Run(ServeAsync);
     }

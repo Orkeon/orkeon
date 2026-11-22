@@ -40,7 +40,8 @@ internal sealed record AgentCliCommandLine(
     string FileName,
     IReadOnlyList<string> Arguments,
     IReadOnlyDictionary<string, string> Environment,
-    IReadOnlyList<string> RemovedEnvironment);
+    IReadOnlyList<string> RemovedEnvironment,
+    IReadOnlyList<string> RemovedEnvironmentPrefixes);
 
 /// <summary>The kinds of event the provider reads from a CLI's stream.</summary>
 internal enum AgentCliEventKind

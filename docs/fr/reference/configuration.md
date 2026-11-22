@@ -588,7 +588,10 @@ Expérimental (`ORKEXP010`, [ADR-020](../adr/ADR-020-agent-cli-provider.md)). Le
 (`"Provider": "agent-cli"`) répond à travers une CLI d'agent connectée à son propre abonnement, `claude -p`
 aujourd'hui, et lui remet les outils d'Orkeon par un pont ; cette section lui dit comment démarrer cette CLI.
 Tous les profils du fournisseur la partagent. Le fournisseur est fait pour un usage personnel, sur
-l'abonnement de qui le lance.
+l'abonnement de qui le lance. L'hôte refuse au démarrage une `Command` vide ou en `.cmd`/`.bat`, un
+`MaxProcesses` ou un `AutocompactTokens` inférieur à 1 et un `MaxToolResultCharacters` inférieur à 1000, en
+nommant la clé. Un appel tourne sous `Llm:TimeoutSeconds` et, quand elle est réglée, `Llm:StreamIdleSeconds`,
+comme sur tout fournisseur.
 
 <!-- settings:Llm:AgentCli -->
 **Lue par** : `orkeon`, `orkeon-host`, `orkeon-repl`.

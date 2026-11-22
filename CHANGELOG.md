@@ -294,19 +294,30 @@ agent CLI signed in to its own subscription; the one engine is Claude Code, `cla
   pipeline and the next call hands the result back.
 - Orkeon keeps the history. One CLI process per conversation of a run (`AgentRunScope`) is continued while the history
   extends what it holds; any other history starts a new process seeded with it as text.
-- Never on a key: `ANTHROPIC_API_KEY`, `ANTHROPIC_AUTH_TOKEN` and the cloud switches (`CLAUDE_CODE_USE_BEDROCK`,
-  `CLAUDE_CODE_USE_VERTEX`, `CLAUDE_CODE_USE_FOUNDRY`) are removed from the CLI's environment, and an answer on a key
+- Never on a key: every `ANTHROPIC_*` variable (the key and token, but also `ANTHROPIC_BASE_URL`, which would send the
+  CLI's login to a proxy set for the `anthropic` provider, `ANTHROPIC_CUSTOM_HEADERS`, `ANTHROPIC_MODEL`, ...) and the
+  cloud switches (`CLAUDE_CODE_USE_BEDROCK`, `CLAUDE_CODE_USE_VERTEX`, `CLAUDE_CODE_USE_FOUNDRY`) are removed from the
+  CLI's environment, case-insensitively on Windows, and an answer on a key
   is refused (`Llm:AgentCli:RequireLogin`). The cost is 0, the vendor's figure kept as `agent_cli_notional_cost_usd`. A rejected
   subscription limit throws `LlmRateLimitException`, so `Fallback` takes over.
 - New section `Llm:AgentCli`: `Engine`, `Command`, `MaxProcesses` (4, an idle session is closed first, never a wait),
   `MaxToolResultCharacters` (100000), `AutocompactTokens`, `RequireLogin`. Options the CLI cannot receive
   (temperature, max tokens, top-p, the penalties, a seed, stop sequences, a response format, thinking, a grammar,
-  cache breakpoints) are each warned about once per run and not sent.
+  cache breakpoints, `Llm:WorkspaceId`, a `Required` tool mode) are each warned about once per run and not sent; a
+  `None` tool mode offers no tool. `orkeon doctor` warns of an `Llm:WorkspaceId` on the module as on any provider
+  but Anthropic.
+- A call runs under `Llm:TimeoutSeconds` (30 s when nothing sets it, as on every provider) and, when set,
+  `Llm:StreamIdleSeconds`: past either, the turn is interrupted and its process closed, and the call fails with the
+  HTTP providers' error type (`TaskCanceledException`, `StreamIdleTimeout`). A `message_delta` usage updates the
+  assistant line's counts instead of replacing them. A content block whose `type`, `id` or `name` is not a string
+  fails the call with an `APIError` instead of throwing.
 - A cancelled call interrupts the turn and closes its process; the relay kills the CLI's tree when the host's socket
   closes, `kill -9` of the host included. The private scratch folder of each process (prompt file, socket, working
   folder) is removed when its session ends, when the host exits, or by the relay once the host is gone.
 - `Llm:AgentCli:Command` names an executable, so it refuses a variable reference like `MCP:Servers:<id>:Command`.
-- `Llm:AgentCli:Engine` takes `claude` alone: another value is refused when the host starts, naming the key.
+- `Llm:AgentCli:Engine` takes `claude` alone: another value is refused when the host starts, naming the key. So are an
+  empty `Command` or a `.cmd`/`.bat` one (Windows runs it through `cmd.exe`, which parses the JSON arguments), a
+  `MaxProcesses` or `AutocompactTokens` under 1, and a `MaxToolResultCharacters` under 1000.
 - `orkeon llm probe --provider agent-cli` needs no API key, and reads its tool calls in the Anthropic shape. Like
   every probe it takes its provider from the command line alone: it runs the `claude` of the `PATH`, whatever
   `Llm:AgentCli` says. `orkeon doctor` builds the module on the file's `Llm:AgentCli` and starts no CLI: a `claude`

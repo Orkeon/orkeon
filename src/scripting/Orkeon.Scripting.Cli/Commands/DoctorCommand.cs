@@ -495,12 +495,13 @@ internal static class DoctorCommand
     }
 
     /// <summary>
-    /// The phrase for an <c>Llm:WorkspaceId</c> the inferred provider cannot send, else null: a run's provider logs
-    /// event 110 for it and the catalogue request leaves it out, so doctor says it once, on this line (#468). A
-    /// provider module is left out: what it sends is its own.
+    /// The phrase for an <c>Llm:WorkspaceId</c> the provider cannot send, else null: a run's provider logs event 110
+    /// for it and the catalogue request leaves it out, so doctor says it once, on this line (#468). A provider
+    /// module is judged as the others are: only Anthropic's provider writes the workspace header, and the agent-cli
+    /// module, which runs on a CLI's login, warns of it at run time the same way.
     /// </summary>
     private static string? WorkspaceIdNotSent(LlmContext llm) =>
-        string.IsNullOrWhiteSpace(llm.WorkspaceId) || llm.ModuleKey is not null || llm.ProviderTypeName is null
+        string.IsNullOrWhiteSpace(llm.WorkspaceId) || llm.ProviderTypeName is null
             || string.Equals(llm.ProviderTypeName, "AnthropicLlmProvider", StringComparison.Ordinal)
             ? null
             : $"Llm:WorkspaceId is set but {llm.ProviderDisplayName} does not support it — it is not sent; only Anthropic scopes a key to a workspace";

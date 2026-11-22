@@ -5,6 +5,7 @@ using Orkeon.Application.Interfaces.Ports;
 using Orkeon.Domain.Execution;
 using Orkeon.Domain.SharedKernel;
 using Orkeon.Domain.SharedKernel.ValueObjects;
+using Orkeon.Domain.Tools.Protocol;
 using Orkeon.Interop.AgentCli.Sessions;
 
 namespace Orkeon.Interop.AgentCli;
@@ -22,6 +23,10 @@ internal sealed partial class AgentCliLlmProvider : ILlmProvider
     internal const string NotionalCostKey = "agent_cli_notional_cost_usd";
 
     private const string OptionRemedy = "The agent CLI takes the model alone; set the others in the CLI itself, or use another provider";
+
+    private const string WorkspaceRemedy = "Only Anthropic scopes a key to a workspace, and the agent CLI runs on its login; remove Llm:WorkspaceId (or the profile's) for this provider";
+
+    private const string ToolChoiceRemedy = "The agent CLI has no flag to force a tool call; the tools are offered and the model chooses, or use another provider";
 
     private readonly AgentCliProcessHost _host;
     private readonly LlmConfig _config;
@@ -58,7 +63,9 @@ internal sealed partial class AgentCliLlmProvider : ILlmProvider
         var model = string.IsNullOrWhiteSpace(effective.Model) ? null : effective.Model;
         var keys = history.Select(AgentCliHistory.KeyOf).ToList();
         var fingerprint = AgentCliHistory.Fingerprint(model, systemPrompt, keys);
-        var tools = effective.Tools ?? [];
+        // ToolMode None sends no tool: the CLI cannot call one it was not given. Required has no flag (warned).
+        IReadOnlyList<ToolSchema> tools = effective.ToolMode == ToolCallMode.None ? [] : effective.Tools ?? [];
+        var bounds = new AgentCliCallBounds(effective.ResolveTimeoutSeconds(), effective.StreamIdleSeconds);
 
         // A run keeps its sessions until it ends; a call outside any run gets a session of its own.
         var scope = AgentRunScope.Current;
@@ -70,7 +77,7 @@ internal sealed partial class AgentCliLlmProvider : ILlmProvider
             AgentCliTurn turn;
             try
             {
-                turn = await session.RunAsync(history, keys, tools, cancellationToken).ConfigureAwait(false);
+                turn = await session.RunAsync(history, keys, tools, bounds, cancellationToken).ConfigureAwait(false);
             }
             catch
             {
@@ -83,7 +90,7 @@ internal sealed partial class AgentCliLlmProvider : ILlmProvider
             if (turn.Error is not null)
             {
                 await session.DisposeAsync().ConfigureAwait(false);
-                return Failure(turn.Error, turn.ApiErrorStatus is 429 ? "RateLimitError" : "APIError", model);
+                return Failure(turn.Error, turn.ErrorType ?? (turn.ApiErrorStatus is 429 ? "RateLimitError" : "APIError"), model);
             }
 
             return Response(turn, model);
@@ -196,17 +203,33 @@ internal sealed partial class AgentCliLlmProvider : ILlmProvider
         }
 
         foreach (var option in unwarned)
-            LogOptionNotSent(option, Name, OptionRemedy);
+        {
+            LogOptionNotSent(option, Name, option switch
+            {
+                WorkspaceOption => WorkspaceRemedy,
+                ToolChoiceOption => ToolChoiceRemedy,
+                _ => OptionRemedy,
+            });
+        }
     }
 
-    /// <summary>The options a configuration can declare that the CLI's command line has no flag for.</summary>
+    /// <summary>The name the HTTP providers warn about <c>Llm:WorkspaceId</c> under (#468).</summary>
+    private const string WorkspaceOption = "WorkspaceId";
+
+    /// <summary><c>ToolMode = Required</c>, under its wire name.</summary>
+    private const string ToolChoiceOption = "tool_choice";
+
+    /// <summary>
+    /// The options a configuration can declare that the CLI's command line has no flag for. The call's bounds
+    /// (<c>Llm:TimeoutSeconds</c>, <c>Llm:StreamIdleSeconds</c>) and <c>ToolMode = None</c> are honoured.
+    /// </summary>
     private static readonly (string Option, Func<LlmConfig, bool> IsDeclared)[] OptionDeclarations =
     [
         ("temperature", config => config.Temperature is not null),
         ("max_tokens", config => config.MaxTokens is not null),
         ("top_p", config => config.TopP is not null),
-        ("frequency_penalty", config => config.FrequencyPenalty != 0.0),
-        ("presence_penalty", config => config.PresencePenalty != 0.0),
+        ("frequency_penalty", config => config.FrequencyPenalty is not 0.0),
+        ("presence_penalty", config => config.PresencePenalty is not 0.0),
         ("seed", config => config.Seed is not null),
         ("stop", config => config.StopSequences.Count > 0),
         ("response_format", config => config.ResponseFormat is { } format
@@ -214,6 +237,8 @@ internal sealed partial class AgentCliLlmProvider : ILlmProvider
         ("thinking", config => config.Thinking is not null),
         ("grammar", config => !string.IsNullOrWhiteSpace(config.GrammarGbnf)),
         ("cache", config => config.Cache is { RequestsAnyBreakpoint: true }),
+        (WorkspaceOption, config => !string.IsNullOrWhiteSpace(config.WorkspaceId)),
+        (ToolChoiceOption, config => config.ToolMode == ToolCallMode.Required),
     ];
 
     [LoggerMessage(EventId = 110, Level = LogLevel.Warning,

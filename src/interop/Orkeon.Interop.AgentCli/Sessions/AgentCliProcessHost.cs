@@ -19,12 +19,15 @@ internal sealed partial class AgentCliProcessHost : IAsyncDisposable
     private readonly Lock _gate = new();
     private readonly List<AgentCliSession> _sessions = [];
 
-    public AgentCliProcessHost(IAgentCliLauncher launcher, IAgentCliEngine engine, AgentCliOptions options, ILogger logger)
+    private readonly TimeProvider _time;
+
+    public AgentCliProcessHost(IAgentCliLauncher launcher, IAgentCliEngine engine, AgentCliOptions options, ILogger logger, TimeProvider? time = null)
     {
         _launcher = launcher;
         _engine = engine;
         _options = options;
         _logger = logger;
+        _time = time ?? TimeProvider.System;
     }
 
     public AgentCliOptions Options => _options;
@@ -65,7 +68,7 @@ internal sealed partial class AgentCliProcessHost : IAsyncDisposable
             LogCrowded(_options.MaxProcesses);
 
         var process = _launcher.Start(_engine, systemPrompt, model);
-        var session = new AgentCliSession(process, _engine, _options, fingerprint, _logger);
+        var session = new AgentCliSession(process, _engine, _options, fingerprint, _logger, _time);
         session.TryAcquire();
         lock (_gate)
             _sessions.Add(session);

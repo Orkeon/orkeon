@@ -25,6 +25,16 @@ internal sealed class ClaudeCodeEngine : IAgentCliEngine
         "CLAUDE_CODE_USE_BEDROCK", "CLAUDE_CODE_USE_VERTEX", "CLAUDE_CODE_USE_FOUNDRY",
     ];
 
+    /// <summary>
+    /// The prefixes of the variables removed from the CLI's environment, whatever follows them. Every
+    /// <c>ANTHROPIC_*</c> variable of the host is meant for Orkeon's own <c>anthropic</c> provider or for an
+    /// API client: <c>ANTHROPIC_BASE_URL</c> would send the CLI, and its subscription login, to a proxy the host
+    /// set for that provider; <c>ANTHROPIC_CUSTOM_HEADERS</c>, <c>ANTHROPIC_MODEL</c> and the others would
+    /// change what it sends. The CLI's own folder (<c>CLAUDE_CONFIG_DIR</c>, where its login lives), the
+    /// <c>PATH</c>, the home folder, the proxies and the certificate bundles stay.
+    /// </summary>
+    internal static readonly IReadOnlyList<string> RemovedPrefixes = ["ANTHROPIC_"];
+
     private readonly AgentCliOptions _options;
 
     public ClaudeCodeEngine(AgentCliOptions options) => _options = options;
@@ -73,7 +83,7 @@ internal sealed class ClaudeCodeEngine : IAgentCliEngine
             ["ENABLE_TOOL_SEARCH"] = "false",
         };
 
-        return new AgentCliCommandLine(_options.Command, arguments, environment, RemovedVariables);
+        return new AgentCliCommandLine(_options.Command, arguments, environment, RemovedVariables, RemovedPrefixes);
     }
 
     public string UserLine(string text) =>

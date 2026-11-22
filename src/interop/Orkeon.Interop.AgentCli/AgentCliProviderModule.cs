@@ -56,7 +56,7 @@ public sealed class AgentCliProviderModule : ILlmProviderModule, IAsyncDisposabl
     }
 
     private static ClaudeCodeEngine EngineOf(AgentCliOptions options) =>
-        AgentCliOptionsValidator.EngineRefusal(options) is { } refusal
+        AgentCliOptionsValidator.Refusals(options) is [var refusal, ..]
             ? throw new NotSupportedException(refusal)
             : new ClaudeCodeEngine(options);
 

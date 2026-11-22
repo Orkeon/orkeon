@@ -25,6 +25,7 @@ internal sealed partial class AgentCliSession : IAsyncDisposable
     private readonly IAgentCliEngine _engine;
     private readonly AgentCliOptions _options;
     private readonly ILogger _logger;
+    private readonly TimeProvider _time;
     private readonly List<AgentCliMessageKey> _delivered = [];
     private readonly HashSet<string> _pending = new(StringComparer.Ordinal);
     private AgentCliBridge? _bridge;
@@ -32,12 +33,13 @@ internal sealed partial class AgentCliSession : IAsyncDisposable
     private int _closed;
     private int _interrupts;
 
-    public AgentCliSession(IAgentCliProcess process, IAgentCliEngine engine, AgentCliOptions options, string fingerprint, ILogger logger)
+    public AgentCliSession(IAgentCliProcess process, IAgentCliEngine engine, AgentCliOptions options, string fingerprint, ILogger logger, TimeProvider? time = null)
     {
         _process = process;
         _engine = engine;
         _options = options;
         _logger = logger;
+        _time = time ?? TimeProvider.System;
         Fingerprint = fingerprint;
     }
 
@@ -120,11 +122,17 @@ internal sealed partial class AgentCliSession : IAsyncDisposable
     /// <summary>
     /// Runs one model message for <paramref name="history"/>: the seed on a new session, else the tail after what
     /// was delivered (<see cref="Continues"/> said yes). Returns the message, or the failure the CLI reported.
+    /// The call runs under <paramref name="bounds"/>: an elapsed bound interrupts the turn, leaves the session
+    /// diverged as a cancellation does, and returns the failure the HTTP providers report for it.
     /// </summary>
     public async Task<AgentCliTurn> RunAsync(
-        IReadOnlyList<LlmMessage> history, IReadOnlyList<AgentCliMessageKey> keys, IReadOnlyList<ToolSchema> tools, CancellationToken cancellationToken)
+        IReadOnlyList<LlmMessage> history, IReadOnlyList<AgentCliMessageKey> keys, IReadOnlyList<ToolSchema> tools,
+        AgentCliCallBounds bounds, CancellationToken caller)
     {
         ObjectDisposedException.ThrowIf(IsClosed, this);
+        using var deadline = new CancellationTokenSource(TimeSpan.FromSeconds(bounds.TimeoutSeconds), _time);
+        using var linked = CancellationTokenSource.CreateLinkedTokenSource(caller, deadline.Token);
+        var cancellationToken = linked.Token;
         try
         {
             var bridge = await BridgeAsync(tools, cancellationToken).ConfigureAwait(false);
@@ -162,10 +170,12 @@ internal sealed partial class AgentCliSession : IAsyncDisposable
             _delivered.Clear();
             _delivered.AddRange(keys);
 
-            var turn = await ReadMessageAsync(cancellationToken).ConfigureAwait(false);
+            var turn = await ReadMessageAsync(bounds, cancellationToken).ConfigureAwait(false);
             if (turn.Error is not null)
             {
                 Diverged = true;
+                if (turn.ErrorType is AgentCliTurn.StreamIdleErrorType)
+                    await TryInterruptAsync().ConfigureAwait(false);
                 return turn;
             }
 
@@ -175,7 +185,18 @@ internal sealed partial class AgentCliSession : IAsyncDisposable
             bridge.Expect(turn.ToolCalls.Select(call => (call.Id, call.Name)));
             return turn;
         }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        catch (OperationCanceledException) when (deadline.IsCancellationRequested && !caller.IsCancellationRequested)
+        {
+            // Llm:TimeoutSeconds elapsed: closed as a cancellation is, and reported as the HTTP providers report it.
+            Diverged = true;
+            await TryInterruptAsync().ConfigureAwait(false);
+            return AgentCliTurn.Failed(
+                $"The agent CLI did not answer within Llm:TimeoutSeconds = {bounds.TimeoutSeconds.ToString(CultureInfo.InvariantCulture)} s: "
+                + "the turn was interrupted and its process closed, so this is a failed call, not an empty answer. A long answer, "
+                + "or a model that thinks before it writes, needs longer - raise Llm:TimeoutSeconds (600 s is a safe value).",
+                null, AgentCliTurn.TimeoutErrorType);
+        }
+        catch (OperationCanceledException) when (caller.IsCancellationRequested)
         {
             // The CLI keeps lines Orkeon never received (plan 4.8): the session cannot be continued.
             Diverged = true;
@@ -245,8 +266,9 @@ internal sealed partial class AgentCliSession : IAsyncDisposable
     }
 
     /// <summary>Reads the stream to the end of one assistant message that calls tools, or to the end of the turn.</summary>
-    private async Task<AgentCliTurn> ReadMessageAsync(CancellationToken cancellationToken)
+    private async Task<AgentCliTurn> ReadMessageAsync(AgentCliCallBounds bounds, CancellationToken cancellationToken)
     {
+        var idle = bounds.StreamIdleSeconds is { } idleSeconds ? TimeSpan.FromSeconds(idleSeconds) : (TimeSpan?)null;
         var text = new StringBuilder();
         var toolCalls = new List<AgentCliToolCall>();
         var blocks = new JsonArray();
@@ -260,11 +282,25 @@ internal sealed partial class AgentCliSession : IAsyncDisposable
             string line;
             try
             {
-                line = await _process.Incoming.ReadAsync(cancellationToken).ConfigureAwait(false);
+                var read = _process.Incoming.ReadAsync(cancellationToken);
+                // Llm:StreamIdleSeconds bounds the silence between two lines; the read left pending is the
+                // session's, which the caller closes with it.
+                line = idle is { } silence && !read.IsCompleted
+                    ? await read.AsTask().WaitAsync(silence, _time, cancellationToken).ConfigureAwait(false)
+                    : await read.ConfigureAwait(false);
             }
             catch (System.Threading.Channels.ChannelClosedException)
             {
                 return AgentCliTurn.Failed(EndedMessage(), null);
+            }
+            catch (System.TimeoutException)
+            {
+                return AgentCliTurn.Failed(
+                    $"The agent CLI wrote nothing to its stream for Llm:StreamIdleSeconds = {bounds.StreamIdleSeconds?.ToString(CultureInfo.InvariantCulture)} s, "
+                    + "so this is a failed call, not an empty answer: the turn was interrupted and its process closed. A model that "
+                    + "thinks before it writes may stay silent for a while - raise Llm:StreamIdleSeconds, or leave it unset to bound "
+                    + "the call by Llm:TimeoutSeconds alone.",
+                    null, AgentCliTurn.StreamIdleErrorType);
             }
 
             if (_engine.ReadEvent(line) is not { } ev)
@@ -282,19 +318,21 @@ internal sealed partial class AgentCliSession : IAsyncDisposable
                 case AgentCliEventKind.AssistantBlock:
                     messageId = ev.MessageId ?? messageId;
                     model = ev.Model ?? model;
-                    // The usage of an assistant line is the start of the message's (probe 3): message_delta replaces it.
+                    // The usage of an assistant line is the start of the message's (probe 3): message_delta updates it.
                     usage ??= ev.Usage;
                     foreach (var block in ev.Blocks ?? [])
                     {
                         if (block is not JsonObject item)
                             continue;
                         blocks.Add(item.DeepClone());
-                        ReadBlock(item, text, toolCalls);
+                        if (ReadBlock(item, text, toolCalls) is { } malformed)
+                            return AgentCliTurn.Failed(malformed, null);
                     }
                     break;
 
                 case AgentCliEventKind.MessageDelta:
-                    usage = ev.Usage ?? usage;
+                    // The counts the delta carries replace the start's; a count it leaves out keeps the start's.
+                    usage = MergeUsage(usage, ev.Usage);
                     stopReason = ev.StopReason ?? stopReason;
                     break;
 
@@ -329,21 +367,41 @@ internal sealed partial class AgentCliSession : IAsyncDisposable
         }
     }
 
-    private void ReadBlock(JsonObject block, StringBuilder text, List<AgentCliToolCall> toolCalls)
+    /// <summary>
+    /// Reads one content block into the answer; returns why the stream is refused, or null. A block whose
+    /// fields are not strings is the CLI's to explain, never an exception out of the call.
+    /// </summary>
+    private string? ReadBlock(JsonObject block, StringBuilder text, List<AgentCliToolCall> toolCalls)
     {
-        var type = block["type"]?.GetValue<string>();
-        if (type == "text" && block["text"]?.GetValue<string>() is { } fragment)
+        var type = StringOf(block, "type");
+        if (type == "text" && StringOf(block, "text") is { } fragment)
         {
             text.Append(fragment);
         }
         else if (type == "tool_use")
         {
-            var id = block["id"]?.GetValue<string>() ?? "";
-            var name = block["name"]?.GetValue<string>() ?? "";
+            if (StringOf(block, "id") is not { Length: > 0 } id || StringOf(block, "name") is not { Length: > 0 } name)
+                return "The agent CLI wrote a tool_use block without a string id and name: its stream is not one the agent-cli provider reads.";
             if (name.StartsWith(_engine.ToolPrefix, StringComparison.Ordinal))
                 name = name[_engine.ToolPrefix.Length..];
             toolCalls.Add(new AgentCliToolCall(id, name, block["input"]?.DeepClone() as JsonObject ?? []));
         }
+
+        return null;
+    }
+
+    private static string? StringOf(JsonObject node, string name) =>
+        node[name] is JsonValue value && value.TryGetValue<string>(out var text) ? text : null;
+
+    /// <summary>The message's usage: the start's counts, each one the delta carries replacing it.</summary>
+    internal static JsonObject? MergeUsage(JsonObject? start, JsonObject? delta)
+    {
+        if (delta is null || start is null)
+            return delta ?? start;
+        var merged = (JsonObject)start.DeepClone();
+        foreach (var (name, value) in delta)
+            merged[name] = value?.DeepClone();
+        return merged;
     }
 
     private string EndedMessage()
@@ -388,7 +446,21 @@ internal sealed record AgentCliTurn(
     string? MessageId,
     string? Error,
     int? ApiErrorStatus,
-    decimal? NotionalCostUsd)
+    decimal? NotionalCostUsd,
+    string? ErrorType = null)
 {
-    public static AgentCliTurn Failed(string error, int? status) => new("", [], null, null, null, null, error, status, null);
+    /// <summary>The <c>error_type</c> of an elapsed <c>Llm:TimeoutSeconds</c>, as the HTTP providers write it.</summary>
+    public const string TimeoutErrorType = "TaskCanceledException";
+
+    /// <summary>The <c>error_type</c> of an elapsed <c>Llm:StreamIdleSeconds</c>, as the HTTP providers write it.</summary>
+    public const string StreamIdleErrorType = "StreamIdleTimeout";
+
+    public static AgentCliTurn Failed(string error, int? status, string? errorType = null) =>
+        new("", [], null, null, null, null, error, status, null, errorType);
 }
+
+/// <summary>
+/// The bounds of one call: <c>Llm:TimeoutSeconds</c> over the whole call, <c>Llm:StreamIdleSeconds</c> (when set)
+/// over the silence between two lines of the CLI's stream.
+/// </summary>
+internal readonly record struct AgentCliCallBounds(int TimeoutSeconds, int? StreamIdleSeconds);

@@ -10,6 +10,7 @@ using Orkeon.Interop.AgentCli.Engine;
 using Orkeon.Interop.AgentCli.Sessions;
 using Orkeon.Interop.AgentCli.Tests.Doubles;
 using Orkeon.Tests.Shared.Doubles;
+using Orkeon.Tests.Shared.Timing;
 
 namespace Orkeon.Interop.AgentCli.Tests;
 
@@ -30,10 +31,10 @@ public sealed class AgentCliLlmProviderTests : IAsyncDisposable
             await host.DisposeAsync();
     }
 
-    private AgentCliLlmProvider Provider(AgentCliOptions? options = null, LlmConfig? config = null)
+    private AgentCliLlmProvider Provider(AgentCliOptions? options = null, LlmConfig? config = null, TimeProvider? time = null)
     {
         options ??= new AgentCliOptions();
-        var host = new AgentCliProcessHost(_launcher, new ClaudeCodeEngine(options), options, _logger);
+        var host = new AgentCliProcessHost(_launcher, new ClaudeCodeEngine(options), options, _logger, time);
         _hosts.Add(host);
         return new AgentCliLlmProvider(host, config ?? LlmConfig.Create("haiku"), _logger);
     }
@@ -389,5 +390,116 @@ public sealed class AgentCliLlmProviderTests : IAsyncDisposable
         }
 
         Assert.Single(_logger.Entries, entry => entry.EventId.Id == 110 && entry.Message.Contains("'temperature'", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task ShouldInterruptAndReportTimeout_WhenCallOutlivesTimeoutSeconds()
+    {
+        await using var scope = AgentRunScope.Begin("a1", "Chat");
+        var clock = new ManualTimeProvider();
+        var timeout = TimeSpan.FromSeconds(90);
+        var call = Provider(time: clock).ChatAsync([User("Hi")], LlmConfig.OnProfile() with { TimeoutSeconds = 90 }, TestContext.Current.CancellationToken);
+        var process = await _launcher.NextAsync();
+        await process.NextInputAsync();
+
+        // The call's own timer, armed before the user line was written: advanced only once it is seen.
+        await Polling.WaitUntilAsync(() => clock.DueIns.Contains(timeout));
+        clock.Advance(timeout);
+        var response = await call;
+
+        Assert.Equal("TaskCanceledException", response.Metadata[LlmResponseMetadataKeys.ErrorType]);
+        Assert.Contains("Llm:TimeoutSeconds = 90 s", (string)response.Metadata[LlmResponseMetadataKeys.Error], StringComparison.Ordinal);
+        var interrupt = await process.NextInputAsync();
+        Assert.Equal("interrupt", interrupt["request"]!["subtype"]!.GetValue<string>());
+        Assert.True(process.Disposed);
+    }
+
+    [Fact]
+    public async Task ShouldInterruptAndReportIdle_WhenCliStaysSilentForStreamIdleSeconds()
+    {
+        await using var scope = AgentRunScope.Begin("a1", "Chat");
+        var clock = new ManualTimeProvider();
+        var idle = TimeSpan.FromSeconds(5);
+        var config = LlmConfig.OnProfile() with { TimeoutSeconds = 90, StreamIdleSeconds = 5 };
+        var call = Provider(time: clock).ChatAsync([User("Hi")], config, TestContext.Current.CancellationToken);
+        var process = await _launcher.NextAsync();
+        await process.NextInputAsync();
+
+        // Nothing is written: the one idle timer is the read's, armed once the read waits.
+        await Polling.WaitUntilAsync(() => clock.DueIns.Contains(idle));
+        clock.Advance(idle);
+        var response = await call;
+
+        Assert.Equal("StreamIdleTimeout", response.Metadata[LlmResponseMetadataKeys.ErrorType]);
+        Assert.Contains("Llm:StreamIdleSeconds = 5 s", (string)response.Metadata[LlmResponseMetadataKeys.Error], StringComparison.Ordinal);
+        var interrupt = await process.NextInputAsync();
+        Assert.Equal("interrupt", interrupt["request"]!["subtype"]!.GetValue<string>());
+        Assert.True(process.Disposed);
+    }
+
+    [Fact]
+    public async Task ShouldReturnApiError_WhenToolUseIdIsNotAString()
+    {
+        await using var scope = AgentRunScope.Begin("a1", "Chat");
+        var call = Provider().ChatAsync([User("Read a.txt")], WithTools, TestContext.Current.CancellationToken);
+        var process = await _launcher.NextAsync();
+        await process.NextInputAsync();
+        var line = StreamLines.ToolUse("m1", "toolu_1", "read");
+        line["message"]!["content"]![0]!["id"] = 7;
+        await process.EmitAsync(line);
+
+        var response = await call;
+
+        Assert.Equal("APIError", response.Metadata[LlmResponseMetadataKeys.ErrorType]);
+        Assert.Contains("tool_use block without a string id and name", (string)response.Metadata[LlmResponseMetadataKeys.Error], StringComparison.Ordinal);
+        Assert.True(process.Disposed);
+    }
+
+    [Fact]
+    public async Task ShouldOfferNoTool_WhenToolModeIsNone()
+    {
+        await using var scope = AgentRunScope.Begin("a1", "Chat");
+        var call = Provider().ChatAsync([User("Hi")], WithTools with { ToolMode = ToolCallMode.None }, TestContext.Current.CancellationToken);
+        var process = await _launcher.NextAsync();
+        await process.NextInputAsync();
+
+        await process.Connection.SendAsync(new JsonObject { ["jsonrpc"] = "2.0", ["id"] = 1, ["method"] = "tools/list" });
+        var list = await process.Connection.NextAsync();
+        await process.EmitAsync(StreamLines.Result("Hello."));
+        await call;
+
+        Assert.Empty(list["result"]!["tools"]!.AsArray());
+        Assert.DoesNotContain(_logger.Entries, entry => entry.EventId.Id == 110);
+    }
+
+    [Theory]
+    [InlineData("WorkspaceId")]
+    [InlineData("tool_choice")]
+    public async Task ShouldWarnOnce_WhenOptionTheCliCannotHonourIsDeclared(string option)
+    {
+        await using var scope = AgentRunScope.Begin("a1", "Chat");
+        var config = option == "WorkspaceId"
+            ? LlmConfig.OnProfile() with { WorkspaceId = "workspace-of-the-test" }
+            : WithTools with { ToolMode = ToolCallMode.Required };
+        var call = Provider().ChatAsync([User("Hi")], config, TestContext.Current.CancellationToken);
+        var process = await _launcher.NextAsync();
+        await process.NextInputAsync();
+        await process.EmitAsync(StreamLines.Result("ok"));
+        await call;
+
+        Assert.Single(_logger.Entries, entry => entry.EventId.Id == 110 && entry.Message.Contains($"'{option}'", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void ShouldKeepStartCounts_WhenDeltaLeavesThemOut()
+    {
+        var start = new JsonObject { ["input_tokens"] = 3, ["output_tokens"] = 1 };
+        var delta = new JsonObject { ["output_tokens"] = 20 };
+
+        var merged = AgentCliSession.MergeUsage(start, delta)!;
+
+        Assert.Equal(3, merged["input_tokens"]!.GetValue<int>());
+        Assert.Equal(20, merged["output_tokens"]!.GetValue<int>());
+        Assert.Equal(1, start["output_tokens"]!.GetValue<int>());
     }
 }

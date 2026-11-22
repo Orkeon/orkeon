@@ -36,6 +36,7 @@ public sealed class ClaudeCodeEngineTests
         Assert.Contains("CLAUDE_CODE_USE_BEDROCK", line.RemovedEnvironment);
         Assert.Contains("CLAUDE_CODE_USE_VERTEX", line.RemovedEnvironment);
         Assert.Contains("CLAUDE_CODE_USE_FOUNDRY", line.RemovedEnvironment);
+        Assert.Equal(["ANTHROPIC_"], line.RemovedEnvironmentPrefixes);
     }
 
     [Theory]

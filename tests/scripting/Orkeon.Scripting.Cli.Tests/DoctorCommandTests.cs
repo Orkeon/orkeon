@@ -272,6 +272,23 @@ public sealed class DoctorCommandTests : IDisposable
         Assert.Equal("ok", Assert.Single(lines, l => l.Check == "runner-settings").Status);
     }
 
+    /// <summary>#468 and ADR-020: the agent-cli module sends no workspace either; doctor says so once, on llm-config.</summary>
+    [Fact]
+    public async Task ShouldWarnOnLlmConfigOnce_WhenAgentCliIsGivenAWorkspace()
+    {
+        using var scratch = new ScriptScratch();
+        scratch.WriteFile("appsettings.json", """
+            { "RaggableTree": { "Enabled": false }, "Llm": { "Provider": "agent-cli", "Model": "haiku", "WorkspaceId": "wrkspc_test" } }
+            """);
+
+        var (_, lines) = await DoctorJsonAsync(scratch);
+
+        var config = Assert.Single(lines, l => l.Check == "llm-config");
+        Assert.Equal("warn", config.Status);
+        Assert.Contains("Llm:WorkspaceId is set but agent-cli (provider module) does not support it", config.Detail, StringComparison.Ordinal);
+        Assert.Single(lines, l => l.Detail.Contains("WorkspaceId", StringComparison.Ordinal));
+    }
+
     [Fact]
     public async Task ShouldRefuseUnknownAgentCliKey_WhenSettingsMisspellIt()
     {

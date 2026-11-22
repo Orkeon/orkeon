@@ -1,5 +1,7 @@
 using System.Net.Sockets;
 using System.Text;
+using Microsoft.Extensions.Logging.Abstractions;
+using Orkeon.Interop.AgentCli.Process;
 using Orkeon.Tests.Shared.Timing;
 using RelayProgram = Orkeon.Interop.AgentCli.Relay.Program;
 using SysProcess = System.Diagnostics.Process;
@@ -9,6 +11,38 @@ namespace Orkeon.Interop.AgentCli.Tests.Relay;
 
 public sealed class RelayTests
 {
+    /// <summary>
+    /// Starts the relay as the launcher has the CLI start it - its apphost in a host that carries its own
+    /// runtime, else <c>dotnet exec</c> on its assembly - so the test holds where no apphost is produced.
+    /// </summary>
+    private static SysProcess StartRelay(string socketPath, string folder)
+    {
+        var (command, arguments) = new AgentCliProcessLauncher(NullLogger.Instance).RelayCommand(socketPath, folder);
+        var startInfo = new SysProcessStartInfo(command)
+        {
+            UseShellExecute = false,
+            RedirectStandardInput = true,
+            RedirectStandardOutput = true,
+        };
+        foreach (var argument in arguments)
+            startInfo.ArgumentList.Add(argument);
+        return SysProcess.Start(startInfo)!;
+    }
+
+    /// <summary>Ends a process the test started, with its tree, whatever the assertions did.</summary>
+    private static void KillTree(SysProcess? process)
+    {
+        try
+        {
+            if (process is { HasExited: false })
+                process.Kill(entireProcessTree: true);
+        }
+        catch (InvalidOperationException)
+        {
+            // It ended between the check and the kill.
+        }
+    }
+
     [Theory]
     [InlineData("{\"orkeon_relay\":{\"pid\":42}}", 42)]
     [InlineData("{\"jsonrpc\":\"2.0\"}", null)]
@@ -40,6 +74,10 @@ public sealed class RelayTests
         using var guard = new CancellationTokenSource(HangGuards.ProcessStart);
         using var linked = CancellationTokenSource.CreateLinkedTokenSource(guard.Token, TestContext.Current.CancellationToken);
         var folder = Directory.CreateTempSubdirectory(RelayProgram.ScratchPrefix).FullName;
+        // A runtime configuration the launcher may write goes beside the socket's folder, never in it.
+        var work = Directory.CreateTempSubdirectory("orkeon-relay-test-").FullName;
+        SysProcess? guarded = null;
+        SysProcess? relay = null;
         try
         {
             var socketPath = Path.Join(folder, "b.sock");
@@ -47,13 +85,8 @@ public sealed class RelayTests
             listener.Bind(new UnixDomainSocketEndPoint(socketPath));
             listener.Listen(1);
 
-            using var guarded = SysProcess.Start(new SysProcessStartInfo("sleep", "300") { UseShellExecute = false })!;
-            using var relay = SysProcess.Start(new SysProcessStartInfo(Path.Join(AppContext.BaseDirectory, "Orkeon.Interop.AgentCli.Relay"), socketPath)
-            {
-                UseShellExecute = false,
-                RedirectStandardInput = true,
-                RedirectStandardOutput = true,
-            })!;
+            guarded = SysProcess.Start(new SysProcessStartInfo("sleep", "300") { UseShellExecute = false })!;
+            relay = StartRelay(socketPath, work);
 
             using (var connection = await listener.AcceptAsync(linked.Token))
             {
@@ -71,18 +104,24 @@ public sealed class RelayTests
         }
         finally
         {
+            KillTree(relay);
+            KillTree(guarded);
+            relay?.Dispose();
+            guarded?.Dispose();
             if (Directory.Exists(folder))
                 Directory.Delete(folder, recursive: true);
+            Directory.Delete(work, recursive: true);
         }
     }
 
     [Fact]
     public async Task ShouldPumpLinesBothWays_WhenHostAndCliTalk()
     {
-        Assert.SkipWhen(OperatingSystem.IsWindows(), "the relay's apphost name has no .exe here");
+        Assert.SkipWhen(OperatingSystem.IsWindows(), "the host's Unix domain socket is tested on POSIX hosts");
         using var guard = new CancellationTokenSource(HangGuards.ProcessStart);
         using var linked = CancellationTokenSource.CreateLinkedTokenSource(guard.Token, TestContext.Current.CancellationToken);
         var folder = Directory.CreateTempSubdirectory("orkeon-relay-test-").FullName;
+        SysProcess? relay = null;
         try
         {
             var socketPath = Path.Join(folder, "b.sock");
@@ -90,12 +129,7 @@ public sealed class RelayTests
             listener.Bind(new UnixDomainSocketEndPoint(socketPath));
             listener.Listen(1);
 
-            using var relay = SysProcess.Start(new SysProcessStartInfo(Path.Join(AppContext.BaseDirectory, "Orkeon.Interop.AgentCli.Relay"), socketPath)
-            {
-                UseShellExecute = false,
-                RedirectStandardInput = true,
-                RedirectStandardOutput = true,
-            })!;
+            relay = StartRelay(socketPath, folder);
             using var connection = await listener.AcceptAsync(linked.Token);
             await using var stream = new NetworkStream(connection);
             using var reader = new StreamReader(stream);
@@ -113,6 +147,8 @@ public sealed class RelayTests
         }
         finally
         {
+            KillTree(relay);
+            relay?.Dispose();
             Directory.Delete(folder, recursive: true);
         }
     }

@@ -15,8 +15,8 @@ public sealed class AgentCliProcessLauncherTests
         File.WriteAllText(Path.Join(folder, "system-prompt.md"), "terse");
         AgentCliProcessLauncher.LiveFolders.Track(folder);
 
-        // Act
-        AgentCliProcessLauncher.LiveFolders.RemoveAll();
+        // Act: this test's folder alone, since another test of the run may hold a live one.
+        AgentCliProcessLauncher.LiveFolders.RemoveAll(candidate => candidate == folder);
 
         // Assert
         Assert.False(Directory.Exists(folder));
@@ -48,14 +48,49 @@ public sealed class AgentCliProcessLauncherTests
         var launcher = new AgentCliProcessLauncher(NullLogger.Instance);
 
         // Act
-        var process = launcher.Start(new ClaudeCodeEngine(options), marker, "haiku");
-        var folder = Assert.Single(AgentCliProcessLauncher.LiveFolders.Current, candidate =>
-            File.Exists(Path.Join(candidate, "system-prompt.md"))
-            && File.ReadAllText(Path.Join(candidate, "system-prompt.md")) == marker);
-        await process.DisposeAsync();
+        string folder;
+        await using (var process = launcher.Start(new ClaudeCodeEngine(options), marker, "haiku"))
+        {
+            folder = Assert.Single(AgentCliProcessLauncher.LiveFolders.Current, candidate =>
+                File.Exists(Path.Join(candidate, "system-prompt.md"))
+                && File.ReadAllText(Path.Join(candidate, "system-prompt.md")) == marker);
+        }
 
         // Assert
         Assert.False(Directory.Exists(folder));
         Assert.DoesNotContain(folder, AgentCliProcessLauncher.LiveFolders.Current);
+    }
+
+    /// <summary>
+    /// ADR-020: the CLI answers on its login, so no <c>ANTHROPIC_*</c> variable of the host reaches it (a proxy
+    /// set for Orkeon's anthropic provider would otherwise receive the CLI's subscription login); the rest stays.
+    /// </summary>
+    [Fact]
+    public void ShouldRemoveEveryAnthropicVariable_WhenStartInfoIsBuilt()
+    {
+        // Arrange
+        var suffix = Guid.NewGuid().ToString("N").ToUpperInvariant();
+        var anthropic = "ANTHROPIC_ORKEON_TEST_" + suffix;
+        var kept = "ORKEON_TEST_KEPT_" + suffix;
+        Environment.SetEnvironmentVariable(anthropic, "https://proxy.invalid");
+        Environment.SetEnvironmentVariable(kept, "stays");
+        try
+        {
+            var line = new ClaudeCodeEngine(new AgentCliOptions()).BuildCommandLine(new AgentCliLaunch("/p", "{}", null, "/w"));
+
+            // Act
+            var startInfo = AgentCliProcessLauncher.StartInfo(line, "/w");
+
+            // Assert
+            Assert.DoesNotContain(startInfo.Environment.Keys, name => name.StartsWith("ANTHROPIC_", StringComparison.OrdinalIgnoreCase));
+            Assert.Equal("stays", startInfo.Environment[kept]);
+            Assert.Equal("1", startInfo.Environment["CLAUDE_CODE_DISABLE_CLAUDE_MDS"]);
+            Assert.False(startInfo.UseShellExecute);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable(anthropic, null);
+            Environment.SetEnvironmentVariable(kept, null);
+        }
     }
 }

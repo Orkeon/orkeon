@@ -82,4 +82,42 @@ public sealed class AgentCliServiceCollectionExtensionsTests
         Assert.Contains("Llm:AgentCli:Engine", error.Message, StringComparison.Ordinal);
         Assert.DoesNotContain("codex", error.Message, StringComparison.Ordinal);
     }
+
+    [Theory]
+    [InlineData("MaxProcesses", "0", "takes a whole number of 1 or more")]
+    [InlineData("MaxProcesses", "-3", "takes a whole number of 1 or more")]
+    [InlineData("MaxToolResultCharacters", "999", "takes a whole number of 1000 or more")]
+    [InlineData("AutocompactTokens", "0", "takes a whole number of 1 or more")]
+    [InlineData("Command", " ", "takes the CLI's executable")]
+    [InlineData("Command", "C:\\npm\\claude.cmd", "not a .cmd or .bat script")]
+    [InlineData("Command", "claude.BAT", "not a .cmd or .bat script")]
+    public async Task ShouldRefuseAtStart_WhenOptionCannotRun(string key, string value, string expected)
+    {
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?> { ["Llm:AgentCli:" + key] = value })
+            .Build();
+        var services = new ServiceCollection();
+        services.AddSingleton<IConfiguration>(configuration);
+        services.AddOrkeonAgentCli();
+        await using var provider = services.BuildServiceProvider();
+
+        var error = Assert.Throws<OptionsValidationException>(() => provider.GetRequiredService<IStartupValidator>().Validate());
+
+        var failure = Assert.Single(error.Failures);
+        Assert.StartsWith("Llm:AgentCli:" + key + " ", failure, StringComparison.Ordinal);
+        Assert.Contains(expected, failure, StringComparison.Ordinal);
+        if (!string.IsNullOrWhiteSpace(value))
+            Assert.DoesNotContain(value, failure, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task ShouldRefuse_WhenModuleIsGivenNoProcess()
+    {
+        await using var module = new AgentCliProviderModule(new AgentCliOptions { MaxProcesses = 0 });
+
+        var error = Assert.Throws<NotSupportedException>(() => module.Create(LlmConfig.OnProfile(),
+            new LlmProviderModuleContext { LoggerFactory = NullLoggerFactory.Instance, FileSystem = new FakeFileSystemService() }));
+
+        Assert.StartsWith("Llm:AgentCli:MaxProcesses ", error.Message, StringComparison.Ordinal);
+    }
 }

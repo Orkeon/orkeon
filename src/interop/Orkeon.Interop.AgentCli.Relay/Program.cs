@@ -27,7 +27,6 @@ internal static class Program
     /// <summary>The prefix of the scratch folder the host creates for one CLI process (<c>AgentCliProcessLauncher</c>).</summary>
     internal const string ScratchPrefix = "orkeon-agent-cli-";
 
-    [System.Diagnostics.CodeAnalysis.SuppressMessage("Reliability", "CA2000", Justification = "The streams live as long as the process, which exits under its pumps.")]
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Reliability", "CA2025", Justification = "The socket outlives the pumps: the process exits before it is disposed.")]
     internal static async Task<int> Main(string[] args)
     {
@@ -48,16 +47,18 @@ internal static class Program
             return ExitUsage;
         }
 
-        // The streams live as long as the process: a pump may still read when the relay exits, so none is disposed.
-        var network = new NetworkStream(socket, ownsSocket: false);
-        var fromHost = new StreamReader(network, new UTF8Encoding(false));
-        var toHost = new StreamWriter(network, new UTF8Encoding(false)) { AutoFlush = true, NewLine = "\n" };
+        // Disposed when Main returns, once the CLI closed its side. When the host is gone the relay ends
+        // through Environment.Exit, which runs no dispose: a pump may still read then, and the process
+        // takes the streams with it.
+        using var network = new NetworkStream(socket, ownsSocket: false);
+        using var fromHost = new StreamReader(network, new UTF8Encoding(false));
+        using var toHost = new StreamWriter(network, new UTF8Encoding(false)) { AutoFlush = true, NewLine = "\n" };
 
         var guarded = ReadGuardedPid(await fromHost.ReadLineAsync().ConfigureAwait(false));
 
-        var stdout = Console.OpenStandardOutput();
-        var toCli = new StreamWriter(stdout, new UTF8Encoding(false)) { AutoFlush = true, NewLine = "\n" };
-        var fromCli = new StreamReader(Console.OpenStandardInput(), new UTF8Encoding(false));
+        using var stdout = Console.OpenStandardOutput();
+        using var toCli = new StreamWriter(stdout, new UTF8Encoding(false)) { AutoFlush = true, NewLine = "\n" };
+        using var fromCli = new StreamReader(Console.OpenStandardInput(), new UTF8Encoding(false));
 
         var hostToCli = PumpAsync(fromHost, toCli);
         var cliToHost = PumpAsync(fromCli, toHost);
@@ -66,7 +67,9 @@ internal static class Program
         if (first == hostToCli)
         {
             // The host is gone: nothing will ever answer the CLI's pending calls, and nothing will
-            // remove its scratch folder. The folder goes first: the kill ends the relay too.
+            // remove its scratch folder. The folder goes first: the kill ends the relay too, and the
+            // exit ends it when there was no process to kill or the kill failed - at once, whatever the
+            // pump from the CLI is still reading.
             TryDeleteScratch(ScratchFolderOf(args[0]));
             KillTree(guarded);
             Environment.Exit(0);
@@ -74,10 +77,11 @@ internal static class Program
 
         // The CLI closed its side: let the host see the end of the stream, then exit. The CLI is
         // gone, so its session is over: the folder goes too, which also covers a host that exited
-        // without ending its sessions (its pipes closed, the CLI ended on its own).
+        // without ending its sessions (its pipes closed, the CLI ended on its own). The shutdown
+        // ends the pump from the host; returning disposes the streams, and the pumps run on
+        // background threads, which never hold the process.
         socket.Shutdown(SocketShutdown.Both);
         TryDeleteScratch(ScratchFolderOf(args[0]));
-        Environment.Exit(0);
         return 0;
     }
 
