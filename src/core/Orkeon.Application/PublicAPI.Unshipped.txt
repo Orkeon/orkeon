@@ -523,3 +523,67 @@ Orkeon.Application.Interfaces.Ports.LlmProviderModuleContext.LoggerFactory.init 
 [ORKEXP008]static Orkeon.Application.Crew.Routing.SystemOnePickRequest.operator !=(Orkeon.Application.Crew.Routing.SystemOnePickRequest? left, Orkeon.Application.Crew.Routing.SystemOnePickRequest? right) -> bool
 [ORKEXP008]static Orkeon.Application.Crew.Routing.SystemOnePickResponse.operator ==(Orkeon.Application.Crew.Routing.SystemOnePickResponse? left, Orkeon.Application.Crew.Routing.SystemOnePickResponse? right) -> bool
 [ORKEXP008]static Orkeon.Application.Crew.Routing.SystemOnePickResponse.operator !=(Orkeon.Application.Crew.Routing.SystemOnePickResponse? left, Orkeon.Application.Crew.Routing.SystemOnePickResponse? right) -> bool
+[ORKEXP009]Orkeon.Application.Crew.Compaction.ActConversationView
+[ORKEXP009]Orkeon.Application.Crew.Compaction.ActConversationView.ActConversationView(System.Collections.Generic.List<Orkeon.Domain.SharedKernel.ValueObjects.LlmMessage!>! messages) -> void
+[ORKEXP009]Orkeon.Application.Crew.Compaction.ActConversationView.NoteReadCall(int index, string! callId, string! toolName, System.Collections.Generic.IReadOnlyDictionary<string!, object?>! arguments) -> void
+[ORKEXP009]Orkeon.Application.Crew.Compaction.ConversationPruneRequest
+[ORKEXP009]Orkeon.Application.Crew.Compaction.ConversationPruneRequest.<Clone>$() -> Orkeon.Application.Crew.Compaction.ConversationPruneRequest!
+[ORKEXP009]Orkeon.Application.Crew.Compaction.ConversationPruneRequest.AgentRole.get -> string!
+[ORKEXP009]Orkeon.Application.Crew.Compaction.ConversationPruneRequest.AgentRole.init -> void
+[ORKEXP009]Orkeon.Application.Crew.Compaction.ConversationPruneRequest.ContextWindowTokens.get -> int?
+[ORKEXP009]Orkeon.Application.Crew.Compaction.ConversationPruneRequest.ContextWindowTokens.init -> void
+[ORKEXP009]Orkeon.Application.Crew.Compaction.ConversationPruneRequest.ConversationPruneRequest() -> void
+[ORKEXP009]Orkeon.Application.Crew.Compaction.ConversationPruneRequest.Equals(Orkeon.Application.Crew.Compaction.ConversationPruneRequest? other) -> bool
+[ORKEXP009]Orkeon.Application.Crew.Compaction.ConversationPruneRequest.EstimatedTokens.get -> int
+[ORKEXP009]Orkeon.Application.Crew.Compaction.ConversationPruneRequest.EstimatedTokens.init -> void
+[ORKEXP009]Orkeon.Application.Crew.Compaction.ConversationPruneRequest.FillShare.get -> double?
+[ORKEXP009]Orkeon.Application.Crew.Compaction.ConversationPruneRequest.FillShare.init -> void
+[ORKEXP009]Orkeon.Application.Crew.Compaction.ConversationPruneRequest.FirstIndex.get -> int
+[ORKEXP009]Orkeon.Application.Crew.Compaction.ConversationPruneRequest.FirstIndex.init -> void
+[ORKEXP009]Orkeon.Application.Crew.Compaction.ConversationPruneRequest.HeadChars.get -> int?
+[ORKEXP009]Orkeon.Application.Crew.Compaction.ConversationPruneRequest.HeadChars.init -> void
+[ORKEXP009]Orkeon.Application.Crew.Compaction.ConversationPruneRequest.KeepRecentMessages.get -> int?
+[ORKEXP009]Orkeon.Application.Crew.Compaction.ConversationPruneRequest.KeepRecentMessages.init -> void
+[ORKEXP009]Orkeon.Application.Crew.Compaction.ConversationPruneRequest.MaxOutputTokens.get -> int?
+[ORKEXP009]Orkeon.Application.Crew.Compaction.ConversationPruneRequest.MaxOutputTokens.init -> void
+[ORKEXP009]Orkeon.Application.Crew.Compaction.ConversationPruneRequest.Model.get -> string?
+[ORKEXP009]Orkeon.Application.Crew.Compaction.ConversationPruneRequest.Model.init -> void
+[ORKEXP009]Orkeon.Application.Crew.Compaction.ConversationPruneRequest.Profile.get -> string!
+[ORKEXP009]Orkeon.Application.Crew.Compaction.ConversationPruneRequest.Profile.init -> void
+[ORKEXP009]Orkeon.Application.Crew.Compaction.ConversationPruneRequest.Task.get -> string!
+[ORKEXP009]Orkeon.Application.Crew.Compaction.ConversationPruneRequest.Task.init -> void
+[ORKEXP009]Orkeon.Application.Crew.Compaction.ConversationPruneResponse
+[ORKEXP009]Orkeon.Application.Crew.Compaction.ConversationPruneResponse.<Clone>$() -> Orkeon.Application.Crew.Compaction.ConversationPruneResponse!
+[ORKEXP009]Orkeon.Application.Crew.Compaction.ConversationPruneResponse.ConversationPruneResponse() -> void
+[ORKEXP009]Orkeon.Application.Crew.Compaction.ConversationPruneResponse.Cut.get -> int
+[ORKEXP009]Orkeon.Application.Crew.Compaction.ConversationPruneResponse.Cut.init -> void
+[ORKEXP009]Orkeon.Application.Crew.Compaction.ConversationPruneResponse.Dropped.get -> int
+[ORKEXP009]Orkeon.Application.Crew.Compaction.ConversationPruneResponse.Dropped.init -> void
+[ORKEXP009]Orkeon.Application.Crew.Compaction.ConversationPruneResponse.Equals(Orkeon.Application.Crew.Compaction.ConversationPruneResponse? other) -> bool
+[ORKEXP009]Orkeon.Application.Crew.Compaction.ConversationPruneResponse.FreedTokens.get -> int
+[ORKEXP009]Orkeon.Application.Crew.Compaction.ConversationPruneResponse.FreedTokens.init -> void
+[ORKEXP009]Orkeon.Application.Crew.Compaction.ConversationPruneResponse.Judged.get -> int
+[ORKEXP009]Orkeon.Application.Crew.Compaction.ConversationPruneResponse.Judged.init -> void
+[ORKEXP009]Orkeon.Application.Crew.Compaction.ConversationPruneResponse.Kept.get -> int
+[ORKEXP009]Orkeon.Application.Crew.Compaction.ConversationPruneResponse.Kept.init -> void
+[ORKEXP009]Orkeon.Application.Crew.Compaction.ConversationPruneResponse.Offered.get -> int
+[ORKEXP009]Orkeon.Application.Crew.Compaction.ConversationPruneResponse.Offered.init -> void
+[ORKEXP009]Orkeon.Application.Crew.Compaction.ConversationPruneResponse.ThresholdTokens.get -> int
+[ORKEXP009]Orkeon.Application.Crew.Compaction.ConversationPruneResponse.ThresholdTokens.init -> void
+[ORKEXP009]Orkeon.Application.Crew.Compaction.IConversationPruner
+[ORKEXP009]Orkeon.Application.Crew.Compaction.IConversationPruner.PruneAsync(Orkeon.Application.Crew.Compaction.ConversationPruneRequest! request, Orkeon.Application.Crew.Compaction.ActConversationView! conversation, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask<Orkeon.Application.Crew.Compaction.ConversationPruneResponse?>
+[ORKEXP009]override Orkeon.Application.Crew.Compaction.ActConversationView.Count.get -> int
+[ORKEXP009]override Orkeon.Application.Crew.Compaction.ActConversationView.ReplaceToolResult(int index, string! text) -> bool
+[ORKEXP009]override Orkeon.Application.Crew.Compaction.ActConversationView.RoleAt(int index) -> string!
+[ORKEXP009]override Orkeon.Application.Crew.Compaction.ActConversationView.TextAt(int index) -> string!
+[ORKEXP009]override Orkeon.Application.Crew.Compaction.ActConversationView.ToolCallAt(int index) -> Orkeon.Application.Crew.Compaction.ConversationToolCall?
+[ORKEXP009]override Orkeon.Application.Crew.Compaction.ConversationPruneRequest.Equals(object? obj) -> bool
+[ORKEXP009]override Orkeon.Application.Crew.Compaction.ConversationPruneRequest.GetHashCode() -> int
+[ORKEXP009]override Orkeon.Application.Crew.Compaction.ConversationPruneRequest.ToString() -> string!
+[ORKEXP009]override Orkeon.Application.Crew.Compaction.ConversationPruneResponse.Equals(object? obj) -> bool
+[ORKEXP009]override Orkeon.Application.Crew.Compaction.ConversationPruneResponse.GetHashCode() -> int
+[ORKEXP009]override Orkeon.Application.Crew.Compaction.ConversationPruneResponse.ToString() -> string!
+[ORKEXP009]static Orkeon.Application.Crew.Compaction.ConversationPruneRequest.operator ==(Orkeon.Application.Crew.Compaction.ConversationPruneRequest? left, Orkeon.Application.Crew.Compaction.ConversationPruneRequest? right) -> bool
+[ORKEXP009]static Orkeon.Application.Crew.Compaction.ConversationPruneRequest.operator !=(Orkeon.Application.Crew.Compaction.ConversationPruneRequest? left, Orkeon.Application.Crew.Compaction.ConversationPruneRequest? right) -> bool
+[ORKEXP009]static Orkeon.Application.Crew.Compaction.ConversationPruneResponse.operator ==(Orkeon.Application.Crew.Compaction.ConversationPruneResponse? left, Orkeon.Application.Crew.Compaction.ConversationPruneResponse? right) -> bool
+[ORKEXP009]static Orkeon.Application.Crew.Compaction.ConversationPruneResponse.operator !=(Orkeon.Application.Crew.Compaction.ConversationPruneResponse? left, Orkeon.Application.Crew.Compaction.ConversationPruneResponse? right) -> bool

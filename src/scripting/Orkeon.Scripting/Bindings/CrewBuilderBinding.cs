@@ -53,6 +53,7 @@ internal static class CrewBuilderBinding
             Picker = services.Picker,
             ToolCallDlp = services.ToolCallDlp,
             ToolLimits = services.ToolLimits,
+            ConversationPruner = services.ConversationPruner,
             AgentInstances = services.AgentInstances,
             Mounts = services.Mounts,
             WorkingDirectory = services.WorkingDirectory,
@@ -79,6 +80,7 @@ internal static class CrewBuilderBinding
         /// <summary>System One's pick behind <c>ctx.llm.pick</c> (#460).</summary>
         public Orkeon.Application.Crew.Routing.ISystemOnePicker? Picker { get; init; }
         public Orkeon.Domain.Tools.ToolResultLimitsOptions? ToolLimits { get; init; }
+        public Orkeon.Application.Crew.Compaction.IConversationPruner? ConversationPruner { get; init; }
         public Orkeon.Scripting.Configuration.ScriptAgentInstanceOptions? AgentInstances { get; init; }
         public Func<IReadOnlyList<Orkeon.Domain.FileSystem.MountInfo>>? Mounts { get; init; }
 

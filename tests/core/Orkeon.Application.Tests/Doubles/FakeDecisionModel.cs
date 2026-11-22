@@ -23,6 +23,9 @@ public sealed class FakeDecisionModel : IDecisionModel
     /// <summary>Run by <see cref="DecideAsync"/> once the request is kept, before it answers: cancels a caller's token, say.</summary>
     public Action<DecisionRequest>? OnDecide { get; set; }
 
+    /// <summary>Awaited by <see cref="DecideAsync"/>, once the request is kept, before it answers: holds every call open until it completes.</summary>
+    public System.Threading.Tasks.Task? Hold { get; set; }
+
     /// <summary>The requests received so far, oldest first.</summary>
     public IReadOnlyList<DecisionRequest> Requests
     {
@@ -38,6 +41,14 @@ public sealed class FakeDecisionModel : IDecisionModel
         lock (_gate)
             _requests.Add(request);
         OnDecide?.Invoke(request);
+        if (Hold is { } hold)
+            return AnswerOnceReleasedAsync(hold, request);
         return Failure is null ? System.Threading.Tasks.Task.FromResult(Respond(request)) : System.Threading.Tasks.Task.FromException<DecisionResponse>(Failure);
+    }
+
+    private async System.Threading.Tasks.Task<DecisionResponse> AnswerOnceReleasedAsync(System.Threading.Tasks.Task hold, DecisionRequest request)
+    {
+        await hold.ConfigureAwait(false);
+        return Failure is null ? Respond(request) : throw Failure;
     }
 }

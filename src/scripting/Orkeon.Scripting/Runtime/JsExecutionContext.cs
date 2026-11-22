@@ -80,7 +80,8 @@ public class JsExecutionContext
                 CrewName = environment.Crew.name,
                 AgentName = environment.Self.name,
             },
-            new JsLlmPicking(environment.Picker, environment.Self.role))
+            new JsLlmPicking(environment.Picker, environment.Self.role),
+            environment.ConversationPruner)
         {
             ToolLimits = environment.ToolLimits,
             AgentSettings = environment.Self.Builder.WithEffortAndCache(environment.Self.Builder.LlmConfig?.Domain),

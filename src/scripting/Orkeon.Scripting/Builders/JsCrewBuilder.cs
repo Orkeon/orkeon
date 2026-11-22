@@ -79,6 +79,9 @@ internal sealed partial class JsCrewBuilder
     /// <summary>The tool-result limits the host wired.</summary>
     internal Orkeon.Domain.Tools.ToolResultLimitsOptions? ToolLimits { get; init; }
 
+    /// <summary>The pruning an act's <c>prune</c> option asks for (#461); null leaves it without effect.</summary>
+    internal Orkeon.Application.Crew.Compaction.IConversationPruner? ConversationPruner { get; init; }
+
     /// <summary>The agent-instance transcript caps the host wired.</summary>
     internal Orkeon.Scripting.Configuration.ScriptAgentInstanceOptions? AgentInstances { get; init; }
 
@@ -273,6 +276,7 @@ internal sealed partial class JsCrewBuilder
             RunEvents = RunEvents,
             Picker = Picker,
             ToolLimits = ToolLimits,
+            ConversationPruner = ConversationPruner,
             AgentInstances = AgentInstances,
             Mounts = Mounts,
             WorkingDirectory = WorkingDirectory,

@@ -38,6 +38,7 @@ var budget = AgentExecutionBudget.Default;
 | `ORKEXP006` | **Sécurité HTTP du host** — `HttpRequestAuthenticator`, `HttpAuthorization` et `HttpSecurityOptions`, l'authentification d'un listener HTTP extraite du serveur A2A pour l'API du host | Nouvelle, et façonnée par son seul consommateur à ce jour (`orkeon-host`) : le type de verdict et les options peuvent bouger quand un second listener s'en servira. |
 | `ORKEXP007` | **Ports d'historique de run** — `IRunEventSink`, `IRunHistoryReader`, `RunEvent`, `RunEventScope`, `RunQuery`, `RunSummary`, `RunStatus`, `RunHistoryStore`, `RunHistoryOptions`, `RunHistoryRetention`, `RunEventWire`, `RunEventSinkExtensions`, `SqliteRunEventSink`, `RedactingRunEventSink`, et les types de vivacité `RunLiveness`, `RunProcessIdentity`, `IRunProcessProbe` et `SystemRunProcessProbe`, et la propriété `ScriptingHostPorts.RunEvents` (le type `ScriptingHostPorts` lui-même est stable) | Les ports sont neufs : la forme de l'événement, la requête et le résumé peuvent bouger quand l'API de l'hôte lira l'historique en HTTP. |
 | `ORKEXP008` | **Le choix de System One pour un appelant qui n'exécute aucune tâche** — `ISystemOnePicker`, `SystemOnePickRequest`, `ProfilePickRequest`, `EffortPickRequest`, `SystemOnePickResponse`, `SystemOnePickAnswer` et `SystemOnePickReasons`, derrière `ctx.llm.pick` (#460), et la propriété `ScriptingHostPorts.SystemOnePicker` | Neuf, et façonné par son seul consommateur (`ctx.llm.pick`) : les options (bornes, replis) et les raisons peuvent bouger quand un appelant C# s'en servira. |
+| `ORKEXP009` | **Port d'élagage de conversation** — `IConversationPruner`, `ConversationPruneRequest`, `ConversationPruneResponse` et `ActConversationView`, la jointure par laquelle le `ctx.llm.act { prune }` d'un script demande à l'hôte l'élagage des anciens résultats d'outils de lecture de l'orchestrateur (#461), et la propriété `ScriptingHostPorts.ConversationPruner` | Le port est neuf : les nombres de la requête et la façon dont la vue note les lectures peuvent bouger quand un autre appelant qu'`act` élaguera par lui. |
 
 Tout ce qui n'est pas marqué `[Experimental]` et figure dans le `PublicAPI.Shipped.txt`
 d'un paquet est couvert par l'engagement de stabilité : y toucher est un **breaking
@@ -57,6 +58,6 @@ La **valeur** `ProcessType.Autonomous` elle-même n'est pas expérimentale — s
 le mode depuis le YAML continue de fonctionner ; l'attribut couvre les types .NET
 référencés depuis le code.
 
-À l'intérieur de ce dépôt, les IDs sont supprimés centralement : les huit dans `src/` et `tests/`,
+À l'intérieur de ce dépôt, les IDs sont supprimés centralement : les neuf dans `src/` et `tests/`,
 `ORKEXP001` à `ORKEXP005` dans `examples/` (le `Directory.Build.props` de chaque dossier) — le framework câble,
 et ses tests et exemples exercent, ses propres surfaces expérimentales à dessein.

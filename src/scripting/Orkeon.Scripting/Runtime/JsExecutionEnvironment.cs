@@ -80,6 +80,9 @@ internal sealed record JsExecutionEnvironment
     /// </summary>
     public Orkeon.Domain.Tools.ToolResultLimitsOptions ToolLimits { get; init; } = new();
 
+    /// <summary>The pruning an act's <c>prune</c> option asks for (#461); null leaves it without effect.</summary>
+    public Orkeon.Application.Crew.Compaction.IConversationPruner? ConversationPruner { get; init; }
+
     /// <summary>The agent run's working root (RT-06), already checked against the mounts; null for an unrooted run or a context that is no run.</summary>
     internal string? WorkingRoot { get; init; }
 

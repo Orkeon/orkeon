@@ -37,6 +37,7 @@ var budget = AgentExecutionBudget.Default;
 | `ORKEXP006` | **Host HTTP security** — `HttpRequestAuthenticator`, `HttpAuthorization` and `HttpSecurityOptions`, the authentication of an HTTP listener extracted from the A2A server for the host API | New, and shaped by the one consumer so far (`orkeon-host`): the verdict type and the options may change when a second listener uses them. |
 | `ORKEXP007` | **Run history ports** — `IRunEventSink`, `IRunHistoryReader`, `RunEvent`, `RunEventScope`, `RunQuery`, `RunSummary`, `RunStatus`, `RunHistoryStore`, `RunHistoryOptions`, `RunHistoryRetention`, `RunEventWire`, `RunEventSinkExtensions`, `SqliteRunEventSink`, `RedactingRunEventSink`, and the liveness types `RunLiveness`, `RunProcessIdentity`, `IRunProcessProbe` and `SystemRunProcessProbe`, and the property `ScriptingHostPorts.RunEvents` (the type `ScriptingHostPorts` itself is stable) | The ports are new: the event shape, the query and the summary may move once the host API reads the history over HTTP. |
 | `ORKEXP008` | **System One's pick for a caller that runs no task** — `ISystemOnePicker`, `SystemOnePickRequest`, `ProfilePickRequest`, `EffortPickRequest`, `SystemOnePickResponse`, `SystemOnePickAnswer` and `SystemOnePickReasons`, behind `ctx.llm.pick` (#460), and the property `ScriptingHostPorts.SystemOnePicker` | New, and shaped by its one consumer (`ctx.llm.pick`): the options (bounds, fallbacks) and the reasons may move when a C# caller uses it. |
+| `ORKEXP009` | **Conversation pruning port** — `IConversationPruner`, `ConversationPruneRequest`, `ConversationPruneResponse` and `ActConversationView`, the seam through which a script's `ctx.llm.act { prune }` asks the host for the orchestrator's pruning of older read-tool results (#461), and the property `ScriptingHostPorts.ConversationPruner` | The port is new: the request's numbers and the view's noting of reads may move once another caller than `act` prunes through it. |
 
 Everything not marked `[Experimental]` and listed in a package's `PublicAPI.Shipped.txt`
 is covered by the stability commitment: a change there is a **breaking change** and is
@@ -54,6 +55,6 @@ The `ProcessType.Autonomous` **value** itself is not experimental — selecting 
 from YAML keeps working; the attribute covers the .NET types you would reference from
 code.
 
-Inside this repository the IDs are suppressed centrally: all eight in `src/` and `tests/`,
+Inside this repository the IDs are suppressed centrally: all nine in `src/` and `tests/`,
 `ORKEXP001`–`ORKEXP005` in `examples/` (each folder's `Directory.Build.props`) — the framework wires, and its
 tests and examples exercise, its own experimental surfaces by design.

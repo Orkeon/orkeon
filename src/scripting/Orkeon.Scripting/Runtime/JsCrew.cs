@@ -54,6 +54,7 @@ public sealed partial class JsCrew
     private readonly Func<IReadOnlyList<Orkeon.Domain.FileSystem.MountInfo>>? _mounts;
     private readonly Func<string?>? _workingDirectory;
     private readonly Orkeon.Domain.Tools.ToolResultLimitsOptions? _toolLimits;
+    private readonly Orkeon.Application.Crew.Compaction.IConversationPruner? _conversationPruner;
 
     /// <summary>Crew display name (defaults to <c>"crew"</c> when none was supplied).</summary>
     public string name { get; }
@@ -104,6 +105,7 @@ public sealed partial class JsCrew
         _runEvents = definition.RunEvents;
         _picker = definition.Picker;
         _toolLimits = definition.ToolLimits;
+        _conversationPruner = definition.ConversationPruner;
         _mounts = definition.Mounts;
         _workingDirectory = definition.WorkingDirectory;
         _agents = new List<JsAgent>();
@@ -149,6 +151,7 @@ public sealed partial class JsCrew
         RunEvents = _runEvents,
         Picker = _picker,
         ToolLimits = _toolLimits ?? new(),
+        ConversationPruner = _conversationPruner,
         WorkingRoot = workingRoot,
         FileSystem = fileSystem,
         PermissionFloor = permissionFloor,

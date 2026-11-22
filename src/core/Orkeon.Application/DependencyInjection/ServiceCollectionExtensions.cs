@@ -72,13 +72,18 @@ public static class ServiceCollectionExtensions
         // The pruning of older read-tool results before compaction (#434), first of the pressure stages. Scoped: it
         // follows the run scope's decision circuit (#431); the circuit-off warning is said once per run. Its
         // settings are bound by AddOrkeonInfrastructure; without them, the defaults (off).
-        services.TryAddEnumerable(ServiceDescriptor.Scoped<Crew.Compaction.IContextPressureStage, Crew.Compaction.ToolResultPruningStage>(
+        services.TryAddScoped(
             sp => new Crew.Compaction.ToolResultPruningStage(
                 sp,
                 sp.GetService<IOptions<Crew.Compaction.ToolResultPruningOptions>>()?.Value ?? new Crew.Compaction.ToolResultPruningOptions(),
                 sp.GetService<Crew.Execution.DecisionCircuitOverride>()?.Circuit,
                 sp.GetService<IAgentPruneObserver>(),
-                sp.GetRequiredService<Microsoft.Extensions.Logging.ILogger<Crew.Compaction.ToolResultPruningStage>>())));
+                sp.GetRequiredService<Microsoft.Extensions.Logging.ILogger<Crew.Compaction.ToolResultPruningStage>>()));
+        services.TryAddEnumerable(ServiceDescriptor.Scoped<Crew.Compaction.IContextPressureStage, Crew.Compaction.ToolResultPruningStage>(
+            sp => sp.GetRequiredService<Crew.Compaction.ToolResultPruningStage>()));
+        // The same stage is the pruning a script's act asks for (#461): one instance per scope, its circuit and its
+        // once-per-run warning shared with the crew loops of that scope.
+        services.TryAddScoped<Crew.Compaction.IConversationPruner>(sp => sp.GetRequiredService<Crew.Compaction.ToolResultPruningStage>());
         services.AddScoped<ICallbackOrchestrator, CallbackOrchestrator>();
         services.AddScoped<IMemoryCoordinator, MemoryCoordinator>();
 

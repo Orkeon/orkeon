@@ -160,6 +160,8 @@ public static class ScriptingCliServiceCollectionExtensions
                     LlmProfiles = sp.GetService<Orkeon.Application.Interfaces.Ports.ILlmProfileRegistry>(),
                     AgentMemoryStore = sp.GetService<Orkeon.Application.Interfaces.Ports.IScriptAgentMemoryStore>(),
                     ToolLimits = sp.GetService<IOptions<Orkeon.Domain.Tools.ToolResultLimitsOptions>>()?.Value,
+                    // #461: what an act's prune option asks for, the pruning stage of the crew loops.
+                    ConversationPruner = sp.GetService<Orkeon.Application.Crew.Compaction.IConversationPruner>(),
                     AgentInstances = sp.GetService<IOptions<Orkeon.Scripting.Configuration.ScriptAgentInstanceOptions>>()?.Value,
                     FileSystem = sp.GetService<IFileSystemService>(),
                     // ctx.llm.pick (#460): the pick is scoped; this factory is a singleton for the REPL's life, so

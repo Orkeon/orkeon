@@ -198,7 +198,7 @@ model, within the profile's provider when `profile` is set: `{ profile, model }`
 would not apply) and `effort` (`"low"`, `"medium"`, `"high"`, `"xhigh"` or `"max"`: the provider's thinking, on at that effort;
 any other value is refused with `effort must be low|medium|high|xhigh|max`; `"auto"` is refused too, a pick being per task, never per call) and `cache` (the prompt-cache request, as `agentBuilder().cache(...)` takes it). `act` takes more: see
 [Options of `act`](../architecture/scripting.md#options-of-act) (`tools`, `effort`, `onToolCall`,
-`onToolResult`, `onContextPressure`, `waitFor`). There is no per-call vendor, temperature or token cap, and no `signal` — the call
+`onToolResult`, `onContextPressure`, `prune`, `waitFor`). There is no per-call vendor, temperature or token cap, and no `signal` — the call
 already observes the context's. `embed` is a local stub: it calls no provider and reads none of these
 options.
 
