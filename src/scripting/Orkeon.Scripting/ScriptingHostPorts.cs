@@ -69,6 +69,13 @@ public sealed record ScriptingHostPorts
     [System.Diagnostics.CodeAnalysis.Experimental("ORKEXP007", UrlFormat = "https://github.com/Orkeon/orkeon/blob/main/docs/reference/experimental-apis.md")]
     public Orkeon.Application.Runs.IRunEventSink? RunEvents { get; init; }
 
+    /// <summary>
+    /// System One's profile and thinking-level pick behind <c>ctx.llm.pick</c> (#460), resolved from the run's scope.
+    /// Null: <c>ctx.llm.pick</c> throws, naming the host that wires none.
+    /// </summary>
+    [System.Diagnostics.CodeAnalysis.Experimental("ORKEXP008", UrlFormat = "https://github.com/Orkeon/orkeon/blob/main/docs/reference/experimental-apis.md")]
+    public Orkeon.Application.Crew.Routing.ISystemOnePicker? SystemOnePicker { get; init; }
+
     /// <summary>The transcript caps of an agent instance. Null keeps the defaults.</summary>
     public Orkeon.Scripting.Configuration.ScriptAgentInstanceOptions? AgentInstances { get; init; }
 }

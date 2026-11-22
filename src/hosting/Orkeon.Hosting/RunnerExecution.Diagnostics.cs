@@ -480,7 +480,7 @@ public static partial class RunnerExecution
         ArgumentNullException.ThrowIfNull(scopeServices);
         ArgumentException.ThrowIfNullOrWhiteSpace(configPath);
 
-        var crew = await LoadCrewTargetAsync(host, factory, configPath, logger, targetIsDirectory, ct).ConfigureAwait(false);
+        var crew = await LoadCrewTargetAsync(host, factory, configPath, logger, targetIsDirectory, ct, scopeServices).ConfigureAwait(false);
         await RefuseUngrantedAccountToolsAsync(host, scopeServices, crew, ct).ConfigureAwait(false);
         return crew;
     }
@@ -545,10 +545,11 @@ public static partial class RunnerExecution
         string configPath,
         ILogger logger,
         bool? targetIsDirectory,
-        CancellationToken ct)
+        CancellationToken ct,
+        IServiceProvider? scopeServices = null)
     {
         if (IsScriptedCrewDefinition(configPath))
-            return await LoadCrewFromScriptAsync(host, factory, configPath, logger, ct).ConfigureAwait(false);
+            return await LoadCrewFromScriptAsync(host, factory, configPath, logger, ct, scopeServices).ConfigureAwait(false);
 
         var isDirectory = targetIsDirectory;
         if (isDirectory is null)

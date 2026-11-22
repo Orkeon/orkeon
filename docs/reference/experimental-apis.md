@@ -36,6 +36,7 @@ var budget = AgentExecutionBudget.Default;
 | `ORKEXP005` | **Per-model capabilities** — `IModelCapabilityRegistry`, `ModelCapabilityRegistry`, `ModelCapabilities` and `ModelCapabilityOverride` (audio input and output, vision, thinking support, reasoning efforts, by model id prefix, or `<provider>/<model>` for a gateway through `TryGet(model, provider)`), read by `ContentConverter`, every HTTP provider and the profile registry, and answered to callers by `ILlmProvider.DescribeReasoning` and `ILlmProvider.ReportEffort` (`LlmReasoningCapabilities`, `LlmEffortReport`, `LlmEffortNotice`); the host overrides it with `Llm:ModelCapabilities:<id>` or `Llm:ModelCapabilities:<provider>/<model>` | The built-in table is a snapshot of the vendors' families and the effort lists change with each release; the shape of an entry (output audio, per-model limits beyond efforts) may still grow. |
 | `ORKEXP006` | **Host HTTP security** — `HttpRequestAuthenticator`, `HttpAuthorization` and `HttpSecurityOptions`, the authentication of an HTTP listener extracted from the A2A server for the host API | New, and shaped by the one consumer so far (`orkeon-host`): the verdict type and the options may change when a second listener uses them. |
 | `ORKEXP007` | **Run history ports** — `IRunEventSink`, `IRunHistoryReader`, `RunEvent`, `RunEventScope`, `RunQuery`, `RunSummary`, `RunStatus`, `RunHistoryStore`, `RunHistoryOptions`, `RunHistoryRetention`, `RunEventWire`, `RunEventSinkExtensions`, `SqliteRunEventSink`, `RedactingRunEventSink`, and the liveness types `RunLiveness`, `RunProcessIdentity`, `IRunProcessProbe` and `SystemRunProcessProbe`, and the property `ScriptingHostPorts.RunEvents` (the type `ScriptingHostPorts` itself is stable) | The ports are new: the event shape, the query and the summary may move once the host API reads the history over HTTP. |
+| `ORKEXP008` | **System One's pick for a caller that runs no task** — `ISystemOnePicker`, `SystemOnePickRequest`, `ProfilePickRequest`, `EffortPickRequest`, `SystemOnePickResponse`, `SystemOnePickAnswer` and `SystemOnePickReasons`, behind `ctx.llm.pick` (#460), and the property `ScriptingHostPorts.SystemOnePicker` | New, and shaped by its one consumer (`ctx.llm.pick`): the options (bounds, fallbacks) and the reasons may move when a C# caller uses it. |
 
 Everything not marked `[Experimental]` and listed in a package's `PublicAPI.Shipped.txt`
 is covered by the stability commitment: a change there is a **breaking change** and is
@@ -53,6 +54,6 @@ The `ProcessType.Autonomous` **value** itself is not experimental — selecting 
 from YAML keeps working; the attribute covers the .NET types you would reference from
 code.
 
-Inside this repository the IDs are suppressed centrally: all seven in `src/` and `tests/`,
+Inside this repository the IDs are suppressed centrally: all eight in `src/` and `tests/`,
 `ORKEXP001`–`ORKEXP005` in `examples/` (each folder's `Directory.Build.props`) — the framework wires, and its
 tests and examples exercise, its own experimental surfaces by design.

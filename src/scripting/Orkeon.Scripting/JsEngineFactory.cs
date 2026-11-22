@@ -24,6 +24,7 @@ public sealed class JsEngineFactory
     private readonly Orkeon.Domain.Graph.IGraphNodeObserver? _graphObserver;
     private readonly Orkeon.Application.Interfaces.Security.IToolInvocationPipeline? _toolInvocation;
     private readonly Orkeon.Application.Runs.IRunEventSink? _runEvents;
+    private readonly Orkeon.Application.Crew.Routing.ISystemOnePicker? _picker;
     private readonly Orkeon.Application.Interfaces.Ports.IScriptAgentMemoryStore? _agentMemoryStore;
     private readonly Orkeon.Domain.Tools.ToolResultLimitsOptions? _toolLimits;
     private readonly Orkeon.Scripting.Configuration.ScriptAgentInstanceOptions? _agentInstances;
@@ -75,6 +76,7 @@ public sealed class JsEngineFactory
         _graphObserver = hostPorts?.GraphObserver;
         _toolInvocation = hostPorts?.ToolInvocation;
         _runEvents = hostPorts?.RunEvents;
+        _picker = hostPorts?.SystemOnePicker;
         _agentMemoryStore = hostPorts?.AgentMemoryStore;
         _toolLimits = hostPorts?.ToolLimits;
         _agentInstances = hostPorts?.AgentInstances;
@@ -216,6 +218,7 @@ public sealed class JsEngineFactory
             ToolCallDlp = _toolCallDlp,
             ToolInvocation = _toolInvocation,
             RunEvents = _runEvents,
+            Picker = _picker,
             AgentMemoryStore = _agentMemoryStore,
             ToolLimits = _toolLimits,
             AgentInstances = _agentInstances,

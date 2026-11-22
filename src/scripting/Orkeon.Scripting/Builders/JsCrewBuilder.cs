@@ -70,6 +70,9 @@ internal sealed partial class JsCrewBuilder
     /// <summary>The run's event stream a scripted spawn reports to (<c>agent.spawned</c>); null when nobody watches.</summary>
     internal Orkeon.Application.Runs.IRunEventSink? RunEvents { get; init; }
 
+    /// <summary>System One's pick behind <c>ctx.llm.pick</c> (#460); null when the host wires none.</summary>
+    internal Orkeon.Application.Crew.Routing.ISystemOnePicker? Picker { get; init; }
+
     /// <summary>The host's DLP for streamed tool calls; null streams the fragments as they arrive.</summary>
     internal Orkeon.Application.Crew.ToolCallDeltaDlp? ToolCallDlp { get; init; }
 
@@ -268,6 +271,7 @@ internal sealed partial class JsCrewBuilder
             ToolInvocation = _toolInvocation,
             AgentMemoryStore = AgentMemoryStore,
             RunEvents = RunEvents,
+            Picker = Picker,
             ToolLimits = ToolLimits,
             AgentInstances = AgentInstances,
             Mounts = Mounts,

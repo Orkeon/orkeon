@@ -62,6 +62,13 @@ public static class ServiceCollectionExtensions
             sp.GetService<IOptions<Crew.Routing.AgentRouteOptions>>()?.Value ?? new Crew.Routing.AgentRouteOptions(),
             sp.GetService<IOptions<Crew.Routing.AgentEffortOptions>>()?.Value ?? new Crew.Routing.AgentEffortOptions(),
             sp.GetRequiredService<Microsoft.Extensions.Logging.ILogger<Crew.Routing.AgentProfileRouter>>()));
+        // ctx.llm.pick (#460): System One's profile and thinking-level pick for a script that runs no task, the
+        // router's per call. Scoped: it follows the run scope's decision circuit (#431) and tells the run's observer.
+        services.TryAddScoped<Crew.Routing.ISystemOnePicker>(sp => new Crew.Routing.SystemOnePicker(
+            sp.GetRequiredService<Crew.Routing.AgentProfileRouter>(),
+            sp.GetService<Interfaces.Ports.ILlmProfileRegistry>(),
+            sp.GetService<IAgentRouteObserver>(),
+            sp.GetService<Crew.Execution.DecisionCircuitOverride>()?.Circuit));
         // The pruning of older read-tool results before compaction (#434), first of the pressure stages. Scoped: it
         // follows the run scope's decision circuit (#431); the circuit-off warning is said once per run. Its
         // settings are bound by AddOrkeonInfrastructure; without them, the defaults (off).

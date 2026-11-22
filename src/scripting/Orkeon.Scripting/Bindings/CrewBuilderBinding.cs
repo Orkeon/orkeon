@@ -50,6 +50,7 @@ internal static class CrewBuilderBinding
         {
             AgentMemoryStore = services.AgentMemoryStore,
             RunEvents = services.RunEvents,
+            Picker = services.Picker,
             ToolCallDlp = services.ToolCallDlp,
             ToolLimits = services.ToolLimits,
             AgentInstances = services.AgentInstances,
@@ -74,6 +75,9 @@ internal static class CrewBuilderBinding
 
         /// <summary>The run's event stream a scripted spawn reports to.</summary>
         public Orkeon.Application.Runs.IRunEventSink? RunEvents { get; init; }
+
+        /// <summary>System One's pick behind <c>ctx.llm.pick</c> (#460).</summary>
+        public Orkeon.Application.Crew.Routing.ISystemOnePicker? Picker { get; init; }
         public Orkeon.Domain.Tools.ToolResultLimitsOptions? ToolLimits { get; init; }
         public Orkeon.Scripting.Configuration.ScriptAgentInstanceOptions? AgentInstances { get; init; }
         public Func<IReadOnlyList<Orkeon.Domain.FileSystem.MountInfo>>? Mounts { get; init; }
