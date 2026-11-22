@@ -104,6 +104,35 @@ public sealed class ConfigurationProviderCharacterisationTests
         Assert.Equal("Failed to convert configuration value '' at 'A:Enabled' to type 'System.Boolean'.", error.Message);
     }
 
+    /// <summary>
+    /// #469 — the shape the start check reads back (<c>BinderRefusal</c>): the value first, as written,
+    /// apostrophes included, then the path, a dictionary key's apostrophes included, then the type; the
+    /// same English sentence whatever the UI culture, since the runtime's libraries ship no localised
+    /// messages; and the converter's exception inside it quotes the value too.
+    /// </summary>
+    [Fact]
+    [Trait("BR", "CH-469")]
+    public void ShouldQuoteTheValueThenThePathThenTheType_WhateverTheCulture()
+    {
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?> { ["A:l'equipe:Enabled"] = "v' at 'w" })
+            .Build();
+        var culture = System.Globalization.CultureInfo.CurrentUICulture;
+        InvalidOperationException error;
+        try
+        {
+            System.Globalization.CultureInfo.CurrentUICulture = System.Globalization.CultureInfo.GetCultureInfo("fr-FR");
+            error = Assert.Throws<InvalidOperationException>(() => configuration.GetSection("A:l'equipe").Bind(new Switches()));
+        }
+        finally
+        {
+            System.Globalization.CultureInfo.CurrentUICulture = culture;
+        }
+
+        Assert.Equal("Failed to convert configuration value 'v' at 'w' at 'A:l'equipe:Enabled' to type 'System.Boolean'.", error.Message);
+        Assert.Contains("v' at 'w", error.InnerException?.Message ?? string.Empty, StringComparison.Ordinal);
+    }
+
     [Fact]
     public void ShouldDropTheStageSilently_WhenAStageValueCannotBeConverted()
     {

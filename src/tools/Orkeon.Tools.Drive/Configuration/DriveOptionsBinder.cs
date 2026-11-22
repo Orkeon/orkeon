@@ -1,7 +1,7 @@
 using System.ComponentModel;
 using System.Globalization;
-using System.Text.RegularExpressions;
 using Microsoft.Extensions.Configuration;
+using Orkeon.Constants.Configuration;
 
 namespace Orkeon.Tools.Drive.Configuration;
 
@@ -16,7 +16,7 @@ namespace Orkeon.Tools.Drive.Configuration;
 /// call or <c>orkeon drive</c> names it, and the others work. This is the one exception to the
 /// rule that a host refuses at its start a setting it cannot honour.
 /// </summary>
-internal static partial class DriveOptionsBinder
+internal static class DriveOptionsBinder
 {
     private const string AccountsKey = "Accounts";
     private const string WithholdRejectedKey = "Screening:WithholdRejected";
@@ -70,7 +70,7 @@ internal static partial class DriveOptionsBinder
                 }
                 catch (InvalidOperationException ex)
                 {
-                    problems.Add(WithoutValue(ex.Message));
+                    problems.Add(Refusal(child.Key, ex));
                 }
             }
 
@@ -189,22 +189,10 @@ internal static partial class DriveOptionsBinder
     private static string Names(Type type) => string.Join(", ", Enum.GetNames(type));
 
     /// <summary>
-    /// The configuration binder's refusal without the value it quotes (#465), as the host's settings
-    /// check rewords it: <c>Failed to convert configuration value '…' at '…' to type '…'.</c> becomes
-    /// <c>Failed to convert the configuration value at '…' to type '…'.</c>; any other message is kept.
+    /// The configuration binder's refusal of <paramref name="account"/>, without the value it quotes
+    /// (#465), worded as the host's settings check words it (#469): a binder's sentence it cannot read
+    /// back names the account's section instead.
     /// </summary>
-    internal static string WithoutValue(string message)
-    {
-        var match = BinderSentence().Match(message);
-        return match.Success
-            ? $"Failed to convert the configuration value at '{match.Groups["path"].Value}' to type '{match.Groups["type"].Value}'."
-            : message;
-    }
-
-    // The value may hold quotes; a path and a type hold none, so the last " at '" ends the value.
-    [GeneratedRegex(
-        @"^Failed to convert configuration value '.*' at '(?<path>[^']*)' to type '(?<type>[^']*)'\.$",
-        RegexOptions.Singleline | RegexOptions.CultureInvariant,
-        matchTimeoutMilliseconds: 1000)]
-    private static partial Regex BinderSentence();
+    internal static string Refusal(string account, InvalidOperationException ex) =>
+        BinderRefusal.WithoutValue(ex.Message, $"{Constants.DriveDefaults.SectionName}:{AccountsKey}:{account}");
 }

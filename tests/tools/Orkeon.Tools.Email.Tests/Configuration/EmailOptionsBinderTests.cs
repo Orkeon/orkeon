@@ -324,10 +324,42 @@ public sealed class EmailOptionsBinderTests
     public void Should_drop_the_value_from_the_binder_refusal()
     {
         // #465: the configuration binder quotes the value it cannot convert, which may be a secret.
-        var refusal = EmailOptionsBinder.WithoutValue(
-            "Failed to convert configuration value 'sk-secret-example' at 'Accounts:a:Port' to type 'System.Int32'.");
+        var refusal = EmailOptionsBinder.Refusal("a", new InvalidOperationException(
+            "Failed to convert configuration value 'sk-secret-example' at 'Accounts:a:Port' to type 'System.Int32'."));
 
         Assert.Equal("Failed to convert the configuration value at 'Accounts:a:Port' to type 'System.Int32'.", refusal);
-        Assert.Equal("another message", EmailOptionsBinder.WithoutValue("another message"));
+        Assert.Equal("another message", EmailOptionsBinder.Refusal("a", new InvalidOperationException("another message")));
+    }
+
+    /// <summary>
+    /// #469 — an account named with an apostrophe: the binder's own refusal under it, produced by the
+    /// binder itself, is reworded with its key and never quotes the value.
+    /// </summary>
+    [Fact]
+    [Trait("BR", "CH-469")]
+    public void Should_drop_the_value_from_the_binder_refusal_when_the_account_name_holds_an_apostrophe()
+    {
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?> { ["Orkeon:Tools:Email:Accounts:l'equipe:Incoming:Port"] = "sk-secret' at 'x' to type 'y" })
+            .Build();
+        var binderRefusal = Assert.Throws<InvalidOperationException>(
+            () => configuration.GetSection("Orkeon:Tools:Email:Accounts:l'equipe").Bind(new EmailAccountOptions()));
+
+        var refusal = EmailOptionsBinder.Refusal("l'equipe", binderRefusal);
+
+        Assert.Equal("Failed to convert the configuration value at 'Orkeon:Tools:Email:Accounts:l'equipe:Incoming:Port' to type 'System.Int32'.", refusal);
+        Assert.DoesNotContain("sk-secret", refusal, StringComparison.Ordinal);
+    }
+
+    /// <summary>#469 — a binder's sentence that cannot be read back names the account's section, never the value.</summary>
+    [Fact]
+    [Trait("BR", "CH-469")]
+    public void Should_name_the_account_section_when_the_binder_refusal_cannot_be_read_back()
+    {
+        var refusal = EmailOptionsBinder.Refusal("l'equipe", new InvalidOperationException("Error_FailedBinding, sk-secret-example, Orkeon:Tools:Email:Accounts:l'equipe:Incoming:Port, System.Int32"));
+
+        Assert.Equal(
+            "Failed to convert a configuration value under 'Orkeon:Tools:Email:Accounts:l'equipe'; the binder's message is withheld, since it quotes the value.",
+            refusal);
     }
 }

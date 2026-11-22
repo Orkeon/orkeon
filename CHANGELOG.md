@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — the binder's refusal never keeps the value, whatever the key path holds (#469)
+
+The start-up check reworded the configuration binder's `Failed to convert configuration value '…' at '…' to type '…'.`
+without the value (#465), but only when the key path held no apostrophe: under a dictionary key such as a decision
+profile named `l'equipe`, the sentence was printed and logged as the binder wrote it, value included. The sentence is
+now read from its end, the type after the last `' to type '`, the path after the last `' at '` before it, so nothing
+of the value survives whatever it or the path holds; a binder's message that quotes a value but cannot be read back is
+replaced by a fixed sentence naming the section when the caller knows it (an `Orkeon:Tools:Email` or
+`Orkeon:Tools:Drive` account), and a refusal the host build raises keeps no inner exception that quotes the value. The
+host and the two tool binders now share one implementation instead of three copies.
+
 ### Added — `ctx.services.get("pick")`, System One's pick for a command (#463)
 
 A scripted command (`*.cmd.ts`) can ask System One for a profile and/or a thinking level:

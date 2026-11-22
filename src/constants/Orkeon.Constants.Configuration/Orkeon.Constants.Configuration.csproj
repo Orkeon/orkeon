@@ -21,6 +21,14 @@
     shipped. So the promise is exact: no runtime dependency.
   -->
 
+  <!-- #469: the binder's refusal without its value (BinderRefusal), worded once for the host and the two tool binders. -->
+  <ItemGroup>
+    <InternalsVisibleTo Include="Orkeon.Hosting" />
+    <InternalsVisibleTo Include="Orkeon.Hosting.Tests" />
+    <InternalsVisibleTo Include="Orkeon.Tools.Email" />
+    <InternalsVisibleTo Include="Orkeon.Tools.Drive" />
+  </ItemGroup>
+
   <ItemGroup>
     <None Include="README.md" Pack="true" PackagePath="\" />
   </ItemGroup>
