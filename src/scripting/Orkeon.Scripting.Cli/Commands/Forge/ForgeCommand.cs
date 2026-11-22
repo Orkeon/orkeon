@@ -574,8 +574,10 @@ internal static class ForgeCommand
         if (options.List)
             return await ListAsync(console, workspace).ConfigureAwait(false);
 
+        // Inside the guard: a model call that fails (a provider that cannot be reached, a CLI that is
+        // not installed) is exit 2 with its sentence, never an unhandled exception (#473).
         if (options.Rephrase)
-            return await ForgeRephrase.RunAsync(console, workspace, options).ConfigureAwait(false);
+            return await GuardedAsync(console, () => ForgeRephrase.RunAsync(console, workspace, options)).ConfigureAwait(false);
 
         if (options.PromoteSlug is not null)
             return await PromoteAsync(console, workspace, options, scheduleHost).ConfigureAwait(false);

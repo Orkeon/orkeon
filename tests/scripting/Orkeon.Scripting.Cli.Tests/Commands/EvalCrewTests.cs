@@ -100,6 +100,23 @@ public sealed class EvalCrewTests
         Assert.Equal(before, SHA256.HashData(await File.ReadAllBytesAsync(dataset, TestContext.Current.CancellationToken)));
     }
 
+    /// <summary>#472: the crew's host carries the tool's provider modules, so a settings file `orkeon run` accepts is accepted.</summary>
+    [Theory]
+    [InlineData("""{ "RaggableTree": { "Enabled": false }, "Llm": { "Provider": "agent-cli", "Model": "claude-sonnet-5-5" } }""")]
+    [InlineData("""{ "RaggableTree": { "Enabled": false }, "Llm": { "Model": "m", "BaseUrl": "http://localhost:11434/v1", "AgentCli": { "Command": "claude" } } }""")]
+    [Trait("BR", "CH-472")]
+    public async Task ShouldRunTheCrew_WhenTheSettingsNameTheAgentCliModule(string settings)
+    {
+        using var fixture = new Fixture();
+        var dataset = fixture.Scratch.WriteFile("qa.json", Dataset);
+        var path = fixture.Scratch.WriteFile("agent-cli.json", settings);
+        using var console = new TestConsole();
+
+        var exit = await EvalCommand.ExecuteRunAsync(console, fixture.Options(dataset, o => o.SettingsPath = path));
+
+        Assert.True(exit == Program.ExitOk, console.Stderr);
+    }
+
     [Fact]
     [Trait("BR", "FWK-09")]
     public async Task ShouldExitOne_WhenTheCrewsOutputScoresUnderMinScore()

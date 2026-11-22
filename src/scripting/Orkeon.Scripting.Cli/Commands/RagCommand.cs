@@ -13,7 +13,6 @@ using Orkeon.Rag.Abstractions.Models;
 using Orkeon.Rag.DependencyInjection;
 using Orkeon.Rag.Evaluation;
 using Orkeon.Rag.Ingestion;
-using Orkeon.Rag.Onnx.DependencyInjection;
 using Orkeon.Tools.Rag;
 
 namespace Orkeon.Scripting.Cli.Commands;

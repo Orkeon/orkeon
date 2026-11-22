@@ -112,6 +112,33 @@ public sealed class McpServeCrewTests
         Assert.Equal("out:polish", result.GetProperty("content")[0].GetProperty("text").GetString());
     }
 
+    /// <summary>#472: a crew's host carries the tool's provider modules, so a settings file `orkeon run` accepts starts the server.</summary>
+    [Theory]
+    [InlineData("""{ "RaggableTree": { "Enabled": false }, "Llm": { "Provider": "agent-cli", "Model": "claude-sonnet-5-5" } }""")]
+    [InlineData("""{ "RaggableTree": { "Enabled": false }, "Llm": { "Model": "m", "BaseUrl": "http://localhost:11434/v1", "AgentCli": { "Command": "claude" } } }""")]
+    [Trait("BR", "CH-472")]
+    public async Task A_settings_file_that_names_the_agent_cli_module_starts_the_crews_host(string settings)
+    {
+        using var scratch = new ScriptScratch();
+        var crew = scratch.WriteFile("crew.yaml", Crew);
+        const string stdin =
+            """{"jsonrpc":"2.0","id":7,"method":"tools/call","params":{"name":"run_crew_report_writer","arguments":{"topic":"bees"}}}""" + "\n";
+        using var console = new TestConsole(stdin: stdin);
+
+        var exit = await McpCommand.ServeAsync(console, new McpServeCommandOptions
+        {
+            SettingsPath = scratch.WriteFile("appsettings.json", settings),
+            Crews = [crew],
+            AllowExternalMounts = true,
+            WorkingDirectoryOverride = scratch.Root,
+            ConfigureCrewServices = (_, services) => services.AddScoped<IAgentExecutionService>(_ => new FakeAgentExecutionService()),
+        });
+
+        Assert.True(exit == Program.ExitOk, console.Stderr);
+        var result = Assert.Single(Lines(console.Stdout), line => line.TryGetProperty("id", out _)).GetProperty("result");
+        Assert.Equal("out:polish", result.GetProperty("content")[0].GetProperty("text").GetString());
+    }
+
     [Fact]
     [Trait("BR", "FWK-24")]
     public async Task A_crew_that_does_not_load_refuses_the_start_and_stdout_stays_empty()

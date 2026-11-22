@@ -1,11 +1,12 @@
 using System.Text.Json;
 using Orkeon.Scripting.Cli.Commands;
 using Orkeon.Scripting.Cli.Commands.Forge;
+using Orkeon.Tests.Shared.Produced;
 
 namespace Orkeon.Scripting.Cli.Tests;
 
 /// <summary>
-/// #472: the hosts of <c>email</c>, <c>drive</c>, <c>runs</c>, <c>rag</c> and <c>forge rephrase</c> register the
+/// #472: the hosts of <c>email</c>, <c>drive</c>, <c>runs</c>, <c>rag</c> and <c>forge rephrase</c>, like every host the tool composes, register the
 /// provider modules the tool ships, so a settings file <c>orkeon run</c> accepts — one that names the
 /// <c>agent-cli</c> provider, or carries its <c>Llm:AgentCli</c> section — is accepted by each of them.
 /// </summary>
@@ -31,13 +32,14 @@ public sealed class CliHostProviderModulesTests
     public async Task EmailAccounts_ShouldAcceptTheSettings_WhenTheyNameTheAgentCliModule(string settings)
     {
         using var scratch = new ScriptScratch();
-        scratch.WriteFile("appsettings.json", settings);
+        var path = scratch.WriteFile("appsettings.json", settings);
         using var console = new TestConsole();
 
         var exit = await EmailCommand.ExecuteAccountsAsync(
             console, new EmailAccountsCommandOptions { WorkingDirectoryOverride = scratch.Root, Json = true });
 
         Assert.Equal(Program.ExitOk, exit);
+        Assert.Contains($"Using settings: {path}", console.Stderr, StringComparison.Ordinal);
         Assert.Equal(JsonValueKind.Array, JsonElement.Parse(console.Stdout).ValueKind);
     }
 
@@ -47,13 +49,14 @@ public sealed class CliHostProviderModulesTests
     public async Task DriveAccounts_ShouldAcceptTheSettings_WhenTheyNameTheAgentCliModule(string settings)
     {
         using var scratch = new ScriptScratch();
-        scratch.WriteFile("appsettings.json", settings);
+        var path = scratch.WriteFile("appsettings.json", settings);
         using var console = new TestConsole();
 
         var exit = await DriveCommand.ExecuteAccountsAsync(
             console, new DriveAccountsCommandOptions { WorkingDirectoryOverride = scratch.Root, Json = true });
 
         Assert.Equal(Program.ExitOk, exit);
+        Assert.Contains($"Using settings: {path}", console.Stderr, StringComparison.Ordinal);
         Assert.Equal(JsonValueKind.Array, JsonElement.Parse(console.Stdout).ValueKind);
     }
 
@@ -67,8 +70,9 @@ public sealed class CliHostProviderModulesTests
         var path = scratch.WriteFile("appsettings.json", settings);
         using var console = new TestConsole(stdin: string.Empty);
 
-        await RunsCommand.DispatchAsync(console, ["list", "--settings", path], scratch.Root);
+        var exit = await RunsCommand.DispatchAsync(console, ["list", "--settings", path], scratch.Root);
 
+        Assert.Equal(Program.ExitScriptError, exit);
         Assert.Contains("the run history is not enabled", console.Stderr, StringComparison.Ordinal);
         Assert.DoesNotContain("Llm:", console.Stderr, StringComparison.Ordinal);
     }
@@ -87,24 +91,45 @@ public sealed class CliHostProviderModulesTests
         Assert.NotNull(host);
     }
 
+    /// <summary>The host alone, never the verb: on these files the verb would call a model.</summary>
+    [Theory]
+    [MemberData(nameof(Settings))]
+    [Trait("BR", "CH-472")]
+    public void ForgeRephraseHost_ShouldBuild_WhenTheSettingsNameTheAgentCliModule(string settings)
+    {
+        using var scratch = new ScriptScratch();
+        var path = scratch.WriteFile("settings.json", settings);
+        using var console = new TestConsole();
+
+        using var host = ForgeRephrase.BuildHost(console, path, events: null);
+
+        Assert.NotNull(host);
+    }
+
     /// <summary>
-    /// The module's section alone names no default LLM: the verb's own refusal is reached
-    /// (<c>FORGE-LLM-UNAVAILABLE</c>), where the host refused <c>Llm:AgentCli</c> as no setting.
+    /// The guard of the hosts to come: a file of the tool that composes a host (the runner's, a crew's,
+    /// a tool host or the settings inspection) registers the provider modules, by itself or through
+    /// <c>RunCommand.AddCliRagServices</c>. It reads the sources: a host built without them compiles and
+    /// refuses only the settings files that name a module.
     /// </summary>
     [Fact]
     [Trait("BR", "CH-472")]
-    public async Task ForgeRephrase_ShouldBuildItsHost_WhenTheSettingsCarryTheAgentCliSection()
+    public void EveryFileOfTheToolThatComposesAHost_ShouldRegisterTheProviderModules()
     {
-        using var scratch = new ScriptScratch();
-        var path = scratch.WriteFile("settings.json", """{ "Llm": { "AgentCli": { "Command": "claude" } } }""");
-        using var console = new TestConsole();
+        string[] composes =
+        [
+            "RunnerHost.Build(", "RunnerHost.InspectSettings(", "RunnerExecution.RunOneShotAsync(",
+            "RunnerExecution.BuildToolHostAsync(", "CrewRunEntryPoint.TryOpen(", "McpCrewToolHost.OpenAsync(",
+        ];
+        string[] registers = ["CliLlmProviderModules.AddTo(", "AddCliRagServices("];
+        var root = ProducedFile.RepositoryRoot();
 
-        var exit = await ForgeCommand.DispatchAsync(console, ["rephrase", "un besoin", "--events", "jsonl", "--settings", path], scratch.Root);
+        var sources = RepositoryFiles.Under(["src/scripting/Orkeon.Scripting.Cli"], path => path.EndsWith(".cs", StringComparison.Ordinal))
+            .Select(path => (Path: path, Text: File.ReadAllText(Path.Combine(root, path))))
+            .Where(file => composes.Any(call => file.Text.Contains(call, StringComparison.Ordinal)))
+            .ToList();
 
-        Assert.Equal(1, exit);
-        var error = JsonElement.Parse(Assert.Single(
-            console.Stdout.Split('\n', StringSplitOptions.RemoveEmptyEntries),
-            line => line.Contains("\"kind\":\"error\"", StringComparison.Ordinal)));
-        Assert.Equal(ForgeRephrase.LlmUnavailableCode, error.GetProperty("code").GetString());
+        Assert.True(sources.Count >= 11, $"only {sources.Count} files of the tool compose a host: the guard reads the wrong folder.");
+        Assert.Empty(sources.Where(file => !registers.Any(call => file.Text.Contains(call, StringComparison.Ordinal))).Select(file => file.Path));
     }
 }

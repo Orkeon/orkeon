@@ -182,7 +182,13 @@ internal static class McpCommand
                 WorkingDirectory = cwd,
                 AllowExternalMounts = options.AllowExternalMounts,
                 Console = console,
-                ConfigureServices = options.ConfigureCrewServices,
+                // Each crew's host is composed as `orkeon run` composes its own: the ONNX reranker and the
+                // tool's provider modules (#472); a test's doubles are the last registration, so they win.
+                ConfigureServices = (context, services) =>
+                {
+                    RunCommand.AddCliRagServices(services);
+                    options.ConfigureCrewServices?.Invoke(context, services);
+                },
             },
             ct).ConfigureAwait(false);
     }

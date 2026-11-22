@@ -74,7 +74,8 @@ internal static class ForgeRephrase
         }
     }
 
-    private static IHost BuildHost(IRunnerConsole console, string? settingsPath, ForgeEventWriter? events) =>
+    /// <summary>The verb's host: the settings, the console, the tool's provider modules, no agent-facing mount.</summary>
+    internal static IHost BuildHost(IRunnerConsole console, string? settingsPath, ForgeEventWriter? events) =>
         RunnerHost.Build(
             settingsPath,
             new RunnerMountPlan(),
