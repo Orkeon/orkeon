@@ -75,15 +75,18 @@ public sealed partial class JsLlmFacade
     /// gate, and the agent's tools the host does not offer (GAP-27).
     /// </param>
     /// <param name="observability">The sinks and the attribution of the calls.</param>
+    /// <param name="pruner">The pruning an act's <c>prune</c> option asks for (#461); null leaves it without effect.</param>
     internal JsLlmFacade(
         Engine engine,
         ILlmProvider? provider,
         CancellationToken ct,
         IReadOnlyList<IBaseTool>? tools = null,
         JsLlmActGuards? guards = null,
-        JsLlmObservability? observability = null)
+        JsLlmObservability? observability = null,
+        Orkeon.Application.Crew.Compaction.IConversationPruner? pruner = null)
     {
         _engine = engine;
+        _pruner = pruner;
         _provider = provider;
         _hostCt = ct;
         // Linked source so ctx.llm.interrupt() cancels in-flight/future llm calls of this
@@ -988,6 +991,8 @@ public sealed partial class JsLlmFacade
             HasToolResultCallback = HasCallback(options, "onToolResult");
             HasContextPressureCallback = HasCallback(options, "onContextPressure");
             Pressure = ContextPressureSettings.From(options);
+            // prune (#461): refused next to onContextPressure or contextPressure, before a single model turn.
+            var prune = PruneSettings.From(options);
             if (HasToolCallback || HasToolResultCallback || HasContextPressureCallback || Tools.Any(t => t is ScriptToolProxy or SpawnToolProxy))
                 _toolRequests = Channel.CreateUnbounded<string>(new UnboundedChannelOptions { SingleReader = true, SingleWriter = false });
 
@@ -1005,6 +1010,9 @@ public sealed partial class JsLlmFacade
             if (ResolveContext(options) is { } context)
                 Messages.Add(new LlmMessage { Role = "user", Content = context });
             Messages.Add(new LlmMessage { Role = "user", Content = prompt });
+            // What came before is the call's own: the system message, the instance's seed, the context, the prompt (#461).
+            if (prune is not null)
+                Pruning = new ActPruning(prune, Messages, Messages.Count);
 
             // One reader (the pump), one writer (the streaming continuation), never bounded:
             // the writer must not block on a script that is slow to consume.
@@ -1069,6 +1077,9 @@ public sealed partial class JsLlmFacade
 
         /// <summary>The <c>contextPressure</c> settings of the call, defaults filled in.</summary>
         internal ContextPressureSettings Pressure { get; }
+
+        /// <summary>The pruning the call asked for with <c>prune</c> (#461); null when it asked none.</summary>
+        internal ActPruning? Pruning { get; }
 
         /// <summary>The results of the read tools the loop ran and added to <see cref="Messages"/>, in order: what <c>onContextPressure</c> is offered.</summary>
         internal List<ActToolRecord> ToolRecords { get; } = [];
@@ -1374,13 +1385,22 @@ public sealed partial class JsLlmFacade
             // control and can inspect { interrupted: true }. Host cancellation is excluded
             // by the filter and keeps propagating as OperationCanceledException.
             KeepTranscript(session.Messages, interrupted: true);
-            return new
-            {
-                output = "(interrupted)",
-                iterations = completedIterations,
-                interrupted = true,
-                reasoning = session.Reasoning,
-            };
+            return session.Pruning?.Pruned is { } prunedSoFar
+                ? new
+                {
+                    output = "(interrupted)",
+                    iterations = completedIterations,
+                    interrupted = true,
+                    reasoning = session.Reasoning,
+                    pruned = prunedSoFar,
+                }
+                : (object)new
+                {
+                    output = "(interrupted)",
+                    iterations = completedIterations,
+                    interrupted = true,
+                    reasoning = session.Reasoning,
+                };
         }
         finally
         {
@@ -1388,13 +1408,22 @@ public sealed partial class JsLlmFacade
         }
 
         KeepTranscript(session.Messages, interrupted: false);
-        return new
-        {
-            output = "(max tool-call iterations reached without a final answer)",
-            iterations = session.MaxIterations,
-            exhausted = true,
-            reasoning = session.Reasoning,
-        };
+        return session.Pruning?.Pruned is { } pruned
+            ? new
+            {
+                output = "(max tool-call iterations reached without a final answer)",
+                iterations = session.MaxIterations,
+                exhausted = true,
+                reasoning = session.Reasoning,
+                pruned,
+            }
+            : (object)new
+            {
+                output = "(max tool-call iterations reached without a final answer)",
+                iterations = session.MaxIterations,
+                exhausted = true,
+                reasoning = session.Reasoning,
+            };
     }
 
     /// <summary>
@@ -1430,6 +1459,7 @@ public sealed partial class JsLlmFacade
             ? session.Config
             : session.Config with { Tools = session.ToolSchemas, ToolMode = ToolCallMode.Auto };
         await RelieveContextPressureAsync(session).ConfigureAwait(false);
+        await RelievePruneAsync(session).ConfigureAwait(false);
         var resp = await SendChatAsync(messages.ToArray(), cfg, session).ConfigureAwait(false);
         RecordCallTokens(resp, session);
 
@@ -1466,7 +1496,9 @@ public sealed partial class JsLlmFacade
         if (!session.WaitsForChildren || _background is not { HasPendingWork: true })
         {
             KeepTranscript(messages, interrupted: false);
-            return new { output = answer, iterations = i + 1, reasoning = session.Reasoning };
+            return session.Pruning?.Pruned is { } pruned
+                ? new { output = answer, iterations = i + 1, reasoning = session.Reasoning, pruned }
+                : (object)new { output = answer, iterations = i + 1, reasoning = session.Reasoning };
         }
 
         // The model answered while children are out: wait for their next completion
@@ -1596,7 +1628,9 @@ public sealed partial class JsLlmFacade
 
         messages.Add(new LlmMessage { Role = "assistant", Content = answer });
         KeepTranscript(messages, interrupted: false);
-        return new { output = answer, iterations = iteration + 1, budgetExhausted = true, reasoning = session.Reasoning };
+        return session.Pruning?.Pruned is { } pruned
+            ? new { output = answer, iterations = iteration + 1, budgetExhausted = true, reasoning = session.Reasoning, pruned }
+            : (object)new { output = answer, iterations = iteration + 1, budgetExhausted = true, reasoning = session.Reasoning };
     }
 
     [Microsoft.Extensions.Logging.LoggerMessage(
@@ -1717,7 +1751,10 @@ public sealed partial class JsLlmFacade
                 // Only a read that ran is offered to onContextPressure: running it again to get the result
                 // back changes nothing, unlike a write, a command or a refusal line.
                 if (p.Refusal is null && p.Tool?.Access == ToolAccess.Read)
+                {
                     session.ToolRecords.Add(new ActToolRecord(messages.Count, $"call-{session.ToolRecords.Count + 1}", p.Call.ToolName, p.Arguments, session.Iteration));
+                    NoteReadForPruning(session, session.ToolRecords[^1]);
+                }
                 messages.Add(new LlmMessage { Role = "tool", Content = text, ToolCallId = p.Call.Id });
             }
 

@@ -1,1 +1,3 @@
 #nullable enable
+[ORKEXP009]Orkeon.Scripting.ScriptingHostPorts.ConversationPruner.get -> Orkeon.Application.Crew.Compaction.IConversationPruner?
+[ORKEXP009]Orkeon.Scripting.ScriptingHostPorts.ConversationPruner.init -> void

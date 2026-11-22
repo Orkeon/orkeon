@@ -132,7 +132,7 @@ nothing else (pinned by `ReplAutonomousToolActTests`):
 
 ## Options of act
 
-Five options of `ctx.llm.act(prompt, options)` shape the loop itself (the full list is `ActOptions` in
+Six options of `ctx.llm.act(prompt, options)` shape the loop itself (the full list is `ActOptions` in
 `context.d.ts`). They are fixed when the call starts (one `ActSession` per call):
 
 - **`tools: ["file_read"]`** offers the model only that subset of the agent's tools. A name the agent
@@ -181,6 +181,18 @@ Five options of `ctx.llm.act(prompt, options)` shape the loop itself (the full l
   return that is not an object, prunes nothing. The estimate counts the messages' text, tool calls and
   reasoning, not images nor tool schemas. `token_budget` reads the session buffer, which never sees the
   loop's messages, so it does not measure this pressure.
+- **`prune: true | { fillShare, keepRecentMessages, headChars }`** gives the loop the orchestrator's
+  pruning of older read-tool results (`Orkeon:Compaction:Prune`, #461), through the host's
+  `IConversationPruner` (the crew loops' own stage, experimental `ORKEXP009`). Before each model turn whose
+  estimated prompt reaches `fillShare` of the call's usable window, the decision model judges each result of
+  a read this call ran, outside the last `keepRecentMessages` messages and answered by a model turn since,
+  from its call alone; all batches of one turn are asked together. `true` takes the host's numbers, an object
+  overrides them within the same bounds (`fillShare` above 0 and at most 1, `keepRecentMessages` 0 or more,
+  `headChars` 1 or more). Without `prune` no decision call is made, whatever `Enabled` says; with the decision
+  circuit off nothing is asked and the run warns once. A pruning that cut or dropped a result emits
+  `agent.pruned`, and `result.pruned` (`offered`, `judged`, `kept`, `cut`, `dropped`, `freedTokens`) sums the
+  loop on every outcome (interrupted, exhausted and budget-exhausted included); it is absent when nothing
+  was judged. `prune` next to `onContextPressure` or `contextPressure` throws `InvalidScriptError` naming both.
 
 The callbacks run on the engine thread, through the same pump as script tools (see the threading
 model below); `onToolCall` always comes before the permission gate.

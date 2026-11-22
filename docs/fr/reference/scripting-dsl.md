@@ -209,7 +209,7 @@ configuration du fournisseur de l'appel : `responseFormat` (`"json_object"`, `"j
 température et son plafond de jetons ne s'appliqueraient pas) et `effort` (`"low"`, `"medium"`, `"high"`, `"xhigh"` ou `"max"` : la réflexion du fournisseur, activée à cet effort ;
 toute autre valeur est refusée avec `effort must be low|medium|high|xhigh|max` ; `"auto"` aussi, un choix se faisant par tâche, jamais par appel) et `cache` (la demande de cache de prompt, telle que la prend `agentBuilder().cache(...)`). `act` en prend davantage : voir
 [Options de `act`](../architecture/scripting.md#options-de-act) (`tools`, `effort`, `onToolCall`,
-`onToolResult`, `onContextPressure`, `waitFor`). Il n'y a ni fournisseur nommé, ni température, ni plafond de
+`onToolResult`, `onContextPressure`, `prune`, `waitFor`). Il n'y a ni fournisseur nommé, ni température, ni plafond de
 jetons par appel, et pas de `signal` — l'appel observe déjà celui du contexte. `embed` est un stub local :
 il n'appelle aucun fournisseur et ne lit aucune de ces options.
 

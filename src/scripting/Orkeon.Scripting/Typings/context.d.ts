@@ -305,6 +305,25 @@ declare global {
             headChars?: number;
         };
         /**
+         * The orchestrator's pruning of older read-tool results, for this loop (#461): before a model
+         * turn whose estimated prompt reaches `fillShare` of the call's usable window, the decision
+         * model judges each result of a read this call ran, outside the last `keepRecentMessages`
+         * messages and of a turn the model has answered since, from its call alone (never its
+         * result): kept, cut to its first `headChars` characters, or dropped. A pruned result leaves
+         * a line that says how to get it back. `true` takes the host's `Orkeon:Compaction:Prune`
+         * numbers; an object overrides them. Without `prune` no decision call is made, whatever
+         * `Orkeon:Compaction:Prune:Enabled` says. With the decision circuit off, nothing is asked
+         * and the run warns once. Refused next to `onContextPressure` or `contextPressure`.
+         */
+        prune?: boolean | {
+            /** The share of the usable window from which results are judged, above 0 and at most 1. Default 0.4. */
+            fillShare?: number;
+            /** The last messages whose results are never offered, 0 or more. Default 6. */
+            keepRecentMessages?: number;
+            /** Characters a cut result keeps, 1 or more. Default 300. */
+            headChars?: number;
+        };
+        /**
          * Subset of the agent's tools to offer the model for this call. A name the agent does
          * not hold throws `UnknownToolError` before the model is asked. Omitted: all its tools.
          */
@@ -355,6 +374,24 @@ declare global {
         readonly budgetExhausted?: true;
         /** The effort the loop's turns ask for and the one the provider sends; `null` when none is asked. */
         readonly reasoning: LlmReasoning | null;
+        /** What `prune` judged and did over the loop, summed; absent when nothing was judged (#461). */
+        readonly pruned?: ActPruned;
+    }
+
+    /** What the `prune` option of `act(...)` judged and did over the loop. */
+    interface ActPruned {
+        /** The results offered to the decision model. */
+        readonly offered: number;
+        /** The results it answered for. */
+        readonly judged: number;
+        /** The results kept whole. */
+        readonly kept: number;
+        /** The results cut to their first characters. */
+        readonly cut: number;
+        /** The results replaced by a line naming their call. */
+        readonly dropped: number;
+        /** The tokens freed, at four characters a token. */
+        readonly freedTokens: number;
     }
 
     interface Message {

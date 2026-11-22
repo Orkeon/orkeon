@@ -146,6 +146,8 @@ internal sealed class ForgeCrewAssistant : IForgeAssistant
                     : null,
                 LlmProfiles = services.GetService<Orkeon.Application.Interfaces.Ports.ILlmProfileRegistry>(),
                 ToolLimits = configuration.GetSection(Orkeon.Domain.Tools.ToolResultLimitsOptions.SectionName).Get<Orkeon.Domain.Tools.ToolResultLimitsOptions>(),
+                // #461: what an act's prune option asks for, the pruning stage of the crew loops.
+                ConversationPruner = services.GetService<Orkeon.Application.Crew.Compaction.IConversationPruner>(),
                 AgentInstances = configuration.GetSection(Orkeon.Scripting.Configuration.ScriptAgentInstanceOptions.SectionName).Get<Orkeon.Scripting.Configuration.ScriptAgentInstanceOptions>(),
                 FileSystem = services.GetService<IFileSystemService>(),
             });

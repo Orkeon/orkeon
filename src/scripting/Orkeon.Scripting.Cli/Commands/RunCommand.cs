@@ -1002,6 +1002,8 @@ internal static partial class RunCommand
                 // GAP-17: llm.profile(name) picks among the host's Llm:Profiles.
                 LlmProfiles = host.Services.GetService<Orkeon.Application.Interfaces.Ports.ILlmProfileRegistry>(),
                 ToolLimits = Microsoft.Extensions.Configuration.ConfigurationBinder.Get<Orkeon.Domain.Tools.ToolResultLimitsOptions>(configuration.GetSection(Orkeon.Domain.Tools.ToolResultLimitsOptions.SectionName)),
+                // #461: what an act's prune option asks for, the pruning stage of the crew loops.
+                ConversationPruner = host.Services.GetService<Orkeon.Application.Crew.Compaction.IConversationPruner>(),
                 AgentInstances = Microsoft.Extensions.Configuration.ConfigurationBinder.Get<Orkeon.Scripting.Configuration.ScriptAgentInstanceOptions>(configuration.GetSection(Orkeon.Scripting.Configuration.ScriptAgentInstanceOptions.SectionName)),
                 // RT-06: a script agent's .workingRoot(...) is checked against these mounts.
                 FileSystem = fileSystem,

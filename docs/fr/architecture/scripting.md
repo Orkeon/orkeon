@@ -135,7 +135,7 @@ script a déclaré, et rien d'autre (épinglé par `ReplAutonomousToolActTests`)
 
 ## Options de act
 
-Cinq options de `ctx.llm.act(prompt, options)` règlent la boucle elle-même (la liste complète est
+Six options de `ctx.llm.act(prompt, options)` règlent la boucle elle-même (la liste complète est
 `ActOptions` dans `context.d.ts`). Elles sont fixées au début de l'appel (une `ActSession` par appel) :
 
 - **`tools: ["file_read"]`** n'offre au modèle que ce sous-ensemble des outils de l'agent. Un nom que
@@ -187,6 +187,19 @@ Cinq options de `ctx.llm.act(prompt, options)` règlent la boucle elle-même (la
   n'élague rien. L'estimation compte le texte, les appels d'outil et le raisonnement des messages, ni les
   images ni les schémas d'outils. `token_budget` lit le tampon de session, qui ne voit jamais les messages
   de la boucle : il ne mesure pas cette pression.
+- **`prune: true | { fillShare, keepRecentMessages, headChars }`** donne à la boucle l'élagage des anciens
+  résultats d'outils de lecture de l'orchestrateur (`Orkeon:Compaction:Prune`, #461), par l'`IConversationPruner`
+  de l'hôte (l'étape même des boucles d'équipage, expérimental `ORKEXP009`). Avant chaque tour du modèle dont
+  le prompt estimé atteint `fillShare` de la fenêtre utile de l'appel, le modèle de décision juge chaque
+  résultat d'une lecture que cet appel a exécutée, hors des `keepRecentMessages` derniers messages et auquel
+  un tour du modèle a répondu depuis, sur son seul appel ; tous les lots d'un tour sont demandés ensemble.
+  `true` prend les nombres de l'hôte, un objet les remplace dans les mêmes bornes (`fillShare` au-dessus de 0
+  et au plus 1, `keepRecentMessages` 0 ou plus, `headChars` 1 ou plus). Sans `prune`, aucun appel de décision
+  n'est fait, quoi que dise `Enabled` ; circuit de décision coupé, rien n'est demandé et le run avertit une
+  fois. Un élagage qui a coupé ou retiré un résultat émet `agent.pruned`, et `result.pruned` (`offered`,
+  `judged`, `kept`, `cut`, `dropped`, `freedTokens`) totalise la boucle sur chaque issue (interrompue, épuisée
+  et budget épuisé comprises) ; il est absent quand rien n'a été jugé. `prune` à côté d'`onContextPressure`
+  ou de `contextPressure` lève `InvalidScriptError` en nommant les deux.
 
 Les rappels s'exécutent sur le thread du moteur, par la même pompe que les outils de script (voir
 le modèle de threading ci-dessous) ; `onToolCall` passe toujours avant la porte de permission.

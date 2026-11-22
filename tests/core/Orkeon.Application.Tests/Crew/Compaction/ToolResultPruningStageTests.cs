@@ -589,4 +589,164 @@ public sealed class ToolResultPruningStageTests
         // Assert
         Assert.Single(_logger.Entries, e => e.Level == LogLevel.Warning);
     }
+
+    // #461: an act's conversation - the system message, a seeded read (the instance's earlier turn), the prompt,
+    // then `old` reads of this act and three recent ones the last six messages hold. Every read is noted, by the
+    // position of its result; the provider's call ids are all the same, as some providers' are.
+    private static (List<Orkeon.Domain.SharedKernel.ValueObjects.LlmMessage> Messages, ActConversationView View, int FirstIndex) ActConversation(int old = 3)
+    {
+        var messages = new List<Orkeon.Domain.SharedKernel.ValueObjects.LlmMessage>
+        {
+            Orkeon.Domain.SharedKernel.ValueObjects.LlmMessage.System("sys"),
+            new() { Role = "assistant", Content = string.Empty, RawToolCalls = "[seed-1]" },
+            new() { Role = "tool", Content = Body(0, 2_000), ToolCallId = "seed-1" },
+            new() { Role = "user", Content = "Summarise the lexer" },
+        };
+        var view = new ActConversationView(messages);
+        view.NoteReadCall(2, "seed-1", ReadTool, new Dictionary<string, object?> { ["path"] = "seeded/f0.cs" });
+        var first = messages.Count;
+        for (var call = 1; call <= old + 3; call++)
+        {
+            var id = $"call-{call}";
+            messages.Add(new() { Role = "assistant", Content = string.Empty, RawToolCalls = $"[{id}]" });
+            messages.Add(new() { Role = "tool", Content = Body(call, 2_000), ToolCallId = "c1" });
+            view.NoteReadCall(messages.Count - 1, id, ReadTool, new Dictionary<string, object?> { ["path"] = $"src/f{call}.cs" });
+        }
+        return (messages, view, first);
+    }
+
+    // A window of 10,000 tokens and a reserve of 1: the results are judged from 3,999 tokens.
+    private static ConversationPruneRequest ActRequest(int first, int estimated = 5_000, double? fillShare = null) => new()
+    {
+        AgentRole = "Reader",
+        Task = "Summarise the lexer",
+        FirstIndex = first,
+        EstimatedTokens = estimated,
+        ContextWindowTokens = 10_000,
+        MaxOutputTokens = 1,
+        FillShare = fillShare,
+    };
+
+    [Fact]
+    [Trait("BR", "CH-461")]
+    public async System.Threading.Tasks.Task ShouldTellTheDecisionModelTheCallersTask_WhenAnActIsPruned()
+    {
+        // Arrange
+        var (_, view, first) = ActConversation();
+
+        // Act
+        await Stage().PruneAsync(ActRequest(first), view, TestContext.Current.CancellationToken);
+
+        // Assert
+        var state = Assert.Single(_model.Requests).State.ToString();
+        Assert.Contains("Summarise the lexer", state, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-461")]
+    public async System.Threading.Tasks.Task ShouldNeverOfferAResultBeforeTheFirstIndex_WhenAnActIsPruned()
+    {
+        // Arrange: the seeded read is as old as can be and noted, yet before the prompt.
+        var (messages, view, first) = ActConversation();
+        DropAll(3);
+
+        // Act
+        var outcome = await Stage().PruneAsync(ActRequest(first), view, TestContext.Current.CancellationToken);
+
+        // Assert
+        var state = Assert.Single(_model.Requests).State.ToString();
+        Assert.DoesNotContain("seeded/f0.cs", state, StringComparison.Ordinal);
+        Assert.Equal(Body(0, 2_000), messages[2].Content);
+        Assert.NotNull(outcome);
+        Assert.Equal((3, 3, 0, 0, 3), (outcome.Offered, outcome.Judged, outcome.Kept, outcome.Cut, outcome.Dropped));
+        Assert.True(outcome.FreedTokens > 0);
+        Assert.StartsWith("[pruned to save context: the result of file_read", messages[first + 1].Content, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-461")]
+    public async System.Threading.Tasks.Task ShouldPruneAnAct_WhenThePruningIsNotEnabledForTheCrewLoops()
+    {
+        // Arrange: Enabled is the crew loops' switch; an act asks for itself.
+        var (_, view, first) = ActConversation();
+        var stage = Stage(options: new ToolResultPruningOptions { Enabled = false });
+
+        // Act
+        var outcome = await stage.PruneAsync(ActRequest(first), view, TestContext.Current.CancellationToken);
+
+        // Assert
+        Assert.NotNull(outcome);
+        Assert.Single(_model.Requests);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-461")]
+    public async System.Threading.Tasks.Task ShouldAskNothing_WhenTheActsFillShareIsNotReached()
+    {
+        // Arrange: 5,000 tokens, under 0.9 of the usable window.
+        var (_, view, first) = ActConversation();
+
+        // Act
+        var outcome = await Stage().PruneAsync(ActRequest(first, fillShare: 0.9), view, TestContext.Current.CancellationToken);
+
+        // Assert
+        Assert.Null(outcome);
+        Assert.Empty(_model.Requests);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-461")]
+    public async System.Threading.Tasks.Task ShouldAskNothingAndWarnOnce_WhenTheCircuitIsOffForAnAct()
+    {
+        // Arrange
+        var (_, view, first) = ActConversation();
+        var stage = Stage(DecisionCircuit.Off);
+
+        // Act
+        var outcome = await stage.PruneAsync(ActRequest(first), view, TestContext.Current.CancellationToken);
+        await stage.PruneAsync(ActRequest(first), view, TestContext.Current.CancellationToken);
+
+        // Assert
+        Assert.Null(outcome);
+        Assert.Empty(_model.Requests);
+        Assert.Single(_logger.Entries, e => e.Level == LogLevel.Warning);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-461")]
+    public async System.Threading.Tasks.Task ShouldAskNothing_WhenTheRunSaysDecisionModeNone()
+    {
+        // Arrange
+        var (_, view, first) = ActConversation();
+        using var run = SystemOneRunScope.Begin(Orkeon.Domain.Crew.CrewDecisionMode.None);
+
+        // Act
+        var outcome = await Stage().PruneAsync(ActRequest(first), view, TestContext.Current.CancellationToken);
+
+        // Assert
+        Assert.Null(outcome);
+        Assert.Empty(_model.Requests);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-461")]
+    public async System.Threading.Tasks.Task ShouldAskTheBatchesOfOnePressureTogether_WhenMoreThanEightResultsAreOffered()
+    {
+        // Arrange: twenty results, three batches; no answer comes back before all three are asked.
+        var (_, view) = Conversation(old: 20);
+        var release = new System.Threading.Tasks.TaskCompletionSource(System.Threading.Tasks.TaskCreationOptions.RunContinuationsAsynchronously);
+        _model.Hold = release.Task;
+        DropAll(8);
+
+        // Act
+        var pruning = Stage().RelieveAsync(Pressure(), view, TestContext.Current.CancellationToken).AsTask();
+        await Orkeon.Tests.Shared.Timing.Polling.WaitUntilAsync(() => _model.Requests.Count == 3);
+        release.SetResult();
+        var changed = await pruning;
+
+        // Assert
+        Assert.True(changed);
+        Assert.Equal([16, 16, 8], _model.Requests.Select(r => r.Questions.Count).Order().Reverse());
+        Assert.Equal(20, Assert.Single(_observer.Notices).Dropped);
+    }
 }

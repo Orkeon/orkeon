@@ -8,8 +8,9 @@ namespace Orkeon.Application.Crew.Compaction;
 /// <see cref="FillShare"/> of the usable window (or the compaction trigger, whichever comes first), the decision
 /// model judges each result of a read tool older than the <see cref="KeepRecentMessages"/> last messages: keep it,
 /// keep its first <see cref="HeadChars"/> characters, or drop it. It sees the call (tool, input, size, age), never
-/// the result. With the decision circuit off, nothing is pruned. Pruning rides compaction: an agent that does not
-/// compact does not prune.
+/// the result. With the decision circuit off, nothing is pruned. A crew loop prunes where it compacts: an agent that
+/// does not compact does not prune. A script's <c>ctx.llm.act</c> does not compact, and prunes only when the call
+/// asks for it (<c>prune</c>, #461), whatever <see cref="Enabled"/> says.
 /// </summary>
 public sealed class ToolResultPruningOptions
 {

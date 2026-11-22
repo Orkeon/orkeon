@@ -71,4 +71,12 @@ public sealed record ScriptingHostPorts
 
     /// <summary>The transcript caps of an agent instance. Null keeps the defaults.</summary>
     public Orkeon.Scripting.Configuration.ScriptAgentInstanceOptions? AgentInstances { get; init; }
+
+    /// <summary>
+    /// The pruning a script's <c>ctx.llm.act</c> asks for with its <c>prune</c> option (#461): the orchestrator's
+    /// read-result pruning, its decision circuit and its <c>agent.pruned</c> observer. Null leaves an act's
+    /// <c>prune</c> without effect, and no decision call is made.
+    /// </summary>
+    [System.Diagnostics.CodeAnalysis.Experimental("ORKEXP009", UrlFormat = "https://github.com/Orkeon/orkeon/blob/main/docs/reference/experimental-apis.md")]
+    public Orkeon.Application.Crew.Compaction.IConversationPruner? ConversationPruner { get; init; }
 }

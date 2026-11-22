@@ -52,6 +52,7 @@ internal static class CrewBuilderBinding
             RunEvents = services.RunEvents,
             ToolCallDlp = services.ToolCallDlp,
             ToolLimits = services.ToolLimits,
+            ConversationPruner = services.ConversationPruner,
             AgentInstances = services.AgentInstances,
             Mounts = services.Mounts,
             WorkingDirectory = services.WorkingDirectory,
@@ -75,6 +76,7 @@ internal static class CrewBuilderBinding
         /// <summary>The run's event stream a scripted spawn reports to.</summary>
         public Orkeon.Application.Runs.IRunEventSink? RunEvents { get; init; }
         public Orkeon.Domain.Tools.ToolResultLimitsOptions? ToolLimits { get; init; }
+        public Orkeon.Application.Crew.Compaction.IConversationPruner? ConversationPruner { get; init; }
         public Orkeon.Scripting.Configuration.ScriptAgentInstanceOptions? AgentInstances { get; init; }
         public Func<IReadOnlyList<Orkeon.Domain.FileSystem.MountInfo>>? Mounts { get; init; }
 

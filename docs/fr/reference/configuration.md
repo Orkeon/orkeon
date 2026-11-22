@@ -2058,7 +2058,9 @@ un tour qui a tout gardé n'émet rien. Circuit de décision coupé, rien
 n'est élagué : un avertissement par run, aucun appel de décision, aucune erreur. Une fois le disjoncteur de
 la compaction ouvert (trois échecs de suite), la boucle n'élague plus pour le reste de la tentative
 de la tâche. Un agent remplace `Enabled` par `compaction: { prune }` ; un agent qui ne compacte pas
-n'élague pas.
+n'élague pas : l'élagage suit la compaction. Le `ctx.llm.act` d'un script ne compacte pas et n'élague que quand
+l'appel le demande (`prune: true` prend ces nombres, un objet les remplace dans les mêmes bornes, #461), quoi que
+dise `Enabled`.
 
 <!-- settings:Orkeon:Compaction:Prune -->
 **Lue par** : `orkeon`, `orkeon-host`, `orkeon-repl`.

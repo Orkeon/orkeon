@@ -26,6 +26,7 @@ public sealed class JsEngineFactory
     private readonly Orkeon.Application.Runs.IRunEventSink? _runEvents;
     private readonly Orkeon.Application.Interfaces.Ports.IScriptAgentMemoryStore? _agentMemoryStore;
     private readonly Orkeon.Domain.Tools.ToolResultLimitsOptions? _toolLimits;
+    private readonly Orkeon.Application.Crew.Compaction.IConversationPruner? _conversationPruner;
     private readonly Orkeon.Scripting.Configuration.ScriptAgentInstanceOptions? _agentInstances;
     private readonly Func<IReadOnlyList<Orkeon.Domain.FileSystem.MountInfo>>? _mounts;
     private readonly Func<string?>? _workingDirectory;
@@ -77,6 +78,7 @@ public sealed class JsEngineFactory
         _runEvents = hostPorts?.RunEvents;
         _agentMemoryStore = hostPorts?.AgentMemoryStore;
         _toolLimits = hostPorts?.ToolLimits;
+        _conversationPruner = hostPorts?.ConversationPruner;
         _agentInstances = hostPorts?.AgentInstances;
         _mounts = hostPorts?.FileSystem is { } fileSystem ? fileSystem.GetAvailableMounts : null;
         _workingDirectory = hostPorts?.FileSystem is { } host ? () => host.WorkingDirectory : null;
@@ -218,6 +220,7 @@ public sealed class JsEngineFactory
             RunEvents = _runEvents,
             AgentMemoryStore = _agentMemoryStore,
             ToolLimits = _toolLimits,
+            ConversationPruner = _conversationPruner,
             AgentInstances = _agentInstances,
             Mounts = _mounts,
             WorkingDirectory = _workingDirectory,

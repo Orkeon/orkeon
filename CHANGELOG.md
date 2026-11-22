@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — `prune` on `ctx.llm.act`: a script's own loop gets the orchestrator's read-result pruning (#461)
+
+`ctx.llm.act(prompt, { prune: true })` asks the host, before each model turn, for the pruning the crew loops run
+(`Orkeon:Compaction:Prune`): once the estimated prompt reaches `FillShare` of the call's usable window, the decision
+model judges each older result of a read the call ran, from its call alone, and keeps, cuts or drops it. `true` takes
+the host's numbers; `{ fillShare, keepRecentMessages, headChars }` overrides them within the same bounds. Without
+`prune` no decision call is made, whatever `Enabled` says. `prune` next to `onContextPressure` or `contextPressure` is
+refused with a message naming both. `result.pruned` (`offered`, `judged`, `kept`, `cut`, `dropped`, `freedTokens`)
+sums the loop on every outcome and is absent when nothing was judged; a pruning that cut or dropped a result emits
+`agent.pruned`. The seam is a new experimental port in `Orkeon.Application`, `IConversationPruner` with
+`ConversationPruneRequest`, `ConversationPruneResponse` and `ActConversationView` (`ORKEXP009`), which the host hands
+the scripting runtime through `ScriptingHostPorts.ConversationPruner`. The pruning stage asks the batches of one
+pruning together instead of one after the other, for the crew loops too.
+
 ### Added — LLM provider modules: `Llm:Provider` names a provider shipped outside the core
 
 A provider can now live outside `Orkeon.Infrastructure` and be chosen by name. A host registers an

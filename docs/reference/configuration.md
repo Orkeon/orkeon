@@ -1994,7 +1994,9 @@ emits `agent.pruned` under `orkeon run`, `orkeon-host` and `orkeon mcp serve --c
 everything emits nothing. With the decision circuit
 off, nothing is pruned: one warning per run, no decision call, no error. Once compaction's breaker opens
 (three failures in a row), the loop prunes no more for the rest of the task attempt. An agent
-overrides `Enabled` with `compaction: { prune }`; an agent that does not compact does not prune.
+overrides `Enabled` with `compaction: { prune }`; an agent that does not compact does not prune: pruning rides
+compaction. A script's `ctx.llm.act` does not compact and prunes only when the call asks (`prune: true` takes these
+numbers, an object overrides them within the same bounds, #461), whatever `Enabled` says.
 
 <!-- settings:Orkeon:Compaction:Prune -->
 **Read by**: `orkeon`, `orkeon-host`, `orkeon-repl`.
