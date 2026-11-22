@@ -305,6 +305,8 @@ project, exposing plain fields or properties to configure answers and inspect ca
 
 ### Scripts and commits
 
+* Before opening a pull request, and before every push to one, run `bash scripts/pre-pr-check.sh`: it
+  checks what the CI refuses and a local build accepts, listed in `.github/pre-pr-checks.md`.
 * A `.sh` script, or any script with a shebang line meant to be run directly, is committed
   **executable** (mode `100755`): `git update-index --chmod=+x path/to/script.sh`. The
   `file-modes.yml` gate reads the mode from the git index — the only one a macOS/Linux

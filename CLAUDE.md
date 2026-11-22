@@ -43,7 +43,7 @@ Before the first change of a new piece of work, read `git branch --show-current`
 
 ### Before a pull request is opened or updated
 
-Run `bash scripts/pre-pr-check.sh` before every `gh pr create` and before every push to a branch that has an open pull request, and read `.github/pre-pr-checks.md` first: it lists what the CI refuses and a local build accepts (the .NET 11 SDK's analyzers, the CodeQL rules that have fired, the gitleaks scan of the history). A `FAIL` line is fixed before the push; a `note` line is read against the file's tables. After the push, read `gh pr checks <n>` until every check has ended. When the CI refuses something the script let through, add the rule to the file and its pattern to the script in the same pull request.
+Run `bash scripts/pre-pr-check.sh` before every `gh pr create` and before every push to a branch that has an open pull request, and read `.github/pre-pr-checks.md` first: it lists what the CI refuses and a local build accepts (the .NET 11 SDK's analyzers, the CodeQL rules that have fired, the gitleaks scan of the history). A `FAIL` line is fixed before the push; a `note` line is read against the file's tables. After the push, read `gh pr checks <n>` until every check has ended. When the CI refuses something the script let through, add the rule to the file, its pattern to the script and its case to `bash scripts/pre-pr-check.sh --self-test` in the same pull request.
 
 ### Virtual File System: mandatory for all I/O
 

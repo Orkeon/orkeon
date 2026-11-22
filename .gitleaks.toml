@@ -62,6 +62,13 @@ useDefault = true
 #                                     variable NAME is expected (`Auth:ClientSecretEnvVar`), to prove
 #                                     Studio warns that it is no variable name and never repeats
 #                                     what was typed. Six letters of Google's prefix, `=`, a word.
+#   ORKEON_TEST_451_NO_SUCH_KEY       not a credential at all: the NAME of an environment variable no
+#                                     machine sets, given as `ApiKeyEnvVar` by DecisionRelayResumeTests
+#                                     (#451) to prove the hosted decision provider without a key
+#                                     follows the relay.
+#   wrkspc_01Test                     a fake workspace identifier: RunnerHostUnknownSettingsTests (#468)
+#                                     passes it under the `Llm:WorkspaceId` key to prove the key is
+#                                     declared; the LLM mock and catalogue tests reuse it.
 [[allowlists]]
 description = "Reviewed fake fixture and documentation values (listed individually, never by path)"
 regexes = [
