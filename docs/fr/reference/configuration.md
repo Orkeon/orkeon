@@ -206,7 +206,7 @@ qu'elle accepte quand leur liste est fermée, et son sens.
 <!-- settings-index -->
 | Catégorie | Sections | Clés |
 |---|---|---|
-| [Modèles](#modèles) | [`Evaluation`](#evaluation), [`Llm`](#llm), [`LlmLogging`](#llmlogging), [`Orkeon:CostTracking`](#orkeoncosttracking), [`Orkeon:Decision`](#orkeondecision), [`Orkeon:Decision:Effort`](#orkeondecisioneffort), [`Orkeon:Decision:Route`](#orkeondecisionroute), [`Orkeon:Kev`](#orkeonkev), [`Orkeon:Liquid`](#orkeonliquid), [`Orkeon:TokenCounter`](#orkeontokencounter), [`Orkeon:TypeSafe`](#orkeontypesafe) | 107 |
+| [Modèles](#modèles) | [`Evaluation`](#evaluation), [`Llm`](#llm), [`LlmLogging`](#llmlogging), [`Orkeon:CostTracking`](#orkeoncosttracking), [`Orkeon:Decision`](#orkeondecision), [`Orkeon:Decision:Effort`](#orkeondecisioneffort), [`Orkeon:Decision:Route`](#orkeondecisionroute), [`Orkeon:Kev`](#orkeonkev), [`Orkeon:Liquid`](#orkeonliquid), [`Orkeon:TokenCounter`](#orkeontokencounter), [`Orkeon:TypeSafe`](#orkeontypesafe) | 109 |
 | [Débit et budgets](#débit-et-budgets) | [`RateLimiting`](#ratelimiting), [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting) | 11 |
 | [Mémoire et vecteurs](#mémoire-et-vecteurs) | [`Memory`](#memory), [`Orkeon:ChromaDb`](#orkeonchromadb), [`Orkeon:CognitiveMemory`](#orkeoncognitivememory), [`Orkeon:CrewMemory`](#orkeoncrewmemory), [`Orkeon:EmbeddingCache`](#orkeonembeddingcache), [`Orkeon:Embeddings`](#orkeonembeddings), [`Orkeon:Encryption`](#orkeonencryption), [`Orkeon:LanceDb`](#orkeonlancedb), [`Orkeon:Pinecone`](#orkeonpinecone), [`Orkeon:Redis`](#orkeonredis), [`Orkeon:Sqlite`](#orkeonsqlite), [`Orkeon:VectorSearch`](#orkeonvectorsearch) | 69 |
 | [RAG](#rag) | [`Orkeon:Rag`](#orkeonrag), [`Orkeon:Rag:Ingestion`](#orkeonragingestion), [`Orkeon:Rag:QueryRouting`](#orkeonragqueryrouting), [`Orkeon:Rag:Retrieval:Hybrid`](#orkeonragretrievalhybrid), [`Orkeon:Rag:WebFallback`](#orkeonragwebfallback) | 34 |
@@ -218,7 +218,7 @@ qu'elle accepte quand leur liste est fermée, et son sens.
 | [Hôte de service et A2A](#hôte-de-service-et-a2a) | [`A2A`](#a2a), [`A2A:Security`](#a2asecurity), [`A2A:Security:AzureAD`](#a2asecurityazuread), [`A2A:Security:Oidc`](#a2asecurityoidc), [`Orkeon:Host`](#orkeonhost), [`Orkeon:Host:Discord`](#orkeonhostdiscord) | 59 |
 | [Observabilité](#observabilité) | [`Logging`](#logging), [`Orkeon:Monitoring`](#orkeonmonitoring), [`Telemetry`](#telemetry) | 8 |
 
-87 sections, 566 clés. Lues par aucun binaire livré, seulement par un hôte écrit en C# (6) : [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting), [`Orkeon:VectorSearch`](#orkeonvectorsearch), [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Monitoring`](#orkeonmonitoring).
+87 sections, 568 clés. Lues par aucun binaire livré, seulement par un hôte écrit en C# (6) : [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting), [`Orkeon:VectorSearch`](#orkeonvectorsearch), [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Monitoring`](#orkeonmonitoring).
 <!-- /settings-index -->
 
 Lire un tableau :
@@ -308,7 +308,6 @@ tout autre modèle prend `Orkeon:Cli:Session:ContextWindowTokens`.
 |---|---|---|---|
 | `ApiKey` | chaîne, secret | — | La clé d'API, en clair. Préférez `ApiKeyEnvVar` : une clé écrite ici est dans le fichier de réglages. |
 | `ApiKeyEnvVar` | chaîne | — | Le nom de la variable d'environnement qui contient la clé d'API, lue quand `ApiKey` n'en résout aucune : l'environnement du processus, puis la portée utilisateur de Windows. |
-| `WorkspaceId` | chaîne | — | Le workspace Anthropic où agit la clé, envoyé dans l'en-tête `anthropic-workspace-id` : une clé liée à une identité refuse tout appel sans lui. Ce n'est pas un secret ; sa forme variable d'environnement est celle du binder (`Llm__WorkspaceId`). Un fournisseur autre qu'Anthropic ne l'envoie pas et journalise l'avertissement structuré d'option non honorée (événement `110`). |
 | `AvailableModels` | liste de chaînes | `[]` | Les modèles qu'un `/model` scripté peut proposer : une liste, ou une seule valeur séparée par des virgules. |
 | `BaseUrl` | chaîne | — | L'adresse du point d'accès du fournisseur, `http://` ou `https://`. Omise, l'adresse du fournisseur que désigne le nom du modèle ou la clé. |
 | `Cache:SystemPrompt` | booléen | — | Marque le prompt système comme cachable pour chaque agent qui ne fixe aucun cache, sur un fournisseur dont le cache de prompt est explicite (Anthropic). Omis, il ne l'est pas. |
@@ -328,7 +327,6 @@ tout autre modèle prend `Orkeon:Cli:Session:ContextWindowTokens`.
 | `ModelCapabilities:<nom>:Vision` | booléen | — | Si le modèle accepte des parties image en entrée. Omis, la valeur intégrée du modèle (faux si la table ne le connaît pas). |
 | `Profiles:<nom>:ApiKey` | chaîne, secret | — | La clé d'API, en clair. Préférez `ApiKeyEnvVar` : une clé écrite ici est dans le fichier de réglages. |
 | `Profiles:<nom>:ApiKeyEnvVar` | chaîne | — | Le nom de la variable d'environnement qui contient la clé d'API, lue quand `ApiKey` n'en résout aucune : l'environnement du processus, puis la portée utilisateur de Windows. |
-| `Profiles:<nom>:WorkspaceId` | chaîne | — | Le workspace Anthropic de la clé de ce profil (`Llm__Profiles__<nom>__WorkspaceId`), comme `WorkspaceId` ci-dessus. |
 | `Profiles:<nom>:BaseUrl` | chaîne | — | L'adresse du point d'accès du fournisseur, `http://` ou `https://`. Omise, l'adresse du fournisseur que désigne le nom du modèle ou la clé. |
 | `Profiles:<nom>:Cache:SystemPrompt` | booléen | — | Marque le prompt système comme cachable pour chaque agent qui ne fixe aucun cache, sur un fournisseur dont le cache de prompt est explicite (Anthropic). Omis, il ne l'est pas. |
 | `Profiles:<nom>:Cache:Tools` | booléen | — | Marque les définitions d'outils comme cachables pour chaque agent qui ne fixe aucun cache, sur un fournisseur dont le cache de prompt est explicite (Anthropic). Omis, elles ne le sont pas. |
@@ -349,6 +347,7 @@ tout autre modèle prend `Orkeon:Cli:Session:ContextWindowTokens`.
 | `Profiles:<nom>:Thinking:Effort` | chaîne | — | L'intensité de sa réflexion, dans les mots du fournisseur (`low`, `medium`, `high`…). Omise, celle du fournisseur. `auto` est refusé au démarrage : c'est un mot d'équipage (`thinking: { effort: auto }`). |
 | `Profiles:<nom>:Thinking:Enabled` | booléen | — | Si le modèle réfléchit avant de répondre. Omise, le comportement propre du fournisseur. |
 | `Profiles:<nom>:TimeoutSeconds` | entier | `30` | La durée maximale d'un appel, en secondes. Trop courte à son défaut pour un modèle qui réfléchit avant de répondre : écrivez 600 pour un tel modèle, ou coupez sa réflexion. |
+| `Profiles:<nom>:WorkspaceId` | chaîne | — | Le workspace Anthropic où agit la clé, envoyé dans `anthropic-workspace-id` : une clé liée à une identité refuse tout appel sans lui. Ce n'est pas un secret. Un autre fournisseur avertit qu'il ne l'envoie pas. |
 | `Provider` | chaîne | — | `mock`, le fournisseur hors ligne qui répond depuis le fichier JSONL que nomme `Responses`, ou la clé d'un module de fournisseur que l'hôte enregistre. Jamais un éditeur du catalogue. Omise, le fournisseur découle de `BaseUrl`, du nom du modèle et de la clé. |
 | `Replay:Cassette` | chaîne | — | Le chemin virtuel de la cassette, un fichier JSONL ; `record` et `replay` en ont besoin. |
 | `Replay:Mode` | chaîne | — | `record` écrit dans la cassette chaque appel du run et sa réponse ; `replay` répond à chaque appel depuis elle, et un appel qu'elle ne contient pas échoue ; `off` ne fait ni l'un ni l'autre. Omis, `off`. |
@@ -358,6 +357,7 @@ tout autre modèle prend `Orkeon:Cli:Session:ContextWindowTokens`.
 | `Thinking:Effort` | chaîne | — | L'intensité de sa réflexion, dans les mots du fournisseur (`low`, `medium`, `high`…). Omise, celle du fournisseur. `auto` est refusé au démarrage : c'est un mot d'équipage (`thinking: { effort: auto }`). |
 | `Thinking:Enabled` | booléen | — | Si le modèle réfléchit avant de répondre. Omise, le comportement propre du fournisseur. |
 | `TimeoutSeconds` | entier | `30` | La durée maximale d'un appel, en secondes. Trop courte à son défaut pour un modèle qui réfléchit avant de répondre : écrivez 600 pour un tel modèle, ou coupez sa réflexion. |
+| `WorkspaceId` | chaîne | — | Le workspace Anthropic où agit la clé, envoyé dans `anthropic-workspace-id` : une clé liée à une identité refuse tout appel sans lui. Ce n'est pas un secret. Un autre fournisseur avertit qu'il ne l'envoie pas. |
 <!-- /settings -->
 
 - **La clé.** `ApiKeyEnvVar` nomme la variable d'environnement qui contient la clé —

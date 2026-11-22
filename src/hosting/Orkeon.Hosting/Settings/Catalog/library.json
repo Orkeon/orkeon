@@ -848,6 +848,12 @@
       "description": "How long one call may take, in seconds. Too short at its default for a model that thinks before it answers: write 600 for one, or turn its thinking off."
     },
     {
+      "path": "Llm:Profiles:<name>:WorkspaceId",
+      "section": "Llm",
+      "type": "string",
+      "description": "The Anthropic workspace the key acts in, sent as `anthropic-workspace-id`: an identity-linked key refuses every call without it. Not a secret. Another provider warns that it does not send it."
+    },
+    {
       "path": "Llm:Provider",
       "section": "Llm",
       "type": "string",
@@ -901,6 +907,12 @@
       "type": "integer",
       "default": 30,
       "description": "How long one call may take, in seconds. Too short at its default for a model that thinks before it answers: write 600 for one, or turn its thinking off."
+    },
+    {
+      "path": "Llm:WorkspaceId",
+      "section": "Llm",
+      "type": "string",
+      "description": "The Anthropic workspace the key acts in, sent as `anthropic-workspace-id`: an identity-linked key refuses every call without it. Not a secret. Another provider warns that it does not send it."
     },
     {
       "path": "LlmLogging:FullEmbeddingLog",

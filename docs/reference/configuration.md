@@ -194,7 +194,7 @@ closed list, and what it means.
 <!-- settings-index -->
 | Category | Sections | Keys |
 |---|---|---|
-| [Models](#models) | [`Evaluation`](#evaluation), [`Llm`](#llm), [`LlmLogging`](#llmlogging), [`Orkeon:CostTracking`](#orkeoncosttracking), [`Orkeon:Decision`](#orkeondecision), [`Orkeon:Decision:Effort`](#orkeondecisioneffort), [`Orkeon:Decision:Route`](#orkeondecisionroute), [`Orkeon:Kev`](#orkeonkev), [`Orkeon:Liquid`](#orkeonliquid), [`Orkeon:TokenCounter`](#orkeontokencounter), [`Orkeon:TypeSafe`](#orkeontypesafe) | 107 |
+| [Models](#models) | [`Evaluation`](#evaluation), [`Llm`](#llm), [`LlmLogging`](#llmlogging), [`Orkeon:CostTracking`](#orkeoncosttracking), [`Orkeon:Decision`](#orkeondecision), [`Orkeon:Decision:Effort`](#orkeondecisioneffort), [`Orkeon:Decision:Route`](#orkeondecisionroute), [`Orkeon:Kev`](#orkeonkev), [`Orkeon:Liquid`](#orkeonliquid), [`Orkeon:TokenCounter`](#orkeontokencounter), [`Orkeon:TypeSafe`](#orkeontypesafe) | 109 |
 | [Rate and budgets](#rate-and-budgets) | [`RateLimiting`](#ratelimiting), [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting) | 11 |
 | [Memory and vectors](#memory-and-vectors) | [`Memory`](#memory), [`Orkeon:ChromaDb`](#orkeonchromadb), [`Orkeon:CognitiveMemory`](#orkeoncognitivememory), [`Orkeon:CrewMemory`](#orkeoncrewmemory), [`Orkeon:EmbeddingCache`](#orkeonembeddingcache), [`Orkeon:Embeddings`](#orkeonembeddings), [`Orkeon:Encryption`](#orkeonencryption), [`Orkeon:LanceDb`](#orkeonlancedb), [`Orkeon:Pinecone`](#orkeonpinecone), [`Orkeon:Redis`](#orkeonredis), [`Orkeon:Sqlite`](#orkeonsqlite), [`Orkeon:VectorSearch`](#orkeonvectorsearch) | 69 |
 | [RAG](#rag) | [`Orkeon:Rag`](#orkeonrag), [`Orkeon:Rag:Ingestion`](#orkeonragingestion), [`Orkeon:Rag:QueryRouting`](#orkeonragqueryrouting), [`Orkeon:Rag:Retrieval:Hybrid`](#orkeonragretrievalhybrid), [`Orkeon:Rag:WebFallback`](#orkeonragwebfallback) | 34 |
@@ -206,7 +206,7 @@ closed list, and what it means.
 | [Service host and A2A](#service-host-and-a2a) | [`A2A`](#a2a), [`A2A:Security`](#a2asecurity), [`A2A:Security:AzureAD`](#a2asecurityazuread), [`A2A:Security:Oidc`](#a2asecurityoidc), [`Orkeon:Host`](#orkeonhost), [`Orkeon:Host:Discord`](#orkeonhostdiscord) | 59 |
 | [Observability](#observability) | [`Logging`](#logging), [`Orkeon:Monitoring`](#orkeonmonitoring), [`Telemetry`](#telemetry) | 8 |
 
-87 sections, 566 keys. Read by no shipped binary, only by a host written in C# (6): [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting), [`Orkeon:VectorSearch`](#orkeonvectorsearch), [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Monitoring`](#orkeonmonitoring).
+87 sections, 568 keys. Read by no shipped binary, only by a host written in C# (6): [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting), [`Orkeon:VectorSearch`](#orkeonvectorsearch), [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Monitoring`](#orkeonmonitoring).
 <!-- /settings-index -->
 
 How to read a table:
@@ -289,7 +289,6 @@ every other model takes `Orkeon:Cli:Session:ContextWindowTokens`.
 |---|---|---|---|
 | `ApiKey` | string, secret | — | The API key, in clear text. Prefer `ApiKeyEnvVar`: a key written here is in the settings file. |
 | `ApiKeyEnvVar` | string | — | The name of the environment variable that holds the API key, read when `ApiKey` resolves none: the process environment, then the Windows user scope. |
-| `WorkspaceId` | string | — | The Anthropic workspace the key acts in, sent as the `anthropic-workspace-id` header: an identity-linked key refuses every call without it. Not a secret; its environment-variable form is the binder's (`Llm__WorkspaceId`). A provider other than Anthropic does not send it and logs the structured unhonoured-option warning (event `110`). |
 | `AvailableModels` | list of string | `[]` | The models a scripted `/model` may offer: a list, or one comma-separated value. |
 | `BaseUrl` | string | — | The address of the provider's endpoint, `http://` or `https://`. Left out, the address of the provider the model's name or the key points to. |
 | `Cache:SystemPrompt` | boolean | — | Marks the system prompt cacheable for every agent that sets no cache of its own, on a provider whose prompt cache is explicit (Anthropic). Left out, it is not. |
@@ -309,7 +308,6 @@ every other model takes `Orkeon:Cli:Session:ContextWindowTokens`.
 | `ModelCapabilities:<name>:Vision` | boolean | — | Whether the model takes image parts as input. Left out, the built-in value of the model (false when the table does not know it). |
 | `Profiles:<name>:ApiKey` | string, secret | — | The API key, in clear text. Prefer `ApiKeyEnvVar`: a key written here is in the settings file. |
 | `Profiles:<name>:ApiKeyEnvVar` | string | — | The name of the environment variable that holds the API key, read when `ApiKey` resolves none: the process environment, then the Windows user scope. |
-| `Profiles:<name>:WorkspaceId` | string | — | The Anthropic workspace of this profile's key (`Llm__Profiles__<name>__WorkspaceId`), as `WorkspaceId` above. |
 | `Profiles:<name>:BaseUrl` | string | — | The address of the provider's endpoint, `http://` or `https://`. Left out, the address of the provider the model's name or the key points to. |
 | `Profiles:<name>:Cache:SystemPrompt` | boolean | — | Marks the system prompt cacheable for every agent that sets no cache of its own, on a provider whose prompt cache is explicit (Anthropic). Left out, it is not. |
 | `Profiles:<name>:Cache:Tools` | boolean | — | Marks the tool definitions cacheable for every agent that sets no cache of its own, on a provider whose prompt cache is explicit (Anthropic). Left out, they are not. |
@@ -330,6 +328,7 @@ every other model takes `Orkeon:Cli:Session:ContextWindowTokens`.
 | `Profiles:<name>:Thinking:Effort` | string | — | How hard it thinks, in the provider's own words (`low`, `medium`, `high`…). Left out, the provider's own. `auto` is refused at start: it is a crew's word (`thinking: { effort: auto }`). |
 | `Profiles:<name>:Thinking:Enabled` | boolean | — | Whether the model thinks before it answers. Left out, the provider's own behaviour. |
 | `Profiles:<name>:TimeoutSeconds` | integer | `30` | How long one call may take, in seconds. Too short at its default for a model that thinks before it answers: write 600 for one, or turn its thinking off. |
+| `Profiles:<name>:WorkspaceId` | string | — | The Anthropic workspace the key acts in, sent as `anthropic-workspace-id`: an identity-linked key refuses every call without it. Not a secret. Another provider warns that it does not send it. |
 | `Provider` | string | — | `mock`, the offline provider that answers from the JSONL file `Responses` names, or the key of a provider module the host registers. Never a vendor of the catalogue. Left out, the provider follows from `BaseUrl`, the model's name and the key. |
 | `Replay:Cassette` | string | — | The virtual path of the cassette, a JSONL file; `record` and `replay` need it. |
 | `Replay:Mode` | string | — | `record` writes every call of the run and its answer to the cassette; `replay` answers every call from it, and a call it does not hold fails; `off` does neither. Left out, `off`. |
@@ -339,6 +338,7 @@ every other model takes `Orkeon:Cli:Session:ContextWindowTokens`.
 | `Thinking:Effort` | string | — | How hard it thinks, in the provider's own words (`low`, `medium`, `high`…). Left out, the provider's own. `auto` is refused at start: it is a crew's word (`thinking: { effort: auto }`). |
 | `Thinking:Enabled` | boolean | — | Whether the model thinks before it answers. Left out, the provider's own behaviour. |
 | `TimeoutSeconds` | integer | `30` | How long one call may take, in seconds. Too short at its default for a model that thinks before it answers: write 600 for one, or turn its thinking off. |
+| `WorkspaceId` | string | — | The Anthropic workspace the key acts in, sent as `anthropic-workspace-id`: an identity-linked key refuses every call without it. Not a secret. Another provider warns that it does not send it. |
 <!-- /settings -->
 
 - **The key.** `ApiKeyEnvVar` names the environment variable that holds the key —
