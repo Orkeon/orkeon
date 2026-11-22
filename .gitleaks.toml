@@ -82,6 +82,8 @@ regexes = [
   '''^"?sk-from-the-variable-0123456789"?$''',
   '''^"?zai-secret-key-1234"?$''',
   '''^"?GOCSPX=secret"?$''',
+  '''^"?ORKEON_TEST_451_NO_SUCH_KEY"?$''',
+  '''^"?wrkspc_01Test"?$''',
 ]
 
 # ── A credential that is a variable, not a value ─────────────────────────────────────
