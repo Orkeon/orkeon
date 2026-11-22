@@ -281,7 +281,7 @@ partie demandée, chacune `{ value, reason, picked, probability }` ; l'hôte ne 
 - Raisons : `model`, `low-confidence`, `no-answer` (aucune option répondue, ou l'appel a échoué), `circuit-off` (le
   circuit de décision est coupé, ou la crew tourne en `decision({ mode: "none" })` : aucun appel), plus `no-ladder`,
   `floor`, `ceiling` pour le profil et `single-level` pour l'effort. Chaque réponse est aussi un événement
-  `agent.route` ou `agent.effort` du run, avec le rôle de l'agent et un `taskId` nul.
+  `agent.route` ou `agent.effort` du run, avec le rôle de l'agent et sans `taskId`.
 - Refusé par une `InvalidScriptError` qui nomme l'option, avant tout appel : une échelle de moins de deux barreaux ;
   un barreau répété, vide ou `auto` ; un barreau, plancher, plafond ou repli que l'hôte ne déclare pas ; un plancher ou
   un plafond hors de l'échelle ; un plancher au-dessus du plafond ; un niveau inconnu ; `min` au-dessus de `max` ;

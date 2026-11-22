@@ -265,7 +265,7 @@ the middle at 4,000 characters. It answers `{ profile?, effort? }`, a key for ea
 - Reasons: `model`, `low-confidence`, `no-answer` (no option answered, or the call failed), `circuit-off` (the
   decision circuit is off, or the crew runs on `decision({ mode: "none" })`: no call), plus `no-ladder`, `floor`,
   `ceiling` for the profile and `single-level` for the effort. Each answer is also an `agent.route` or `agent.effort`
-  event of the run, with the agent's role and a null `taskId`.
+  event of the run, with the agent's role and no `taskId`.
 - Refused with an `InvalidScriptError` naming the option, before any call: a ladder of fewer than two rungs; a
   repeated, blank or `auto` rung; a rung, floor, ceiling or fallback the host does not declare; a floor or ceiling off
   the ladder; a floor above the ceiling; an unknown level; `min` above `max`; no level left between them; neither

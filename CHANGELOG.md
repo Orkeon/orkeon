@@ -51,11 +51,11 @@ defaults to `Orkeon:Decision:Route:Ladder`, the levels are `Orkeon:Decision:Effo
 `floor` and `ceiling` clamp the model's pick with no other call (reasons `floor`, `ceiling`), one rung or one level
 left answers with no call, and the circuit off or a crew on `decision.mode: none` answers `circuit-off` with no call.
 Every refused option throws an `InvalidScriptError` naming it before any call. Each answer is an `agent.route` or
-`agent.effort` event with the agent's role and a null `taskId` (the observer's `AgentRouteNotice` and
+`agent.effort` event with the agent's role and no `taskId` (the observer's `AgentRouteNotice` and
 `AgentEffortNotice` carry an empty `TaskId`). The seam is public and experimental (`ORKEXP008`): `ISystemOnePicker` and
 its records in `Orkeon.Application`, registered scoped by `AddOrkeonApplication`, and `ScriptingHostPorts.SystemOnePicker`,
 which `orkeon run`, the REPL, `orkeon-host`, `mcp serve --crew` and the forge's trials set. The task path of System One
-is unchanged. On the wire, `agent.route` and `agent.effort` can now carry a null `taskId` (a pick belongs to no task)
+is unchanged. On the wire, `agent.route` and `agent.effort` can now come without a `taskId` (a pick belongs to no task)
 and, on `agent.route`, the reasons `floor` and `ceiling`: a client that keyed these events by task reads the role.
 
 ### Added — `prune` on `ctx.llm.act`: a script's own loop gets the orchestrator's read-result pruning (#461)
@@ -72,7 +72,7 @@ sums the loop on every outcome and is absent when nothing was judged; a pruning 
 the scripting runtime through `ScriptingHostPorts.ConversationPruner`, taken from the run's scope: `orkeon run`,
 `orkeon-host` (which records the act's `agent.pruned` in the run's history), `mcp serve --crew` and the forge's trials
 hand it. A host that hands no pruner ignores `prune` with one warning, and a crew on `decision.mode: none` prunes
-nothing. The act's `agent.pruned` carries a null `taskId` and the agent's role, as a pick's events. The pruning stage
+nothing. The act's `agent.pruned` carries no `taskId` and the agent's role, as a pick's events. The pruning stage
 asks the batches of one pruning together instead of one after the other, for the crew loops too.
 
 ### Changed — the start-time settings check refuses what the binder took without a word **[breaking]** (#449, #450, #454, #455, #456)
