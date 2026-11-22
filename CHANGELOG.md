@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — every verb of `orkeon` accepts a settings file that names the `agent-cli` module (#472)
+
+The tool registered its provider modules in the hosts of `run`, `mcp`, `bridge`, `doctor` and the forge cycle only.
+`orkeon email`, `orkeon drive`, `orkeon runs`, `orkeon rag`, `orkeon eval` and `orkeon forge rephrase` built their
+host without them, so a settings file `orkeon run` and `orkeon doctor` accept was refused there: `"Provider":
+"agent-cli"` with `Llm:Provider names no provider of this host`, and an `Llm:AgentCli` section with `Llm:AgentCli is
+not a setting`. Each of these hosts now registers the modules and the shape of their section, and one settings file
+is judged the same way by every verb.
+
+### Fixed — `orkeon forge rephrase` says a settings refusal, where it ended on an unhandled exception (#473)
+
+A settings file the host refuses at its start (an `Llm:Provider` it does not know, a key that is no setting) ended
+`orkeon forge rephrase` on an unhandled `RunnerSettingsException`: a stack trace on stderr, exit 134, and no line at
+all under `--events jsonl`. The verb now refuses as it does for its other errors, exit 1: with `--events jsonl` one
+`error` line, code `FORGE-SETTINGS-REFUSED`, the host's sentence as its `message`, `recoverable: false`, `terminal:
+true`; in the terminal `orkeon forge: <the host's sentence>` on stderr.
+
 ### Fixed — the binder's refusal never keeps the value, whatever the key path holds (#469)
 
 The start-up check reworded the configuration binder's `Failed to convert configuration value '…' at '…' to type '…'.`
