@@ -12,9 +12,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 A scripted command (`*.cmd.ts`) can ask System One for a profile and/or a thinking level:
 `ctx.services.get("pick").pick(request, options)`, with the contract of `ctx.llm.pick` (#460) and the same answer
 `{ profile?, effort? }`. A refusal is prefixed `services.get("pick").pick { <option> } ...`; the call follows the
-command's cancellation (`ctx.signal`) by itself; the LLM usage is credited to the running command instance; there is
-no agent role (the decision model reads an empty one). The service is optional: `ctx.services.has("pick")` is true only
-when the host wires an `ISystemOnePicker` (`orkeon run`, `orkeon-repl`, `orkeon-host`, `mcp serve --crew`).
+command's cancellation (`ctx.signal`) by itself; the LLM usage carries no crew nor agent and is metered like the
+command's other LLM calls (a `decision` call, in the session's total); there is no agent role (the decision model reads
+an empty one). The service is optional: `ctx.services.has("pick")` is true only in `orkeon-repl`, the host that runs
+scripted commands, when it wires an `ISystemOnePicker`; the picker comes from the scope the script engines read their
+scoped ports from, as for `ctx.llm.pick`. The service is bound to the run that got it: get it inside the handler.
 Experimental (`ORKEXP008`), like `ctx.llm.pick`. The typings declare `PickService` in `orkeon-cli.d.ts`.
 
 ### Added — `Llm:WorkspaceId`, the Anthropic workspace from the settings (#468)

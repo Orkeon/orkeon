@@ -280,10 +280,11 @@ plus bas), `script-host` (lancement de crews depuis une commande, et `script-hos
 [Piloter des crews depuis le REPL](./coding-agent-ts.md)) et, dans `orkeon-repl`, `permissions`
 (les règles d'appels d'outils de la session, plus bas), `approvals` (les approbations d'outils en
 attente, plus bas) et `session` (enregistrer la session conservée, en charger une autre, plus bas),
-et `usage` (la consommation LLM de la session par modèle et par commande, plus bas) là où l'hôte tient
-un gestionnaire de coûts ou des instances de commande ; pour ces sept-là, les typings rendent
+`usage` (la consommation LLM de la session par modèle et par commande, plus bas) là où l'hôte tient
+un gestionnaire de coûts ou des instances de commande, et `pick` (le choix de System One, plus bas) là où
+l'hôte câble un `ISystemOnePicker` ; pour ces huit-là, les typings rendent
 `CommandsFacade`, `ScriptHostFacade`, `PermissionRulesFacade`, `PendingApprovals`, `SessionFacade`,
-`RuntimeInfo` et `SessionUsage` sans argument de type. `configuration` n'est
+`RuntimeInfo`, `SessionUsage` et `PickService` sans argument de type. `configuration` n'est
 délibérément **pas** exposée — la racine de configuration porte des clés d'API — les typings
 ne la déclarent donc pas, et demander une clé hors de la whitelist lève une erreur. Les hôtes ajoutent les leurs en
 passant une `Action<ScriptServiceWhitelist>` à `AddScriptCommands` (`Add(name, factory)`,
@@ -293,10 +294,13 @@ passant une `Action<ScriptServiceWhitelist>` à `AddScriptCommands` (`Add(name, 
 `await ctx.services.get("pick").pick(request, { profile: { ladder: [...] }, effort: { max: "high" } })`
 répond `{ profile?, effort? }`, chacun `{ value, reason, picked, probability }`, avec le contrat de
 `ctx.llm.pick`. Il en diffère sur quatre points : un refus est préfixé `services.get("pick").pick { <option> } ...` ;
-l'appel suit de lui-même l'annulation de la commande (`ctx.signal`) ; la consommation LLM est portée au crédit de
-l'instance de commande en cours ; il n'y a pas de rôle d'agent (le modèle de décision en lit un vide). Le service
-est optionnel : `ctx.services.has("pick")` n'est vrai que lorsque l'hôte câble un `ISystemOnePicker` (`orkeon run`,
-`orkeon-repl`, `orkeon-host`, `mcp serve --crew`).
+l'appel suit de lui-même l'annulation de la commande (`ctx.signal`) ; la consommation LLM ne porte ni crew ni
+agent et se compte comme les autres appels LLM de la commande (un appel `decision`, dans le total de la session) ;
+il n'y a pas de rôle d'agent (le modèle de décision en lit un vide). Le service est optionnel :
+`ctx.services.has("pick")` n'est vrai que dans `orkeon-repl`, l'hôte qui exécute les commandes scriptées, lorsqu'il
+câble un `ISystemOnePicker` (lu dans la portée où les moteurs de script lisent leurs ports scopés, comme pour
+`ctx.llm.pick`). Le service est lié à l'exécution qui l'a obtenu : on le prend dans le handler, jamais une fois au
+niveau du module, où il garderait l'annulation de la première exécution.
 
 ## Dispatcher des commandes vers des agents
 

@@ -5,6 +5,7 @@ using Orkeon.Application.Crew.Routing;
 using Orkeon.Application.Interfaces.Ports;
 using Orkeon.Application.Interfaces.Security;
 using Orkeon.Cli.Abstractions.Runners;
+using Orkeon.Cli.Commands.Scripting.DependencyInjection;
 using Orkeon.Cli.Commands.Scripting.Dispatch;
 using Orkeon.Domain.FileSystem;
 using Orkeon.Domain.SharedKernel;
@@ -69,10 +70,13 @@ public static class DefaultScriptServiceWhitelist
                     ? new ScriptSessionUsage(cost, instances)
                     : null)
             // Optional, experimental: System One's pick (#463), the contract of ctx.llm.pick for a command — present
-            // when the host wires an ISystemOnePicker.
-            .AddOptional(ScriptServiceKeys.Pick, sp => sp.GetService<ISystemOnePicker>() is { } picker
-                ? new PickService.Registration(picker)
-                : null);
+            // when the host wires an ISystemOnePicker. The picker is scoped and a scoped service is never resolved from
+            // the root: it comes from the scope the script engines read their scoped ports from (ScriptEngineRunScope,
+            // the one ctx.llm.pick reads), else from the provider the locator was given (a host's own scope).
+            .AddOptional(ScriptServiceKeys.Pick, sp =>
+                (sp.GetService<ScriptEngineRunScope>()?.Services ?? sp).GetService<ISystemOnePicker>() is { } picker
+                    ? new PickService.Registration(picker)
+                    : null);
     }
 
     /// <summary>

@@ -18,11 +18,15 @@ internal sealed class StubSystemOnePicker : ISystemOnePicker
     /// <summary>The tokens the picks followed, oldest first.</summary>
     public ConcurrentQueue<CancellationToken> Tokens { get; } = new();
 
+    /// <summary>Run inside each pick with its token, before the answer (null: nothing); an exception it throws is the pick's.</summary>
+    public Action<CancellationToken>? OnPick { get; set; }
+
     /// <inheritdoc />
     public System.Threading.Tasks.Task<SystemOnePickResponse> PickAsync(SystemOnePickRequest request, CancellationToken cancellationToken)
     {
         Requests.Enqueue(request);
         Tokens.Enqueue(cancellationToken);
+        OnPick?.Invoke(cancellationToken);
         return System.Threading.Tasks.Task.FromResult(Answer);
     }
 }
