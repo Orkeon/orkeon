@@ -250,6 +250,9 @@ public sealed class DoctorCommandTests : IDisposable
         Assert.Equal("fail", config.Status);
         Assert.Contains("'other-cli'", config.Detail, StringComparison.Ordinal);
         Assert.Contains("registered: fake-cli", config.Detail, StringComparison.Ordinal);
+        // The run's start refuses the same key: the two checks agree.
+        Assert.Contains(lines, l => l.Check == "runner-settings" && l.Status == "fail"
+            && l.Detail.Contains("Llm:Provider: 'other-cli'", StringComparison.Ordinal));
     }
 
     private static async Task<(int Exit, IReadOnlyList<(string Check, string Status, string Detail)> Lines)> DoctorJsonAsync(

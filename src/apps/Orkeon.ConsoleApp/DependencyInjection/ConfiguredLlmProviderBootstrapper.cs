@@ -34,7 +34,8 @@ namespace Orkeon.ConsoleApp.DependencyInjection;
 /// The section is read by <see cref="LlmSettings"/>, the reader the runners use: the REPL accepts
 /// exactly the keys <c>orkeon run</c> does — <c>ApiKeyEnvVar</c>, the variable holding the key,
 /// included. The provider type is inferred from the configured <c>BaseUrl</c> by
-/// <c>LlmProviderFactory</c> (e.g. <c>api.deepseek.com</c> → DeepSeek).
+/// <c>LlmProviderFactory</c> (e.g. <c>api.deepseek.com</c> → DeepSeek), unless the section names it
+/// by <c>Provider</c>: <c>mock</c>, or the key of a registered provider module.
 /// </para>
 /// </remarks>
 internal static partial class ConfiguredLlmProviderBootstrapper
@@ -136,7 +137,9 @@ internal static partial class ConfiguredLlmProviderBootstrapper
         foreach (var candidate in sections)
         {
             var address = candidate["BaseUrl"];
+            // A section that names its provider is not read by its address: nothing to warn about.
             if (string.IsNullOrWhiteSpace(address)
+                || !string.IsNullOrWhiteSpace(candidate["Provider"])
                 || LlmEndpointReading.Of(address, null, null).Notice != LlmEndpointNotice.Silent)
                 continue;
 

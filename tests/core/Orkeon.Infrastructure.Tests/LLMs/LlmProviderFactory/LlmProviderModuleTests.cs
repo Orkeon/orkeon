@@ -98,7 +98,7 @@ public sealed class LlmProviderModuleTests
     }
 
     [Fact]
-    public void ShouldBuildEachProfile_WhenProfilesAndFallbackNameModule()
+    public void ShouldBuildEachProfileByItsOwnRule_WhenOneNamesAModuleAndItsFallbackAVendor()
     {
         var module = new FakeLlmProviderModule();
         var profiles = LlmSettings.ReadProfiles(Settings(
@@ -118,13 +118,52 @@ public sealed class LlmProviderModuleTests
     }
 
     [Fact]
-    public void ShouldBuildByExplicitKey_WhenCreateNamesModuleKey()
+    public async Task ShouldBuildByExplicitKey_WhenCreateNamesModuleKey()
     {
         var module = new FakeLlmProviderModule();
+        var sink = new MockLlmUsageSink();
+        var config = LlmConfig.Create("opus");
 
-        Factory([module]).Create("fake-cli", LlmConfig.Create("opus"));
+        var adapter = Assert.IsType<LlmProviderAdapter>(Factory([module], sink).Create("fake-cli", config));
+        await adapter.UnderlyingProvider.ChatAsync(
+            [new LlmMessage { Role = "user", Content = "hello" }], config, TestContext.Current.CancellationToken);
 
         Assert.Single(module.Built);
+        Assert.Equal(12, sink.TotalTokens);
+    }
+
+    [Fact]
+    public void ShouldThrow_WhenCreateNamesAKeyNoModuleAnswers()
+    {
+        var ex = Assert.Throws<NotSupportedException>(() => Factory([new FakeLlmProviderModule()]).Create("other-cli", LlmConfig.Create("opus")));
+
+        Assert.Contains("other-cli", ex.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ShouldTrimAndLowercaseTheKey_WhenSettingsPadIt()
+    {
+        var module = new FakeLlmProviderModule();
+        var config = LlmSettings.ReadDefault(Settings(("Llm:Provider", "  Fake-CLI  ")));
+
+        Factory([module]).Create(config);
+
+        Assert.Single(module.Built);
+    }
+
+    [Theory]
+    [InlineData("openai")]
+    [InlineData("google")]
+    [InlineData("azure")]
+    [InlineData("custom")]
+    [InlineData("docker-model-runner")]
+    [InlineData("Fake-CLI")]
+    [InlineData(" fake-cli")]
+    public void ShouldRefuse_WhenModuleKeyIsBuiltInOrNotInWireForm(string key)
+    {
+        var ex = Assert.Throws<ArgumentException>(() => Factory([new FakeLlmProviderModule { Key = key }]));
+
+        Assert.Contains(key, ex.Message, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -172,6 +211,8 @@ public sealed class LlmProviderModuleTests
     [InlineData("anthropic")]
     [InlineData("openai")]
     [InlineData("google")]
+    [InlineData("custom")]
+    [InlineData("docker-model-runner")]
     public void ShouldRefuseVendorKey_WhenProviderNamesCatalogue(string vendor)
     {
         var ex = Assert.Throws<InvalidOperationException>(() => LlmSettings.ReadDefault(Settings(("Llm:Provider", vendor))));

@@ -58,6 +58,14 @@ Des adaptateurs génériques (`ChatClientToLlmProviderAdapter`, `LlmProviderToCh
   `custom` / `docker-model-runner`, qui construisent le dialecte OpenAI sur l'URL de base configurée.
   Une clé inconnue lève `NotSupportedException`. C'est le chemin de
   `orkeon llm probe --provider`.
+- **Modules de provider.** Un provider peut être livré hors d'`Orkeon.Infrastructure` : un hôte
+  enregistre un `ILlmProviderModule` (`Orkeon.Application.Interfaces.Ports` : une `Key` en
+  minuscules et `Create(config, context)`), et une section écrite `"Provider": "<clé>"` est
+  construite par lui sur les deux points d'entrée, jamais déduite de l'adresse ni du nom du modèle.
+  Ce que le module construit passe par la même cassette, le même mode d'appel, le même compteur de
+  tokens, le même limiteur de débit et le même budget qu'un provider intégré. Un module ne peut
+  répondre ni à `mock` ni à une clé de la liste ci-dessus. Une clé à laquelle aucun module enregistré
+  ne répond est refusée au démarrage de l'hôte du runner, et par la fabrique dans tout autre hôte.
 - `Create(config)` déduit le provider — c'est ce que fait un run, puisque la section `Llm` du
   fichier de settings ne porte aucune clé de provider. La première règle qui correspond
   l'emporte :

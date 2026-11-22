@@ -371,8 +371,7 @@ public static class LlmSettings
 #pragma warning disable CA1308 // the key is matched in its lowercase wire form
         var key = provider.ToLowerInvariant();
 #pragma warning restore CA1308
-        if (Orkeon.Constants.Llm.LlmProviderKeys.All.Contains(key, StringComparer.Ordinal)
-            || Orkeon.Constants.Llm.LlmProviderKeys.Aliases.ContainsKey(key))
+        if (Orkeon.Infrastructure.LLMs.Mock.MockProviderSettings.IsBuiltInKey(key))
             throw new InvalidOperationException(
                 $"{section.Path}:Provider: '{provider}' is a vendor of the catalogue, which Provider never names. "
                 + "Leave Provider out and the provider follows from BaseUrl, the model's name and the key; "

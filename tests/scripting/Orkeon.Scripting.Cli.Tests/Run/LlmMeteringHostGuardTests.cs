@@ -90,8 +90,8 @@ public sealed class LlmMeteringHostGuardTests : IDisposable
     [Fact]
     public async Task ShouldStart_WhenModuleProviderHasNoBaseUrl()
     {
-        // A section naming a provider module carries no address: the host starts, probes nothing,
-        // and serves the module's provider on every surface, metered.
+        // A section naming a provider module carries no address: the host passes its start
+        // validation (the key is answered) and serves the module's provider on every surface, metered.
         var settings = Path.Join(_root, "appsettings.json");
         await File.WriteAllTextAsync(
             settings, """{ "Llm": { "Provider": "fake-cli", "Model": "opus" } }""", TestContext.Current.CancellationToken);
@@ -106,6 +106,18 @@ public sealed class LlmMeteringHostGuardTests : IDisposable
         Assert.Empty(await UnmeteredSurfacesAsync(host.Services, sink));
         Assert.Equal("fake-cli", MeteredLlmProvider.Unwrap(host.Services.GetRequiredService<ILlmProvider>()).Name);
         Assert.True(module.Builds >= 1);
+    }
+
+    [Fact]
+    public async Task ShouldRefuseToStart_WhenProviderKeyHasNoModule()
+    {
+        var settings = Path.Join(_root, "appsettings.json");
+        await File.WriteAllTextAsync(
+            settings, """{ "Llm": { "Provider": "fake-cli", "Model": "opus" } }""", TestContext.Current.CancellationToken);
+
+        var ex = Assert.Throws<RunnerSettingsException>(() => BuildHost(settings, _ => { }));
+
+        Assert.Contains("Llm:Provider: 'fake-cli'", ex.Message, StringComparison.Ordinal);
     }
 
     [Fact]

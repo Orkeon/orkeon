@@ -702,8 +702,14 @@ internal static partial class RunCommand
     /// for the script path, the shared runner path and the forge's trials (GAP-25), so they
     /// cannot drift again.
     /// </summary>
-    internal static void AddCliRagServices(IServiceCollection services) =>
+    internal static void AddCliRagServices(IServiceCollection services)
+    {
         services.AddOrkeonOnnxReranker();
+
+        // Every host of the tool composes through here: the provider modules it ships are registered
+        // once, for all of them, and doctor and llm probe read the same list.
+        CliLlmProviderModules.AddTo(services);
+    }
 
     // --no-decision: the infrastructure registered the circuit with TryAdd before the
     // host callback; the last registration wins.

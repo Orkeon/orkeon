@@ -50,6 +50,16 @@ internal static class MockProviderSettings
         return config with { CustomParameters = parameters };
     }
 
+    /// <summary>
+    /// Whether <paramref name="key"/> (lowercase) is one the factory builds itself: a vendor of the
+    /// catalogue, one of its aliases, or a generic OpenAI-compatible key. A section never names one
+    /// in <c>Provider</c>, and a provider module never answers one.
+    /// </summary>
+    internal static bool IsBuiltInKey(string key) =>
+        LlmProviderKeys.All.Contains(key, StringComparer.Ordinal)
+        || LlmProviderKeys.Aliases.ContainsKey(key)
+        || key is LlmProviderKeys.Custom or LlmProviderKeys.DockerModelRunner or LlmProviderKeys.AzureShort;
+
     /// <summary>The provider key the section named, or null when it named none.</summary>
     internal static string? ProviderKeyOf(LlmConfig config) =>
         config.CustomParameters.TryGetValue(ProviderParameter, out var value) && value is string key && key.Length > 0 ? key : null;

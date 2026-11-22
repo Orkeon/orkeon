@@ -13,7 +13,7 @@ namespace Orkeon.Infrastructure.LLMs;
 /// included API credits drive Orkeon, over its OpenAI-compatible endpoint
 /// (<c>api.mammouth.ai/v1</c>, Bearer auth). Identifiers are the vendors' own bare strings
 /// (<c>gpt-5.6-sol</c>, <c>claude-sonnet-5</c>, <c>gemini-3.8-flash</c>), which is why this
-/// provider is reached by base URL or by <c>"Provider": "mammouth"</c> and never inferred
+/// provider is reached by its base URL and never inferred
 /// from a model name (D-02): the same string without a base URL keeps going to the vendor.
 /// </summary>
 /// <remarks>

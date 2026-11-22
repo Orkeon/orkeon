@@ -233,12 +233,25 @@ public sealed partial class LlmProviderMeteringGuardTests
                 {
                     private readonly ILlmProvider _llm = new CliLlmProvider();
                 }
+                public sealed record RogueRecord
+                {
+                    private readonly ILlmProvider _llm = new CliLlmProvider();
+                }
+                public sealed class RogueHost(ILlmProviderModule module)
+                {
+                    private readonly ILlmProvider _llm = new CliLlmProvider();
+                }
                 """,
         };
 
-        var violation = Assert.Single(FindOffPathConstructions(sources, DiscoverProviderTypes(sources)));
+        var violations = FindOffPathConstructions(sources, DiscoverProviderTypes(sources));
 
-        Assert.Contains("CliLlmProviderModule.cs:7", violation, StringComparison.Ordinal);
+        // The module's own construction is excused; a later class, a record, and a class that only
+        // takes a module as a constructor parameter are not.
+        Assert.Equal(3, violations.Count);
+        Assert.Contains("CliLlmProviderModule.cs:7", violations[0], StringComparison.Ordinal);
+        Assert.Contains("CliLlmProviderModule.cs:11", violations[1], StringComparison.Ordinal);
+        Assert.Contains("CliLlmProviderModule.cs:15", violations[2], StringComparison.Ordinal);
     }
 
     [Fact]
@@ -369,8 +382,12 @@ public sealed partial class LlmProviderMeteringGuardTests
     /// </summary>
     private static bool IsBuiltByAProviderModule(string source, int index)
     {
-        var enclosing = AnyClassHeaderRegex().Matches(source).LastOrDefault(header => header.Index < index);
-        return enclosing is not null && ProviderModuleBaseRegex().IsMatch(enclosing.Value);
+        // The last type declared before the construction, whatever its kind: a record, a struct or an
+        // interface after a module is not the module. Only the bases count, never a constructor parameter.
+        var enclosing = AnyTypeHeaderRegex().Matches(source).LastOrDefault(header => header.Index < index);
+        return enclosing is not null
+            && enclosing.Groups["kind"].Value == "class"
+            && ProviderModuleBaseRegex().IsMatch(enclosing.Groups["bases"].Value);
     }
 
     // --- Repository access and text helpers ---
@@ -421,8 +438,8 @@ public sealed partial class LlmProviderMeteringGuardTests
     [GeneratedRegex(@"(?<modifiers>(?:\b(?:public|internal|private|protected|sealed|partial|abstract|static|file)\s+)*)class\s+(?<name>\w+)(?:<[^>]*>)?\s*(?:\([^)]*\))?\s*:\s*(?<bases>[^{;]+)[{;]")]
     private static partial Regex ClassDeclarationRegex();
 
-    [GeneratedRegex(@"\bclass\s+\w+[^{;]*[{;]")]
-    private static partial Regex AnyClassHeaderRegex();
+    [GeneratedRegex(@"\b(?<kind>class|struct|interface|record(?:\s+(?:class|struct))?)\s+\w+(?:<[^>]*>)?\s*(?:\([^)]*\))?\s*(?::\s*(?<bases>[^{;]+))?[{;]")]
+    private static partial Regex AnyTypeHeaderRegex();
 
     [GeneratedRegex(@"\bILlmProviderModule\b")]
     private static partial Regex ProviderModuleBaseRegex();

@@ -112,7 +112,11 @@ public sealed partial class LlmProviderFactory : ILlmProviderFactory
         IHttpClientFactory httpClientFactory, ILoggerFactory loggerFactory, IEnumerable<ILlmProviderModule> modules) =>
         new(httpClientFactory, loggerFactory, MountlessFileSystem(), new LlmProviderFactoryOptions { Modules = [.. modules] });
 
-    /// <summary>The modules by key; two modules answering one key refuse the factory.</summary>
+    /// <summary>
+    /// The modules by key. A key that is not lowercase and trimmed, the key <c>mock</c>, a key the
+    /// factory builds itself (a vendor of the catalogue, an alias) and two modules on one key each
+    /// refuse the factory: such a module could never be reached.
+    /// </summary>
     private static Dictionary<string, ILlmProviderModule> IndexModules(IReadOnlyList<ILlmProviderModule>? modules)
     {
         var index = new Dictionary<string, ILlmProviderModule>(StringComparer.OrdinalIgnoreCase);
@@ -120,8 +124,16 @@ public sealed partial class LlmProviderFactory : ILlmProviderFactory
         {
             ArgumentNullException.ThrowIfNull(module);
             ArgumentException.ThrowIfNullOrWhiteSpace(module.Key);
-            if (string.Equals(module.Key, LlmProviderKeys.Mock, StringComparison.OrdinalIgnoreCase))
-                throw new ArgumentException($"A provider module cannot answer the key '{LlmProviderKeys.Mock}'.", nameof(modules));
+#pragma warning disable CA1308 // the key is matched in its lowercase wire form
+            if (!string.Equals(module.Key, module.Key.Trim().ToLowerInvariant(), StringComparison.Ordinal))
+#pragma warning restore CA1308
+                throw new ArgumentException(
+                    $"The key '{module.Key}' of the provider module {module.GetType().Name} must be lowercase, without surrounding spaces.",
+                    nameof(modules));
+            if (string.Equals(module.Key, LlmProviderKeys.Mock, StringComparison.Ordinal) || MockProviderSettings.IsBuiltInKey(module.Key))
+                throw new ArgumentException(
+                    $"The provider module {module.GetType().Name} cannot answer the key '{module.Key}': the factory builds that provider itself.",
+                    nameof(modules));
             if (!index.TryAdd(module.Key, module))
                 throw new ArgumentException(
                     $"Two provider modules answer the key '{module.Key}': {index[module.Key].GetType().Name} and {module.GetType().Name}.",

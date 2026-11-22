@@ -203,7 +203,7 @@ internal static class DoctorCommand
             CheckLlmConfig(llm),
             .. CheckLlmProfiles(llm),
             .. CheckLlmProfileKeys(llm),
-            .. CheckRunnerSettings(llm),
+            .. CheckRunnerSettings(llm, modules),
             await CheckLlmReachabilityAsync(llm, ct).ConfigureAwait(false),
             await CheckEsbuildAsync(llm.Configuration, ct).ConfigureAwait(false),
             await CheckConfiguredTscAsync(llm.Configuration, tscResolver, installDirectory, ct).ConfigureAwait(false),
@@ -284,7 +284,9 @@ internal static class DoctorCommand
         // module answers its key — never inferred from the address or the model's name.
         var named = Blank(section["Provider"]);
         if (named is not null && !string.Equals(named, LlmProviderKeys.Mock, StringComparison.OrdinalIgnoreCase))
-            return ReadModuleProvider(context with { ModuleKey = named.Trim() }, settings, modules);
+#pragma warning disable CA1308 // the key is shown in its lowercase wire form, as the runner logs it
+            return ReadModuleProvider(context with { ModuleKey = named.Trim().ToLowerInvariant() }, settings, modules);
+#pragma warning restore CA1308
 
         // The provider of the configuration the run reads, built by the factory's own inference.
         try
@@ -326,8 +328,9 @@ internal static class DoctorCommand
 
             return context;
         }
-        catch (NotSupportedException ex)
+        catch (Exception ex) when (ex is NotSupportedException or InvalidOperationException or ArgumentException)
         {
+            // No module answers the key, or the module refused the section it was given.
             return context with { ModuleError = ex.Message };
         }
     }
@@ -364,6 +367,7 @@ internal static class DoctorCommand
     {
         var address = section["BaseUrl"];
         return !string.IsNullOrWhiteSpace(address)
+            && string.IsNullOrWhiteSpace(section["Provider"])
             && LlmEndpointReading.Of(address, section["Model"], section["ApiKey"]).Notice == LlmEndpointNotice.Silent
             ? OperatorMessages.LlmBaseUrlSilent($"{section.Path}:BaseUrl", address)
             : null;
@@ -527,7 +531,8 @@ internal static class DoctorCommand
     /// itself raises is the only line, as the run reports it. Skipped when the <c>Llm</c> section is
     /// already refused: the run stops on it first, and the line above says why.
     /// </summary>
-    private static IEnumerable<DoctorCheckResult> CheckRunnerSettings(LlmContext llm)
+    private static IEnumerable<DoctorCheckResult> CheckRunnerSettings(
+        LlmContext llm, IReadOnlyList<Orkeon.Application.Interfaces.Ports.ILlmProviderModule> modules)
     {
         const string Check = "runner-settings";
 
@@ -545,6 +550,9 @@ internal static class DoctorCommand
             services.AddOrkeonHumanInput();
             services.AddSemanticSearchTool();
             RunCommand.AddCliRagServices(services);
+            // The modules a test hands the doctor, beside the ones the tool ships (registered above).
+            foreach (var module in modules.Except(CliLlmProviderModules.All))
+                Microsoft.Extensions.DependencyInjection.ServiceCollectionServiceExtensions.AddSingleton(services, module);
         });
         if (verdict.Refusals.Count == 0 && verdict.Notices.Count == 0)
             return [new DoctorCheckResult { Check = Check, Status = StatusOk, Detail = "the settings pass the start validation of orkeon run" }];

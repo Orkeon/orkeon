@@ -750,7 +750,10 @@ public static partial class RunnerHost
         foreach (var section in sections)
         {
             var address = section["BaseUrl"];
-            if (string.IsNullOrWhiteSpace(address) || ReadEndpoint(section).Notice != LlmEndpointNotice.Silent)
+            // A section that names its provider is not read by its address: nothing to warn about.
+            if (string.IsNullOrWhiteSpace(address)
+                || !string.IsNullOrWhiteSpace(section["Provider"])
+                || ReadEndpoint(section).Notice != LlmEndpointNotice.Silent)
                 continue;
 
             var warning = OperatorMessages.LlmBaseUrlSilent($"{section.Path}:BaseUrl", address);
@@ -834,7 +837,7 @@ public static partial class RunnerHost
         var timeout = Shown(llmSection["TimeoutSeconds"], "(default 30)");
         var streamIdle = Shown(llmSection["StreamIdleSeconds"], "(unset)");
         var source = LlmSettings.DescribeApiKey(keySection);
-        var provider = ReadEndpoint(llmSection).ProviderKey;
+        var provider = ProviderKeyOf(llmSection);
         LogLlmResolved(logger, new LlmResolution(model, baseUrl, provider, temperature, timeout, streamIdle, source));
     }
 
