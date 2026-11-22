@@ -9,15 +9,17 @@ namespace Orkeon.Infrastructure.LLMs;
 /// Anthropic's dialect of JSON Schema for <c>output_config.format</c> (issue #459): the API takes a
 /// subset of JSON Schema and answers a 400 to the rest. The provider works on a copy of the caller's
 /// schema, as Anthropic's own SDK helpers do: it closes every object, moves the constraints the API
-/// does not take into the node's <c>description</c>, and refuses what it cannot rewrite without
-/// changing what the schema means (a free-form object, which closing would empty) or cannot walk (the
-/// keywords of <see cref="UnwalkedKeywords"/>).
+/// refuses into the node's <c>description</c>, and refuses before the call what the API refuses and
+/// cannot be rewritten without changing what the schema means.
 /// </summary>
 /// <remarks>
-/// The lists follow "JSON Schema limitations" of
-/// https://platform.claude.com/docs/en/build-with-claude/structured-outputs (read 2026-11-22).
-/// The answer is still validated against the original schema by the callers that validate one
-/// (<c>OutputValidationCoordinator</c>), so a moved constraint is checked after the call.
+/// Every list was measured against the Messages API (<c>anthropic-version: 2023-06-01</c>,
+/// claude-haiku-4-5, 2026-11-22). The API checks a keyword against the node's type: an object node
+/// refuses any keyword off its list, an array node refuses <c>contains</c> and <c>prefixItems</c>,
+/// while a string, number or <c>allOf</c> node takes <c>if</c>/<c>then</c>/<c>else</c> and other
+/// keywords without enforcing them. The answer is still validated against the original schema by the
+/// callers that validate one (<c>OutputValidationCoordinator</c>), so a moved constraint is checked
+/// after the call.
 /// </remarks>
 internal static class AnthropicSchemaDialect
 {
@@ -28,7 +30,7 @@ internal static class AnthropicSchemaDialect
     private static readonly string[] MovedConstraints =
     [
         "minimum", "maximum", "exclusiveMinimum", "exclusiveMaximum", "multipleOf",
-        "minLength", "maxLength", "maxItems", "uniqueItems",
+        "maxItems", "uniqueItems",
     ];
 
     /// <summary>The string formats the API takes; any other one is moved into the description.</summary>
@@ -41,17 +43,29 @@ internal static class AnthropicSchemaDialect
     private static readonly string[] SchemaMaps = ["properties", "$defs", "definitions"];
 
     /// <summary>The keywords whose value is a list of sub-schemas.</summary>
-    private static readonly string[] SchemaLists = ["anyOf", "allOf", "prefixItems"];
+    private static readonly string[] SchemaLists = ["anyOf", "allOf"];
 
-    /// <summary>
-    /// Keywords whose sub-schemas the dialect does not walk: an object below them would stay open, so
-    /// the schema is refused before the call rather than sent.
-    /// </summary>
-    private static readonly string[] UnwalkedKeywords =
+    /// <summary>Keywords the API refuses on an object node (it takes none off its own list).</summary>
+    private static readonly string[] ObjectRefusedKeywords =
     [
         "if", "then", "else", "patternProperties", "dependentSchemas", "dependencies", "contains",
         "propertyNames", "unevaluatedProperties", "unevaluatedItems", "additionalItems",
     ];
+
+    /// <summary>Keywords the API refuses on an array node.</summary>
+    private static readonly string[] ArrayRefusedKeywords = ["contains", "prefixItems"];
+
+    /// <summary>Keywords the API refuses on an <c>anyOf</c> node.</summary>
+    private static readonly string[] AnyOfRefusedKeywords = ["if", "then", "else"];
+
+    /// <summary>The keywords that give a node its type; the API refuses a node with none of them.</summary>
+    private static readonly string[] TypingKeywords = ["type", "anyOf", "allOf", "$ref", "const", "enum"];
+
+    /// <summary>The annotations the API takes beside a <c>$ref</c>; any other sibling is refused.</summary>
+    private static readonly HashSet<string> RefSiblings = new(StringComparer.Ordinal)
+    {
+        "$ref", "description", "title", "default", "examples", "$comment", "deprecated", "readOnly", "writeOnly",
+    };
 
     /// <summary>The adapted copy, or the reason the schema is refused.</summary>
     internal sealed record Adaptation(JsonNode? Schema, string? Refusal);
@@ -61,7 +75,10 @@ internal static class AnthropicSchemaDialect
     {
         var root = JsonNode.Parse(schemaJson);
         if (root is not JsonObject rootObject)
-            return new Adaptation(root, null);
+        {
+            return new Adaptation(null, $"Anthropic cannot take the response schema '{schemaName}': "
+                + "the root must be a JSON object, not a boolean schema or a bare value.");
+        }
 
         var problem = FindRecursion(rootObject) ?? Walk(rootObject, "#");
         return problem is null
@@ -76,6 +93,8 @@ internal static class AnthropicSchemaDialect
 
     private static string? Walk(JsonObject node, string path)
     {
+        if (node.Count == 0)
+            return $"the empty schema `{{}}` at `{path}` accepts any value and is not supported; name a `type`.";
         if (node.ContainsKey("oneOf"))
             return $"`oneOf` at `{path}` is not supported; use `anyOf`.";
         if (node.ContainsKey("not"))
@@ -95,16 +114,21 @@ internal static class AnthropicSchemaDialect
                 + "inline the definition under `$defs`.";
         }
 
-        foreach (var keyword in UnwalkedKeywords)
-        {
-            if (node.ContainsKey(keyword))
-                return $"`{keyword}` at `{path}` is not supported: the objects below it could not be closed.";
-        }
+        if (RefusedKeyword(node) is { } refused)
+            return $"`{refused.Keyword}` at `{path}` is not supported on {refused.Kind} node.";
+
+        if (!TypingKeywords.Any(node.ContainsKey))
+            return $"the schema at `{path}` names no `type` (nor `anyOf`, `allOf`, `$ref`, `const` or `enum`).";
 
         if (node.TryGetPropertyValue("description", out var description)
             && description?.GetValueKind() != JsonValueKind.String)
         {
             return $"`description` at `{path}` must be a string.";
+        }
+
+        if (node["items"] is { } items && items is not JsonObject)
+        {
+            return $"`items` at `{path}` must be one schema object: a tuple or a boolean `items` is not supported.";
         }
 
         if (IsObjectNode(node) && !node.ContainsKey("additionalProperties"))
@@ -121,7 +145,28 @@ internal static class AnthropicSchemaDialect
         }
 
         MoveUnsupportedConstraints(node);
+
+        // After the move: a constraint written into the description is no longer a sibling.
+        if (node.ContainsKey("$ref") && node.Select(p => p.Key).FirstOrDefault(k => !RefSiblings.Contains(k)) is { } sibling)
+        {
+            return $"`$ref` at `{path}` cannot be combined with `{sibling}`: move it into the referenced "
+                + "definition, or inline the definition in place of the `$ref`.";
+        }
+
         return WalkChildren(node, path);
+    }
+
+    /// <summary>The first keyword the API refuses on a node of this kind, with the kind's name.</summary>
+    private static (string Keyword, string Kind)? RefusedKeyword(JsonObject node)
+    {
+        var (keywords, kind) = IsObjectNode(node) ? (ObjectRefusedKeywords, "an object")
+            : HasType(node, "array") ? (ArrayRefusedKeywords, "an array")
+            : node.ContainsKey("anyOf") ? (AnyOfRefusedKeywords, "an `anyOf`")
+            : (null, null);
+        if (keywords is null)
+            return null;
+        var keyword = Array.Find(keywords, node.ContainsKey);
+        return keyword is null ? null : (keyword, kind!);
     }
 
     private static string? WalkChildren(JsonObject node, string path)
@@ -132,47 +177,39 @@ internal static class AnthropicSchemaDialect
                 continue;
             foreach (var (name, child) in children)
             {
-                if (child is JsonObject schema && Walk(schema, $"{path}/{map}/{Escape(name)}") is { } problem)
+                if (WalkSchema(child, $"{path}/{map}/{Escape(name)}") is { } problem)
                     return problem;
             }
         }
 
         foreach (var list in SchemaLists)
         {
-            if (node[list] is JsonArray items && WalkList(items, $"{path}/{list}") is { } problem)
-                return problem;
+            if (node[list] is not JsonArray items)
+                continue;
+            for (var i = 0; i < items.Count; i++)
+            {
+                if (WalkSchema(items[i], $"{path}/{list}/{i}") is { } problem)
+                    return problem;
+            }
         }
 
-        return node["items"] switch
-        {
-            JsonObject single => Walk(single, $"{path}/items"),
-            JsonArray tuple => WalkList(tuple, $"{path}/items"),
-            _ => null,
-        };
+        // Walk refused an `items` that is not one schema object before this point.
+        return node["items"] is JsonObject single ? Walk(single, $"{path}/items") : null;
     }
 
-    private static string? WalkList(JsonArray items, string path)
+    /// <summary>Walks a sub-schema; the API takes no boolean or bare value where a schema is expected.</summary>
+    private static string? WalkSchema(JsonNode? child, string path) => child is JsonObject schema
+        ? Walk(schema, path)
+        : $"the schema at `{path}` must be a JSON object: a boolean schema is not supported.";
+
+    private static bool IsObjectNode(JsonObject node) => node.ContainsKey("properties") || HasType(node, "object");
+
+    private static bool HasType(JsonObject node, string name) => node["type"] switch
     {
-        for (var i = 0; i < items.Count; i++)
-        {
-            if (items[i] is JsonObject schema && Walk(schema, $"{path}/{i}") is { } problem)
-                return problem;
-        }
-
-        return null;
-    }
-
-    private static bool IsObjectNode(JsonObject node)
-    {
-        if (node.ContainsKey("properties"))
-            return true;
-        return node["type"] switch
-        {
-            JsonValue type when type.GetValueKind() == JsonValueKind.String => type.GetValue<string>() == "object",
-            JsonArray types => types.Any(t => t?.GetValueKind() == JsonValueKind.String && t.GetValue<string>() == "object"),
-            _ => false,
-        };
-    }
+        JsonValue type when type.GetValueKind() == JsonValueKind.String => type.GetValue<string>() == name,
+        JsonArray types => types.Any(t => t?.GetValueKind() == JsonValueKind.String && t.GetValue<string>() == name),
+        _ => false,
+    };
 
     private static void MoveUnsupportedConstraints(JsonObject node)
     {

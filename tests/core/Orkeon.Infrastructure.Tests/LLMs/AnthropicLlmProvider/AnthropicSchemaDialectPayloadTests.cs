@@ -124,10 +124,12 @@ public sealed class AnthropicSchemaDialectPayloadTests : IDisposable
         Assert.False(age.TryGetProperty("maximum", out _));
         Assert.Equal("Age in years\n\n{minimum: 18, maximum: 120}", age.GetProperty("description").GetString());
 
+        // The API takes minLength, maxLength and pattern: they are sent as written.
         var code = properties.GetProperty("code");
-        Assert.False(code.TryGetProperty("minLength", out _));
+        Assert.Equal(2, code.GetProperty("minLength").GetInt32());
+        Assert.Equal(5, code.GetProperty("maxLength").GetInt32());
         Assert.Equal("^[A-Z]+$", code.GetProperty("pattern").GetString());
-        Assert.Equal("{minLength: 2, maxLength: 5}", code.GetProperty("description").GetString());
+        Assert.False(code.TryGetProperty("description", out _));
 
         var tags = properties.GetProperty("tags");
         Assert.False(tags.TryGetProperty("minItems", out _));
@@ -178,18 +180,33 @@ public sealed class AnthropicSchemaDialectPayloadTests : IDisposable
         { """{"type":"object","properties":{"bag":{"type":"object","properties":{}}}}""", "the object at `#/properties/bag` declares no `properties`" },
         { """{"type":"object","properties":{"bag":{"type":["object","null"]}}}""", "the object at `#/properties/bag` declares no `properties`" },
         { """{"type":"object"}""", "the object at `#` declares no `properties`" },
-        // Keywords whose sub-schemas are not walked: an object below them would stay open.
+        // Keywords the API refuses on an object node.
         { """{"type":"object","properties":{"a":{"type":"string"}},"if":{"properties":{"a":{"const":"x"}}},"then":{"required":["a"]}}""", "`if` at `#`" },
         { """{"type":"object","properties":{"a":{"type":"string"}},"then":{"required":["a"]}}""", "`then` at `#`" },
         { """{"type":"object","properties":{"a":{"type":"string"}},"else":{"required":["a"]}}""", "`else` at `#`" },
         { """{"type":"object","properties":{"a":{"type":"string"}},"patternProperties":{"^x":{"type":"object"}}}""", "`patternProperties` at `#`" },
         { """{"type":"object","properties":{"a":{"type":"string"}},"dependentSchemas":{"a":{"type":"object"}}}""", "`dependentSchemas` at `#`" },
         { """{"type":"object","properties":{"a":{"type":"string"}},"dependencies":{"a":{"type":"object"}}}""", "`dependencies` at `#`" },
-        { """{"type":"object","properties":{"l":{"type":"array","contains":{"type":"object"}}}}""", "`contains` at `#/properties/l`" },
+        { """{"type":"object","properties":{"a":{"type":"string"}},"contains":{"const":"x"}}""", "`contains` at `#` is not supported on an object node" },
+        { """{"type":"object","properties":{"a":{"type":"string"}},"unevaluatedItems":false}""", "`unevaluatedItems` at `#` is not supported on an object node" },
+        { """{"type":"object","properties":{"a":{"type":"string"}},"additionalItems":false}""", "`additionalItems` at `#` is not supported on an object node" },
+        // Keywords the API refuses on an array node, and an items that is not one schema.
+        { """{"type":"object","properties":{"l":{"type":"array","items":{"type":"string"},"contains":{"type":"object"}}}}""", "`contains` at `#/properties/l` is not supported on an array node" },
+        { """{"type":"object","properties":{"l":{"type":"array","prefixItems":[{"type":"string"}]}}}""", "`prefixItems` at `#/properties/l` is not supported on an array node" },
+        { """{"type":"object","properties":{"l":{"type":"array","items":[{"type":"string"}]}}}""", "`items` at `#/properties/l` must be one schema object" },
+        { """{"type":"object","properties":{"l":{"type":"array","items":true}}}""", "`items` at `#/properties/l` must be one schema object" },
+        // if/then/else on an anyOf node.
+        { """{"type":"object","properties":{"c":{"anyOf":[{"type":"string"}],"if":{"const":"a"}}}}""", "`if` at `#/properties/c` is not supported on an `anyOf` node" },
+        // A $ref with a constraint beside it.
+        { """{"type":"object","properties":{"p":{"$ref":"#/$defs/p","type":"string"}},"$defs":{"p":{"type":"string"}}}""", "`$ref` at `#/properties/p` cannot be combined with `type`" },
+        // Schemas that accept any value, or name no type.
+        { """{"type":"object","properties":{"any":{}}}""", "the empty schema `{}` at `#/properties/any`" },
+        { """{"type":"object","properties":{"d":{"description":"x"}}}""", "the schema at `#/properties/d` names no `type`" },
+        { """{"type":"object","properties":{"t":true}}""", "the schema at `#/properties/t` must be a JSON object" },
+        { "true", "the root must be a JSON object" },
+        { "{}", "the empty schema `{}` at `#`" },
         { """{"type":"object","properties":{"a":{"type":"string"}},"propertyNames":{"pattern":"^a"}}""", "`propertyNames` at `#`" },
         { """{"type":"object","properties":{"a":{"type":"string"}},"unevaluatedProperties":false}""", "`unevaluatedProperties` at `#`" },
-        { """{"type":"object","properties":{"l":{"type":"array","prefixItems":[{"type":"string"}],"unevaluatedItems":false}}}""", "`unevaluatedItems` at `#/properties/l`" },
-        { """{"type":"object","properties":{"l":{"type":"array","items":[{"type":"string"}],"additionalItems":{"type":"object"}}}}""", "`additionalItems` at `#/properties/l`" },
         // A description that is not a string is not a valid schema; the moved constraints would overwrite it.
         { """{"type":"object","properties":{"n":{"type":"integer","minimum":1,"description":{"en":"count"}}}}""", "`description` at `#/properties/n` must be a string" },
         { """{"type":"object","properties":{"n":{"type":"integer","description":null}}}""", "`description` at `#/properties/n` must be a string" },
@@ -242,21 +259,17 @@ public sealed class AnthropicSchemaDialectPayloadTests : IDisposable
     }
 
     [Fact]
-    public async Task ShouldCloseTheObjects_InANullableObjectATupleAndAnAllOf()
+    public async Task ShouldCloseTheObjects_InANullableObjectAndAnAllOf()
     {
         var schema = await SendAndReadSchemaAsync("""
             {"type":"object","properties":{
               "maybe":{"type":["object","null"],"properties":{"a":{"type":"string"}}},
-              "pair":{"type":"array","items":[{"type":"object","properties":{"k":{"type":"string"}}},{"type":"string"}]},
               "both":{"allOf":[{"type":"object","properties":{"id":{"type":"integer"}}}]}
             }}
             """);
 
         var properties = schema.GetProperty("properties");
         Assert.False(properties.GetProperty("maybe").GetProperty("additionalProperties").GetBoolean());
-        var pair = properties.GetProperty("pair").GetProperty("items");
-        Assert.False(pair[0].GetProperty("additionalProperties").GetBoolean());
-        Assert.False(pair[1].TryGetProperty("additionalProperties", out _));
         Assert.False(properties.GetProperty("both").GetProperty("allOf")[0].GetProperty("additionalProperties").GetBoolean());
     }
 
@@ -264,20 +277,55 @@ public sealed class AnthropicSchemaDialectPayloadTests : IDisposable
     public async Task ShouldWalkARootThatIsNotAnObject_AndCloseTheObjectsBelowIt()
     {
         var schema = await SendAndReadSchemaAsync(
-            """{"type":"array","items":{"type":"object","properties":{"n":{"type":"string","maxLength":3}}}}""");
+            """{"type":"array","items":{"type":"object","properties":{"n":{"type":"integer","maximum":3}}}}""");
 
         Assert.False(schema.TryGetProperty("additionalProperties", out _));
         var item = schema.GetProperty("items");
         Assert.False(item.GetProperty("additionalProperties").GetBoolean());
-        Assert.Equal("{maxLength: 3}", item.GetProperty("properties").GetProperty("n").GetProperty("description").GetString());
+        Assert.Equal("{maximum: 3}", item.GetProperty("properties").GetProperty("n").GetProperty("description").GetString());
     }
 
     [Fact]
-    public async Task ShouldSendARootThatIsNotAJsonObject_AsWritten()
+    public async Task ShouldSendTheKeywordsTheApiTakesOffAnObject_AsWritten()
     {
-        var schema = await SendAndReadSchemaAsync("true");
+        // Measured: a string, integer or allOf node takes if/then/else (without enforcing them), an
+        // array node takes unevaluatedItems and additionalItems, and a $ref takes annotations beside it.
+        var schema = await SendAndReadSchemaAsync("""
+            {"type":"object","properties":{
+              "word":{"type":"string","if":{"const":"a"},"then":{"maxLength":3},"else":{"type":"object"}},
+              "n":{"type":"integer","if":{"const":1},"then":{"const":1}},
+              "both":{"allOf":[{"type":"string"}],"if":{"const":"a"},"then":{"const":"a"}},
+              "list":{"type":"array","items":{"type":"string"},"unevaluatedItems":false,"additionalItems":{"type":"object"}},
+              "point":{"$ref":"#/$defs/point","description":"Where","title":"Point","default":{"x":0}}
+            },
+            "$defs":{"point":{"type":"object","properties":{"x":{"type":"number"}}}}}
+            """);
 
-        Assert.Equal(JsonValueKind.True, schema.ValueKind);
+        var properties = schema.GetProperty("properties");
+        var word = properties.GetProperty("word");
+        Assert.Equal("a", word.GetProperty("if").GetProperty("const").GetString());
+        // The API walks no sub-schema under if/then/else: none of them is closed.
+        Assert.False(word.GetProperty("else").TryGetProperty("additionalProperties", out _));
+        Assert.Equal(1, properties.GetProperty("n").GetProperty("then").GetProperty("const").GetInt32());
+        Assert.True(properties.GetProperty("both").TryGetProperty("if", out _));
+        var list = properties.GetProperty("list");
+        Assert.False(list.GetProperty("unevaluatedItems").GetBoolean());
+        Assert.False(list.GetProperty("additionalItems").TryGetProperty("additionalProperties", out _));
+        Assert.Equal(
+            ["$ref", "description", "title", "default"],
+            properties.GetProperty("point").EnumerateObject().Select(p => p.Name).ToArray());
+    }
+
+    [Fact]
+    public async Task ShouldMoveAConstraintBesideARef_AndSendTheRef()
+    {
+        var schema = await SendAndReadSchemaAsync("""
+            {"type":"object","properties":{"n":{"$ref":"#/$defs/n","minimum":1}},"$defs":{"n":{"type":"integer"}}}
+            """);
+
+        var n = schema.GetProperty("properties").GetProperty("n");
+        Assert.Equal(["$ref", "description"], n.EnumerateObject().Select(p => p.Name).ToArray());
+        Assert.Equal("{minimum: 1}", n.GetProperty("description").GetString());
     }
 
     [Theory]
