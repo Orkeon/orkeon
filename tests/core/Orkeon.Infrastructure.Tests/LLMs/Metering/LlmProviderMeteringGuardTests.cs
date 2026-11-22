@@ -217,6 +217,31 @@ public sealed partial class LlmProviderMeteringGuardTests
     }
 
     [Fact]
+    public void A_provider_built_by_a_provider_module_is_on_the_path()
+    {
+        var sources = new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            ["src/interop/Orkeon.Interop.Cli/CliLlmProvider.cs"] =
+                "public sealed class CliLlmProvider : ILlmProvider { }",
+            ["src/interop/Orkeon.Interop.Cli/CliLlmProviderModule.cs"] =
+                """
+                public sealed class CliLlmProviderModule : ILlmProviderModule
+                {
+                    public ILlmProvider Create(LlmConfig config, LlmProviderModuleContext context) => new CliLlmProvider();
+                }
+                public sealed class Rogue
+                {
+                    private readonly ILlmProvider _llm = new CliLlmProvider();
+                }
+                """,
+        };
+
+        var violation = Assert.Single(FindOffPathConstructions(sources, DiscoverProviderTypes(sources)));
+
+        Assert.Contains("CliLlmProviderModule.cs:7", violation, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Every_exemption_still_names_a_construction_that_exists()
     {
         var sources = ReadSources();
@@ -287,7 +312,7 @@ public sealed partial class LlmProviderMeteringGuardTests
 
                 foreach (Match match in ConstructionPattern(type).Matches(source))
                 {
-                    if (IsHandedToTheRegistration(source, match.Index))
+                    if (IsHandedToTheRegistration(source, match.Index) || IsBuiltByAProviderModule(source, match.Index))
                         continue;
 
                     violations.Add($"{file}:{LineOf(source, match.Index)} -> {Collapse(match.Value)}");
@@ -337,6 +362,17 @@ public sealed partial class LlmProviderMeteringGuardTests
             || statement.Contains("AddOrkeonLlmProfile(", StringComparison.Ordinal);
     }
 
+    /// <summary>
+    /// Whether the construction at <paramref name="index"/> sits in a class implementing
+    /// <c>ILlmProviderModule</c>: <c>LlmProviderFactory</c> feeds what a module builds through
+    /// <c>LlmProviderEntrance.Enter</c>, so the module's construction is on the path.
+    /// </summary>
+    private static bool IsBuiltByAProviderModule(string source, int index)
+    {
+        var enclosing = AnyClassHeaderRegex().Matches(source).LastOrDefault(header => header.Index < index);
+        return enclosing is not null && ProviderModuleBaseRegex().IsMatch(enclosing.Value);
+    }
+
     // --- Repository access and text helpers ---
 
     private static IEnumerable<Type> ConcreteProviderTypesOfTheInfrastructure() =>
@@ -384,6 +420,12 @@ public sealed partial class LlmProviderMeteringGuardTests
 
     [GeneratedRegex(@"(?<modifiers>(?:\b(?:public|internal|private|protected|sealed|partial|abstract|static|file)\s+)*)class\s+(?<name>\w+)(?:<[^>]*>)?\s*(?:\([^)]*\))?\s*:\s*(?<bases>[^{;]+)[{;]")]
     private static partial Regex ClassDeclarationRegex();
+
+    [GeneratedRegex(@"\bclass\s+\w+[^{;]*[{;]")]
+    private static partial Regex AnyClassHeaderRegex();
+
+    [GeneratedRegex(@"\bILlmProviderModule\b")]
+    private static partial Regex ProviderModuleBaseRegex();
 
     [GeneratedRegex(@"\b(?:MeteredLlmProvider|RateLimitedLlmProvider)\s*\.\s*Wrap\s*\(")]
     private static partial Regex WrapCallRegex();

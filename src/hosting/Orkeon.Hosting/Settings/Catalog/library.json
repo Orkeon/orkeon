@@ -808,7 +808,7 @@
       "path": "Llm:Profiles:<name>:Provider",
       "section": "Llm",
       "type": "string",
-      "description": "`mock`, the only value: the offline provider that answers from the JSONL file `Responses` names. Left out, the provider follows from `BaseUrl`, the model's name and the key."
+      "description": "`mock`, the offline provider that answers from the JSONL file `Responses` names, or the key of a provider module the host registers. Never a vendor of the catalogue. Left out, the provider follows from `BaseUrl`, the model's name and the key."
     },
     {
       "path": "Llm:Profiles:<name>:Responses",
@@ -851,7 +851,7 @@
       "path": "Llm:Provider",
       "section": "Llm",
       "type": "string",
-      "description": "`mock`, the only value: the offline provider that answers from the JSONL file `Responses` names. Left out, the provider follows from `BaseUrl`, the model's name and the key."
+      "description": "`mock`, the offline provider that answers from the JSONL file `Responses` names, or the key of a provider module the host registers. Never a vendor of the catalogue. Left out, the provider follows from `BaseUrl`, the model's name and the key."
     },
     {
       "path": "Llm:Replay:Cassette",

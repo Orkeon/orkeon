@@ -41,4 +41,10 @@ public sealed class LlmProviderFactoryOptions
     /// calls to the cassette or answers them from it. Null, or <see cref="LlmReplayMode.Off"/>, adds no layer.
     /// </summary>
     public LlmReplayOptions? Replay { get; init; }
+
+    /// <summary>
+    /// The provider modules a section may name by <c>Provider</c>: a key one of them answers is built
+    /// by it, under the same layers as a built-in provider. Null, or empty, builds none.
+    /// </summary>
+    public IReadOnlyList<ILlmProviderModule>? Modules { get; init; }
 }

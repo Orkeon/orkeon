@@ -88,6 +88,27 @@ public sealed class LlmMeteringHostGuardTests : IDisposable
     }
 
     [Fact]
+    public async Task ShouldStart_WhenModuleProviderHasNoBaseUrl()
+    {
+        // A section naming a provider module carries no address: the host starts, probes nothing,
+        // and serves the module's provider on every surface, metered.
+        var settings = Path.Combine(_root, "appsettings.json");
+        await File.WriteAllTextAsync(
+            settings, """{ "Llm": { "Provider": "fake-cli", "Model": "opus" } }""", TestContext.Current.CancellationToken);
+        var sink = new RecordingUsageSink();
+        var module = new FakeLlmProviderModule();
+        using var host = BuildHost(settings, services =>
+        {
+            services.AddSingleton<ILlmUsageSink>(sink);
+            services.AddSingleton<ILlmProviderModule>(module);
+        });
+
+        Assert.Empty(await UnmeteredSurfacesAsync(host.Services, sink));
+        Assert.Equal("fake-cli", MeteredLlmProvider.Unwrap(host.Services.GetRequiredService<ILlmProvider>()).Name);
+        Assert.True(module.Builds >= 1);
+    }
+
+    [Fact]
     public async Task Every_surface_of_a_configured_provider_is_metered()
     {
         var settings = Path.Combine(_root, "appsettings.json");

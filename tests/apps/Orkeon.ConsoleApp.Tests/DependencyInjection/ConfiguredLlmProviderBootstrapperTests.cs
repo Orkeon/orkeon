@@ -103,6 +103,31 @@ public sealed class ConfiguredLlmProviderBootstrapperTests
         Assert.Equal(40, config.StreamIdleSeconds);
     }
 
+    [Fact]
+    public void ShouldStart_WhenModuleProviderHasNoBaseUrl()
+    {
+        // A section naming a provider module carries no address: the REPL builds the module's
+        // provider through the factory, metered, and infers nothing from the model's name.
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?> { ["Llm:Provider"] = "fake-cli", ["Llm:Model"] = "claude-opus-4-1" })
+            .Build();
+        var module = new FakeLlmProviderModule();
+        var services = new ServiceCollection();
+        using var http = new CapturingHttpClientFactory("{}");
+        services.AddSingleton<ILlmProviderFactory>(new Orkeon.Infrastructure.LLMs.LlmProviderFactory(
+            http,
+            Microsoft.Extensions.Logging.Abstractions.NullLoggerFactory.Instance,
+            new FakeFileSystemService(),
+            new Orkeon.Infrastructure.LLMs.LlmProviderFactoryOptions { Modules = [module] }));
+        services.AddConfiguredLlmProvider(configuration);
+        using var sp = services.BuildServiceProvider();
+
+        var provider = sp.GetRequiredService<ILlmProvider>();
+
+        Assert.Equal("fake-cli", Orkeon.Infrastructure.LLMs.MeteredLlmProvider.Unwrap(provider).Name);
+        Assert.Equal(1, module.Builds);
+    }
+
     // ── the key a section names ──────────────────────────────────
 
     [Fact]

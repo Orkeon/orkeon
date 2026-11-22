@@ -2,6 +2,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using Orkeon.Application.Configuration;
+using Orkeon.Infrastructure.DependencyInjection;
 
 namespace Orkeon.Hosting.Tests;
 
@@ -170,6 +171,31 @@ public sealed class SettingsCatalogBuilderTests
         using var provider = services.BuildServiceProvider();
 
         Assert.Empty(SettingsValidation.Refusals(provider));
+    }
+
+    [Fact]
+    public void ShouldAcceptModuleShape_WhenModuleDeclaresSubsection()
+    {
+        // A provider module declares its own Llm:<Sub> shape; it merges into the Llm node, so the
+        // keys it reads pass the start validation, and a misspelt one is still refused.
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["Llm:Provider"] = "fake-cli",
+                ["Llm:Model"] = "opus",
+                ["Llm:FakeCli:Size"] = "3",
+                ["Llm:FakeCli:Sise"] = "3",
+            })
+            .Build();
+        var services = new ServiceCollection();
+        services.AddSingleton<IConfiguration>(configuration);
+        services.AddOrkeonLlmProfiles(configuration);
+        services.DeclareSettingsShape("Llm:FakeCli", typeof(Child));
+        using var provider = services.BuildServiceProvider();
+
+        var refusal = Assert.Single(SettingsValidation.Refusals(provider));
+
+        Assert.Contains("Llm:FakeCli:Sise", refusal, StringComparison.Ordinal);
     }
 
     private enum Level

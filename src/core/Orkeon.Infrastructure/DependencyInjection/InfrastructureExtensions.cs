@@ -226,6 +226,9 @@ public static class InfrastructureExtensions
                 TokenCounter = sp.GetService<ITokenCounter>(),
                 Capabilities = sp.GetService<IModelCapabilityRegistry>(),
                 Replay = sp.GetService<LLMs.Replay.LlmReplayOptions>(),
+                // A provider shipped outside Infrastructure (src/interop) registers its module; a
+                // section naming its key by Provider is built by it.
+                Modules = [.. sp.GetServices<ILlmProviderModule>()],
             }));
 
         // The host's named LLM profiles (GAP-17): the default provider plus every profile
