@@ -46,6 +46,7 @@ Every refused option throws an `InvalidScriptError` naming it before any call. E
 `AgentEffortNotice` carry an empty `TaskId`). The seam is public and experimental (`ORKEXP008`): `ISystemOnePicker` and
 its records in `Orkeon.Application`, registered scoped by `AddOrkeonApplication`, and `ScriptingHostPorts.SystemOnePicker`,
 which `orkeon run`, the REPL, `orkeon-host` and `mcp serve --crew` set. The task path of System One is unchanged.
+
 ### Added — `prune` on `ctx.llm.act`: a script's own loop gets the orchestrator's read-result pruning (#461)
 
 `ctx.llm.act(prompt, { prune: true })` asks the host, before each model turn, for the pruning the crew loops run
