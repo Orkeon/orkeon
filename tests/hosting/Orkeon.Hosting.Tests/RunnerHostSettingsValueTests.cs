@@ -24,6 +24,13 @@ public sealed class RunnerHostSettingsValueTests : IDisposable
         try { Directory.Delete(_root, recursive: true); } catch (IOException) { /* best-effort */ }
     }
 
+    private IReadOnlyList<string> RefusalsOfFile(string json)
+    {
+        var path = Path.Combine(_root, "appsettings.json");
+        File.WriteAllText(path, json);
+        return RunnerHost.InspectSettings(path, configureServices: null).Refusals;
+    }
+
     private IReadOnlyList<string> Refusals(string orkeon)
     {
         var path = Path.Combine(_root, "appsettings.json");
@@ -144,7 +151,7 @@ public sealed class RunnerHostSettingsValueTests : IDisposable
         "Failed to convert configuration value 'x' at 'Orkeon:Decision:Profiles:p:FailClosed' to type 'System.Boolean'.")]
     [InlineData(
         """ "Decision": { "Profiles": { "p": "x" } } """,
-        "Orkeon:Decision:Profiles:p is 'x', a single value where a decision profile is expected")]
+        "Orkeon:Decision:Profiles:p is a single value where a decision profile is expected")]
     public void ShouldRefuseADecisionProfileTheBinderWouldDrop(string orkeon, string expected)
     {
         var refusal = Assert.Single(Refusals(orkeon));
@@ -175,6 +182,55 @@ public sealed class RunnerHostSettingsValueTests : IDisposable
         var refusal = Assert.Single(Refusals(orkeon));
 
         Assert.StartsWith(expected, refusal, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// #454 — a list whose reader splits one comma-separated value takes that form, the one an
+    /// environment variable writes (<c>Llm__AvailableModels=gpt-4o,claude</c>), as well as a list.
+    /// </summary>
+    [Theory]
+    [Trait("BR", "CH-454")]
+    [InlineData(""" "Llm": { "AvailableModels": "gpt-4o,claude" } """)]
+    [InlineData(""" "Llm": { "AvailableModels": ["gpt-4o", "claude"] } """)]
+    [InlineData(""" "Llm": { "ModelCapabilities": { "gpt-4o": { "ReasoningEfforts": "low,high" } } } """)]
+    [InlineData(""" "Llm": { "ModelCapabilities": { "gpt-4o": { "ReasoningEfforts": ["low", "high"] } } } """)]
+    [InlineData(""" "Llm": { "Profiles": { "fast": { "Model": "gpt-4o", "Fallback": "default,cheap" }, "cheap": { "Model": "gpt-4o-mini" } } } """)]
+    [InlineData(""" "Llm": { "Profiles": { "fast": { "Model": "gpt-4o", "Fallback": ["default", "cheap"] }, "cheap": { "Model": "gpt-4o-mini" } } } """)]
+    public void ShouldAcceptACommaSeparatedValue_WhereTheListReaderSplitsOne(string llm)
+    {
+        var refusals = RefusalsOfFile($$"""{ "RaggableTree": { "Enabled": false }, {{llm}} }""");
+
+        Assert.DoesNotContain(refusals, refusal => refusal.Contains("a single value", StringComparison.Ordinal));
+        Assert.DoesNotContain(refusals, refusal => refusal.Contains("AvailableModels", StringComparison.Ordinal)
+                                                  || refusal.Contains("ReasoningEfforts", StringComparison.Ordinal)
+                                                  || refusal.Contains("Fallback", StringComparison.Ordinal));
+    }
+
+    /// <summary>
+    /// #454 — a list whose reader takes no single value still refuses one, and the refusal does not
+    /// echo it: a value written where a list or a section is expected may be a secret.
+    /// </summary>
+    [Fact]
+    [Trait("BR", "CH-454")]
+    public void ShouldRefuseASingleValue_WhereAListReaderSplitsNone_WithoutEchoingIt()
+    {
+        var refusals = RefusalsOfFile("""{ "RaggableTree": { "Enabled": false }, "Security": { "Url": { "AllowedDomains": "sk-secret-example" } } }""");
+
+        var refusal = Assert.Single(refusals);
+        Assert.StartsWith("Security:Url:AllowedDomains is a single value where a list is expected", refusal, StringComparison.Ordinal);
+        Assert.DoesNotContain("sk-secret-example", refusal, StringComparison.Ordinal);
+    }
+
+    /// <summary>#454 — a profile written as a string, a key in the wrong place, is refused without its value.</summary>
+    [Fact]
+    [Trait("BR", "CH-454")]
+    public void ShouldRefuseAProfileWrittenAsAString_WithoutEchoingIt()
+    {
+        var refusals = RefusalsOfFile("""{ "RaggableTree": { "Enabled": false }, "Llm": { "Profiles": { "openai": "sk-secret-example" } } }""");
+
+        var refusal = Assert.Single(refusals, refusal => refusal.StartsWith("Llm:Profiles:openai ", StringComparison.Ordinal));
+        Assert.Contains("a single value where a section of keys is expected", refusal, StringComparison.Ordinal);
+        Assert.DoesNotContain(refusals, refusal => refusal.Contains("sk-secret-example", StringComparison.Ordinal));
     }
 
     /// <summary>An empty JSON array reads as an empty value, and stays an empty list.</summary>

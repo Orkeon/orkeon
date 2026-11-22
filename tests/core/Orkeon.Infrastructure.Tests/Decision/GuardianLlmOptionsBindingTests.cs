@@ -160,6 +160,7 @@ public class GuardianLlmOptionsBindingTests
         var message = Refusal(new() { ["Orkeon:Guardian:Llm:Phases"] = "Input" });
 
         Assert.Contains("Orkeon:Guardian:Llm:Phases is 'Input', a single value where a list is expected", message, StringComparison.Ordinal);
+        Assert.Contains("Orkeon__Guardian__Llm__Phases__0=Input", message, StringComparison.Ordinal);
     }
 
     /// <summary>#456 — one sentence per threshold out of [0, 1], naming its key and its value, in the invariant culture.</summary>

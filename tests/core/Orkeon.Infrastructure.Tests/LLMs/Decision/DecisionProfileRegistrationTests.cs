@@ -168,9 +168,9 @@ public class DecisionProfileRegistrationTests
     /// <summary>#454 — a profile or a stage written as a single value was ignored.</summary>
     [Theory]
     [Trait("BR", "CH-454")]
-    [InlineData("p", "Orkeon:Decision:Profiles:p is 'x', a single value where a decision profile is expected")]
-    [InlineData("p:Stages:0", "Orkeon:Decision:Profiles:p:Stages:0 is 'x', a single value where a stage is expected")]
-    [InlineData("p:Stages", "Orkeon:Decision:Profiles:p:Stages is 'x', a single value where a list of stages is expected")]
+    [InlineData("p", "Orkeon:Decision:Profiles:p is a single value where a decision profile is expected")]
+    [InlineData("p:Stages:0", "Orkeon:Decision:Profiles:p:Stages:0 is a single value where a stage is expected")]
+    [InlineData("p:Stages", "Orkeon:Decision:Profiles:p:Stages is a single value where a list of stages is expected")]
     public void ShouldRefuseASingleValue_WhereAProfileOrAStageIsExpected(string key, string expected)
     {
         var values = key == "p" ? [("p", "x")] : new[] { ("p:Target", "cheap"), (key, "x") };

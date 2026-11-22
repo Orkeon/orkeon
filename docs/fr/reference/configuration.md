@@ -140,10 +140,16 @@ une ligne qui nomme la clé — code de sortie `1` pour `orkeon` et `orkeon-repl
   `:Vision` (une clé sans identifiant avant son champ), quoi qu'elle contienne, est refusée avec
   `Llm:ModelCapabilities: an entry has no model id; name each entry by the model it describes.`
 - **Une valeur que le binder prendrait sans un mot** : une clé écrite sans valeur (`null` ou `{}`)
-  sur un réglage qui n'est pas une chaîne, que le binder lierait à la valeur par défaut de son type
-  (`false`, `0`) et non à celle du réglage — une chaîne écrite `null` reste acceptée, et une clé
-  absente prend son défaut ; une valeur seule là où une liste ou une section est attendue
-  (`"Phases": "Input"` au lieu de `["Input"]`) ; dans une liste ou un dictionnaire, une entrée que
+  sur un interrupteur, un nombre ou une énumération déclarés sans `?`, que le binder lierait à la
+  valeur par défaut de son type (`false`, `0`, le premier membre) et non à celle du réglage — tout
+  autre réglage (une chaîne, une valeur nullable, une liste, une section) écrit `null` reste
+  accepté, et une clé absente prend son défaut ; une valeur seule là où une liste ou une section
+  est attendue (`"Phases": "Input"` au lieu de `["Input"]`, ou `Orkeon__Guardian__Llm__Phases__0=Input`
+  dans l'environnement), nommée par son chemin sans sa valeur, qui peut être un secret écrit au
+  mauvais endroit — sauf aux listes dont le lecteur découpe une valeur unique séparée par des
+  virgules, la forme qu'écrit une variable d'environnement : `Llm:AvailableModels`,
+  `Llm:ModelCapabilities:<id>:ReasoningEfforts`, `Llm:Profiles:<name>:Fallback`,
+  `Orkeon:Tools:Firefox:AllowedProfiles` et `:DeniedProfiles` (`Llm__AvailableModels=gpt-4o,claude`) ; dans une liste ou un dictionnaire, une entrée que
   le binder écarterait faute de pouvoir la convertir (un profil de décision dont un `FailClosed`
   vaut `"peut-être"`, une étape dont un seuil n'est pas un nombre). Les phases du gardien et la
   `Phase` et les `Steps` d'une étape s'écrivent par leur nom, jamais par un nombre. Une valeur

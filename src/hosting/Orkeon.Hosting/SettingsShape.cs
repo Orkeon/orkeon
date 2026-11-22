@@ -40,6 +40,13 @@ internal sealed class SettingsShape
     public bool IsList { get; private set; }
 
     /// <summary>
+    /// Whether the list's reader also takes it as one comma-separated value
+    /// (<see cref="Orkeon.Application.Configuration.CommaSeparatedSettingAttribute"/>): a single value
+    /// written there is the list, not a mistake. True when one reader of the key takes it so.
+    /// </summary>
+    public bool TakesCommaSeparated { get; private set; }
+
+    /// <summary>
     /// The number type the binder reads the node's value as — <see cref="float"/> or
     /// <see cref="double"/> —, or null: a value it takes as such a number must be finite. A float when
     /// one reader reads it so: what overflows a <see cref="float"/> is still a finite <see cref="double"/>.
@@ -91,6 +98,7 @@ internal sealed class SettingsShape
 
         Open |= other.Open;
         IsList |= other.IsList;
+        TakesCommaSeparated |= other.TakesCommaSeparated;
         Values.UnionWith(other.Values);
         if (other.Entries is not null)
             Entries = Entries is null ? other.Entries : Merged(Entries, other.Entries);
@@ -128,7 +136,11 @@ internal sealed class SettingsShape
             if (property.GetIndexParameters().Length > 0 || property.GetGetMethod() is null || !IsBound(property))
                 continue;
 
-            shape.AddNamed(property.GetCustomAttribute<ConfigurationKeyNameAttribute>()?.Name ?? property.Name, Of(property.PropertyType, visiting));
+            var below = Of(property.PropertyType, visiting);
+            if (below.IsList && property.IsDefined(typeof(Orkeon.Application.Configuration.CommaSeparatedSettingAttribute), inherit: true))
+                below.TakesCommaSeparated = true;
+
+            shape.AddNamed(property.GetCustomAttribute<ConfigurationKeyNameAttribute>()?.Name ?? property.Name, below);
         }
 
         visiting.Remove(target);

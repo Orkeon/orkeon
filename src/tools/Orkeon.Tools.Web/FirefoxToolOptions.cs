@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using System.Globalization;
 using Microsoft.Extensions.Configuration;
+using Orkeon.Application.Configuration;
 
 namespace Orkeon.Tools.Web;
 
@@ -44,12 +45,14 @@ public sealed class FirefoxToolOptions
     /// The profiles an agent may name with the `profile` argument, beside `disposable` and `Profile`.
     /// Empty: an agent names no other profile. A name in `DeniedProfiles` stays refused.
     /// </summary>
+    [CommaSeparatedSetting]
     public Collection<string> AllowedProfiles { get; } = [];
 
     /// <summary>
     /// The profiles no browser ever starts with, whether an agent names one or `Profile` does: the
     /// operator's own profiles, for instance.
     /// </summary>
+    [CommaSeparatedSetting]
     public Collection<string> DeniedProfiles { get; } = [];
 
     /// <summary>
