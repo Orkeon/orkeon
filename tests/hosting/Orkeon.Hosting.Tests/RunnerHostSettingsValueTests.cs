@@ -38,6 +38,47 @@ public sealed class RunnerHostSettingsValueTests : IDisposable
         return RunnerHost.InspectSettings(path, configureServices: null).Refusals;
     }
 
+    /// <summary>
+    /// #465 — the one check every refusal test makes of what it refused: no refusal holds the value,
+    /// which may be a secret pasted in the wrong key.
+    /// </summary>
+    private static void AssertNeverEchoes(IEnumerable<string> refusals, string value) =>
+        Assert.DoesNotContain(refusals, refusal => refusal.Contains(value, StringComparison.Ordinal));
+
+    /// <summary>The refusals of a file whose <c>Witness</c> section the test declares (<see cref="EnumWitnessSettings"/>).</summary>
+    private IReadOnlyList<string> RefusalsOfWitness(string witness)
+    {
+        var path = Path.Combine(_root, "appsettings.json");
+        File.WriteAllText(path, $$"""{ "RaggableTree": { "Enabled": false }, "Witness": { {{witness}} } }""");
+        return RunnerHost.InspectSettings(
+            path,
+            configureServices: (_, services) => services.DeclareSettingsShape("Witness", typeof(EnumWitnessSettings))).Refusals;
+    }
+
+    /// <summary>A test-only section: a [Flags] enumeration and a nullable one, which no walked section of the host declares.</summary>
+    private sealed class EnumWitnessSettings
+    {
+        public WitnessRights Rights { get; set; }
+
+        public WitnessMode? Mode { get; set; }
+
+        public List<WitnessMode?> Modes { get; set; } = [];
+    }
+
+    [Flags]
+    private enum WitnessRights
+    {
+        None = 0,
+        Read = 1,
+        Write = 2,
+    }
+
+    private enum WitnessMode
+    {
+        Closed,
+        Open,
+    }
+
     [Fact]
     [Trait("BR", "CH-449")]
     public void ShouldRefuseAComputedPropertyAsAnUnknownKey_AndListOnlyTheSettings()
@@ -218,7 +259,7 @@ public sealed class RunnerHostSettingsValueTests : IDisposable
 
         var refusal = Assert.Single(refusals);
         Assert.StartsWith("Security:Url:AllowedDomains is a single value where a list is expected", refusal, StringComparison.Ordinal);
-        Assert.DoesNotContain("sk-secret-example", refusal, StringComparison.Ordinal);
+        AssertNeverEchoes([refusal], "sk-secret-example");
     }
 
     /// <summary>
@@ -235,12 +276,13 @@ public sealed class RunnerHostSettingsValueTests : IDisposable
     [InlineData(""" "Orkeon": { "Decision": { "Profiles": { "p": { "Target": "default", "Stages": [ { "Kind": "guard", "Risks": { "x": "y" }, "BlockThreshold": "sk-secret-example" } ] } } } } """, "Orkeon:Decision:Profiles:p:Stages:0:BlockThreshold")]
     [InlineData(""" "Orkeon": { "Guardian": { "Llm": { "Phases": "sk-secret-example" } } } """, "Orkeon:Guardian:Llm:Phases")]
     [InlineData(""" "Orkeon": { "Guardian": { "Llm": { "BlockThreshold": "sk-secret-example" } } } """, "Orkeon:Guardian:Llm:BlockThreshold")]
+    [InlineData(""" "Orkeon": { "Rag": { "Retrieval": { "Hybrid": "sk-secret-example" } } } """, "Orkeon:Rag:Retrieval:Hybrid")]
     public void ShouldRefuseAValueTheKeyCannotRead_WithoutEchoingIt(string sections, string key)
     {
         var refusals = RefusalsOfFile($$"""{ "RaggableTree": { "Enabled": false }, {{sections}} }""");
 
         Assert.Contains(refusals, refusal => refusal.Contains(key, StringComparison.Ordinal));
-        Assert.DoesNotContain(refusals, refusal => refusal.Contains("sk-secret-example", StringComparison.Ordinal));
+        AssertNeverEchoes(refusals, "sk-secret-example");
     }
 
     /// <summary>#465 — a number that is not finite is refused by its key, without the value.</summary>
@@ -251,7 +293,7 @@ public sealed class RunnerHostSettingsValueTests : IDisposable
         var refusal = Assert.Single(RefusalsOfFile("""{ "RaggableTree": { "Enabled": false }, "Orkeon": { "Rag": { "Generation": { "Temperature": "NaN" } } } }"""));
 
         Assert.StartsWith("Orkeon:Rag:Generation:Temperature is not a finite number", refusal, StringComparison.Ordinal);
-        Assert.DoesNotContain("'NaN'", refusal, StringComparison.Ordinal);
+        AssertNeverEchoes([refusal], "'NaN'");
     }
 
     /// <summary>#464 — an enumeration written as a number is refused, naming the members, never the value.</summary>
@@ -267,6 +309,50 @@ public sealed class RunnerHostSettingsValueTests : IDisposable
         var refusal = Assert.Single(refusals);
         Assert.StartsWith($"{key} is a number where a name is expected: write one of ", refusal, StringComparison.Ordinal);
         Assert.Contains(member, refusal, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// #464, #465 — the refusals of an enumeration's value never hold it: a comma list where one name is
+    /// expected, and a spelling no member has, written as a key would be. A list holding a name no member
+    /// has fails the binder first, whose sentence is reworded without the value.
+    /// </summary>
+    [Theory]
+    [Trait("BR", "CH-464")]
+    [Trait("BR", "CH-465")]
+    [InlineData(""" "Orkeon": { "Guardian": { "Llm": { "FailMode": "Closed, sk-test-0123456789abcdef" } } } """, "Failed to convert the configuration value at 'Orkeon:Guardian:Llm:FailMode'")]
+    [InlineData(""" "Orkeon": { "Guardian": { "Llm": { "FailMode": "sk-test-0123456789abcdef" } } } """, "Failed to convert the configuration value at 'Orkeon:Guardian:Llm:FailMode'")]
+    [InlineData(""" "Security": { "Audit": { "EnabledCategories": [ "LlmCall", "sk-test-0123, LlmCall" ] } } """, "Security:Audit:EnabledCategories:1 is a list where a single name is expected")]
+    public void ShouldRefuseAnEnumerationsValue_WithoutEchoingIt(string sections, string start)
+    {
+        var refusals = RefusalsOfFile($$"""{ "RaggableTree": { "Enabled": false }, {{sections}} }""");
+
+        Assert.Contains(refusals, refusal => refusal.StartsWith(start, StringComparison.Ordinal));
+        AssertNeverEchoes(refusals, "sk-test-0123");
+    }
+
+    /// <summary>
+    /// #464 — a [Flags] enumeration takes a comma list of names, never a number among them; a nullable
+    /// enumeration is judged as its underlying one, in a value and in a list. No walked section of the
+    /// host declares either, so a test-only section does.
+    /// </summary>
+    [Theory]
+    [Trait("BR", "CH-464")]
+    [InlineData(""" "Rights": "Read, 2" """, "Witness:Rights holds a number where WitnessRights takes names: write one or more of None, Read, Write, separated by commas.")]
+    [InlineData(""" "Rights": "3" """, "Witness:Rights holds a number where WitnessRights takes names: write one or more of None, Read, Write, separated by commas.")]
+    [InlineData(""" "Mode": "1" """, "Witness:Mode is a number where a name is expected: write one of Closed, Open.")]
+    [InlineData(""" "Mode": "Closed, Open" """, "Witness:Mode is a list where a single name is expected: write one of Closed, Open.")]
+    [InlineData(""" "Modes": [ "Open", "1" ] """, "Witness:Modes:1 is a number where a name is expected: write one of Closed, Open.")]
+    public void ShouldRefuseANumber_InAFlagsOrANullableEnumeration(string witness, string expected)
+    {
+        Assert.Equal([expected], RefusalsOfWitness(witness));
+    }
+
+    /// <summary>#464 — a [Flags] enumeration keeps its comma list of names; a nullable one its name, in any case.</summary>
+    [Fact]
+    [Trait("BR", "CH-464")]
+    public void ShouldAcceptAFlagsListOfNames_AndANullableEnumerationsName()
+    {
+        Assert.Empty(RefusalsOfWitness(""" "Rights": "Read, write", "Mode": "open", "Modes": [ "Closed" ] """));
     }
 
     /// <summary>#464 — a phase written as a number is refused once, by the walk or by the phases' own check.</summary>

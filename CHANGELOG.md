@@ -51,18 +51,26 @@ the cap the two `error` lines stay two, both `terminal: true`, and a brief refus
 ### Changed — an enumeration setting is written by its name, never as a number **[breaking]** (#464)
 
 **Before**: the binder took a number as the member holding it (`Orkeon:Guardian:Llm:FailMode: "1"` bound `Open`, the
-fail-open policy), and a comma list as a combination of members, without a word; an e-mail or drive account took its
-`Rights` as a number (`"3"` for `Read, Organize`). **Now**: the host refuses at start an enumeration setting written as
-a number — in a value, a list or a dictionary — or as a comma list where it takes one name, and the refusal names the
-key and the members, never the value (`Orkeon:Guardian:Llm:FailMode is a number where a name is expected: write one of
-Closed, Open.`). A name is still read in any case. An account whose `Rights` or other enumeration holds a number is
-misconfigured, as one holding an unknown name.
+fail-open policy), and a comma list as a combination of members, without a word; `Llm:Replay:Mode` took `"1"` as
+`record`; an e-mail or drive account took its `Rights` as a number (`"3"` for `Read, Organize` on an e-mail account,
+`Read, Write` on a drive account) and a comma list on an enumeration that takes one name (`Incoming:Security:
+"SslOnConnect, StartTls"` bound `StartTls`, a drive's `Provider: "GoogleDrive, OneDrive"` bound `OneDrive`). **Now**:
+the host refuses at start an enumeration setting written as a number — in a value, a list or a dictionary — or as a
+comma list where it takes one name, and the refusal names the key and the members, never the value
+(`Orkeon:Guardian:Llm:FailMode is a number where a name is expected: write one of Closed, Open.`). `Llm:Replay:Mode`
+written so is refused as an unknown mode. A name is still read in any case. An account whose `Rights` or other
+enumeration holds a number, or a comma list where it takes one name, is misconfigured, as one holding an unknown name,
+and its problem names the key and the members, never the value (`Rights holds a number where EmailRights takes names:
+write one or more of Read, Organize, Draft, Send, Delete, Purge, separated by commas`, `Provider is not one of Custom,
+Gmail, Outlook`).
 
 | Before | Now |
 |---|---|
 | `"FailMode": "1"` | `"FailMode": "Open"` |
 | `"EnabledCategories": [ "0", "2" ]` | `"EnabledCategories": [ "LlmCall", "FileAccess" ]` |
-| `"Rights": "3"` (an e-mail or drive account) | `"Rights": "Read, Organize"` |
+| `"Rights": "3"` (an e-mail account) | `"Rights": "Read, Organize"` |
+| `"Rights": "3"` (a drive account) | `"Rights": "Read, Write"` |
+| `"Replay": { "Mode": "1" }` | `"Replay": { "Mode": "record" }` |
 
 ### Changed — a hosted decision provider without its key turns the circuit off (`no-key`) **[breaking]** (#451)
 
@@ -150,8 +158,9 @@ that value, nor does a refusal of a value a boolean or number key cannot read (#
   `… is not a finite number: NaN, an infinity and a number past the type's range are refused.`, `… is not true or
   false.`, `… is not a whole number.` (`Llm`, `RaggableTree:Embedding`, `Orkeon:Rag:Hybrid`) and the Email and Drive
   accounts' `… is neither true nor false` / `… is not a whole number`. `Orkeon:Guardian:Llm:Phases` written as a single
-  value is refused without it. A value judged against a closed list of names (a phase, a provider, a log level, an
-  enumeration) is still named, to show the typo.
+  value is refused without it. A value judged against a closed list of names (a phase, a provider, a log level) is
+  still named, to show the typo; an enumeration setting's refusal names the key and the members instead (#464), and so
+  does an e-mail or drive account's.
 - A value echoed in a refusal is written in the invariant culture (`1.5`, never `1,5`): decision-profile
   thresholds, the guardian thresholds, an agent's `maxExecutionTime`, `ContextWindowSettings.CompressionRatio`,
   `KnowledgeAttachment.MinScore`.

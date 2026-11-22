@@ -134,9 +134,11 @@ internal static class EmailOptionsBinder
     // number the enum does not define is refused too: the converter takes "5" for a security
     // mode that does not exist, which no later check would then recognise. A number is refused
     // even when the enum defines it (#464): a right is written by its name, never by its value.
+    // A comma list is a combination of flags: on an enum that is not [Flags] the converter would
+    // bind "SslOnConnect, StartTls" to whichever member the two values OR to, so it is refused.
     private static bool Converts(Type type, string value)
     {
-        if (type.IsEnum && value.Split(',').Any(token => long.TryParse(token.Trim(), NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture, out _)))
+        if (type.IsEnum && (HoldsNumber(value) || (!IsFlags(type) && value.Contains(',', StringComparison.Ordinal))))
             return false;
 
         object? converted;
@@ -152,6 +154,9 @@ internal static class EmailOptionsBinder
         return converted is not Enum member || IsDefined(type, member);
     }
 
+    private static bool HoldsNumber(string value) =>
+        value.Split(',').Any(token => long.TryParse(token.Trim(), NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture, out _));
+
     private static bool IsDefined(Type type, Enum member)
     {
         if (!IsFlags(type))
@@ -161,16 +166,24 @@ internal static class EmailOptionsBinder
         return (Convert.ToInt64(member, CultureInfo.InvariantCulture) & ~declared) == 0;
     }
 
+    // No refusal repeats the value (#465): written in the wrong key, it may be a secret. The
+    // sentence names the key and what it takes, in the words of the host's settings check.
     private static string Describe(string key, Type type, string value)
     {
         if (type.IsEnum)
         {
-            return IsFlags(type)
-                ? $"{key} '{value}' is not a list of {Names(type)}, separated by commas"
-                : $"{key} '{value}' is not one of {Names(type)}";
+            if (IsFlags(type))
+            {
+                return HoldsNumber(value)
+                    ? $"{key} holds a number where {type.Name} takes names: write one or more of {Names(type)}, separated by commas"
+                    : $"{key} is not a list of {Names(type)}, separated by commas";
+            }
+
+            return HoldsNumber(value) ? $"{key} is a number where a name is expected: write one of {Names(type)}"
+                : value.Contains(',', StringComparison.Ordinal) ? $"{key} is a list where a single name is expected: write one of {Names(type)}"
+                : $"{key} is not one of {Names(type)}";
         }
 
-        // A boolean or a number is not echoed (#465): the value is not of the key's type, so it may be anything.
         return type == typeof(bool)
             ? $"{key} is neither true nor false"
             : $"{key} is not a whole number";

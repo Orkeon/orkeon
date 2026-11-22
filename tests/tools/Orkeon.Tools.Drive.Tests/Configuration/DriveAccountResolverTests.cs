@@ -169,8 +169,8 @@ public class DriveAccountResolverTests
 
         Assert.Equal(3, options.Accounts.Count);
         Assert.False(options.AccountProblems.ContainsKey("good"));
-        Assert.Contains(options.AccountProblems["bad"], problem => problem.StartsWith("Provider 'Dropbox' is not one of GoogleDrive, OneDrive", StringComparison.Ordinal));
-        Assert.Contains(options.AccountProblems["bad"], problem => problem.StartsWith("Rights 'Read, Fly' is not a list of", StringComparison.Ordinal));
+        Assert.Contains(options.AccountProblems["bad"], problem => problem.StartsWith("Provider is not one of GoogleDrive, OneDrive", StringComparison.Ordinal));
+        Assert.Contains(options.AccountProblems["bad"], problem => problem.StartsWith("Rights is not a list of", StringComparison.Ordinal));
         Assert.Contains(options.AccountProblems["typo"], problem => problem.StartsWith("Roots is not an account setting", StringComparison.Ordinal));
     }
 
@@ -189,7 +189,52 @@ public class DriveAccountResolverTests
 
         DriveOptionsBinder.Bind(section, options);
 
-        Assert.Contains(options.AccountProblems["numbers"], problem => problem.StartsWith($"Rights '{rights}' is not a list of", StringComparison.Ordinal));
+        Assert.Contains(options.AccountProblems["numbers"], problem => problem.StartsWith("Rights holds a number where DriveRights takes names: write one or more of", StringComparison.Ordinal));
+    }
+
+    /// <summary>
+    /// A comma list is a combination of flags: on <c>Provider</c>, which is no <c>[Flags]</c>
+    /// enumeration, the converter bound <c>"GoogleDrive, OneDrive"</c> to <c>OneDrive</c> (#464).
+    /// </summary>
+    [Fact]
+    [Trait("BR", "CH-464")]
+    public void Binder_should_refuse_a_comma_list_where_one_name_is_expected()
+    {
+        var section = Section(new()
+        {
+            ["Accounts:list:Provider"] = "GoogleDrive, OneDrive",
+            ["Accounts:list:Rights"] = "Read",
+        });
+        var options = new DriveToolsOptions();
+
+        DriveOptionsBinder.Bind(section, options);
+
+        Assert.Equal(
+            ["Provider is a list where a single name is expected: write one of GoogleDrive, OneDrive"],
+            options.AccountProblems["list"]);
+    }
+
+    /// <summary>No refusal repeats the value (#465): pasted in the wrong key, it may be a secret.</summary>
+    [Theory]
+    [Trait("BR", "CH-465")]
+    [InlineData("Provider", "sk-test-0123456789abcdef")]
+    [InlineData("Provider", "sk-test-0123, OneDrive")]
+    [InlineData("Rights", "Read, sk-test-0123456789abcdef")]
+    public void Binder_should_never_repeat_the_refused_value(string key, string value)
+    {
+        var section = Section(new()
+        {
+            ["Accounts:secret:Provider"] = "GoogleDrive",
+            ["Accounts:secret:Rights"] = "Read",
+            [$"Accounts:secret:{key}"] = value,
+        });
+        var options = new DriveToolsOptions();
+
+        DriveOptionsBinder.Bind(section, options);
+
+        var problem = Assert.Single(options.AccountProblems["secret"]);
+        Assert.StartsWith(key, problem, StringComparison.Ordinal);
+        Assert.DoesNotContain("sk-test", problem, StringComparison.Ordinal);
     }
 
     [Fact]

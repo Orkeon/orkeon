@@ -268,7 +268,8 @@ public static class LlmSettings
         if (Clean(section["Mode"]) is not { } mode)
             return options;
 
-        if (!Enum.TryParse<LlmReplayMode>(mode, ignoreCase: true, out var parsed) || !Enum.IsDefined(parsed))
+        // By name only (#464): Enum.TryParse reads "1" as Record and "off, record" as a combination.
+        if (!EnumSetting.TryParseName<LlmReplayMode>(mode, out var parsed))
             throw new InvalidOperationException($"{section.Path}:Mode: '{mode}' is not a mode; the values are off, record and replay.");
         options.Mode = parsed;
         if (parsed != LlmReplayMode.Off && options.Cassette is null)

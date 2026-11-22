@@ -156,7 +156,10 @@ une ligne qui nomme la clé — code de sortie `1` pour `orkeon` et `orkeon-repl
   liste ou un dictionnaire, ou comme une liste à virgules là où elle prend un seul nom — le refus nomme
   ses membres, jamais la valeur. Toute énumération s'écrit par son nom, dans n'importe quelle casse ;
   une énumération `[Flags]` (les `Rights` d'un compte e-mail ou drive) comme une liste de noms séparés
-  par des virgules, et un nombre y rend le compte mal configuré. Une valeur
+  par des virgules. Sur un compte e-mail ou drive, un nombre, ou une liste à virgules là où l'énumération
+  prend un seul nom (`Incoming:Security`, `Provider`), rend le compte mal configuré, et son problème nomme
+  la clé et les membres, jamais la valeur (`Rights holds a number where EmailRights takes names: write
+  one or more of …`). Une valeur
   citée dans un refus l'est dans la culture invariante (`1.5`, jamais `1,5`), et chaque seuil de
   `Orkeon:Guardian:Llm` hors de [0, 1] a sa propre phrase, avec sa valeur. Seuls les réglages sont
   des clés : une propriété calculée (`IsEnabled`, `NeedsBrowserGuard`) est une clé inconnue.
@@ -415,7 +418,7 @@ Un profil — ou la section `Llm` elle-même — écrit `"Provider": "mock", "Re
 
 #### `Replay` enregistre ou rejoue les appels
 
-`Llm:Replay:Mode` à `record` écrit chaque appel d'un fournisseur, avec sa réponse, dans le fichier JSONL que `Llm:Replay:Cassette` nomme ; `replay` répond à chaque appel depuis ce fichier et n'appelle aucun modèle ; `off` (le défaut) ne fait ni l'un ni l'autre. Le décorateur se pose dans la fabrique de fournisseurs, sous la couche de mode d'appel : la cassette contient donc ce qui est vraiment parti sur le fil. `orkeon run --llm-record` et `--llm-replay` posent les deux clés et montent le dossier ; voir [Enregistrer et rejouer les appels LLM](../guides/testing.md). Un mode sans cassette, ou un mode qui n'est aucun des trois, refuse le démarrage en nommant la clé.
+`Llm:Replay:Mode` à `record` écrit chaque appel d'un fournisseur, avec sa réponse, dans le fichier JSONL que `Llm:Replay:Cassette` nomme ; `replay` répond à chaque appel depuis ce fichier et n'appelle aucun modèle ; `off` (le défaut) ne fait ni l'un ni l'autre. Le décorateur se pose dans la fabrique de fournisseurs, sous la couche de mode d'appel : la cassette contient donc ce qui est vraiment parti sur le fil. `orkeon run --llm-record` et `--llm-replay` posent les deux clés et montent le dossier ; voir [Enregistrer et rejouer les appels LLM](../guides/testing.md). Un mode sans cassette, ou un mode qui n'est aucun des trois, refuse le démarrage en nommant la clé ; un mode s'écrit par son nom, dans n'importe quelle casse, et un nombre (`"1"`) ou une liste à virgules n'est aucun des trois.
 
 #### `Grammar` est pour un serveur compatible llama.cpp
 

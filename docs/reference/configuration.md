@@ -145,8 +145,10 @@ refusals on the same file, one `runner-settings` row each. What is refused:
   number); an enumeration written as a number (`Orkeon:Guardian:Llm:FailMode: "1"`, which the binder
   would take as `Open`), in a value, a list or a dictionary, or written as a comma list where it takes one
   name — the refusal names its members, never the value. Every enumeration is written by its name, in
-  any case; a `[Flags]` one (an e-mail or drive account's `Rights`) as a comma list of names, and a number
-  there makes the account misconfigured. A value quoted in a refusal is written in the invariant culture (`1.5`, never `1,5`), and
+  any case; a `[Flags]` one (an e-mail or drive account's `Rights`) as a comma list of names. On an e-mail
+  or drive account, a number, or a comma list where the enumeration takes one name (`Incoming:Security`,
+  `Provider`), makes the account misconfigured, and its problem names the key and the members, never the
+  value (`Rights holds a number where EmailRights takes names: write one or more of …`). A value quoted in a refusal is written in the invariant culture (`1.5`, never `1,5`), and
   each threshold of `Orkeon:Guardian:Llm` outside [0, 1] has its own sentence, with its value. Only
   settings are keys: a computed property (`IsEnabled`, `NeedsBrowserGuard`) is an unknown key.
 
@@ -392,7 +394,7 @@ A profile — or the `Llm` section itself — written `"Provider": "mock", "Resp
 
 #### `Replay` records or replays the calls
 
-`Llm:Replay:Mode` set to `record` writes every call a provider makes, with its answer, to the JSONL file `Llm:Replay:Cassette` names; `replay` answers every call from that file and calls no model; `off` (the default) does neither. The decorator sits in the provider factory, under the call-mode layer, so the cassette holds what really went over the wire. `orkeon run --llm-record` and `--llm-replay` set both keys and mount the folder; see [Record and replay LLM calls](../guides/testing.md). A mode without a cassette, or a mode that is none of the three, refuses the start naming the key.
+`Llm:Replay:Mode` set to `record` writes every call a provider makes, with its answer, to the JSONL file `Llm:Replay:Cassette` names; `replay` answers every call from that file and calls no model; `off` (the default) does neither. The decorator sits in the provider factory, under the call-mode layer, so the cassette holds what really went over the wire. `orkeon run --llm-record` and `--llm-replay` set both keys and mount the folder; see [Record and replay LLM calls](../guides/testing.md). A mode without a cassette, or a mode that is none of the three, refuses the start naming the key; a mode is written by its name, in any case, and a number (`"1"`) or a comma list is none of the three.
 
 #### `Grammar` is for a llama.cpp-compatible server
 
