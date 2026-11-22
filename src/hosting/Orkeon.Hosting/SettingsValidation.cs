@@ -131,6 +131,7 @@ internal static class SettingsValidation
             if (key == LlmProviderKeys.Mock
                 || LlmProviderKeys.All.Contains(key, StringComparer.Ordinal)
                 || LlmProviderKeys.Aliases.ContainsKey(key)
+                || key is LlmProviderKeys.Custom or LlmProviderKeys.DockerModelRunner or LlmProviderKeys.AzureShort
                 || modules.Contains(key, StringComparer.OrdinalIgnoreCase))
                 continue;
 

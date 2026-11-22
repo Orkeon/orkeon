@@ -27,6 +27,7 @@ a new one needs a motivated exception.
    `orkeon llm probe` read the modules the tool ships.
 2. **The key is generic.** The module's key is `agent-cli` and its engine `claude` (`Llm:AgentCli:Engine`): no
    vendor's name in the provider's key, so that another CLI is a second engine, not a second provider.
+   Another engine is refused when the host starts.
 3. **Orkeon's tools, run by Orkeon.** The CLI starts with its own tools turned off (`--tools ""`, `--strict-mcp-config`)
    and one MCP server, `orkeon`, reached through a relay the CLI starts (`Orkeon.Interop.AgentCli.Relay`, over a Unix
    domain socket in a private scratch folder); the bridge speaks JSON-RPC through Orkeon's own `JsonRpcTypes`, a

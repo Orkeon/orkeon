@@ -21,8 +21,9 @@ public static class AgentCliServiceCollectionExtensions
     {
         ArgumentNullException.ThrowIfNull(services);
 
-        services.AddOptions<AgentCliOptions>().BindConfiguration(AgentCliOptions.SectionName);
-        services.TryAddSingleton(sp => new AgentCliProviderModule(sp.GetRequiredService<IOptions<AgentCliOptions>>().Value));
+        services.AddOptions<AgentCliOptions>().BindConfiguration(AgentCliOptions.SectionName).ValidateOnStart();
+        services.TryAddEnumerable(ServiceDescriptor.Singleton<IValidateOptions<AgentCliOptions>, AgentCliOptionsValidator>());
+        services.TryAddSingleton(sp => new AgentCliProviderModule(() => sp.GetRequiredService<IOptions<AgentCliOptions>>().Value));
         services.TryAddEnumerable(ServiceDescriptor.Singleton<ILlmProviderModule, AgentCliProviderModule>(
             sp => sp.GetRequiredService<AgentCliProviderModule>()));
         services.DeclareSettingsShape(AgentCliOptions.SectionName, typeof(AgentCliOptions));

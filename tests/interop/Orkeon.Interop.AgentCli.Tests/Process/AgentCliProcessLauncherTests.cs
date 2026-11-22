@@ -1,3 +1,5 @@
+using Microsoft.Extensions.Logging.Abstractions;
+using Orkeon.Interop.AgentCli.Engine;
 using Orkeon.Interop.AgentCli.Process;
 
 namespace Orkeon.Interop.AgentCli.Tests.Process;
@@ -30,6 +32,27 @@ public sealed class AgentCliProcessLauncherTests
 
         // Act
         AgentCliProcessLauncher.TryDelete(folder);
+
+        // Assert
+        Assert.False(Directory.Exists(folder));
+        Assert.DoesNotContain(folder, AgentCliProcessLauncher.LiveFolders.Current);
+    }
+
+    [Fact]
+    public async Task ShouldRemoveScratchFolder_WhenProcessIsDisposed()
+    {
+        // Arrange: a program that is on every machine the tests run on stands in for the CLI; it ends at
+        // once on arguments it does not know, which the launcher does not judge.
+        var options = new AgentCliOptions { Command = "dotnet" };
+        var marker = Guid.NewGuid().ToString("N");
+        var launcher = new AgentCliProcessLauncher(NullLogger.Instance);
+
+        // Act
+        var process = launcher.Start(new ClaudeCodeEngine(options), marker, "haiku");
+        var folder = Assert.Single(AgentCliProcessLauncher.LiveFolders.Current, candidate =>
+            File.Exists(Path.Join(candidate, "system-prompt.md"))
+            && File.ReadAllText(Path.Join(candidate, "system-prompt.md")) == marker);
+        await process.DisposeAsync();
 
         // Assert
         Assert.False(Directory.Exists(folder));

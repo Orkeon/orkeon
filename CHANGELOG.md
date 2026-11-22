@@ -69,6 +69,7 @@ agent CLI signed in to its own subscription; the one engine is Claude Code, `cla
   closes, `kill -9` of the host included. The private scratch folder of each process (prompt file, socket, working
   folder) is removed when its session ends, when the host exits, or by the relay once the host is gone.
 - `Llm:AgentCli:Command` names an executable, so it refuses a variable reference like `MCP:Servers:<id>:Command`.
+- `Llm:AgentCli:Engine` takes `claude` alone: another value is refused when the host starts, naming the key.
 - `orkeon llm probe --provider agent-cli` needs no API key, and reads its tool calls in the Anthropic shape. Like
   every probe it takes its provider from the command line alone: it runs the `claude` of the `PATH`, whatever
   `Llm:AgentCli` says. `orkeon doctor` builds the module on the file's `Llm:AgentCli` and starts no CLI: a `claude`

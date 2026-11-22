@@ -237,6 +237,45 @@ public sealed class AgentCliLlmProviderTests : IAsyncDisposable
     }
 
     [Fact]
+    public async Task ShouldAnswer_WhenLoginNotRequiredAndCliRunsOnAnApiKey()
+    {
+        await using var scope = AgentRunScope.Begin("a1", "Chat");
+        var provider = Provider(new AgentCliOptions { RequireLogin = false });
+        var call = provider.ChatAsync([User("Hi")], null, TestContext.Current.CancellationToken);
+        var process = await _launcher.NextAsync();
+        await process.NextInputAsync();
+        await process.EmitAsync(StreamLines.Init(apiKeySource: "ANTHROPIC_API_KEY"));
+        await process.EmitAsync(StreamLines.Result("Hello."));
+        var response = await call;
+
+        Assert.Equal("Hello.", response.Content);
+        Assert.False(response.Metadata.ContainsKey(LlmResponseMetadataKeys.Error));
+    }
+
+    [Fact]
+    public async Task ShouldStartOneMore_WhenEveryProcessIsInACall()
+    {
+        await using var scope = AgentRunScope.Begin("a1", "Chat");
+        var provider = Provider(new AgentCliOptions { MaxProcesses = 1 });
+
+        // The first call stays in its turn: its session is busy, so nothing can be closed for the second.
+        var first = provider.ChatAsync([User("One")], null, TestContext.Current.CancellationToken);
+        var one = await _launcher.NextAsync();
+        await one.NextInputAsync();
+
+        var second = provider.ChatAsync([User("Two")], null, TestContext.Current.CancellationToken);
+        var two = await _launcher.NextAsync();
+        await two.NextInputAsync();
+        await two.EmitAsync(StreamLines.Result("2"));
+        Assert.Equal("2", (await second).Content);
+        Assert.False(one.Disposed);
+
+        await one.EmitAsync(StreamLines.Result("1"));
+        Assert.Equal("1", (await first).Content);
+        Assert.True(_logger.HasEntry(entry => entry.EventId.Id == 40 && entry.Level == LogLevel.Warning));
+    }
+
+    [Fact]
     public async Task ShouldInterruptAndClose_WhenCallCancelled()
     {
         await using var scope = AgentRunScope.Begin("a1", "Chat");

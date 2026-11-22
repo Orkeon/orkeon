@@ -38,4 +38,9 @@
     <None Include="Fixtures\mcp-echo-server.mjs" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- One double for the three test projects that register a provider module. -->
+    <Compile Include="..\..\shared\Linked\FakeLlmProviderModule.cs" Link="Fakes\FakeLlmProviderModule.cs" />
+  </ItemGroup>
+
 </Project>

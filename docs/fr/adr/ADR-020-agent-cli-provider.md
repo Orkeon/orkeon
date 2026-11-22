@@ -27,6 +27,7 @@ périmètre du framework est gelé à ses seize fournisseurs ; un nouveau demand
    aucun module ne répond. `orkeon doctor` et `orkeon llm probe` lisent les modules que l'outil livre.
 2. **La clé est générique.** La clé du module est `agent-cli` et son moteur `claude` (`Llm:AgentCli:Engine`) : aucun
    nom de vendeur dans la clé du fournisseur, pour qu'une autre CLI soit un second moteur, pas un second fournisseur.
+   Un autre moteur est refusé au démarrage de l'hôte.
 3. **Les outils d'Orkeon, exécutés par Orkeon.** La CLI démarre avec ses propres outils coupés (`--tools ""`,
    `--strict-mcp-config`) et un seul serveur MCP, `orkeon`, joint par un relais que la CLI lance
    (`Orkeon.Interop.AgentCli.Relay`, sur une socket de domaine Unix dans un dossier temporaire privé) ; le pont parle

@@ -225,7 +225,7 @@ public sealed class DoctorCommandTests : IDisposable
             { "RaggableTree": { "Enabled": false }, "Llm": { "Provider": "fake-cli", "Model": "opus" } }
             """);
 
-        var (exit, lines) = await DoctorJsonAsync(scratch, modules: [new Doubles.FakeLlmProviderModule()]);
+        var (exit, lines) = await DoctorJsonAsync(scratch, modules: [new Orkeon.Tests.Shared.Doubles.FakeLlmProviderModule()]);
 
         Assert.Equal(Program.ExitOk, exit);
         var config = Assert.Single(lines, l => l.Check == "llm-config");
@@ -243,7 +243,7 @@ public sealed class DoctorCommandTests : IDisposable
             { "RaggableTree": { "Enabled": false }, "Llm": { "Provider": "other-cli" } }
             """);
 
-        var (exit, lines) = await DoctorJsonAsync(scratch, modules: [new Doubles.FakeLlmProviderModule()]);
+        var (exit, lines) = await DoctorJsonAsync(scratch, modules: [new Orkeon.Tests.Shared.Doubles.FakeLlmProviderModule()]);
 
         Assert.Equal(Program.ExitScriptError, exit);
         var config = Assert.Single(lines, l => l.Check == "llm-config");

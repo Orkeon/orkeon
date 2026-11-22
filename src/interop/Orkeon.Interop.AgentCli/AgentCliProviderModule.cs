@@ -17,7 +17,7 @@ namespace Orkeon.Interop.AgentCli;
 [Experimental(AgentCliDiagnostics.ExperimentalId, UrlFormat = AgentCliDiagnostics.ExperimentalUrl)]
 public sealed class AgentCliProviderModule : ILlmProviderModule, IAsyncDisposable
 {
-    private readonly AgentCliOptions _options;
+    private readonly Lazy<AgentCliOptions> _options;
     private readonly Lock _gate = new();
     private AgentCliProcessHost? _host;
 
@@ -25,8 +25,14 @@ public sealed class AgentCliProviderModule : ILlmProviderModule, IAsyncDisposabl
     public AgentCliProviderModule(AgentCliOptions options)
     {
         ArgumentNullException.ThrowIfNull(options);
-        _options = options;
+        _options = new Lazy<AgentCliOptions>(options);
     }
+
+    /// <summary>
+    /// A module that reads its options at the first provider it builds: a section the start validation
+    /// refuses is then reported by that validation, not thrown where the modules are listed.
+    /// </summary>
+    internal AgentCliProviderModule(Func<AgentCliOptions> options) => _options = new Lazy<AgentCliOptions>(options);
 
     /// <inheritdoc />
     public string Key => AgentCliDiagnostics.ProviderKey;
@@ -38,21 +44,21 @@ public sealed class AgentCliProviderModule : ILlmProviderModule, IAsyncDisposabl
         ArgumentNullException.ThrowIfNull(context);
 
         var logger = context.LoggerFactory.CreateLogger("Orkeon.Interop.AgentCli");
+        var options = _options.Value;
         AgentCliProcessHost host;
         lock (_gate)
         {
             host = _host ??= new AgentCliProcessHost(
-                new AgentCliProcessLauncher(logger), EngineOf(_options), _options, logger);
+                new AgentCliProcessLauncher(logger), EngineOf(options), options, logger);
         }
 
         return new AgentCliLlmProvider(host, config, context.LoggerFactory.CreateLogger<AgentCliLlmProvider>());
     }
 
     private static ClaudeCodeEngine EngineOf(AgentCliOptions options) =>
-        string.Equals(options.Engine, AgentCliEngines.Claude, StringComparison.OrdinalIgnoreCase)
-            ? new ClaudeCodeEngine(options)
-            : throw new NotSupportedException(
-                $"Llm:AgentCli:Engine '{options.Engine}' is not an engine of the agent-cli provider: '{AgentCliEngines.Claude}' is the only one.");
+        AgentCliOptionsValidator.EngineRefusal(options) is { } refusal
+            ? throw new NotSupportedException(refusal)
+            : new ClaudeCodeEngine(options);
 
     /// <summary>Ends every agent CLI process the module started.</summary>
     public async ValueTask DisposeAsync()

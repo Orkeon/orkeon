@@ -43,6 +43,33 @@ public sealed class AgentCliServiceCollectionExtensionsTests
     }
 
     [Fact]
+    public async Task ShouldRefuseAtStart_WhenEngineIsUnknown()
+    {
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?> { ["Llm:AgentCli:Engine"] = "codex" })
+            .Build();
+        var services = new ServiceCollection();
+        services.AddSingleton<IConfiguration>(configuration);
+        services.AddOrkeonAgentCli();
+        await using var provider = services.BuildServiceProvider();
+
+        var error = Assert.Throws<OptionsValidationException>(() => provider.GetRequiredService<IStartupValidator>().Validate());
+
+        Assert.Equal("Llm:AgentCli:Engine: 'codex' is not an engine of the agent-cli provider; 'claude' is the only one.", Assert.Single(error.Failures));
+    }
+
+    [Fact]
+    public async Task ShouldStart_WhenEngineIsLeftOut()
+    {
+        var services = new ServiceCollection();
+        services.AddSingleton<IConfiguration>(new ConfigurationBuilder().Build());
+        services.AddOrkeonAgentCli();
+        await using var provider = services.BuildServiceProvider();
+
+        provider.GetRequiredService<IStartupValidator>().Validate();
+    }
+
+    [Fact]
     public async Task ShouldRefuse_WhenEngineIsUnknown()
     {
         await using var module = new AgentCliProviderModule(new AgentCliOptions { Engine = "codex" });
