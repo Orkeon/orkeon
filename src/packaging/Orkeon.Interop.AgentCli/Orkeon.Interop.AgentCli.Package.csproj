@@ -1,0 +1,47 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- PUB-25 wrapper: packs the Orkeon.Interop.AgentCli assembly and its relay with a nuspec
+       dependency on the `Orkeon` umbrella. Kept out of the umbrella because the provider is
+       experimental (ADR-020) and drives a CLI installed on the user's machine. The relay's
+       assembly goes in lib/ beside the provider's; the provider writes the relay's runtime
+       configuration when it does not find one beside it. -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Description>Experimental agent CLI provider for Orkeon (ADR-020): an Orkeon agent answered by the claude CLI on its own login, Orkeon's tools reaching it through an MCP bridge.</Description>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <OrkeonIconFamily>tools</OrkeonIconFamily>
+    <OrkeonFreezePublicApi>false</OrkeonFreezePublicApi>
+    <IncludeBuildOutput>false</IncludeBuildOutput>
+    <TargetsForTfmSpecificContentInPackage>$(TargetsForTfmSpecificContentInPackage);OrkeonEmbedWrappedAssembly</TargetsForTfmSpecificContentInPackage>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="..\..\interop\Orkeon.Interop.AgentCli\README.md" Pack="true" PackagePath="/" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\interop\Orkeon.Interop.AgentCli\Orkeon.Interop.AgentCli.csproj" PrivateAssets="all" />
+    <!-- The relay the CLI starts, embedded beside the provider (dotnet exec runs it from lib/). -->
+    <ProjectReference Include="..\..\interop\Orkeon.Interop.AgentCli.Relay\Orkeon.Interop.AgentCli.Relay.csproj" PrivateAssets="all" />
+    <ProjectReference Include="..\Orkeon\Orkeon.csproj" />
+  </ItemGroup>
+
+  <Target Name="OrkeonEmbedWrappedAssembly" DependsOnTargets="BuildOnlySettings;ResolveReferences">
+    <ItemGroup>
+      <_OrkeonWrapped Include="@(ReferenceCopyLocalPaths)"
+                      Condition="'%(ReferenceCopyLocalPaths.ReferenceSourceTarget)' == 'ProjectReference'
+                                 And ('%(ReferenceCopyLocalPaths.Extension)' == '.dll' Or '%(ReferenceCopyLocalPaths.Extension)' == '.xml')
+                                 And ('%(ReferenceCopyLocalPaths.Filename)' == 'Orkeon.Interop.AgentCli' Or '%(ReferenceCopyLocalPaths.Filename)' == 'Orkeon.Interop.AgentCli.Relay')" />
+      <TfmSpecificPackageFile Include="@(_OrkeonWrapped)" PackagePath="lib/$(TargetFramework)" />
+    </ItemGroup>
+  </Target>
+
+  <!-- The PackageId is the wrapped assembly's name, applied at pack time only (the same
+       target as the other wrappers) so the wrapper's own AssemblyName stays distinct. -->
+  <Target Name="OrkeonWrapperPackageIdentity" BeforeTargets="_GetAbsoluteOutputPathsForPack;_GetOutputItemsFromPack;GenerateNuspec">
+    <PropertyGroup>
+      <PackageId>Orkeon.Interop.AgentCli</PackageId>
+    </PropertyGroup>
+  </Target>
+
+</Project>

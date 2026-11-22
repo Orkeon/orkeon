@@ -22,4 +22,10 @@
     <ProjectReference Include="..\..\..\src\scripting\Orkeon.Scripting.Cli\Orkeon.Scripting.Cli.csproj" />
     <ProjectReference Include="..\..\shared\Orkeon.Tests.Shared\Orkeon.Tests.Shared.csproj" />
   </ItemGroup>
+
+  <ItemGroup>
+    <!-- One double for the three test projects that register a provider module. -->
+    <Compile Include="..\..\shared\Linked\FakeLlmProviderModule.cs" Link="Doubles\FakeLlmProviderModule.cs" />
+  </ItemGroup>
+
 </Project>

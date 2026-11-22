@@ -287,7 +287,7 @@ internal static class DoctorCommand
         var named = Blank(section["Provider"]);
         if (named is not null && !string.Equals(named, LlmProviderKeys.Mock, StringComparison.OrdinalIgnoreCase))
 #pragma warning disable CA1308 // the key is shown in its lowercase wire form, as the runner logs it
-            return ReadModuleProvider(context with { ModuleKey = named.Trim().ToLowerInvariant() }, settings, modules);
+            return ReadModuleProvider(context with { ModuleKey = named.Trim().ToLowerInvariant() }, settings, modules, configuration);
 #pragma warning restore CA1308
 
         // The provider of the configuration the run reads, built by the factory's own inference.
@@ -316,10 +316,15 @@ internal static class DoctorCommand
 
     /// <summary>The default's provider module, built as a run builds it, or the reason it cannot be.</summary>
     private static LlmContext ReadModuleProvider(
-        LlmContext context, LlmConfig settings, IReadOnlyList<Orkeon.Application.Interfaces.Ports.ILlmProviderModule> modules)
+        LlmContext context, LlmConfig settings, IReadOnlyList<Orkeon.Application.Interfaces.Ports.ILlmProviderModule> modules,
+        IConfiguration configuration)
     {
+        Orkeon.Interop.AgentCli.AgentCliProviderModule? bound = null;
         try
         {
+            // The shipped modules on the options the file gives them, as the run's container binds them.
+            if (ReferenceEquals(modules, CliLlmProviderModules.All))
+                modules = [bound = CliLlmProviderModules.For(configuration)];
             using var httpFactory = new CliHttpClientFactory();
             var factory = LlmProviderFactory.WithoutMounts(httpFactory, NullLoggerFactory.Instance, modules);
             if (factory.Create(settings) is LlmProviderAdapter adapter)
@@ -334,6 +339,11 @@ internal static class DoctorCommand
         {
             // No module answers the key, or the module refused the section it was given.
             return context with { ModuleError = ex.Message };
+        }
+        finally
+        {
+            // It started no process: nothing to wait for.
+            bound?.DisposeAsync().AsTask().GetAwaiter().GetResult();
         }
     }
 
@@ -485,12 +495,13 @@ internal static class DoctorCommand
     }
 
     /// <summary>
-    /// The phrase for an <c>Llm:WorkspaceId</c> the inferred provider cannot send, else null: a run's provider logs
-    /// event 110 for it and the catalogue request leaves it out, so doctor says it once, on this line (#468). A
-    /// provider module is left out: what it sends is its own.
+    /// The phrase for an <c>Llm:WorkspaceId</c> the provider cannot send, else null: a run's provider logs event 110
+    /// for it and the catalogue request leaves it out, so doctor says it once, on this line (#468). A provider
+    /// module is judged as the others are: only Anthropic's provider writes the workspace header, and the agent-cli
+    /// module, which runs on a CLI's login, warns of it at run time the same way.
     /// </summary>
     private static string? WorkspaceIdNotSent(LlmContext llm) =>
-        string.IsNullOrWhiteSpace(llm.WorkspaceId) || llm.ModuleKey is not null || llm.ProviderTypeName is null
+        string.IsNullOrWhiteSpace(llm.WorkspaceId) || llm.ProviderTypeName is null
             || string.Equals(llm.ProviderTypeName, "AnthropicLlmProvider", StringComparison.Ordinal)
             ? null
             : $"Llm:WorkspaceId is set but {llm.ProviderDisplayName} does not support it — it is not sent; only Anthropic scopes a key to a workspace";

@@ -4,6 +4,7 @@
     "BRAVE_API_KEY",
     "Evaluation",
     "Llm",
+    "Llm:AgentCli",
     "LlmLogging",
     "Logging",
     "MCP",
@@ -71,6 +72,56 @@
     "Security:Vault",
     "Telemetry"
   ],
-  "sections": [],
-  "settings": []
+  "sections": [
+    {
+      "path": "Llm:AgentCli",
+      "category": "models",
+      "hosts": [],
+      "description": "The `Llm:AgentCli` section: how the `agent-cli` provider starts the agent CLI that answers a section naming it (`\"Provider\": \"agent-cli\"`, ADR-020). Every profile on the provider shares it."
+    }
+  ],
+  "settings": [
+    {
+      "path": "Llm:AgentCli:AutocompactTokens",
+      "section": "Llm:AgentCli",
+      "type": "integer",
+      "default": 100000000,
+      "description": "The context size at which the CLI would compact the conversation itself (`--autocompact`), 100000000 by default — above every window, since Orkeon keeps the history and compacts it first. A lower value is raised to 100000, the least the CLI takes."
+    },
+    {
+      "path": "Llm:AgentCli:Command",
+      "section": "Llm:AgentCli",
+      "type": "string",
+      "default": "claude",
+      "description": "The CLI's executable: a name looked up on the `PATH`, or a full path. `claude` by default. It runs on its own login (`claude /login`): the API key variables of the host are removed from its environment."
+    },
+    {
+      "path": "Llm:AgentCli:Engine",
+      "section": "Llm:AgentCli",
+      "type": "string",
+      "default": "claude",
+      "description": "The engine that answers: the CLI whose command line and stream the provider speaks. `claude` (Claude Code, `claude -p` in stream-json) is the only one."
+    },
+    {
+      "path": "Llm:AgentCli:MaxProcesses",
+      "section": "Llm:AgentCli",
+      "type": "integer",
+      "default": 4,
+      "description": "How many CLI processes may live at once across the host, 4 by default. Never a wait: past it, an idle session is closed first, and when none is idle the new one starts with a warning."
+    },
+    {
+      "path": "Llm:AgentCli:MaxToolResultCharacters",
+      "section": "Llm:AgentCli",
+      "type": "integer",
+      "default": 100000,
+      "description": "The longest tool result handed to the CLI, in characters, 100000 by default: a longer one is cut with a note saying so. The CLI's own limit is raised above it, so that a result is never replaced by a file the model cannot read."
+    },
+    {
+      "path": "Llm:AgentCli:RequireLogin",
+      "section": "Llm:AgentCli",
+      "type": "boolean",
+      "default": true,
+      "description": "Whether a CLI that answers on an API key rather than its login is refused, true by default: the provider exists to run on the subscription the CLI is signed in to."
+    }
+  ]
 }

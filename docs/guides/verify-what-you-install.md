@@ -171,7 +171,7 @@ archive it stops rather than emit something that would fail verification anyway.
 
 For a tag of this lineup, `Orkeon.<version>.nupkg`'s recovered digest has one statement (the `jq`
 filter above prints it too): builder `.github/workflows/publish.yml@refs/tags/v<version>`,
-the commit the release assets were built from, seventeen subjects — the fourteen packages pushed
+the commit the release assets were built from, eighteen subjects — the fifteen packages pushed
 to nuget.org at that tag, the two that only reach GitHub Packages (`Orkeon.ConsoleApp`,
 `Orkeon.Generators`), and the SBOM. The attestation is literal: it lists what the workflow
 built, not what reached nuget.org.

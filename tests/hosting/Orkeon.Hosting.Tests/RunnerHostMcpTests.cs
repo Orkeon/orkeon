@@ -95,8 +95,10 @@ public sealed class RunnerHostMcpTests : IDisposable
     /// <summary>
     /// FWK-16: an <c>Auth:Type</c> that is not one of the listed spellings sets the server aside with a line that
     /// names it, the key and the accepted spellings: the binder alone would drop the server without a word.
+    /// #469: the line never quotes what was written there, which may be anything, a key included.
     /// </summary>
     [Theory]
+    [Trait("BR", "CH-469")]
     [InlineData("OAUTH2DEVICE")]
     [InlineData("o-auth2-device")]
     public async Task An_unlisted_Auth_Type_sets_the_server_aside_and_lists_the_accepted_spellings(string type)
@@ -115,10 +117,70 @@ public sealed class RunnerHostMcpTests : IDisposable
             await McpStartup.ConnectConfiguredServersAsync(host, CancellationToken.None);
 
             var error = Assert.Single(logs.Entries, e => e.Level == LogLevel.Error && e.Message.Contains("'tracker'", StringComparison.Ordinal));
-            Assert.Contains("MCP:Servers:tracker", error.Message, StringComparison.Ordinal);
-            Assert.Contains($"'{type}' is not an MCP Auth:Type", error.Message, StringComparison.Ordinal);
+            Assert.Contains("MCP:Servers:tracker:Auth:Type", error.Message, StringComparison.Ordinal);
+            Assert.Contains("is not an MCP Auth:Type", error.Message, StringComparison.Ordinal);
             Assert.Contains("oauth2-device", error.Message, StringComparison.Ordinal);
             Assert.Contains("oauth2-client-credentials", stderr.ToString(), StringComparison.Ordinal);
+            Assert.DoesNotContain($"'{type}'", error.Message, StringComparison.Ordinal);
+            Assert.DoesNotContain($"'{type}'", stderr.ToString(), StringComparison.Ordinal);
+        }
+        finally
+        {
+            Console.SetError(original);
+        }
+    }
+
+    /// <summary>
+    /// #469: a duration of a server the binder cannot convert is refused at start by the settings check, by its key
+    /// and type, never quoted.
+    /// </summary>
+    [Theory]
+    [Trait("BR", "CH-469")]
+    [InlineData("CallTimeout")]
+    [InlineData("ConnectTimeout")]
+    public void A_server_duration_that_does_not_bind_is_refused_at_start_without_the_value(string key)
+    {
+        var value = string.Concat("sk-", "ant-", Guid.NewGuid().ToString("N"));
+        var settings = Settings($$"""
+            { "MCP": { "Servers": { "tracker": { "Transport": "Sse", "Url": "https://mcp.example.test/", "{{key}}": "{{value}}" } } } }
+            """);
+
+        var ex = Assert.Throws<RunnerSettingsException>(() => RunnerHost.Build(settings, Mounts()).Dispose());
+
+        Assert.Equal($"Failed to convert the configuration value at 'MCP:Servers:tracker:{key}' to type 'System.TimeSpan'.", ex.Message);
+        Assert.Null(ex.InnerException);
+    }
+
+    /// <summary>
+    /// #469: a server whose settings do not bind past the settings check (<c>Auth:Type</c>, read by its own
+    /// converter) is set aside by the key and type the binder names, never by the converter's message, which
+    /// quoted what was written there: a key written by mistake reaches neither the log nor stderr.
+    /// </summary>
+    [Fact]
+    [Trait("BR", "CH-469")]
+    public async Task A_server_that_does_not_bind_is_set_aside_without_the_value()
+    {
+        const string key = "Auth:Type";
+        const string type = "Orkeon.Infrastructure.MCP.McpAuthType";
+        var value = string.Concat("sk-", "ant-", Guid.NewGuid().ToString("N"));
+        var settings = Settings($$"""
+            { "MCP": { "Servers": { "tracker": { "Transport": "Sse", "Url": "https://mcp.example.test/", "Auth": { "Type": "{{value}}" } } } } }
+            """);
+        using var logs = new CapturingLoggerProvider();
+        using var stderr = new StringWriter();
+        var original = Console.Error;
+        Console.SetError(stderr);
+        try
+        {
+            using var host = RunnerHost.Build(settings, Mounts(), configureLogging: (_, b) => b.AddProvider(logs));
+
+            await McpStartup.ConnectConfiguredServersAsync(host, CancellationToken.None);
+
+            var error = Assert.Single(logs.Entries, e => e.Level == LogLevel.Error && e.Message.Contains("'tracker'", StringComparison.Ordinal));
+            Assert.Contains($"MCP:Servers:tracker:{key}", error.Message, StringComparison.Ordinal);
+            Assert.Contains(type, error.Message, StringComparison.Ordinal);
+            Assert.DoesNotContain(logs.Entries, e => e.Message.Contains(value, StringComparison.Ordinal));
+            Assert.DoesNotContain(value, stderr.ToString(), StringComparison.Ordinal);
         }
         finally
         {

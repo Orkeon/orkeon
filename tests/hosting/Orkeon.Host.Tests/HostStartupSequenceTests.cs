@@ -74,6 +74,24 @@ public sealed class HostStartupSequenceTests : IDisposable
         AssertRefused(launch, "Orkeon:Host:RunTimeout");
     }
 
+    /// <summary>
+    /// #469: a value of the daemon's own sections the binder cannot convert is refused by its key, never
+    /// quoted: it may be anything written there by mistake, a key included.
+    /// </summary>
+    [Theory]
+    [Trait("BR", "CH-469")]
+    [InlineData("\"RunTimeout\": \"{0}\"", "Orkeon:Host:RunTimeout")]
+    [InlineData("\"Discord\": {{ \"ProgressInterval\": \"{0}\" }}", "Orkeon:Host:Discord:ProgressInterval")]
+    public void ShouldRefuseByTheKeyWithoutTheValue_WhenADaemonSectionDoesNotBind(string setting, string named)
+    {
+        var value = string.Concat("sk-", "ant-", Guid.NewGuid().ToString("N"));
+
+        var launch = Prepare(Settings(host: ", " + string.Format(System.Globalization.CultureInfo.InvariantCulture, setting, value)));
+
+        AssertRefused(launch, named);
+        Assert.DoesNotContain(value, _failures.Reported[0], StringComparison.Ordinal);
+    }
+
     [Fact]
     public void A_Discord_ProgressInterval_the_binder_cannot_convert_is_reported_and_exits_78()
     {
@@ -431,6 +449,41 @@ public sealed class HostStartupSequenceTests : IDisposable
         {
             try { Directory.Delete(granted, recursive: true); } catch (IOException) { /* best-effort */ }
         }
+    }
+
+    private string SettingsWithLlm(string llm)
+    {
+        var path = Path.Combine(_scratch, "host.json");
+        File.WriteAllText(path, $$"""
+            {
+              "RaggableTree": { "Enabled": false },
+              "Llm": { {{llm}} },
+              "Orkeon": { "Host": { "Crews": [ { "Name": "support", "Path": "crews/support.yaml" } ] } }
+            }
+            """);
+        return path;
+    }
+
+    [Theory]
+    [InlineData("custom")]
+    [InlineData("docker-model-runner")]
+    [InlineData("azure")]
+    [InlineData("openai")]
+    public void ShouldRefuseOnceWith78_WhenProviderNamesACatalogueVendor(string vendor)
+    {
+        var launch = Prepare(SettingsWithLlm($"\"Provider\": \"{vendor}\""));
+
+        AssertRefused(launch, "Llm:Provider names a vendor of the catalogue");
+        Assert.DoesNotContain(vendor, Assert.Single(_failures.Reported), StringComparison.Ordinal);
+        Assert.DoesNotContain("names no provider of this host", Assert.Single(_failures.Reported), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ShouldRefuseWith78_WhenTheAgentCliEngineIsUnknown()
+    {
+        var launch = Prepare(SettingsWithLlm("\"AgentCli\": { \"Engine\": \"codex\" }"));
+
+        AssertRefused(launch, "Llm:AgentCli:Engine is not an engine of the agent-cli provider: write claude");
     }
 
     private void AssertRefused(HostLaunch launch, string named)

@@ -540,8 +540,15 @@ public static partial class RunnerHost
     [LoggerMessage(EventId = 14, Level = LogLevel.Warning, Message = "{Notice}")]
     private static partial void LogSettingsNotice(ILogger logger, string notice);
 
-    /// <summary>A setting a registration or a check refused, as the one type every entry point translates (GAP-35).</summary>
-    private static RunnerSettingsException Refused(InvalidOperationException ex) => new(BinderRefusal.WithoutValue(ex.Message), ex);
+    /// <summary>
+    /// A setting a registration or a check refused, as the one type every entry point translates (GAP-35).
+    /// The binder's refusal of a value is reworded without it and keeps no inner exception (#469): the
+    /// binder's and the converter's messages both quote the value, and a debug run prints the chain.
+    /// </summary>
+    internal static RunnerSettingsException Refused(InvalidOperationException ex) =>
+        BinderRefusal.QuotesAValue(ex)
+            ? new RunnerSettingsException(BinderRefusal.WithoutValue(ex))
+            : new RunnerSettingsException(ex.Message, ex);
 
     /// <summary>
     /// One <c>Information</c> line per decision taken on the settings' mounts: an entry a

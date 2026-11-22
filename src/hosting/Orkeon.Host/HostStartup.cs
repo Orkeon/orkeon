@@ -234,7 +234,11 @@ internal static class HostStartup
         }
         catch (InvalidOperationException ex)
         {
-            throw new HostConfigurationException(ex.Message, ex);
+            // #469: the binder's and the converter's messages quote the value; the refusal names the key alone.
+            var refused = RunnerHost.Refused(ex);
+            throw refused.InnerException is { } inner
+                ? new HostConfigurationException(refused.Message, inner)
+                : new HostConfigurationException(refused.Message);
         }
     }
 

@@ -163,7 +163,8 @@ internal static class ReplStartup
         }
         catch (InvalidOperationException ex) when (ex is not RunnerSettingsException)
         {
-            throw new RunnerSettingsException(ex.Message, ex);
+            // #469: a registration that binds a section refuses through the binder, whose message quotes the value.
+            throw RunnerHost.Refused(ex);
         }
     }
 

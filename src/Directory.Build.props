@@ -75,6 +75,7 @@
     <NoWarn>$(NoWarn);ORKEXP006;ORKEXP007</NoWarn>
     <NoWarn>$(NoWarn);ORKEXP008</NoWarn>
     <NoWarn>$(NoWarn);ORKEXP009</NoWarn>
+    <NoWarn>$(NoWarn);ORKEXP010</NoWarn>
     <!-- An undeclared public API change is a build error, not an opinion. -->
     <WarningsAsErrors Condition="'$(OrkeonFreezePublicApi)' == 'true'">$(WarningsAsErrors);RS0016;RS0017</WarningsAsErrors>
   </PropertyGroup>

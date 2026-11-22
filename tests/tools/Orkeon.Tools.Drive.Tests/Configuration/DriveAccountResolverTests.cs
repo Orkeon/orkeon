@@ -278,10 +278,42 @@ public class DriveAccountResolverTests
     public void The_binder_refusal_never_repeats_the_value()
     {
         // #465: the configuration binder quotes the value it cannot convert, which may be a secret.
-        var refusal = DriveOptionsBinder.WithoutValue(
-            "Failed to convert configuration value 'sk-secret-example' at 'Accounts:a:Port' to type 'System.Int32'.");
+        var refusal = DriveOptionsBinder.Refusal("a", new InvalidOperationException(
+            "Failed to convert configuration value 'sk-secret-example' at 'Accounts:a:Port' to type 'System.Int32'."));
 
         Assert.Equal("Failed to convert the configuration value at 'Accounts:a:Port' to type 'System.Int32'.", refusal);
-        Assert.Equal("another message", DriveOptionsBinder.WithoutValue("another message"));
+        Assert.Equal("another message", DriveOptionsBinder.Refusal("a", new InvalidOperationException("another message")));
+    }
+
+    /// <summary>
+    /// #469 - an account named with an apostrophe: the binder's own refusal under it, produced by the
+    /// binder itself, is reworded with its key and never quotes the value.
+    /// </summary>
+    [Fact]
+    [Trait("BR", "CH-469")]
+    public void The_binder_refusal_never_repeats_the_value_when_the_account_name_holds_an_apostrophe()
+    {
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?> { ["Orkeon:Tools:Drive:Accounts:l'equipe:MaxUploadMegabytes"] = "sk-secret' at 'x' to type 'y" })
+            .Build();
+        var binderRefusal = Assert.Throws<InvalidOperationException>(
+            () => configuration.GetSection("Orkeon:Tools:Drive:Accounts:l'equipe").Bind(new DriveAccountOptions()));
+
+        var refusal = DriveOptionsBinder.Refusal("l'equipe", binderRefusal);
+
+        Assert.Equal("Failed to convert the configuration value at 'Orkeon:Tools:Drive:Accounts:l'equipe:MaxUploadMegabytes' to type 'System.Int32'.", refusal);
+        Assert.DoesNotContain("sk-secret", refusal, StringComparison.Ordinal);
+    }
+
+    /// <summary>#469 - a binder's sentence that cannot be read back names the account's section, never the value.</summary>
+    [Fact]
+    [Trait("BR", "CH-469")]
+    public void The_binder_refusal_names_the_account_section_when_it_cannot_be_read_back()
+    {
+        var refusal = DriveOptionsBinder.Refusal("l'equipe", new InvalidOperationException("Error_FailedBinding, sk-secret-example, Orkeon:Tools:Drive:Accounts:l'equipe:MaxUploadMegabytes, System.Int32"));
+
+        Assert.Equal(
+            "Failed to convert a configuration value under 'Orkeon:Tools:Drive:Accounts:l'equipe'; the binder's message is withheld, since it quotes the value.",
+            refusal);
     }
 }

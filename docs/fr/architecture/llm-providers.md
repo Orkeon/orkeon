@@ -66,6 +66,9 @@ Des adaptateurs génériques (`ChatClientToLlmProviderAdapter`, `LlmProviderToCh
   tokens, le même limiteur de débit et le même budget qu'un provider intégré. Un module ne peut
   répondre ni à `mock` ni à une clé de la liste ci-dessus. Une clé à laquelle aucun module enregistré
   ne répond est refusée au démarrage de l'hôte du runner, et par la fabrique dans tout autre hôte.
+  Un module est livré : `agent-cli` (expérimental, `ORKEXP010`, [ADR-020](../adr/ADR-020-agent-cli-provider.md)),
+  enregistré par `orkeon`, `orkeon-repl` et `orkeon-host` et inerte tant qu'aucune section ne le nomme ; il
+  n'est pas compté parmi les seize providers intégrés.
 - `Create(config)` déduit le provider — c'est ce que fait un run, puisque la section `Llm` du
   fichier de settings ne porte aucune clé de provider. La première règle qui correspond
   l'emporte :

@@ -146,6 +146,7 @@ internal static class SettingsValidation
             if (key == LlmProviderKeys.Mock
                 || LlmProviderKeys.All.Contains(key, StringComparer.Ordinal)
                 || LlmProviderKeys.Aliases.ContainsKey(key)
+                || key is LlmProviderKeys.Custom or LlmProviderKeys.DockerModelRunner or LlmProviderKeys.AzureShort
                 || modules.Contains(key, StringComparer.OrdinalIgnoreCase))
                 continue;
 
@@ -275,7 +276,7 @@ internal static class SettingsValidation
             catch (InvalidOperationException ex) when (IsBinderRefusal(ex))
             {
                 // The binder's refusal, which names the value: reworded without it (#465).
-                refusals.Add(BinderRefusal.WithoutValue(ex.Message));
+                refusals.Add(BinderRefusal.WithoutValue(ex));
             }
         }
     }
@@ -307,7 +308,7 @@ internal static class SettingsValidation
         }
         catch (InvalidOperationException ex) when (IsBinderRefusal(ex))
         {
-            refusals.Add(BinderRefusal.WithoutValue(ex.Message));
+            refusals.Add(BinderRefusal.WithoutValue(ex));
         }
     }
 

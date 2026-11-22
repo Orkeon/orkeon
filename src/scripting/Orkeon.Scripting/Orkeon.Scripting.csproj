@@ -183,6 +183,8 @@
     <InternalsVisibleTo Include="Orkeon.Cli.Commands.Scripting.Tests" />
     <InternalsVisibleTo Include="Orkeon.Scripting.Cli.Tests" />
     <InternalsVisibleTo Include="Orkeon.ConsoleApp.Tests" />
+    <!-- AgentCliLoopTests drives act on the agent-cli provider. -->
+    <InternalsVisibleTo Include="Orkeon.Interop.AgentCli.Tests" />
   </ItemGroup>
 
   <ItemGroup>

@@ -65,6 +65,9 @@ Generic adapters (`ChatClientToLlmProviderAdapter`, `LlmProviderToChatClientAdap
   through the same cassette, call mode, token meter, rate limiter and budget as a built-in
   provider. A module cannot answer `mock` or a key of the list above. A key no registered module
   answers is refused when the runner host starts, and by the factory in any other host.
+  One module ships: `agent-cli` (experimental, `ORKEXP010`, [ADR-020](../adr/ADR-020-agent-cli-provider.md)),
+  registered by `orkeon`, `orkeon-repl` and `orkeon-host` and inert until a section names it; it is not
+  counted among the sixteen built-in providers.
 - `Create(config)` infers the provider — this is what a run does, since the `Llm` section of
   the settings file carries no provider key. The first rule that matches wins:
   1. **With a base URL, the address alone decides** (`LlmEndpointReading`, the one reading the

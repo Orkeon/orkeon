@@ -225,7 +225,7 @@ public sealed class DoctorCommandTests : IDisposable
             { "RaggableTree": { "Enabled": false }, "Llm": { "Provider": "fake-cli", "Model": "opus" } }
             """);
 
-        var (exit, lines) = await DoctorJsonAsync(scratch, modules: [new Doubles.FakeLlmProviderModule()]);
+        var (exit, lines) = await DoctorJsonAsync(scratch, modules: [new Orkeon.Tests.Shared.Doubles.FakeLlmProviderModule()]);
 
         Assert.Equal(Program.ExitOk, exit);
         var config = Assert.Single(lines, l => l.Check == "llm-config");
@@ -243,7 +243,7 @@ public sealed class DoctorCommandTests : IDisposable
             { "RaggableTree": { "Enabled": false }, "Llm": { "Provider": "other-cli" } }
             """);
 
-        var (exit, lines) = await DoctorJsonAsync(scratch, modules: [new Doubles.FakeLlmProviderModule()]);
+        var (exit, lines) = await DoctorJsonAsync(scratch, modules: [new Orkeon.Tests.Shared.Doubles.FakeLlmProviderModule()]);
 
         Assert.Equal(Program.ExitScriptError, exit);
         var config = Assert.Single(lines, l => l.Check == "llm-config");
@@ -254,6 +254,54 @@ public sealed class DoctorCommandTests : IDisposable
         // The run's start refuses the same key: the two checks agree.
         Assert.Contains(lines, l => l.Check == "runner-settings" && l.Status == "fail"
             && l.Detail.Contains("Llm:Provider names no provider of this host", StringComparison.Ordinal));
+    }
+
+    /// <summary>ADR-020: the tool ships the agent-cli module, and its <c>Llm:AgentCli</c> settings pass the run's start.</summary>
+    [Fact]
+    public async Task ShouldDescribeAgentCli_WhenToolShipsItsModule()
+    {
+        using var scratch = new ScriptScratch();
+        scratch.WriteFile("appsettings.json", """
+            { "RaggableTree": { "Enabled": false }, "Llm": { "Provider": "agent-cli", "Model": "haiku", "AgentCli": { "MaxProcesses": 2 } } }
+            """);
+
+        var (exit, lines) = await DoctorJsonAsync(scratch);
+
+        Assert.Equal(Program.ExitOk, exit);
+        Assert.Contains("agent-cli (provider module)", Assert.Single(lines, l => l.Check == "llm-config").Detail, StringComparison.Ordinal);
+        Assert.Equal("ok", Assert.Single(lines, l => l.Check == "runner-settings").Status);
+    }
+
+    /// <summary>#468 and ADR-020: the agent-cli module sends no workspace either; doctor says so once, on llm-config.</summary>
+    [Fact]
+    public async Task ShouldWarnOnLlmConfigOnce_WhenAgentCliIsGivenAWorkspace()
+    {
+        using var scratch = new ScriptScratch();
+        scratch.WriteFile("appsettings.json", """
+            { "RaggableTree": { "Enabled": false }, "Llm": { "Provider": "agent-cli", "Model": "haiku", "WorkspaceId": "wrkspc_test" } }
+            """);
+
+        var (_, lines) = await DoctorJsonAsync(scratch);
+
+        var config = Assert.Single(lines, l => l.Check == "llm-config");
+        Assert.Equal("warn", config.Status);
+        Assert.Contains("Llm:WorkspaceId is set but agent-cli (provider module) does not support it", config.Detail, StringComparison.Ordinal);
+        Assert.Single(lines, l => l.Detail.Contains("WorkspaceId", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task ShouldRefuseUnknownAgentCliKey_WhenSettingsMisspellIt()
+    {
+        using var scratch = new ScriptScratch();
+        scratch.WriteFile("appsettings.json", """
+            { "RaggableTree": { "Enabled": false }, "Llm": { "Provider": "agent-cli", "AgentCli": { "MaxProcess": 2 } } }
+            """);
+
+        var (exit, lines) = await DoctorJsonAsync(scratch);
+
+        Assert.Equal(Program.ExitScriptError, exit);
+        Assert.Contains(lines, l => l.Check == "runner-settings" && l.Status == "fail"
+            && l.Detail.Contains("MaxProcess", StringComparison.Ordinal));
     }
 
     private static async Task<(int Exit, IReadOnlyList<(string Check, string Status, string Detail)> Lines)> DoctorJsonAsync(

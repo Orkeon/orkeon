@@ -63,6 +63,8 @@ paths their `on.pull_request.paths` list.
 | `cs/equality-on-floats` | warning | `value != Math.Floor(value)`, `a == b` on `double`. The script refuses the `Math.Floor`/`Round`/`Truncate` form | `double.IsInteger(value)`, or a tolerance |
 | `cs/empty-block` | warning | an empty `{ }` under `if`, `else`, `for`, `foreach`, `while`, `do`, `try`, `catch`, `finally` or `lock`, on one line (`catch { }`) or several (a drained `await foreach` whose header spans lines). An empty method, constructor or type body, an initializer and an empty `using` body pass | a comment inside the block saying why it is empty |
 | `cs/useless-upcast` | warning | `(string?)null` inside a tuple or an argument | assert the two values apart: `Assert.Null(after)` |
+| `cs/unused-collection` | error | a list or `JsonArray` that is filled and never read | delete it, with the lines that fill it |
+| `cs/useless-assignment-to-local` | warning | `await using (var x = Start(...))` where `x` is never read; a local assigned and not used | `await using (Start(...))`; drop the local |
 | `cs/xmldoc/missing-summary` | note | a public member documented with `<param>` only | a `<summary>` first |
 | `cs/path-combine` | note | `Path.Combine(a, b)` | accepted in tests; in `src/` the VFS rule forbids physical paths anyway |
 | `cs/linq/missed-select`, `cs/linq/missed-where`, `cs/coupled-types` | note | a `foreach` that maps or filters at once; a large facade | accepted when the loop throws or reads better; not a reason to restructure |
@@ -93,4 +95,8 @@ Read the alerts of a pull request with
   (`UPDATE_PRODUCED_FILES=1` on the `SettingsCatalogFile`, then `SettingsReferencePage|SettingsSampleFile`
   tests), and write its French sentence in `docs/fr/reference/configuration.settings.json`.
 - A changed docs page is mirrored in `docs/fr/` in the same commit; `CHANGELOG.md` names the issue.
+- A branch that adds an experimental id (`ORKEXP…`) checks it against `main` before it is rebased or
+  re-applied: another branch may have taken the same number meanwhile.
+- A fake-clock test advances the clock only once the timer it means is armed (wait on that timer), never
+  on a count of pending timers: another timer may make up the count.
 - After the push, read `gh pr checks <n>` until every check has ended: a pending check is not a green one.

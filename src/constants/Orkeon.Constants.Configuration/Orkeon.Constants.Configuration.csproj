@@ -21,6 +21,24 @@
     shipped. So the promise is exact: no runtime dependency.
   -->
 
+  <!--
+    #469: the binder's refusal without its value (BinderRefusal), worded once for the host and the two
+    tool binders. The one piece of logic of a satellite, and its only InternalsVisibleTo: the host and
+    the e-mail and drive families already reference this satellite and share no other project that
+    carries configuration wording; the families cannot reference the host, which references them. The friends ship in other packages than this one (it in
+    `Orkeon`, Orkeon.Hosting in `Orkeon.Scripting`, the families in `Orkeon.Tools`), and their nuspec
+    dependency on `Orkeon` is a lower bound (docs/reference/publication-matrix.md): every tag packs the
+    lineup at one version, but a consumer may pair versions. So BinderRefusal's members are added,
+    never changed or removed - the rule ADR-013 already lives by for the OAuth layer that
+    Orkeon.Tools.Abstractions shares with the same two families.
+  -->
+  <ItemGroup>
+    <InternalsVisibleTo Include="Orkeon.Hosting" />
+    <InternalsVisibleTo Include="Orkeon.Hosting.Tests" />
+    <InternalsVisibleTo Include="Orkeon.Tools.Email" />
+    <InternalsVisibleTo Include="Orkeon.Tools.Drive" />
+  </ItemGroup>
+
   <ItemGroup>
     <None Include="README.md" Pack="true" PackagePath="\" />
   </ItemGroup>

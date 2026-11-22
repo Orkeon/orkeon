@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- ADR-020: the stdio MCP server the agent CLI starts from its mcp-config. It carries lines between
+       the CLI and the Orkeon host that listens on a Unix domain socket, and kills the CLI when the host
+       goes away. Copied next to every host through Orkeon.Interop.AgentCli's project reference. -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+    <!-- An executable's surface is not a contract (same rationale as src/apps). -->
+    <OrkeonFreezePublicApi>false</OrkeonFreezePublicApi>
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Orkeon.Interop.AgentCli.Tests" />
+  </ItemGroup>
+
+</Project>

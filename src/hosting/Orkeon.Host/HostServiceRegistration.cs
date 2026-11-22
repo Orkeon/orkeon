@@ -68,6 +68,8 @@ internal static class HostServiceRegistration
         // crew's knowledge: offers the same profiles as orkeon run. Weights are embedded and
         // loaded on first use: a host whose crews never rerank pays nothing.
         services.AddOrkeonOnnxReranker();
+        // ADR-020: Llm:Provider = agent-cli (experimental), with its Llm:AgentCli settings.
+        Orkeon.Interop.AgentCli.DependencyInjection.AgentCliServiceCollectionExtensions.AddOrkeonAgentCli(services);
 
         services.AddSingleton<CrewHostRegistry>();
         services.AddSingleton<CrewRunner>();

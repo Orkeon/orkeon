@@ -378,6 +378,8 @@ static class Program
         // The ONNX cross-encoder the balanced and quality profiles rerank with (GAP-25), as
         // orkeon and orkeon-host register it. Embedded weights, loaded on first use.
         services.AddOrkeonOnnxReranker();
+        // ADR-020: Llm:Provider = agent-cli (experimental), with its Llm:AgentCli settings.
+        Orkeon.Interop.AgentCli.DependencyInjection.AgentCliServiceCollectionExtensions.AddOrkeonAgentCli(services);
         services.AddRaggableTree(new RaggableTreeOptions
         {
             Embedding = new EmbeddingOptions { Provider = EmbeddingProviderKind.LocalSmartComponents },

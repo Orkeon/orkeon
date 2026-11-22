@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — the binder's refusal never keeps the value, whatever the key path holds (#469)
+
+The start-up check reworded the configuration binder's `Failed to convert configuration value '…' at '…' to type '…'.`
+without the value (#465), but only when the key path held no apostrophe: under a dictionary key such as a decision
+profile named `l'equipe`, the sentence was printed and logged as the binder wrote it, value included. The sentence is
+now read from its end, the type after the last `' to type '`, the path after the last `' at '` before it, so nothing
+of the value survives whatever it or the path holds; a binder's message that quotes a value but cannot be read back is
+replaced by a fixed sentence naming the section when the caller knows it (an `Orkeon:Tools:Email` or
+`Orkeon:Tools:Drive` account), and a refusal the host build raises keeps no inner exception that quotes the value. The
+host and the two tool binders now share one implementation instead of three copies.
+
+Three more places printed the value. An MCP server set aside because its settings did not bind (an `Auth:Type` the
+converter refuses) was reported with the converter's message, which quoted what was written there; it is now reported
+by its section path, the key and type the binder names, and the accepted spellings, and the `Auth:Type` converter's own
+message no longer quotes its input. `orkeon-host`'s own sections (`Orkeon:Host:RunTimeout`, `Orkeon:Host:Discord`, …)
+were refused with the binder's sentence as written, value included; they are now refused by the key. A registration of
+`orkeon-repl` that refuses a setting goes through the same rewording. The rule, in one place: a refusal built from a
+binding or conversion exception names the key path or the section and never prints a message that may quote the value
+— the binder's sentence, a converter's or a parser's (`… is not a valid value for …`, `Requested value '…' was not
+found.`, `The input string '…' was not in a correct format.`), or any `FormatException`, `OverflowException` or
+`InvalidCastException` in the chain.
+
 ### Added — `ctx.services.get("pick")`, System One's pick for a command (#463)
 
 A scripted command (`*.cmd.ts`) can ask System One for a profile and/or a thinking level:
@@ -261,7 +283,60 @@ loggerFactory, modules)` is the overload for a tool without a container.
   (`<key> (provider module)`), skips the reachability check, and fails `llm-config` when no module answers the key.
 - A module declares the shape of its own `Llm:<Sub>` section (`DeclareSettingsShape`): its keys pass the start
   validation, and a misspelt one is refused.
-- No module ships yet. The shipped hosts register none, so a key other than `mock` is refused.
+- The shipped hosts register one module, `agent-cli` (below); any other key is refused.
+
+### Changed — the JSON-RPC envelope types are stable
+
+`JsonRpcRequest`, `JsonRpcResponse`, `JsonRpcNotification`, `JsonRpcError` and `JsonRpcErrorCodes`
+(`Orkeon.Infrastructure.MCP`) no longer carry `[Experimental("ORKEXP004")]`: they follow JSON-RPC 2.0, a fixed
+specification, and the stability commitment now covers them, with their shape unchanged. Code that names only them
+no longer needs to suppress `ORKEXP004`. The rest of the MCP integration (client, server, transports, protocol types)
+stays under `ORKEXP004`.
+
+### Added — the experimental `agent-cli` provider: Orkeon on a Claude subscription (ADR-020, `ORKEXP010`, #458)
+
+The first provider module, `Orkeon.Interop.AgentCli` (package of the same name), registered by `orkeon`,
+`orkeon-repl` and `orkeon-host` (`AddOrkeonAgentCli()`). A section written `"Provider": "agent-cli"` is answered by an
+agent CLI signed in to its own subscription; the one engine is Claude Code, `claude -p` in stream-json.
+
+- The CLI runs with none of its own tools. Orkeon's tools reach it through an MCP server the provider serves over a
+  Unix domain socket, by way of a relay the CLI starts (`Orkeon.Interop.AgentCli.Relay`); a turn that calls tools ends
+  on its assistant message, returned as Anthropic `tool_use` blocks, so the crew runs each tool through its own
+  pipeline and the next call hands the result back.
+- Orkeon keeps the history. One CLI process per conversation of a run (`AgentRunScope`) is continued while the history
+  extends what it holds; any other history starts a new process seeded with it as text.
+- Never on a key: every `ANTHROPIC_*` variable (the key and token, but also `ANTHROPIC_BASE_URL`, which would send the
+  CLI's login to a proxy set for the `anthropic` provider, `ANTHROPIC_CUSTOM_HEADERS`, `ANTHROPIC_MODEL`, ...) and the
+  cloud switches (`CLAUDE_CODE_USE_BEDROCK`, `CLAUDE_CODE_USE_VERTEX`, `CLAUDE_CODE_USE_FOUNDRY`) are removed from the
+  CLI's environment, case-insensitively on Windows, and an answer on a key
+  is refused (`Llm:AgentCli:RequireLogin`). The cost is 0, the vendor's figure kept as `agent_cli_notional_cost_usd`. A rejected
+  subscription limit throws `LlmRateLimitException`, so `Fallback` takes over.
+- New section `Llm:AgentCli`: `Engine`, `Command`, `MaxProcesses` (4, an idle session is closed first, never a wait),
+  `MaxToolResultCharacters` (100000), `AutocompactTokens`, `RequireLogin`. Options the CLI cannot receive
+  (temperature, max tokens, top-p, the penalties, a seed, stop sequences, a response format, thinking, a grammar,
+  cache breakpoints, `Llm:WorkspaceId`, a `Required` tool mode) are each warned about once per run and not sent; a
+  `None` tool mode offers no tool. `orkeon doctor` warns of an `Llm:WorkspaceId` on the module as on any provider
+  but Anthropic.
+- A call runs under `Llm:TimeoutSeconds` (30 s when nothing sets it, as on every provider) and, when set,
+  `Llm:StreamIdleSeconds`: past either, the turn is interrupted and its process closed, and the call fails with the
+  HTTP providers' error type (`TaskCanceledException`, `StreamIdleTimeout`). A `message_delta` usage updates the
+  assistant line's counts instead of replacing them. A content block whose `type`, `id` or `name` is not a string
+  fails the call with an `APIError` instead of throwing.
+- A cancelled call interrupts the turn and closes its process; the relay kills the CLI's tree when the host's socket
+  closes, `kill -9` of the host included. The private scratch folder of each process (prompt file, socket, working
+  folder) is removed when its session ends, when the host exits, or by the relay once the host is gone.
+- `Llm:AgentCli:Command` names an executable, so it refuses a variable reference like `MCP:Servers:<id>:Command`.
+- `Llm:AgentCli:Engine` takes `claude` alone: another value is refused when the host starts, naming the key. So are an
+  empty `Command` or a `.cmd`/`.bat` one (Windows runs it through `cmd.exe`, which parses the JSON arguments), a
+  `MaxProcesses` or `AutocompactTokens` under 1, and a `MaxToolResultCharacters` under 1000.
+- `orkeon llm probe --provider agent-cli` needs no API key, and reads its tool calls in the Anthropic shape. Like
+  every probe it takes its provider from the command line alone: it runs the `claude` of the `PATH`, whatever
+  `Llm:AgentCli` says. `orkeon doctor` builds the module on the file's `Llm:AgentCli` and starts no CLI: a `claude`
+  that is missing or signed out shows on the first call.
+- The relay runs on the runtime of its host: `dotnet exec` in a host on a shared runtime (the dotnet tool), its own
+  executable in a self-contained one. A relay the CLI cannot start fails the call after 60 seconds, with the CLI's
+  error output.
+- The provider is not counted among the sixteen, and is meant for personal use.
 
 ### Added — a tool bridge: some tools of a run execute on another machine, `orkeon bridge serve` (#445)
 

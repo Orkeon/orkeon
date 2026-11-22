@@ -115,7 +115,8 @@ public enum McpAuthType
 
 /// <summary>
 /// Reads the <c>Auth.Type</c> of the settings from a closed list of spellings: each member's name, and its lower-case
-/// kebab form (<c>oauth2-device</c>). Anything else, a number included, is refused with the list.
+/// kebab form (<c>oauth2-device</c>). Anything else, a number included, is refused with the list, and never
+/// quoted (#469): what was written there may be anything, a key included.
 /// </summary>
 internal sealed class McpAuthTypeConverter : System.ComponentModel.EnumConverter
 {
@@ -145,7 +146,7 @@ internal sealed class McpAuthTypeConverter : System.ComponentModel.EnumConverter
             return type;
 
         throw new FormatException(
-            $"'{text}' is not an MCP Auth:Type. Accepted: {string.Join(", ", Spellings.Keys.OrderBy(k => k, StringComparer.Ordinal))}.");
+            $"The value written is not an MCP Auth:Type. Accepted: {string.Join(", ", Spellings.Keys.OrderBy(k => k, StringComparer.Ordinal))}.");
     }
 }
 

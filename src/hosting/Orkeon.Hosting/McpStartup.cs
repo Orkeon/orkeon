@@ -93,6 +93,9 @@ internal static partial class McpStartup
     /// A server whose settings the binder cannot convert (a misspelt <c>Auth:Type</c>, a bad duration) is dropped from
     /// the bound options without a word: it is read again alone, which does throw, and the reason is reported with the
     /// server's name, so a typo costs one clear line and not a server that silently never connects.
+    /// The reason never quotes the value (#469): it is the key path and type the binder's sentence names, or a fixed
+    /// sentence under the server's section; the one message kept is the Auth:Type converter's list of spellings,
+    /// a fixed sentence of <see cref="McpServerConfig"/>'s own assembly that interpolates no input.
     /// </summary>
     [SuppressMessage("Design", "CA1031", Justification = "Whatever the binder throws on one server's settings is that server's reason to be set aside.")]
     private static void ReportUnreadableServers(
@@ -107,19 +110,36 @@ internal static partial class McpStartup
             if (bound.ContainsKey(child.Key))
                 continue;
 
+            var path = $"{ConfigurationKeys.McpSection}:Servers:{child.Key}";
             string reason;
             try
             {
                 _ = child.Get<McpServerConfig>();
-                reason = "its settings could not be read";
+                reason = "its settings could not be read.";
             }
             catch (Exception ex)
             {
-                reason = ex.InnerException?.Message ?? ex.Message;
+                reason = BinderRefusal.QuotesAValue(ex)
+                    ? BinderRefusal.WithoutValue(ex, path) + OwnConverterHint(ex)
+                    : "its settings could not be read.";
             }
 
-            Report(logger, operatorLogger, child.Key, $"MCP:Servers:{child.Key} was set aside: {reason}");
+            // Report ends the line with its own period.
+            Report(logger, operatorLogger, child.Key, $"{path} was set aside: {reason.TrimEnd('.')}");
         }
+    }
+
+    // The Auth:Type converter's sentence (the accepted spellings), thrown by McpServerConfig's own assembly with
+    // no input in it; any other converter's message quotes the value and is never printed.
+    private static string OwnConverterHint(Exception ex)
+    {
+        for (var current = ex; current is not null; current = current.InnerException)
+        {
+            if (current is FormatException && current.TargetSite?.DeclaringType?.Assembly == typeof(McpServerConfig).Assembly)
+                return " " + current.Message;
+        }
+
+        return string.Empty;
     }
 
     /// <summary>

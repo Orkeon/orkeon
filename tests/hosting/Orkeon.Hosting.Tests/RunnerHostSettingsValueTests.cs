@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Reflection;
 using System.Runtime.CompilerServices;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Orkeon.Application.Configuration;
 
@@ -283,6 +284,52 @@ public sealed class RunnerHostSettingsValueTests : IDisposable
 
         Assert.Contains(refusals, refusal => refusal.Contains(key, StringComparison.Ordinal));
         AssertNeverEchoes(refusals, "sk-secret-example");
+    }
+
+    /// <summary>
+    /// #469 — a dictionary key may hold an apostrophe (a decision profile named <c>l'equipe</c>): the
+    /// binder's refusal under it is still reworded, the key named and the value never echoed.
+    /// </summary>
+    [Theory]
+    [Trait("BR", "CH-469")]
+    [InlineData(""" "l'equipe": { "Target": "default", "FailClosed": "sk-secret-example", "Stages": [ { "Kind": "guard", "Risks": { "x": "y" } } ] } """, "Orkeon:Decision:Profiles:l'equipe:FailClosed")]
+    [InlineData(""" "l'equipe d'Anne": { "Target": "default", "Stages": [ { "Kind": "guard", "Risks": { "x": "y" }, "BlockThreshold": "sk-secret-example" } ] } """, "Orkeon:Decision:Profiles:l'equipe d'Anne:Stages:0:BlockThreshold")]
+    public void ShouldRefuseAValueUnderAKeyHoldingAnApostrophe_WithoutEchoingIt(string profile, string key)
+    {
+        var refusals = RefusalsOfFile($$"""{ "RaggableTree": { "Enabled": false }, "Orkeon": { "Decision": { "Profiles": { {{profile}} } } } }""");
+
+        Assert.Contains(refusals, refusal => refusal.Contains($"at '{key}' to type", StringComparison.Ordinal));
+        AssertNeverEchoes(refusals, "sk-secret-example");
+    }
+
+    /// <summary>
+    /// #469 — a refusal the host build turns into a <see cref="RunnerSettingsException"/> keeps no
+    /// trace of the value in its chain: the binder's own exception, and the converter's inside it,
+    /// both quote it, and a debug run prints the whole chain.
+    /// </summary>
+    [Fact]
+    [Trait("BR", "CH-469")]
+    public void ShouldKeepTheValueOutOfTheRefusalChain_WhenTheBinderRefusesIt()
+    {
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?> { ["Orkeon:Decision:Profiles:l'equipe:FailClosed"] = "sk-secret' at 'x" })
+            .Build();
+        var binderRefusal = Assert.Throws<InvalidOperationException>(
+            () => ConfigurationBinder.Bind(
+                configuration.GetSection("Orkeon:Decision:Profiles:l'equipe"), new FailClosedWitness()));
+
+        var refused = RunnerHost.Refused(binderRefusal);
+
+        Assert.Equal(
+            "Failed to convert the configuration value at 'Orkeon:Decision:Profiles:l'equipe:FailClosed' to type 'System.Boolean'.",
+            refused.Message);
+        Assert.DoesNotContain("sk-secret", refused.ToString(), StringComparison.Ordinal);
+    }
+
+    /// <summary>A switch the binder refuses to convert (#469).</summary>
+    private sealed class FailClosedWitness
+    {
+        public bool FailClosed { get; set; }
     }
 
     /// <summary>
