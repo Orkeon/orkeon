@@ -6,7 +6,9 @@ namespace Orkeon.Infrastructure.Decision.SystemOne;
 /// Where the key of a System One provider is read, in one place: the <c>ApiKey</c> setting, then the variable
 /// <c>ApiKeyEnvVar</c> names (the provider's own by default) in the process environment, then in the user's
 /// persistent scope. <see cref="SystemOneDecisionModel"/> reads it at each call, and the host's decision
-/// circuit when it is resolved (#451), so the two cannot disagree on whether a key exists.
+/// circuit asks that same model when it is resolved (#451): one environment (the container's
+/// <see cref="LlmKeyEnvironment"/>, else the machine's) and one predicate (the provider's
+/// <c>KeyRequired</c>), so the two cannot disagree on whether a key is missing.
 /// </summary>
 internal static class DecisionApiKey
 {

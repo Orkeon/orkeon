@@ -966,7 +966,7 @@ public static class InfrastructureExtensions
         services.TryAddSingleton<IGuardianPipeline>(sp => sp.GetRequiredService<GuardianPipeline>());
 
         // The decision circuit: on when Orkeon:Decision:Enabled allows it, a decision model is
-        // registered and, for a hosted provider, its key is found; off, it carries its cause - the
+        // registered and, for the System One model when its provider requires a key, that key is found; off, it carries its cause - the
         // settings, then the missing provider, then the missing key (#451). The --no-decision switch
         // registers its own circuit after this one, and wins.
         services.AddOrkeonSettings<Orkeon.Infrastructure.LLMs.Decision.DecisionCircuitOptions>(Orkeon.Infrastructure.LLMs.Decision.DecisionCircuitOptions.SectionName);
@@ -974,9 +974,12 @@ public static class InfrastructureExtensions
         {
             if (!sp.GetRequiredService<IOptions<Orkeon.Infrastructure.LLMs.Decision.DecisionCircuitOptions>>().Value.Enabled)
                 return Orkeon.Application.Crew.Execution.DecisionCircuit.OffBy(Orkeon.Application.Crew.Execution.DecisionCircuitCause.Settings);
-            if (sp.GetService<Orkeon.Application.Interfaces.Ports.IDecisionModel>() is null)
+            if (sp.GetService<Orkeon.Application.Interfaces.Ports.IDecisionModel>() is not { } model)
                 return Orkeon.Application.Crew.Execution.DecisionCircuit.OffBy(Orkeon.Application.Crew.Execution.DecisionCircuitCause.NoProvider);
-            return MissingDecisionKey(sp) is { } missing
+            // Only the System One model is asked for its key: a model the embedder registered needs none of
+            // Orkeon's, whatever TypeSafe or Liquid section the settings also carry (#451).
+            return model is Orkeon.Infrastructure.Decision.SystemOne.SystemOneDecisionModel systemOne
+                && systemOne.MissingKey() is { } missing
                 ? Orkeon.Application.Crew.Execution.DecisionCircuit.OffBy(Orkeon.Application.Crew.Execution.DecisionCircuitCause.NoKey) with { Detail = missing }
                 : Orkeon.Application.Crew.Execution.DecisionCircuit.On;
         });
@@ -989,23 +992,6 @@ public static class InfrastructureExtensions
             BuildDecisionRunner(sp, sp.GetRequiredService<Orkeon.Application.Crew.Execution.DecisionCircuit>()));
 
         return services;
-    }
-
-    /// <summary>
-    /// What a hosted System One provider lacks to be called, read when the circuit is resolved (#451): the
-    /// sentence naming its key variable and setting when neither holds a key; null when the provider is local,
-    /// when a key is found, or when the decision model is not a System One provider. No network call.
-    /// </summary>
-    private static string? MissingDecisionKey(IServiceProvider sp)
-    {
-        if (sp.GetService<Orkeon.Infrastructure.Decision.SystemOne.DecisionProviderDescriptor>() is not { Hosted: true } provider
-            || sp.GetService<IOptions<Orkeon.Infrastructure.Decision.SystemOne.SystemOneProviderOptions>>()?.Value is not { } options)
-            return null;
-        var environment = sp.GetService<Orkeon.Infrastructure.LLMs.Profiles.LlmKeyEnvironment>()
-            ?? Orkeon.Infrastructure.LLMs.Profiles.LlmKeyEnvironment.Machine;
-        return Orkeon.Infrastructure.Decision.SystemOne.DecisionApiKey.Resolve(provider, options, environment) is null
-            ? Orkeon.Infrastructure.Decision.SystemOne.DecisionApiKey.Missing(provider, options)
-            : null;
     }
 
     /// <summary>

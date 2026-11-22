@@ -110,6 +110,9 @@ public class ExecutionOrchestratorAdditionalTests
         private readonly Queue<Microsoft.Extensions.AI.ChatResponse> _responses = new();
         public int CallCount { get; private set; }
 
+        /// <summary>The tool names each call offered, in call order.</summary>
+        public List<string[]> OfferedTools { get; } = [];
+
         public void EnqueueResponse(string text)
         {
             var msg = new Microsoft.Extensions.AI.ChatMessage(Microsoft.Extensions.AI.ChatRole.Assistant, text);
@@ -134,6 +137,7 @@ public class ExecutionOrchestratorAdditionalTests
             CancellationToken cancellationToken = default)
         {
             CallCount++;
+            OfferedTools.Add(options?.Tools?.Select(t => t.Name).ToArray() ?? []);
             cancellationToken.ThrowIfCancellationRequested();
             if (NextFailure is { } failure)
             {
@@ -537,6 +541,31 @@ public class ExecutionOrchestratorAdditionalTests
         Assert.True(chatClient.CallCount <= 4, "Should not exceed max iterations + recovery retry");
         Assert.Contains(logger.LoggedMessages, m =>
             m.Contains("Max iterations", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
+    [Trait("BR", "CH-448")]
+    public async System.Threading.Tasks.Task ShouldRunAndOfferOnlyTheRealTool_WhenTheRegisteredToolsHoldANull()
+    {
+        // Arrange - a withheld tool resolves to null in a host's collection (#448)
+        var logger = new TestLogger();
+        var llmProvider = new TestLlmProvider();
+        using var chatClient = new TestChatClient();
+        var tool = new TestTool("real_tool", "The real tool");
+        chatClient.EnqueueFunctionCallResponse("real_tool", new Dictionary<string, object?> { { "input", "x" } });
+        chatClient.EnqueueResponse("Done");
+        var orchestrator = new ExecutionOrchestrator(
+            logger, llmProvider, chatClient,
+            [null!, tool], new FakeFileSystemService());
+
+        // Act
+        var result = await orchestrator.ExecuteTaskCoreAsync(
+            CreateTestAgent(tools: [tool]), CreateTestTask(), CreateTestContext(), TestContext.Current.CancellationToken);
+
+        // Assert
+        Assert.True(result.Success, result.Error);
+        Assert.NotEmpty(chatClient.OfferedTools);
+        Assert.All(chatClient.OfferedTools.Take(1), offered => Assert.Equal(["real_tool"], offered));
     }
 
     #endregion

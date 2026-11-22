@@ -154,4 +154,56 @@ public class DecisionCircuitRegistrationTests
         // Assert
         Assert.Equal(DecisionCircuitCause.Settings, circuit.Cause);
     }
+
+    [Fact]
+    [Trait("BR", "CH-451")]
+    public void ShouldKeepTheCircuitOn_WhenTheEmbedderRegistersItsOwnModelBesideAKeylessHostedSection()
+    {
+        // Arrange
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?> { ["Orkeon:TypeSafe:Model"] = "ts" })
+            .Build();
+        var services = new ServiceCollection()
+            .AddLogging()
+            .AddSingleton<IConfiguration>(configuration)
+            .AddSingleton(new LlmKeyEnvironment(_ => null, _ => null))
+            .AddSingleton<IDecisionModel>(new FakeDecisionModel());
+        services.AddOrkeonDecisionProvider(configuration, DecisionProviderDescriptor.TypeSafe);
+        services.AddOrkeonGuardian();
+        using var container = services.BuildServiceProvider();
+
+        // Act
+        var circuit = container.GetRequiredService<DecisionCircuit>();
+
+        // Assert
+        Assert.True(circuit.Enabled, circuit.OffReason);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-451")]
+    public void ShouldBuildTheModelOverTheContainersKeyEnvironment_SoTheModelAndTheCircuitAgree()
+    {
+        // Arrange
+        var variables = new Dictionary<string, string?>(StringComparer.Ordinal);
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?> { ["Orkeon:Liquid:Model"] = "lfm" })
+            .Build();
+        var services = new ServiceCollection()
+            .AddLogging()
+            .AddSingleton<IConfiguration>(configuration)
+            .AddSingleton(new LlmKeyEnvironment(name => variables.GetValueOrDefault(name), _ => null));
+        services.AddOrkeonDecisionProvider(configuration, DecisionProviderDescriptor.Liquid);
+        using var container = services.BuildServiceProvider();
+        var model = container.GetRequiredService<SystemOneDecisionModel>();
+
+        // Act
+        var before = model.MissingKey();
+        variables["LIQUID_API_KEY"] = "lk-test";
+        var after = model.MissingKey();
+
+        // Assert
+        Assert.Equal(
+            ("no Liquid API key: set the environment variable LIQUID_API_KEY, or Orkeon:Liquid:ApiKey", (string?)null),
+            (before, after));
+    }
 }

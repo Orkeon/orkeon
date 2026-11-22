@@ -5,6 +5,7 @@ using Orkeon.Application.Configuration;
 using Orkeon.Application.Crew.Execution;
 using Orkeon.Application.Interfaces.Ports;
 using Orkeon.Domain.Tools;
+using Orkeon.Infrastructure.LLMs.Profiles;
 using Orkeon.Infrastructure.Tools;
 
 namespace Orkeon.Infrastructure.Decision.SystemOne;
@@ -52,7 +53,16 @@ public static class DecisionProviderServiceCollectionExtensions
             .Validate(o => o.BaseUrl.IsAbsoluteUri, $"{section}:BaseUrl: an absolute URL.")
             .DeclareSettings(section);
         services.TryAddSingleton(provider);
-        services.TryAddSingleton<SystemOneDecisionModel>();
+        // The key environment the container holds, else the machine's: the model reads its key there at each
+        // call, and the host's circuit asks the model itself (#451), so the two read the same sources.
+        services.TryAddSingleton(sp => new SystemOneDecisionModel(
+            sp.GetRequiredService<DecisionProviderDescriptor>(),
+            sp.GetRequiredService<IHttpClientFactory>(),
+            sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<SystemOneProviderOptions>>(),
+            sp.GetRequiredService<Microsoft.Extensions.Logging.ILogger<SystemOneDecisionModel>>(),
+            sp.GetService<ILlmUsageSink>(),
+            sp.GetService<Polly.IAsyncPolicy<HttpResponseMessage>>(),
+            sp.GetService<LlmKeyEnvironment>() ?? LlmKeyEnvironment.Machine));
         services.TryAddSingleton<IDecisionModel>(sp => sp.GetRequiredService<SystemOneDecisionModel>());
         // system_one_decide follows the decision circuit (#433): off, the tool is withheld - it resolves
         // to null in the tool collection, skipped like a dropped plugin tool - and a crew that lists it
