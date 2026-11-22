@@ -148,7 +148,9 @@ details the `response_format` surfaces.
   header (2026-08-30). Set `LlmConfig.WorkspaceId`: in the settings `Llm:WorkspaceId`, or
   `Llm:Profiles:<name>:WorkspaceId` for a profile (a profile does not inherit the section's), read by
   every host and by `orkeon doctor`; `orkeon llm probe` and `orkeon llm models` read no settings and take
-  `--workspace-id`. Classic keys need nothing.
+  `--workspace-id`. Classic keys need nothing. Any other provider is not sent the id and says so: a run's
+  provider logs the unhonoured-option warning (event `110`), `orkeon llm models` writes it on stderr and
+  `orkeon doctor` warns on `llm-config`.
 - **Polly** and **API key sanitization**: provided by `HttpLlmProviderBase` → active everywhere.
 
 ## API keys: the variable per provider

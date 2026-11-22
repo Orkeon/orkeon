@@ -75,7 +75,8 @@ public sealed class MockProfileFactoryTests
         var config = LlmSettings.ReadDefault(Settings(("Llm:Provider", "mock"), ("Llm:Responses", "/llm-mock/a.jsonl"), ("Llm:WorkspaceId", "wrkspc_01Test")));
 
         var provider = Assert.IsType<LlmProviderAdapter>(factory.Create(config)).UnderlyingProvider;
-        await provider.GenerateAsync("ping", config, TestContext.Current.CancellationToken);
+        // No configuration on the call: only the factory, which built the mock from the section, can warn.
+        await provider.GenerateAsync("ping", cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.Single(logs.Entries, e => e.Level == Microsoft.Extensions.Logging.LogLevel.Warning
                                          && e.Message.Contains("'WorkspaceId'", StringComparison.Ordinal));

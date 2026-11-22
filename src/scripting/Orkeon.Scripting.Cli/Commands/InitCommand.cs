@@ -592,7 +592,7 @@ internal static class InitCommand
         try
         {
             var models = await LlmCatalogClient
-                .ListAsync(client, catalogKey, baseUrl, ApiKeyOf(settings), settings.WorkspaceId, ct)
+                .ListAsync(client, catalogKey, baseUrl, ApiKeyOf(settings), workspaceId: null, ct)
                 .ConfigureAwait(false);
             await console.Output.WriteLineAsync($"Probe OK — endpoint serves {models.Count} model(s).").ConfigureAwait(false);
         }

@@ -605,6 +605,39 @@ public sealed class DoctorCommandTests : IDisposable
         }
     }
 
+    /// <summary>
+    /// #468: an <c>Llm:WorkspaceId</c> the inferred provider cannot send is said once, on <c>llm-config</c>, as a
+    /// warning; the catalogue line says nothing of it.
+    /// </summary>
+    [Fact]
+    [Trait("BR", "CH-468")]
+    public async Task ShouldWarnOnLlmConfigOnce_WhenAProviderOtherThanAnthropicIsGivenAWorkspace()
+    {
+        var variable = "ORKEON_TEST_" + Guid.NewGuid().ToString("N");
+        Environment.SetEnvironmentVariable(variable, "test-key");
+        using var server = new CatalogueServer();
+        try
+        {
+            using var scratch = new ScriptScratch();
+            scratch.WriteFile("appsettings.json", $$"""
+                { "RaggableTree": { "Enabled": false }, "Llm": { "Model": "test-model", "BaseUrl": "{{server.BaseUrl}}", "ApiKeyEnvVar": "{{variable}}", "WorkspaceId": "wrkspc_test" } }
+                """);
+
+            var (_, lines) = await DoctorJsonAsync(scratch);
+
+            var config = Assert.Single(lines, l => l.Check == "llm-config");
+            Assert.Equal("warn", config.Status);
+            Assert.Contains("Llm:WorkspaceId is set but", config.Detail, StringComparison.Ordinal);
+            Assert.Contains("it is not sent", config.Detail, StringComparison.Ordinal);
+            Assert.Single(lines, l => l.Detail.Contains("WorkspaceId", StringComparison.Ordinal));
+            Assert.Equal("ok", Assert.Single(lines, l => l.Check == "llm-reachability").Status);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable(variable, null);
+        }
+    }
+
     [Fact]
     public async Task AnUnresolvedDefaultReference_IsAWarningOfLlmConfig()
     {

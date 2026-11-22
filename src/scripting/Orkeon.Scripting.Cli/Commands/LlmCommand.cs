@@ -130,10 +130,9 @@ internal sealed class LlmModelsCommandOptions : CliOptions
         HelpText = "Name of the environment variable holding the API key.")]
     public string ApiKeyEnv { get; set; } = EnvironmentVariableNames.LlmCommandApiKey;
 
-    /// <summary>Shell-style glob restricting the listing.</summary>
     /// <summary>
     /// Workspace the listing acts in: Anthropic's identity-linked keys are refused <c>/v1/models</c> without it
-    /// (#468). An identifier, not a secret; ignored by every other provider.
+    /// (#468). An identifier, not a secret; no other provider is sent it, and the command warns.
     /// </summary>
     [Option("workspace-id", Required = false,
         HelpText = "Workspace id for workspace-scoped keys (Anthropic identity-linked keys require it).")]
@@ -180,6 +179,15 @@ internal static class LlmCommand
         using var cts = new CancellationTokenSource();
         using var interrupt = CancelOnInterrupt(console, cts);
         using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(30) };
+
+        // An option the provider cannot honour is reported, never dropped (LLM-02): the probe's provider logs
+        // event 110 for it; the listing builds no provider, so it says the same here (#468).
+        if (!string.IsNullOrWhiteSpace(options.WorkspaceId) && !LlmCatalogClient.SendsWorkspaceId(options.Provider))
+        {
+            await console.ErrorOutput.WriteLineAsync(
+                $"orkeon llm models: warning: option '--workspace-id' was declared but {options.Provider} does not support it — " +
+                "it was not sent. Only Anthropic scopes a key to a workspace; drop --workspace-id for this provider.").ConfigureAwait(false);
+        }
 
         IReadOnlyList<string> models;
         try

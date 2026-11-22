@@ -250,6 +250,13 @@ internal static class LlmCatalogClient
     private static bool IsAnthropic(string provider) =>
         string.Equals(provider, "anthropic", StringComparison.OrdinalIgnoreCase);
 
+    /// <summary>
+    /// Whether the listing of <paramref name="provider"/> sends a workspace id: Anthropic alone scopes a key to a
+    /// workspace, so no other provider is sent one, and its caller says so rather than dropping it (#468).
+    /// </summary>
+    /// <param name="provider">The provider key of the listing.</param>
+    internal static bool SendsWorkspaceId(string provider) => IsAnthropic(provider);
+
     private static bool IsAzure(string provider) =>
         string.Equals(provider, "azure", StringComparison.OrdinalIgnoreCase)
         || string.Equals(provider, "azure-openai", StringComparison.OrdinalIgnoreCase);

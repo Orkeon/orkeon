@@ -472,14 +472,28 @@ internal static class DoctorCommand
         // names, none —, never the key nor the variable's name; a reference set nowhere warns.
         var unresolved = llm.UnresolvedReferences.Contains(DefaultApiKeyReference, StringComparer.Ordinal);
         var provider = llm.ProviderDisplayName ?? "unrecognised";
+        var workspaceNotSent = WorkspaceIdNotSent(llm);
         return new DoctorCheckResult
         {
             Check = "llm-config",
-            Status = llm.ProviderDisplayName is not null && !unresolved && llm.SilentDefault is null ? StatusOk : StatusWarn,
+            Status = llm.ProviderDisplayName is not null && !unresolved && llm.SilentDefault is null && workspaceNotSent is null
+                ? StatusOk : StatusWarn,
             Detail = $"provider {provider}, model {llm.Model ?? "(default)"}, endpoint {llm.BaseUrl ?? "(provider default)"}, " +
-                     $"API key {llm.ApiKeySource}" + (llm.SilentDefault is null ? "" : " — " + llm.SilentDefault),
+                     $"API key {llm.ApiKeySource}" + (llm.SilentDefault is null ? "" : " — " + llm.SilentDefault) +
+                     (workspaceNotSent is null ? "" : " — " + workspaceNotSent),
         };
     }
+
+    /// <summary>
+    /// The phrase for an <c>Llm:WorkspaceId</c> the inferred provider cannot send, else null: a run's provider logs
+    /// event 110 for it and the catalogue request leaves it out, so doctor says it once, on this line (#468). A
+    /// provider module is left out: what it sends is its own.
+    /// </summary>
+    private static string? WorkspaceIdNotSent(LlmContext llm) =>
+        string.IsNullOrWhiteSpace(llm.WorkspaceId) || llm.ModuleKey is not null || llm.ProviderTypeName is null
+            || string.Equals(llm.ProviderTypeName, "AnthropicLlmProvider", StringComparison.Ordinal)
+            ? null
+            : $"Llm:WorkspaceId is set but {llm.ProviderDisplayName} does not support it — it is not sent; only Anthropic scopes a key to a workspace";
 
     private static readonly CompositeFormat UnresolvedApiKeyReferenceFormat =
         CompositeFormat.Parse(OperatorMessages.LlmApiKeyReferenceUnresolved);

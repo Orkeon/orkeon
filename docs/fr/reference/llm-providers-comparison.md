@@ -164,7 +164,9 @@ thinking pour les champs de DashScope et l'objet `reasoning` d'OpenRouter. Le
   `Llm:WorkspaceId`, ou `Llm:Profiles:<nom>:WorkspaceId` pour un profil (un profil n'hérite pas de
   celui de la section), lu par chaque hôte et par `orkeon doctor` ; `orkeon llm probe` et
   `orkeon llm models` ne lisent aucun réglage et prennent `--workspace-id`. Les clés classiques n'en
-  ont pas besoin.
+  ont pas besoin. Aucun autre fournisseur ne reçoit l'identifiant, et il le dit : le fournisseur d'un run
+  journalise l'avertissement d'option non honorée (événement `110`), `orkeon llm models` l'écrit sur
+  stderr et `orkeon doctor` avertit sur `llm-config`.
 - **Polly** et **Sanitization clé API** : fournis par `HttpLlmProviderBase` → actifs partout.
 
 ## Clés d'API : la variable par fournisseur
