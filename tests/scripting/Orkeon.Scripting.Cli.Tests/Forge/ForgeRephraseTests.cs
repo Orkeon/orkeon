@@ -139,6 +139,81 @@ public sealed class ForgeRephraseTests
         }
     }
 
+    /// <summary>#466: an answer with nothing usable in it ends the verb on the stream with a terminal error.</summary>
+    [Theory]
+    [Trait("BR", "CH-466")]
+    [InlineData("   ")]
+    [InlineData("```\n```")]
+    public async Task An_empty_answer_on_the_stream_is_a_single_terminal_error(string answer)
+    {
+        using var console = new TestConsole();
+
+        var exitCode = await ForgeRephrase.AnswerAsync(
+            console, Rephrase("un besoin", "--events", "jsonl"), new ForgeEventWriter(console.Output), new ScriptedLlm(answer));
+
+        Assert.Equal(1, exitCode);
+        var lines = console.Stdout.Split('\n', StringSplitOptions.RemoveEmptyEntries);
+        var error = JsonElement.Parse(Assert.Single(lines, l => l.Contains("\"kind\":\"error\"", StringComparison.Ordinal)));
+        Assert.Equal(ForgeRephrase.EmptyCode, error.GetProperty("code").GetString());
+        Assert.False(error.GetProperty("recoverable").GetBoolean());
+        Assert.True(error.GetProperty("terminal").GetBoolean());
+        Assert.DoesNotContain(lines, l => l.Contains(ForgeRephrase.EventKind, StringComparison.Ordinal));
+        Assert.Empty(console.Stderr);
+    }
+
+    /// <summary>#466: in the terminal the empty answer is one line on the error output.</summary>
+    [Fact]
+    [Trait("BR", "CH-466")]
+    public async Task An_empty_answer_in_the_terminal_is_one_error_line()
+    {
+        using var console = new TestConsole();
+
+        var exitCode = await ForgeRephrase.AnswerAsync(console, Rephrase("un besoin"), events: null, new ScriptedLlm("   "));
+
+        Assert.Equal(1, exitCode);
+        Assert.Equal("orkeon forge: the model gave no rewritten request.", console.Stderr.Trim());
+        Assert.Empty(console.Stdout);
+    }
+
+    /// <summary>#466: with no LLM configured, in the terminal, the refusal is one line on the error output.</summary>
+    [Fact]
+    [Trait("BR", "CH-466")]
+    public async Task Without_an_llm_in_the_terminal_the_refusal_is_one_error_line()
+    {
+        using var console = new TestConsole();
+
+        var exitCode = await ForgeRephrase.AnswerAsync(console, Rephrase("un besoin"), events: null, provider: null);
+
+        Assert.Equal(1, exitCode);
+        Assert.Equal("orkeon forge: no LLM is configured — run `orkeon init`, or pass --settings.", console.Stderr.Trim());
+        Assert.Empty(console.Stdout);
+    }
+
+    /// <summary>#466: a usable answer is the rewritten request, on the stream and in the terminal; exit 0.</summary>
+    [Fact]
+    [Trait("BR", "CH-466")]
+    public async Task A_usable_answer_is_written_and_the_verb_exits_zero()
+    {
+        using var terminal = new TestConsole();
+        Assert.Equal(0, await ForgeRephrase.AnswerAsync(terminal, Rephrase("un besoin"), events: null, new ScriptedLlm("Le besoin, clair.")));
+        Assert.Equal("Le besoin, clair.", terminal.Stdout.Trim());
+
+        using var stream = new TestConsole();
+        Assert.Equal(0, await ForgeRephrase.AnswerAsync(
+            stream, Rephrase("un besoin", "--events", "jsonl"), new ForgeEventWriter(stream.Output), new ScriptedLlm("Le besoin, clair.")));
+        var rephrased = JsonElement.Parse(Assert.Single(stream.Stdout.Split('\n', StringSplitOptions.RemoveEmptyEntries),
+            l => l.Contains(ForgeRephrase.EventKind, StringComparison.Ordinal)));
+        Assert.Equal("Le besoin, clair.", rephrased.GetProperty("text").GetString());
+        Assert.Equal("un besoin", rephrased.GetProperty("original").GetString());
+    }
+
+    private static ForgeCommandOptions Rephrase(params string[] rest)
+    {
+        var options = ForgeCommandOptions.Parse(["rephrase", .. rest]);
+        Assert.Null(options.Error);
+        return options;
+    }
+
     [Fact]
     public void The_event_line_carries_the_text_and_the_original()
     {

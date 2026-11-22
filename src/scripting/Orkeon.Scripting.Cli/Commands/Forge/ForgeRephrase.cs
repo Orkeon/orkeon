@@ -65,8 +65,24 @@ internal static class ForgeRephrase
                     services.AddSingleton<ILlmCallObserver>(new RunEventsLlmCallObserver(events, TimeProvider.System));
             });
 
-        if (!host.Services.GetRequiredService<IConfiguration>().GetSection(ConfigurationKeys.LlmSection).Exists()
-            || host.Services.GetService<ILlmProvider>() is not { } provider)
+        var provider = host.Services.GetRequiredService<IConfiguration>().GetSection(ConfigurationKeys.LlmSection).Exists()
+            ? host.Services.GetService<ILlmProvider>()
+            : null;
+        return await AnswerAsync(console, options, events, provider).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// The verb once the host is built: refuses without <paramref name="provider"/>
+    /// (<c>FORGE-LLM-UNAVAILABLE</c>), asks it once, refuses an answer it did not give
+    /// (<c>FORGE-REPHRASE-EMPTY</c>) or writes the rewritten request.
+    /// </summary>
+    internal static async Task<int> AnswerAsync(
+        IRunnerConsole console, ForgeCommandOptions options, ForgeEventWriter? events, ILlmProvider? provider)
+    {
+        ArgumentNullException.ThrowIfNull(console);
+        ArgumentNullException.ThrowIfNull(options);
+
+        if (provider is null)
         {
             const string Message = "no LLM is configured — run `orkeon init`, or pass --settings.";
             if (events is not null)
