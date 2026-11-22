@@ -18,6 +18,20 @@ public sealed partial class JsLlmFacade
 {
     private readonly IConversationPruner? _pruner;
 
+    /// <summary>1 once the absence of a host pruning was said: once per facade, never per turn.</summary>
+    private int _noPrunerWarned;
+
+    private void WarnNoPrunerOnce()
+    {
+        if (Interlocked.Exchange(ref _noPrunerWarned, 1) == 0 && _logger is not null)
+            LogNoPruner(_logger, _agentName);
+    }
+
+    [Microsoft.Extensions.Logging.LoggerMessage(
+        EventId = 8, Level = Microsoft.Extensions.Logging.LogLevel.Warning,
+        Message = "act: agent '{Agent}' asked for prune, but this host provides no pruner (IConversationPruner): its read results are kept whole")]
+    static partial void LogNoPruner(Microsoft.Extensions.Logging.ILogger logger, string agent);
+
     /// <summary>The <c>prune</c> option of one call: null takes the <c>Orkeon:Compaction:Prune</c> number.</summary>
     /// <param name="FillShare">The fill share of the usable window from which the results are judged.</param>
     /// <param name="KeepRecentMessages">The last messages whose results are never offered.</param>
@@ -139,17 +153,24 @@ public sealed partial class JsLlmFacade
 
     /// <summary>
     /// Asks the host's pruning for this turn when the call set <c>prune</c>: the estimate of the messages, the
-    /// prompt as the task, and the call's window. Nothing without <c>prune</c> or without a host pruning.
+    /// prompt as the task, and the call's window. Nothing without <c>prune</c>; without a host pruning, nothing but one
+    /// warning for the life of the facade.
     /// </summary>
     private async Task RelievePruneAsync(ActSession session)
     {
-        if (session.Pruning is not { } pruning || _pruner is null)
+        if (session.Pruning is not { } pruning)
             return;
+        if (_pruner is null)
+        {
+            WarnNoPrunerOnce();
+            return;
+        }
         var config = session.Config;
         var model = string.IsNullOrWhiteSpace(config.Model) ? session.Provider?.BaseConfig?.Model : config.Model;
         var request = new ConversationPruneRequest
         {
-            AgentRole = _agentName,
+            // The agent's role, as a pick's agent.route names it (#460); its name when the facade knows no role.
+            AgentRole = _picking?.AgentRole is { Length: > 0 } role ? role : _agentName,
             Task = session.Prompt,
             FirstIndex = pruning.FirstIndex,
             EstimatedTokens = EstimateTokens(session.Messages.Sum(MessageChars)),

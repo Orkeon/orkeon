@@ -1669,8 +1669,9 @@ public static partial class RunnerExecution
                 LlmProfiles = sp.GetService<Orkeon.Application.Interfaces.Ports.ILlmProfileRegistry>(),
                 AgentMemoryStore = sp.GetService<Orkeon.Application.Interfaces.Ports.IScriptAgentMemoryStore>(),
                 ToolLimits = sp.GetService<Microsoft.Extensions.Options.IOptions<Orkeon.Domain.Tools.ToolResultLimitsOptions>>()?.Value,
-                // #461: what an act's prune option asks for, the pruning stage of the crew loops.
-                ConversationPruner = sp.GetService<Orkeon.Application.Crew.Compaction.IConversationPruner>(),
+                // #461: what an act's prune option asks for, the pruning stage of the crew loops: scoped like the pick
+                // below, the run scope's (its circuit, and its observer writing to the run's history); none without one.
+                ConversationPruner = scopeServices?.GetService<Orkeon.Application.Crew.Compaction.IConversationPruner>(),
                 AgentInstances = configuration.GetSection(Orkeon.Scripting.Configuration.ScriptAgentInstanceOptions.SectionName).Get<Orkeon.Scripting.Configuration.ScriptAgentInstanceOptions>(),
                 // RT-06: a script agent's .workingRoot(...) is checked against these mounts.
                 FileSystem = sp.GetService<IFileSystemService>(),

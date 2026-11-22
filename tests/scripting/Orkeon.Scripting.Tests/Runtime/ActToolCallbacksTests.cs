@@ -383,7 +383,8 @@ public sealed class ActToolCallbacksTests
         Orkeon.Application.Crew.Execution.DecisionCircuit? circuit = null,
         Action<StubPruneDecisionModel, JsLlmFacade>? arrange = null,
         Orkeon.Domain.Autonomous.AgentExecutionBudget? budget = null,
-        int tokensPerTurn = 0)
+        int tokensPerTurn = 0,
+        bool withPruner = true)
     {
         using var engine = new Engine(options => options.Constraints.PromiseTimeout = HangGuards.EnginePromise);
         var model = new StubPruneDecisionModel();
@@ -413,8 +414,10 @@ public sealed class ActToolCallbacksTests
         {
             TokensPerTurn = tokensPerTurn,
         };
+        // The agent is named Reader and plays the Analyst: the notice names the role, as a pick does (#460).
         var facade = new JsLlmFacade(engine, llm, CancellationToken.None, new IBaseTool[] { tool }, new JsLlmActGuards { Budget = budget },
-            new JsLlmObservability { AgentName = "Reader" }, pruner: pruner);
+            new JsLlmObservability { AgentName = "Reader", Logger = loggers.CreateLogger("act") },
+            new JsLlmPicking(null, "Analyst"), withPruner ? pruner : null);
         arrange?.Invoke(model, facade);
 
         var options = await engine.EvaluateAsync("(" + optionsJs + ")", null, TestContext.Current.CancellationToken);
@@ -439,7 +442,24 @@ public sealed class ActToolCallbacksTests
         Assert.Equal((2, 2, 0, 0, 2), (run.PrunedCount("offered"), run.PrunedCount("judged"), run.PrunedCount("kept"), run.PrunedCount("cut"), run.PrunedCount("dropped")));
         Assert.True(run.PrunedCount("freedTokens") > 3_000);
         Assert.Equal(2, run.Observer.Notices.Count);
-        Assert.All(run.Observer.Notices, n => Assert.Equal("Reader", n.AgentRole));
+        Assert.All(run.Observer.Notices, n => Assert.Equal("Analyst", n.AgentRole));
+    }
+
+    [Fact]
+    [Trait("BR", "CH-461")]
+    public async Task ShouldKeepTheResultsAndWarnOnce_WhenPruneIsAskedOfAHostWithoutAPruner()
+    {
+        // Act: three reads, so three turns asked for a pruning the host cannot give.
+        var run = await RunPruneAsync("{ prune: " + Eager + " }", withPruner: false);
+
+        // Assert
+        Assert.Equal("done", run.Output);
+        Assert.Empty(run.Model.Requests);
+        Assert.True(run.Pruned.IsUndefined());
+        Assert.All(run.Provider.Turns[3].Where(m => m.Role == "tool"), m => Assert.True(m.Content.Length > 8_000));
+        var warning = Assert.Single(run.Logger.Entries, e => e.Level == Microsoft.Extensions.Logging.LogLevel.Warning);
+        Assert.Contains("prune", warning.Message, StringComparison.Ordinal);
+        Assert.Contains("provides no pruner", warning.Message, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -453,15 +473,18 @@ public sealed class ActToolCallbacksTests
         Assert.All(run.Model.Requests, r => Assert.Contains("read both", r.State.ToString(), StringComparison.Ordinal));
     }
 
-    [Fact]
+    [Theory]
     [Trait("BR", "CH-461")]
-    public async Task ShouldMakeNoDecisionCall_WhenTheCallSetsNoPruneEvenWithPruningEnabled()
+    [InlineData("{}")]
+    [InlineData("{ prune: false }")]
+    [InlineData("{ prune: null }")]
+    public async Task ShouldMakeNoDecisionCall_WhenTheCallSetsNoPruneEvenWithPruningEnabled(string optionsJs)
     {
         // Arrange: Orkeon:Compaction:Prune:Enabled is the crew loops' switch.
         var configured = new Orkeon.Application.Crew.Compaction.ToolResultPruningOptions { Enabled = true, FillShare = 0.0001, KeepRecentMessages = 0 };
 
         // Act
-        var run = await RunPruneAsync("{}", configured);
+        var run = await RunPruneAsync(optionsJs, configured);
 
         // Assert
         Assert.Equal("done", run.Output);
@@ -564,7 +587,7 @@ public sealed class ActToolCallbacksTests
     public async Task ShouldRefuseTheCall_WhenPruneComesWithTheScriptsOwnPruning(string optionsJs, string other)
     {
         // Act
-        var refused = await Assert.ThrowsAnyAsync<Exception>(() => RunPruneAsync(optionsJs));
+        var refused = await Assert.ThrowsAsync<Orkeon.Scripting.Exceptions.InvalidScriptException>(() => RunPruneAsync(optionsJs));
 
         // Assert
         Assert.Contains("prune", refused.Message, StringComparison.Ordinal);
@@ -575,13 +598,16 @@ public sealed class ActToolCallbacksTests
     [Trait("BR", "CH-461")]
     [InlineData("{ prune: { fillShare: 0 } }", "fillShare")]
     [InlineData("{ prune: { fillShare: 1.5 } }", "fillShare")]
+    [InlineData("{ prune: { fillShare: 'half' } }", "fillShare takes a number")]
     [InlineData("{ prune: { keepRecentMessages: -1 } }", "keepRecentMessages")]
+    [InlineData("{ prune: { keepRecentMessages: 2.5 } }", "keepRecentMessages takes a whole number")]
     [InlineData("{ prune: { headChars: 0 } }", "headChars")]
     [InlineData("{ prune: 'yes' }", "prune")]
+    [InlineData("{ prune: [] }", "takes true or {")]
     public async Task ShouldRefuseTheCall_WhenAPruneNumberIsOutOfItsBounds(string optionsJs, string named)
     {
         // Act
-        var refused = await Assert.ThrowsAnyAsync<Exception>(() => RunPruneAsync(optionsJs));
+        var refused = await Assert.ThrowsAsync<Orkeon.Scripting.Exceptions.InvalidScriptException>(() => RunPruneAsync(optionsJs));
 
         // Assert
         Assert.Contains(named, refused.Message, StringComparison.Ordinal);
