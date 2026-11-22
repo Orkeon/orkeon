@@ -151,6 +151,7 @@ public sealed class ForgeCrewDecisionCommandTests : IDisposable
             .Single(e => e.GetProperty("kind").GetString() == "error");
         Assert.Equal(ForgeCrewDecision.UnavailableCode, error.GetProperty("code").GetString());
         Assert.Equal("no-provider", error.GetProperty("cause").GetString());
+        Assert.True(error.GetProperty("terminal").GetBoolean());
     }
 
     [Fact]

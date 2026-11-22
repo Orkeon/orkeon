@@ -312,6 +312,41 @@ public sealed class ForgeStagesTests : IDisposable
         Assert.Equal("session.finished", Kinds()[^1]);
     }
 
+    /// <summary>
+    /// #453: a brief refused on the interview's last turn, below the attempt cap, is asked again by no one — its
+    /// error says the process ends (terminal, not recoverable), and nothing asks again after it.
+    /// </summary>
+    [Fact]
+    public async Task A_brief_refused_on_the_last_turn_says_the_process_ends()
+    {
+        var assistant = new ScriptedAssistant();
+        var answers = new string[BriefStage.MaxTurns - 1];
+        for (var turn = 0; turn < BriefStage.MaxTurns - 1; turn++)
+        {
+            assistant.Says($"Question {turn} ?");
+            answers[turn] = $"Answer {turn}.";
+        }
+
+        assistant.SubmitsBrief("{}");
+        var session = ForgeSession.Create(_workspace, "veille");
+
+        await Engine(session, DryRunners(assistant, new ScriptedUserChannel(answers)))
+            .RunAsync(stopBefore: ForgeState.Test, cancellationToken: TestContext.Current.CancellationToken);
+
+        Assert.Equal(BriefStage.MaxTurns, assistant.Requests.Count);
+        var kinds = Kinds().ToList();
+        var firstError = kinds.IndexOf("error");
+        Assert.Equal(BriefStage.MaxTurns - 1, kinds.Count(k => k == "assistant.message"));
+        Assert.DoesNotContain("assistant.message", kinds.Skip(firstError));
+
+        var errors = Events().Where(e => e.GetProperty("kind").GetString() == "error").ToList();
+        Assert.Equal(2, errors.Count);
+        Assert.All(errors, e => Assert.Equal(ForgeErrorCodes.BriefIncomplete, e.GetProperty("code").GetString()));
+        Assert.All(errors, e => Assert.False(e.GetProperty("recoverable").GetBoolean()));
+        Assert.All(errors, e => Assert.True(e.GetProperty("terminal").GetBoolean()));
+        Assert.Equal("session.finished", kinds[^1]);
+    }
+
     [Fact]
     public async Task At_the_blueprint_cap_both_errors_say_the_process_ends_and_the_earlier_ones_that_it_goes_on()
     {
