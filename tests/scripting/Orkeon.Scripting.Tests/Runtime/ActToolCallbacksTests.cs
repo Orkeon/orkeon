@@ -414,7 +414,7 @@ public sealed class ActToolCallbacksTests
             TokensPerTurn = tokensPerTurn,
         };
         var facade = new JsLlmFacade(engine, llm, CancellationToken.None, new IBaseTool[] { tool }, new JsLlmActGuards { Budget = budget },
-            new JsLlmObservability { AgentName = "Reader" }, pruner);
+            new JsLlmObservability { AgentName = "Reader" }, pruner: pruner);
         arrange?.Invoke(model, facade);
 
         var options = await engine.EvaluateAsync("(" + optionsJs + ")", null, TestContext.Current.CancellationToken);
