@@ -108,9 +108,9 @@ internal class LlmProfileShape
     public string? BaseUrl { get; set; }
 
     /// <summary>
-    /// <c>mock</c>, the only value: the offline provider that answers from the JSONL file
-    /// <c>Responses</c> names. Left out, the provider follows from <c>BaseUrl</c>, the model's name
-    /// and the key.
+    /// <c>mock</c>, the offline provider that answers from the JSONL file <c>Responses</c> names, or
+    /// the key of a provider module the host registers. Never a vendor of the catalogue. Left out, the
+    /// provider follows from <c>BaseUrl</c>, the model's name and the key.
     /// </summary>
     public string? Provider { get; set; }
 

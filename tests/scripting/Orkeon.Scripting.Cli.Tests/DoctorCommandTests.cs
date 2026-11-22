@@ -217,7 +217,47 @@ public sealed class DoctorCommandTests : IDisposable
             StringComparison.OrdinalIgnoreCase);
     }
 
-    private static async Task<(int Exit, IReadOnlyList<(string Check, string Status, string Detail)> Lines)> DoctorJsonAsync(ScriptScratch scratch, Func<string>? tscResolver = null)
+    [Fact]
+    public async Task ShouldDescribeModuleProvider_WhenDoctorRuns()
+    {
+        using var scratch = new ScriptScratch();
+        scratch.WriteFile("appsettings.json", """
+            { "RaggableTree": { "Enabled": false }, "Llm": { "Provider": "fake-cli", "Model": "opus" } }
+            """);
+
+        var (exit, lines) = await DoctorJsonAsync(scratch, modules: [new Doubles.FakeLlmProviderModule()]);
+
+        Assert.Equal(Program.ExitOk, exit);
+        var config = Assert.Single(lines, l => l.Check == "llm-config");
+        Assert.Equal("ok", config.Status);
+        Assert.Contains("fake-cli (provider module)", config.Detail, StringComparison.Ordinal);
+        var reachability = Assert.Single(lines, l => l.Check == "llm-reachability");
+        Assert.Contains("provider module fake-cli dials no address", reachability.Detail, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task ShouldFailLlmConfig_WhenProviderKeyHasNoModule()
+    {
+        using var scratch = new ScriptScratch();
+        scratch.WriteFile("appsettings.json", """
+            { "RaggableTree": { "Enabled": false }, "Llm": { "Provider": "other-cli" } }
+            """);
+
+        var (exit, lines) = await DoctorJsonAsync(scratch, modules: [new Doubles.FakeLlmProviderModule()]);
+
+        Assert.Equal(Program.ExitScriptError, exit);
+        var config = Assert.Single(lines, l => l.Check == "llm-config");
+        Assert.Equal("fail", config.Status);
+        Assert.Contains("'other-cli'", config.Detail, StringComparison.Ordinal);
+        Assert.Contains("registered: fake-cli", config.Detail, StringComparison.Ordinal);
+        // The run's start refuses the same key: the two checks agree.
+        Assert.Contains(lines, l => l.Check == "runner-settings" && l.Status == "fail"
+            && l.Detail.Contains("Llm:Provider: 'other-cli'", StringComparison.Ordinal));
+    }
+
+    private static async Task<(int Exit, IReadOnlyList<(string Check, string Status, string Detail)> Lines)> DoctorJsonAsync(
+        ScriptScratch scratch, Func<string>? tscResolver = null,
+        IReadOnlyList<Orkeon.Application.Interfaces.Ports.ILlmProviderModule>? modules = null)
     {
         using var console = new TestConsole();
         var exit = await DoctorCommand.ExecuteAsync(console, new DoctorCommandOptions
@@ -225,6 +265,7 @@ public sealed class DoctorCommandTests : IDisposable
             Json = true,
             WorkingDirectoryOverride = scratch.Root,
             TscResolver = tscResolver,
+            LlmModulesOverride = modules,
         });
 
         using var doc = JsonDocument.Parse(console.Stdout);

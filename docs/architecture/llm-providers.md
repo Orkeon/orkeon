@@ -58,6 +58,13 @@ Generic adapters (`ChatClientToLlmProviderAdapter`, `LlmProviderToChatClientAdap
   `custom` / `docker-model-runner`, which build the OpenAI dialect on the configured base URL.
   An unknown key throws `NotSupportedException`. This is the path of
   `orkeon llm probe --provider`.
+- **Provider modules.** A provider can ship outside `Orkeon.Infrastructure`: a host registers an
+  `ILlmProviderModule` (`Orkeon.Application.Interfaces.Ports`: a lowercase `Key` and
+  `Create(config, context)`), and a section written `"Provider": "<key>"` is built by it on both
+  entry points, never inferred from the address or the model's name. What the module builds goes
+  through the same cassette, call mode, token meter, rate limiter and budget as a built-in
+  provider. A module cannot answer `mock` or a key of the list above. A key no registered module
+  answers is refused when the runner host starts, and by the factory in any other host.
 - `Create(config)` infers the provider — this is what a run does, since the `Llm` section of
   the settings file carries no provider key. The first rule that matches wins:
   1. **With a base URL, the address alone decides** (`LlmEndpointReading`, the one reading the

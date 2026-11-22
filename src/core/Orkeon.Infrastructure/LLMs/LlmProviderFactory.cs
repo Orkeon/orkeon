@@ -45,6 +45,7 @@ public sealed partial class LlmProviderFactory : ILlmProviderFactory
     private readonly LlmReplayMode _replayMode;
     private readonly OpenAIToolCallingStrategy _openAiStrategy;
     private readonly AnthropicToolCallingStrategy _anthropicStrategy;
+    private readonly IReadOnlyDictionary<string, ILlmProviderModule> _modules;
 
     /// <summary>Initializes a new instance of <see cref="LlmProviderFactory"/>.</summary>
     /// <param name="httpClientFactory">The HTTP client factory.</param>
@@ -82,6 +83,7 @@ public sealed partial class LlmProviderFactory : ILlmProviderFactory
         _callObserver = options?.CallObserver ?? NullLlmCallObserver.Instance;
         _tokenCounter = options?.TokenCounter ?? new SimpleTokenCounter();
         _capabilities = options?.Capabilities ?? ModelCapabilityRegistry.Default;
+        _modules = IndexModules(options?.Modules);
 
         // Create tool calling strategies
         _openAiStrategy = new OpenAIToolCallingStrategy(
@@ -98,6 +100,48 @@ public sealed partial class LlmProviderFactory : ILlmProviderFactory
     /// <param name="loggerFactory">The logger factory.</param>
     public static LlmProviderFactory WithoutMounts(IHttpClientFactory httpClientFactory, ILoggerFactory loggerFactory) =>
         new(httpClientFactory, loggerFactory, MountlessFileSystem());
+
+    /// <summary>
+    /// <see cref="WithoutMounts(IHttpClientFactory, ILoggerFactory)"/> that also builds the providers of
+    /// <paramref name="modules"/>, for a tool that has no container to read them from.
+    /// </summary>
+    /// <param name="httpClientFactory">The HTTP client factory.</param>
+    /// <param name="loggerFactory">The logger factory.</param>
+    /// <param name="modules">The provider modules a section may name by <c>Provider</c>.</param>
+    public static LlmProviderFactory WithoutMounts(
+        IHttpClientFactory httpClientFactory, ILoggerFactory loggerFactory, IEnumerable<ILlmProviderModule> modules) =>
+        new(httpClientFactory, loggerFactory, MountlessFileSystem(), new LlmProviderFactoryOptions { Modules = [.. modules] });
+
+    /// <summary>
+    /// The modules by key. A key that is not lowercase and trimmed, the key <c>mock</c>, a key the
+    /// factory builds itself (a vendor of the catalogue, an alias) and two modules on one key each
+    /// refuse the factory: such a module could never be reached.
+    /// </summary>
+    private static Dictionary<string, ILlmProviderModule> IndexModules(IReadOnlyList<ILlmProviderModule>? modules)
+    {
+        var index = new Dictionary<string, ILlmProviderModule>(StringComparer.OrdinalIgnoreCase);
+        foreach (var module in modules ?? [])
+        {
+            ArgumentNullException.ThrowIfNull(module);
+            ArgumentException.ThrowIfNullOrWhiteSpace(module.Key);
+#pragma warning disable CA1308 // the key is matched in its lowercase wire form
+            if (!string.Equals(module.Key, module.Key.Trim().ToLowerInvariant(), StringComparison.Ordinal))
+#pragma warning restore CA1308
+                throw new ArgumentException(
+                    $"The key '{module.Key}' of the provider module {module.GetType().Name} must be lowercase, without surrounding spaces.",
+                    nameof(modules));
+            if (string.Equals(module.Key, LlmProviderKeys.Mock, StringComparison.Ordinal) || MockProviderSettings.IsBuiltInKey(module.Key))
+                throw new ArgumentException(
+                    $"The provider module {module.GetType().Name} cannot answer the key '{module.Key}': the factory builds that provider itself.",
+                    nameof(modules));
+            if (!index.TryAdd(module.Key, module))
+                throw new ArgumentException(
+                    $"Two provider modules answer the key '{module.Key}': {index[module.Key].GetType().Name} and {module.GetType().Name}.",
+                    nameof(modules));
+        }
+
+        return index;
+    }
 
     /// <summary>
     /// A file system with no mount: every read of it fails as an unmounted path. What a container
@@ -126,6 +170,11 @@ public sealed partial class LlmProviderFactory : ILlmProviderFactory
     public IBasicLlmProvider Create(LlmConfig config)
     {
         ArgumentNullException.ThrowIfNull(config);
+
+        // A section that named its provider is built by that name: neither its address nor its
+        // model's name is read (a model called "opus" or "claude-..." would infer a vendor).
+        if (MockProviderSettings.ProviderKeyOf(config) is { } named && !MockProviderSettings.IsMock(config))
+            return CreateModuleProvider(named, config);
 
         return InferProviderType(config) switch
         {
@@ -179,6 +228,7 @@ public sealed partial class LlmProviderFactory : ILlmProviderFactory
             LlmProviderKeys.OpenRouter => CreateOpenRouterProvider(config),
             LlmProviderKeys.Mammouth => CreateMammouthProvider(config),
             LlmProviderKeys.Custom or LlmProviderKeys.DockerModelRunner => CreateOpenAIProvider(config),
+            var key when _modules.ContainsKey(key) => CreateModuleProvider(key, config),
             _ => throw new NotSupportedException($"Provider type '{providerType}' is not supported.")
         };
     }
@@ -227,7 +277,17 @@ public sealed partial class LlmProviderFactory : ILlmProviderFactory
     private LlmProviderAdapter Adapt<TProvider>(LlmConfig config, Func<ILogger<TProvider>, ILlmProvider> build)
     {
         var logger = _loggerFactory.CreateLogger<TProvider>();
-        var built = build(logger);
+        return Enter(config, build(logger), logger);
+    }
+
+    /// <summary>
+    /// <see cref="Adapt{TProvider}"/> for a provider already built — a module's, whose type the factory
+    /// does not know: the same layers, under the logger category of the provider's own type.
+    /// </summary>
+    [SuppressMessage("Reliability", "CA2000:Dispose objects before losing scope",
+        Justification = "Ownership of the provider transfers to the returned LlmProviderAdapter, as in Adapt<TProvider>.")]
+    private LlmProviderAdapter Enter(LlmConfig config, ILlmProvider built, ILogger logger)
+    {
         if (built is HttpLlmProviderBase http)
             http.ModelCapabilities = _capabilities;
         var provider = new CallModeLlmProvider(Cassette(built, config), config.CallMode, logger, _callObserver, _tokenCounter);
@@ -252,6 +312,33 @@ public sealed partial class LlmProviderFactory : ILlmProviderFactory
             ? new ReplayLlmProvider(built, _cassette, ProfileOf(config))
             : new RecordingLlmProvider(built, _cassette, ProfileOf(config));
     }
+
+    /// <summary>
+    /// The provider of a section written <c>Provider: &lt;key&gt;</c>, built by the module registered with
+    /// that key and entered like every provider. A key no module answers is refused, naming the modules
+    /// the host registered: it never falls back on the address or the model's name.
+    /// </summary>
+    private LlmProviderAdapter CreateModuleProvider(string key, LlmConfig config)
+    {
+        if (!_modules.TryGetValue(key, out var module))
+        {
+            var known = _modules.Count == 0 ? "none is registered" : "registered: " + string.Join(", ", _modules.Keys.Order(StringComparer.Ordinal));
+            throw new NotSupportedException(
+                $"Llm:Provider '{key}' names a provider module this host does not register ({known}). "
+                + "Register the module, or leave Provider out so the provider follows from BaseUrl, the model's name and the key.");
+        }
+
+        var factoryLogger = _loggerFactory.CreateLogger<LlmProviderFactory>();
+        if (config.BaseUrl is not null)
+            LogModuleBaseUrlIgnored(factoryLogger, MockProviderSettings.ProfileOf(config), key);
+
+        var built = module.Create(config, new LlmProviderModuleContext { LoggerFactory = _loggerFactory, FileSystem = _fileSystem })
+            ?? throw new InvalidOperationException($"The provider module '{key}' built no provider.");
+        return Enter(config, built, _loggerFactory.CreateLogger(built.GetType().FullName ?? built.GetType().Name));
+    }
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "The LLM profile {Profile} names the provider module {Key} and a BaseUrl: the module reads no address, so BaseUrl is ignored.")]
+    private static partial void LogModuleBaseUrlIgnored(ILogger logger, string profile, string key);
 
     private static string ProfileOf(LlmConfig config) => string.IsNullOrWhiteSpace(config.Profile) ? "default" : config.Profile;
 

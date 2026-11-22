@@ -2,6 +2,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using Orkeon.Application.Configuration;
+using Orkeon.Infrastructure.DependencyInjection;
 
 namespace Orkeon.Hosting.Tests;
 
@@ -170,6 +171,56 @@ public sealed class SettingsCatalogBuilderTests
         using var provider = services.BuildServiceProvider();
 
         Assert.Empty(SettingsValidation.Refusals(provider));
+    }
+
+    [Fact]
+    public void ShouldAcceptModuleShape_WhenModuleDeclaresSubsection()
+    {
+        // A provider module declares its own Llm:<Sub> shape; it merges into the Llm node, so the
+        // keys it reads pass the start validation, and a misspelt one is still refused.
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["Llm:Model"] = "opus",
+                ["Llm:FakeCli:Size"] = "3",
+                ["Llm:FakeCli:Sise"] = "3",
+            })
+            .Build();
+        var services = new ServiceCollection();
+        services.AddSingleton<IConfiguration>(configuration);
+        services.AddOrkeonLlmProfiles(configuration);
+        services.DeclareSettingsShape("Llm:FakeCli", typeof(Child));
+        using var provider = services.BuildServiceProvider();
+
+        var refusal = Assert.Single(SettingsValidation.Refusals(provider));
+
+        Assert.Contains("Llm:FakeCli:Sise", refusal, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ShouldRefuseAtStart_WhenProviderKeyHasNoModule()
+    {
+        // The factory would refuse the key at the first call only: the start validation says it first,
+        // for the default section and for a profile, and leaves mock alone.
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["Llm:Provider"] = "mok",
+                ["Llm:Profiles:offline:Provider"] = "mock",
+                ["Llm:Profiles:offline:Responses"] = "/llm-mock/a.jsonl",
+                ["Llm:Profiles:cli:Provider"] = "Agent-CLI",
+            })
+            .Build();
+        var services = new ServiceCollection();
+        services.AddSingleton<IConfiguration>(configuration);
+        services.AddOrkeonLlmProfiles(configuration);
+        using var provider = services.BuildServiceProvider();
+
+        var refusals = SettingsValidation.Refusals(provider);
+
+        Assert.Equal(2, refusals.Count);
+        Assert.Contains(refusals, r => r.StartsWith("Llm:Provider: 'mok'", StringComparison.Ordinal) && r.Contains("this host registers none", StringComparison.Ordinal));
+        Assert.Contains(refusals, r => r.StartsWith("Llm:Profiles:cli:Provider: 'Agent-CLI'", StringComparison.Ordinal));
     }
 
     private enum Level

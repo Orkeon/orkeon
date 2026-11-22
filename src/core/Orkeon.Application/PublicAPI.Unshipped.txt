@@ -421,3 +421,12 @@ static Orkeon.Application.Interfaces.Ports.AgentEffortNotice.operator ==(Orkeon.
 Orkeon.Application.Interfaces.Ports.AgentEffortNotice.Previous.get -> string?
 Orkeon.Application.Interfaces.Ports.AgentEffortNotice.Previous.init -> void
 const Orkeon.Application.Interfaces.Ports.AgentEffortReasons.Raised = "raised" -> string!
+Orkeon.Application.Interfaces.Ports.ILlmProviderModule
+Orkeon.Application.Interfaces.Ports.ILlmProviderModule.Create(Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig! config, Orkeon.Application.Interfaces.Ports.LlmProviderModuleContext! context) -> Orkeon.Domain.SharedKernel.ILlmProvider!
+Orkeon.Application.Interfaces.Ports.ILlmProviderModule.Key.get -> string!
+Orkeon.Application.Interfaces.Ports.LlmProviderModuleContext
+Orkeon.Application.Interfaces.Ports.LlmProviderModuleContext.FileSystem.get -> Orkeon.Domain.FileSystem.IFileSystemService!
+Orkeon.Application.Interfaces.Ports.LlmProviderModuleContext.FileSystem.init -> void
+Orkeon.Application.Interfaces.Ports.LlmProviderModuleContext.LlmProviderModuleContext() -> void
+Orkeon.Application.Interfaces.Ports.LlmProviderModuleContext.LoggerFactory.get -> Microsoft.Extensions.Logging.ILoggerFactory!
+Orkeon.Application.Interfaces.Ports.LlmProviderModuleContext.LoggerFactory.init -> void

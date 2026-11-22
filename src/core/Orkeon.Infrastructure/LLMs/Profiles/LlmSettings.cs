@@ -335,9 +335,11 @@ public static class LlmSettings
     }
 
     /// <summary>
-    /// <c>Provider: mock</c> with <c>Responses</c>, the virtual path of the JSONL file the offline
-    /// provider answers from. <c>mock</c> is the only value <c>Provider</c> takes; a provider
-    /// otherwise follows from <c>BaseUrl</c>, the model's name and the key.
+    /// <c>Provider</c>, when the section names one: <c>mock</c> with <c>Responses</c>, the virtual path
+    /// of the JSONL file the offline provider answers from, or the key of a provider module
+    /// (<see cref="Orkeon.Application.Interfaces.Ports.ILlmProviderModule"/>), which the factory looks up
+    /// — a key no module answers refuses the first build, never falls back on inference. A vendor
+    /// of the catalogue is never named here: it follows from <c>BaseUrl</c>, the model's name and the key.
     /// </summary>
     private static LlmConfig ReadMock(IConfigurationSection section, LlmConfig config)
     {
@@ -346,19 +348,40 @@ public static class LlmSettings
         if (string.IsNullOrWhiteSpace(provider))
             return config;
 
+        var profile = string.Equals(section.Path, ConfigurationKeys.LlmSection, StringComparison.OrdinalIgnoreCase)
+            ? "default"
+            : section.Key;
+
         if (!string.Equals(provider, Orkeon.Constants.Llm.LlmProviderKeys.Mock, StringComparison.OrdinalIgnoreCase))
-            throw new InvalidOperationException(
-                $"{section.Path}:Provider: '{provider}' is not a provider key; the only value is 'mock'. "
-                + "Leave Provider out and the provider follows from BaseUrl, the model's name and the key.");
+            return ReadModuleKey(section, config, provider.Trim(), responses, profile);
 
         if (string.IsNullOrWhiteSpace(responses))
             throw new InvalidOperationException(
                 $"{section.Path}:Responses: the mock provider needs the virtual path of its JSONL responses file.");
 
-        var profile = string.Equals(section.Path, ConfigurationKeys.LlmSection, StringComparison.OrdinalIgnoreCase)
-            ? "default"
-            : section.Key;
         return Orkeon.Infrastructure.LLMs.Mock.MockProviderSettings.Apply(config, responses, profile);
+    }
+
+    /// <summary>
+    /// A <c>Provider</c> other than <c>mock</c>: the key of a provider module. A vendor key of the
+    /// catalogue is refused (its address picks it), and so is <c>Responses</c>, which only the mock reads.
+    /// </summary>
+    private static LlmConfig ReadModuleKey(IConfigurationSection section, LlmConfig config, string provider, string? responses, string profile)
+    {
+#pragma warning disable CA1308 // the key is matched in its lowercase wire form
+        var key = provider.ToLowerInvariant();
+#pragma warning restore CA1308
+        if (Orkeon.Infrastructure.LLMs.Mock.MockProviderSettings.IsBuiltInKey(key))
+            throw new InvalidOperationException(
+                $"{section.Path}:Provider: '{provider}' is a vendor of the catalogue, which Provider never names. "
+                + "Leave Provider out and the provider follows from BaseUrl, the model's name and the key; "
+                + "Provider takes 'mock' or the key of a provider module.");
+
+        if (!string.IsNullOrWhiteSpace(responses))
+            throw new InvalidOperationException(
+                $"{section.Path}:Responses: only the mock provider reads a responses file; Provider is '{provider}'.");
+
+        return Orkeon.Infrastructure.LLMs.Mock.MockProviderSettings.ApplyModule(config, key, profile);
     }
 
     private enum ApiKeySource

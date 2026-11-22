@@ -750,7 +750,10 @@ public static partial class RunnerHost
         foreach (var section in sections)
         {
             var address = section["BaseUrl"];
-            if (string.IsNullOrWhiteSpace(address) || ReadEndpoint(section).Notice != LlmEndpointNotice.Silent)
+            // A section that names its provider is not read by its address: nothing to warn about.
+            if (string.IsNullOrWhiteSpace(address)
+                || !string.IsNullOrWhiteSpace(section["Provider"])
+                || ReadEndpoint(section).Notice != LlmEndpointNotice.Silent)
                 continue;
 
             var warning = OperatorMessages.LlmBaseUrlSilent($"{section.Path}:BaseUrl", address);
@@ -761,6 +764,17 @@ public static partial class RunnerHost
 
     private static LlmEndpointReading ReadEndpoint(IConfigurationSection section) =>
         LlmEndpointReading.Of(section["BaseUrl"], section["Model"], section["ApiKey"]);
+
+    /// <summary>
+    /// The provider a section runs on: the one it names by <c>Provider</c> (<c>mock</c>, a provider
+    /// module), else the one its address, model and key infer.
+    /// </summary>
+    private static string ProviderKeyOf(IConfigurationSection section) =>
+        section["Provider"] is { } named && !string.IsNullOrWhiteSpace(named)
+#pragma warning disable CA1308 // the key is reported in its lowercase wire form
+            ? named.Trim().ToLowerInvariant()
+#pragma warning restore CA1308
+            : ReadEndpoint(section).ProviderKey;
 
     /// <summary>Where each offered profile of the file takes its key from, one line per profile.</summary>
     private static void LogOfferedProfileKeys(
@@ -774,7 +788,7 @@ public static partial class RunnerHost
         foreach (var profile in offered.Where(name => defined.Contains(name, StringComparer.OrdinalIgnoreCase)))
         {
             var source = LlmSettings.DescribeApiKey(profilesSection.GetSection(profile));
-            var provider = ReadEndpoint(profilesSection.GetSection(profile)).ProviderKey;
+            var provider = ProviderKeyOf(profilesSection.GetSection(profile));
             LogLlmProfileKey(logger, profile, provider, source);
         }
     }
@@ -823,7 +837,7 @@ public static partial class RunnerHost
         var timeout = Shown(llmSection["TimeoutSeconds"], "(default 30)");
         var streamIdle = Shown(llmSection["StreamIdleSeconds"], "(unset)");
         var source = LlmSettings.DescribeApiKey(keySection);
-        var provider = ReadEndpoint(llmSection).ProviderKey;
+        var provider = ProviderKeyOf(llmSection);
         LogLlmResolved(logger, new LlmResolution(model, baseUrl, provider, temperature, timeout, streamIdle, source));
     }
 

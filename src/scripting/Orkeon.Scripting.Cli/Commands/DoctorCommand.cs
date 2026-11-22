@@ -38,6 +38,10 @@ internal sealed class DoctorCommandOptions : CliOptions
     /// <summary>Test seam: overrides the tsc resolver of the tsc check, so a test can inject a missing tsc;
     /// <see langword="null"/> uses the real <c>TscTypeChecker</c> resolver. Not bound by the CLI grammar.</summary>
     internal Func<string>? TscResolver { get; init; }
+
+    /// <summary>Test seam: the provider modules a section may name by <c>Provider</c>;
+    /// <see langword="null"/> uses the ones the CLI ships (<see cref="CliLlmProviderModules.All"/>).</summary>
+    internal IReadOnlyList<Orkeon.Application.Interfaces.Ports.ILlmProviderModule>? LlmModulesOverride { get; init; }
 }
 
 /// <summary>One diagnostic result. The <c>--json</c> schema is a CI contract — keep it stable.</summary>
@@ -163,7 +167,8 @@ internal static class DoctorCommand
         {
             var cwd = Path.GetFullPath(options.WorkingDirectoryOverride ?? Directory.GetCurrentDirectory());
             var installDirectory = options.InstallDirectoryOverride ?? AppContext.BaseDirectory;
-            var results = await RunChecksAsync(cwd, installDirectory, options.TscResolver, cts.Token).ConfigureAwait(false);
+            var modules = options.LlmModulesOverride ?? CliLlmProviderModules.All;
+            var results = await RunChecksAsync(cwd, installDirectory, options.TscResolver, modules, cts.Token).ConfigureAwait(false);
 
             if (options.Json)
                 await console.Output.WriteLineAsync(JsonSerializer.Serialize(results)).ConfigureAwait(false);
@@ -185,9 +190,10 @@ internal static class DoctorCommand
     }
 
     private static async Task<IReadOnlyList<DoctorCheckResult>> RunChecksAsync(
-        string cwd, string installDirectory, Func<string>? tscResolver, CancellationToken ct)
+        string cwd, string installDirectory, Func<string>? tscResolver,
+        IReadOnlyList<Orkeon.Application.Interfaces.Ports.ILlmProviderModule> modules, CancellationToken ct)
     {
-        var llm = ReadLlmContext(cwd);
+        var llm = ReadLlmContext(cwd, modules);
 
         return
         [
@@ -197,7 +203,7 @@ internal static class DoctorCommand
             CheckLlmConfig(llm),
             .. CheckLlmProfiles(llm),
             .. CheckLlmProfileKeys(llm),
-            .. CheckRunnerSettings(llm),
+            .. CheckRunnerSettings(llm, modules),
             await CheckLlmReachabilityAsync(llm, ct).ConfigureAwait(false),
             await CheckEsbuildAsync(llm.Configuration, ct).ConfigureAwait(false),
             await CheckConfiguredTscAsync(llm.Configuration, tscResolver, installDirectory, ct).ConfigureAwait(false),
@@ -224,6 +230,10 @@ internal static class DoctorCommand
         public string? SettingsError { get; init; }
         public string? ProviderTypeName { get; init; }
         public string? ProviderDisplayName { get; init; }
+        /// <summary>The provider module the default names by <c>Provider</c> (never <c>mock</c>), else null.</summary>
+        public string? ModuleKey { get; init; }
+        /// <summary>Why the provider module the default names cannot be built: no module answers its key.</summary>
+        public string? ModuleError { get; init; }
         /// <summary>Each profile of <c>Llm:Profiles</c> and where its key comes from.</summary>
         public IReadOnlyList<(string Name, string ApiKeySource)> Profiles { get; init; } = [];
         /// <summary>Why <c>Llm:Profiles</c> cannot be read: the runner would refuse to start on it.</summary>
@@ -238,7 +248,7 @@ internal static class DoctorCommand
         public required IConfiguration Configuration { get; init; }
     }
 
-    private static LlmContext ReadLlmContext(string cwd)
+    private static LlmContext ReadLlmContext(string cwd, IReadOnlyList<Orkeon.Application.Interfaces.Ports.ILlmProviderModule> modules)
     {
         // Same chain as every runner (explicit → local → walk-up → global), quiet: doctor
         // reports the outcome itself instead of the resolver's stderr warning.
@@ -270,11 +280,19 @@ internal static class DoctorCommand
             return context with { SettingsError = ex.Message };
         }
 
+        // A provider module the default names by Provider: built by that module, or refused because no
+        // module answers its key — never inferred from the address or the model's name.
+        var named = Blank(section["Provider"]);
+        if (named is not null && !string.Equals(named, LlmProviderKeys.Mock, StringComparison.OrdinalIgnoreCase))
+#pragma warning disable CA1308 // the key is shown in its lowercase wire form, as the runner logs it
+            return ReadModuleProvider(context with { ModuleKey = named.Trim().ToLowerInvariant() }, settings, modules);
+#pragma warning restore CA1308
+
         // The provider of the configuration the run reads, built by the factory's own inference.
         try
         {
             using var httpFactory = new CliHttpClientFactory();
-            var factory = LlmProviderFactory.WithoutMounts(httpFactory, NullLoggerFactory.Instance);
+            var factory = LlmProviderFactory.WithoutMounts(httpFactory, NullLoggerFactory.Instance, modules);
             if (factory.Create(settings) is LlmProviderAdapter adapter)
             {
                 var typeName = MeteredLlmProvider.Unwrap(adapter.UnderlyingProvider).GetType().Name;
@@ -292,6 +310,29 @@ internal static class DoctorCommand
         }
 
         return context;
+    }
+
+    /// <summary>The default's provider module, built as a run builds it, or the reason it cannot be.</summary>
+    private static LlmContext ReadModuleProvider(
+        LlmContext context, LlmConfig settings, IReadOnlyList<Orkeon.Application.Interfaces.Ports.ILlmProviderModule> modules)
+    {
+        try
+        {
+            using var httpFactory = new CliHttpClientFactory();
+            var factory = LlmProviderFactory.WithoutMounts(httpFactory, NullLoggerFactory.Instance, modules);
+            if (factory.Create(settings) is LlmProviderAdapter adapter)
+            {
+                var typeName = MeteredLlmProvider.Unwrap(adapter.UnderlyingProvider).GetType().Name;
+                return context with { ProviderTypeName = typeName, ProviderDisplayName = $"{context.ModuleKey} (provider module)" };
+            }
+
+            return context;
+        }
+        catch (Exception ex) when (ex is NotSupportedException or InvalidOperationException or ArgumentException)
+        {
+            // No module answers the key, or the module refused the section it was given.
+            return context with { ModuleError = ex.Message };
+        }
     }
 
     /// <summary>
@@ -326,6 +367,7 @@ internal static class DoctorCommand
     {
         var address = section["BaseUrl"];
         return !string.IsNullOrWhiteSpace(address)
+            && string.IsNullOrWhiteSpace(section["Provider"])
             && LlmEndpointReading.Of(address, section["Model"], section["ApiKey"]).Notice == LlmEndpointNotice.Silent
             ? OperatorMessages.LlmBaseUrlSilent($"{section.Path}:BaseUrl", address)
             : null;
@@ -421,6 +463,9 @@ internal static class DoctorCommand
             return new DoctorCheckResult { Check = "llm-config", Status = StatusFail, Detail = error };
         }
 
+        if (llm.ModuleError is { } moduleError)
+            return new DoctorCheckResult { Check = "llm-config", Status = StatusFail, Detail = moduleError };
+
         // Where the key comes from — the configuration, the variable ApiKeyEnvVar
         // names, none —, never the key nor the variable's name; a reference set nowhere warns.
         var unresolved = llm.UnresolvedReferences.Contains(DefaultApiKeyReference, StringComparer.Ordinal);
@@ -486,7 +531,8 @@ internal static class DoctorCommand
     /// itself raises is the only line, as the run reports it. Skipped when the <c>Llm</c> section is
     /// already refused: the run stops on it first, and the line above says why.
     /// </summary>
-    private static IEnumerable<DoctorCheckResult> CheckRunnerSettings(LlmContext llm)
+    private static IEnumerable<DoctorCheckResult> CheckRunnerSettings(
+        LlmContext llm, IReadOnlyList<Orkeon.Application.Interfaces.Ports.ILlmProviderModule> modules)
     {
         const string Check = "runner-settings";
 
@@ -504,6 +550,9 @@ internal static class DoctorCommand
             services.AddOrkeonHumanInput();
             services.AddSemanticSearchTool();
             RunCommand.AddCliRagServices(services);
+            // The modules a test hands the doctor, beside the ones the tool ships (registered above).
+            foreach (var module in modules.Except(CliLlmProviderModules.All))
+                Microsoft.Extensions.DependencyInjection.ServiceCollectionServiceExtensions.AddSingleton(services, module);
         });
         if (verdict.Refusals.Count == 0 && verdict.Notices.Count == 0)
             return [new DoctorCheckResult { Check = Check, Status = StatusOk, Detail = "the settings pass the start validation of orkeon run" }];
@@ -524,6 +573,9 @@ internal static class DoctorCommand
 
         if (llm.SettingsError is not null)
             return new DoctorCheckResult { Check = Check, Status = StatusOk, Detail = "skipped (the Llm section cannot be read — see llm-config)" };
+
+        if (llm.ModuleKey is { } moduleKey)
+            return new DoctorCheckResult { Check = Check, Status = StatusOk, Detail = $"skipped (the provider module {moduleKey} dials no address)" };
 
         var catalogKey = llm.ProviderTypeName is not null
             ? CatalogKeyByProviderType.GetValueOrDefault(llm.ProviderTypeName)

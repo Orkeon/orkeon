@@ -111,12 +111,22 @@ public sealed class MockProfileFactoryTests
     }
 
     [Fact]
-    public void A_provider_key_other_than_mock_is_refused_naming_the_key()
+    public void A_vendor_key_in_provider_is_refused_naming_the_key()
     {
         var ex = Assert.Throws<InvalidOperationException>(() => LlmSettings.ReadProfiles(
             Settings(("Llm:Profiles:a:Provider", "openai"))));
 
         Assert.Contains("Llm:Profiles:a:Provider", ex.Message, StringComparison.Ordinal);
-        Assert.Contains("mock", ex.Message, StringComparison.Ordinal);
+        Assert.Contains("vendor of the catalogue", ex.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void A_provider_key_no_module_answers_is_refused_by_the_factory_naming_the_key()
+    {
+        var (_, config) = Assert.Single(LlmSettings.ReadProfiles(Settings(("Llm:Profiles:a:Provider", "agent-cli"))));
+
+        var ex = Assert.Throws<NotSupportedException>(() => Factory().Create(config));
+
+        Assert.Contains("'agent-cli'", ex.Message, StringComparison.Ordinal);
     }
 }

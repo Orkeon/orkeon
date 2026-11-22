@@ -275,7 +275,7 @@ internal static class LlmCommand
         // The probe alone records what the provider sends and warns, so M15-M17 can report it.
         var wireProbe = new ReasoningWireProbe();
         using var httpClientFactory = new CliHttpClientFactory(wireProbe);
-        var factory = LlmProviderFactory.WithoutMounts(httpClientFactory, wireProbe.LoggerFactory);
+        var factory = LlmProviderFactory.WithoutMounts(httpClientFactory, wireProbe.LoggerFactory, CliLlmProviderModules.All);
         var adapter = factory.Create(options.Provider, config);
         if (adapter is not LlmProviderAdapter typed)
         {

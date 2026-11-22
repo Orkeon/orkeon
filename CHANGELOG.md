@@ -7,6 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — LLM provider modules: `Llm:Provider` names a provider shipped outside the core
+
+A provider can now live outside `Orkeon.Infrastructure` and be chosen by name. A host registers an
+`ILlmProviderModule` (`Key`, `Create(LlmConfig, LlmProviderModuleContext)`, public API in `Orkeon.Application`), and
+a section written `"Provider": "<key>"` (the `Llm` section or a profile) is built by that module, never inferred from
+`BaseUrl` or the model's name. `LlmProviderFactory` puts what the module builds through the same layers as a built-in
+provider: cassette, call mode, the token meter, the rate limiter and the budget. The container hands the factory every
+registered module (`LlmProviderFactoryOptions.Modules`), and `LlmProviderFactory.WithoutMounts(httpClientFactory,
+loggerFactory, modules)` is the overload for a tool without a container.
+
+- `Provider` used to accept `mock` alone. It now takes `mock` or any other key. A key of the vendor catalogue
+  (`openai`, `anthropic`…) is refused when the settings are read, as before, with the key to fix. `Responses` next to a
+  key other than `mock` is refused. A key no registered module answers is refused when the runner host starts
+  (`orkeon run`, `orkeon-host`, the REPL; exit 1, naming the key and the modules the host registers), and `orkeon doctor` fails
+  `llm-config` and `runner-settings` on it. In any other host the factory refuses it at the provider's build with a
+  `NotSupportedException`. It never falls back to an inferred vendor.
+- A module's key is lowercase and trimmed, and is neither `mock` nor a key the factory builds itself (a vendor of the
+  catalogue, an alias, `custom`, `docker-model-runner`): `LlmProviderFactory` refuses such a module, and two modules on
+  one key, with an `ArgumentException`.
+- A `BaseUrl` next to a module key is ignored, with a warning naming the profile; the "says nothing of its provider"
+  warning is not raised for it.
+- The choice travels in `LlmConfig.CustomParameters["provider"]`, as `mock` already did. A C# host that put another
+  string under that key used to see it ignored; the factory now reads it as a module key and refuses it when no
+  module answers.
+- A module key turns off the runner's pre-run endpoint probe, as `mock` does. `orkeon doctor` names the module
+  (`<key> (provider module)`), skips the reachability check, and fails `llm-config` when no module answers the key.
+- A module declares the shape of its own `Llm:<Sub>` section (`DeclareSettingsShape`): its keys pass the start
+  validation, and a misspelt one is refused.
+- No module ships yet. The shipped hosts register none, so a key other than `mock` is refused.
+
 ### Added — a tool bridge: some tools of a run execute on another machine, `orkeon bridge serve` (#445)
 
 An Orkeon in a container can drive what lives on the user's machine, the browser first: `orkeon bridge serve`, run on

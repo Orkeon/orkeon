@@ -6,6 +6,7 @@ using Microsoft.Extensions.Logging.Console;
 using Microsoft.Extensions.Options;
 using Orkeon.Application.Configuration;
 using Orkeon.Constants.Configuration;
+using Orkeon.Constants.Llm;
 using Orkeon.Domain.SharedKernel.ValueObjects;
 using Orkeon.Infrastructure.Configuration;
 
@@ -101,7 +102,43 @@ internal static class SettingsValidation
 
         refusals.AddRange(UnknownSectionNames(configuration));
         refusals.AddRange(UnknownKeys(configuration, declarations));
+        refusals.AddRange(UnansweredProviderKeys(configuration, services));
         return [.. refusals.Distinct(StringComparer.Ordinal)];
+    }
+
+    /// <summary>
+    /// The <c>Provider</c> of the <c>Llm</c> section and of each profile that no registered provider
+    /// module answers: the factory would refuse it at the first call, long after the start. A vendor
+    /// of the catalogue written there is refused where the section is read.
+    /// </summary>
+    private static IEnumerable<string> UnansweredProviderKeys(IConfiguration configuration, IServiceProvider services)
+    {
+        var modules = services.GetServices<Orkeon.Application.Interfaces.Ports.ILlmProviderModule>()
+            .Select(module => module.Key)
+            .Order(StringComparer.Ordinal)
+            .ToList();
+        var llm = configuration.GetSection(ConfigurationKeys.LlmSection);
+        var sections = llm.GetSection(ConfigurationKeys.LlmProfiles).GetChildren().Prepend(llm);
+        foreach (var section in sections)
+        {
+            var named = section["Provider"];
+            if (string.IsNullOrWhiteSpace(named))
+                continue;
+
+#pragma warning disable CA1308 // the key is matched in its lowercase wire form
+            var key = named.Trim().ToLowerInvariant();
+#pragma warning restore CA1308
+            if (key == LlmProviderKeys.Mock
+                || LlmProviderKeys.All.Contains(key, StringComparer.Ordinal)
+                || LlmProviderKeys.Aliases.ContainsKey(key)
+                || modules.Contains(key, StringComparer.OrdinalIgnoreCase))
+                continue;
+
+            var known = modules.Count == 0 ? "this host registers none" : "registered: " + string.Join(", ", modules);
+            yield return $"{section.Path}:Provider: '{named.Trim()}' names no provider of this host. "
+                + $"Provider takes '{LlmProviderKeys.Mock}' or the key of a provider module ({known}); "
+                + "leave it out and the provider follows from BaseUrl, the model's name and the key.";
+        }
     }
 
     /// <summary>

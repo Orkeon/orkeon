@@ -1248,9 +1248,9 @@ public static partial class RunnerExecution
     private static string? ResolveConfiguredLlmEndpoint(IHost host)
     {
         var configuration = host.Services.GetService<IConfiguration>();
-        // The mock provider (--llm-mock) has no endpoint: whatever address the settings still carry
-        // is never dialled, so it is neither probed nor named in a diagnostic.
-        if (string.Equals(configuration?["Llm:Provider"], Orkeon.Constants.Llm.LlmProviderKeys.Mock, StringComparison.OrdinalIgnoreCase))
+        // A provider named by Llm:Provider — the mock (--llm-mock), a provider module — dials no
+        // address: whatever address the settings still carry is neither probed nor named in a diagnostic.
+        if (!string.IsNullOrWhiteSpace(configuration?["Llm:Provider"]))
             return null;
 
         var url = configuration?["Llm:BaseUrl"];

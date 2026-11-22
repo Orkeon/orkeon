@@ -217,6 +217,44 @@ public sealed partial class LlmProviderMeteringGuardTests
     }
 
     [Fact]
+    public void A_provider_built_by_a_provider_module_is_on_the_path()
+    {
+        var sources = new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            ["src/interop/Orkeon.Interop.Cli/CliLlmProvider.cs"] =
+                "public sealed class CliLlmProvider : ILlmProvider { }",
+            ["src/interop/Orkeon.Interop.Cli/CliLlmProviderModule.cs"] =
+                """
+                public sealed class CliLlmProviderModule : ILlmProviderModule
+                {
+                    public ILlmProvider Create(LlmConfig config, LlmProviderModuleContext context) => new CliLlmProvider();
+                }
+                public sealed class Rogue
+                {
+                    private readonly ILlmProvider _llm = new CliLlmProvider();
+                }
+                public sealed record RogueRecord
+                {
+                    private readonly ILlmProvider _llm = new CliLlmProvider();
+                }
+                public sealed class RogueHost(ILlmProviderModule module)
+                {
+                    private readonly ILlmProvider _llm = new CliLlmProvider();
+                }
+                """,
+        };
+
+        var violations = FindOffPathConstructions(sources, DiscoverProviderTypes(sources));
+
+        // The module's own construction is excused; a later class, a record, and a class that only
+        // takes a module as a constructor parameter are not.
+        Assert.Equal(3, violations.Count);
+        Assert.Contains("CliLlmProviderModule.cs:7", violations[0], StringComparison.Ordinal);
+        Assert.Contains("CliLlmProviderModule.cs:11", violations[1], StringComparison.Ordinal);
+        Assert.Contains("CliLlmProviderModule.cs:15", violations[2], StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Every_exemption_still_names_a_construction_that_exists()
     {
         var sources = ReadSources();
@@ -287,7 +325,7 @@ public sealed partial class LlmProviderMeteringGuardTests
 
                 foreach (Match match in ConstructionPattern(type).Matches(source))
                 {
-                    if (IsHandedToTheRegistration(source, match.Index))
+                    if (IsHandedToTheRegistration(source, match.Index) || IsBuiltByAProviderModule(source, match.Index))
                         continue;
 
                     violations.Add($"{file}:{LineOf(source, match.Index)} -> {Collapse(match.Value)}");
@@ -337,6 +375,21 @@ public sealed partial class LlmProviderMeteringGuardTests
             || statement.Contains("AddOrkeonLlmProfile(", StringComparison.Ordinal);
     }
 
+    /// <summary>
+    /// Whether the construction at <paramref name="index"/> sits in a class implementing
+    /// <c>ILlmProviderModule</c>: <c>LlmProviderFactory</c> feeds what a module builds through
+    /// <c>LlmProviderEntrance.Enter</c>, so the module's construction is on the path.
+    /// </summary>
+    private static bool IsBuiltByAProviderModule(string source, int index)
+    {
+        // The last type declared before the construction, whatever its kind: a record, a struct or an
+        // interface after a module is not the module. Only the bases count, never a constructor parameter.
+        var enclosing = AnyTypeHeaderRegex().Matches(source).LastOrDefault(header => header.Index < index);
+        return enclosing is not null
+            && enclosing.Groups["kind"].Value == "class"
+            && ProviderModuleBaseRegex().IsMatch(enclosing.Groups["bases"].Value);
+    }
+
     // --- Repository access and text helpers ---
 
     private static IEnumerable<Type> ConcreteProviderTypesOfTheInfrastructure() =>
@@ -384,6 +437,12 @@ public sealed partial class LlmProviderMeteringGuardTests
 
     [GeneratedRegex(@"(?<modifiers>(?:\b(?:public|internal|private|protected|sealed|partial|abstract|static|file)\s+)*)class\s+(?<name>\w+)(?:<[^>]*>)?\s*(?:\([^)]*\))?\s*:\s*(?<bases>[^{;]+)[{;]")]
     private static partial Regex ClassDeclarationRegex();
+
+    [GeneratedRegex(@"\b(?<kind>class|struct|interface|record(?:\s+(?:class|struct))?)\s+\w+(?:<[^>]*>)?\s*(?:\([^)]*\))?\s*(?::\s*(?<bases>[^{;]+))?[{;]")]
+    private static partial Regex AnyTypeHeaderRegex();
+
+    [GeneratedRegex(@"\bILlmProviderModule\b")]
+    private static partial Regex ProviderModuleBaseRegex();
 
     [GeneratedRegex(@"\b(?:MeteredLlmProvider|RateLimitedLlmProvider)\s*\.\s*Wrap\s*\(")]
     private static partial Regex WrapCallRegex();
