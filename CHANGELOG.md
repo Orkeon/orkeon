@@ -80,8 +80,9 @@ asks the batches of one pruning together instead of one after the other, for the
 **Before**: each value below was accepted at start and read as something the file did not say. **Now**: it is refused
 at start, the refusal naming the key; a refusal of a single value where a list or a section is expected no longer prints
 that value. A list setting whose reader takes one comma-separated value (`Llm:AvailableModels`,
-`Llm:ModelCapabilities:<id>:ReasoningEfforts`, `Llm:Profiles:<name>:Fallback`) is not refused when written as one
-string. **Migration**: the last column of the table.
+`Llm:ModelCapabilities:<id>:ReasoningEfforts`, `Llm:Profiles:<name>:Fallback`,
+`Orkeon:Tools:Firefox:AllowedProfiles` and `DeniedProfiles`) is not refused when written as one string, such as
+`Llm__AvailableModels=gpt-4o,claude`; its shape carries the new `CommaSeparatedSettingAttribute`. **Migration**: the last column of the table.
 
 | Written | Was read as | Now | Migration |
 |---|---|---|---|
@@ -107,12 +108,14 @@ copy: it closes every object that does not set `additionalProperties`, and moves
 (`minimum`, `maximum`, `exclusiveMinimum`, `exclusiveMaximum`, `multipleOf`, `minLength`, `maxLength`, `maxItems`,
 `uniqueItems`, a `minItems` above 1, a `format` off Anthropic's list) into the node's `description`. What would change
 the schema's meaning — `oneOf`, `not`, an `additionalProperties` set to `true` or to a schema, an external `$ref`, a
-recursive schema, an object schema with no `properties`, the keywords the dialect cannot walk (`if` / `then` / `else`,
-`patternProperties`, `dependentSchemas`, `contains`, `propertyNames`, `unevaluatedProperties`), messages ending on an
+recursive schema, an object schema with no `properties` that does not close itself with `additionalProperties: false`,
+the keywords the dialect cannot walk (`if` / `then` / `else`, `patternProperties`, `dependentSchemas`, `dependencies`,
+`contains`, `propertyNames`, `unevaluatedProperties`, `unevaluatedItems`, `additionalItems`), a `description` that is
+no string, messages ending on an
 `assistant` turn — is refused before any HTTP call, naming the keyword and its path (``ctx.llm.extract: the provider
 failed: Anthropic cannot take the response schema 'extract': `oneOf` at `#/properties/pick` is not supported; use
 `anyOf`.``); these requests were refused by the API before. The refusal's error type is `UnsupportedResponseSchema`,
-classed as refused: no retry, no fallback. A task's `output_json` is still validated against the author's schema. See
+classed as refused: the fallback chain does not move on to its next profile (a task with a retry policy still runs again, and is refused again). A task's `output_json` is still validated against the author's schema. See
 `docs/guides/llm-response-format.md`, "Anthropic's schema dialect".
 
 ### Fixed — a watched run no longer dies before its first event with the decision circuit off (#448)
