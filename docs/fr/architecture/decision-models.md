@@ -359,9 +359,13 @@ Circuit coupé, chaque tâche de décision répond par son **repli**, sans requ�
 
 Circuit coupé, l'exécution ne fait **aucun** appel à `IDecisionModel`, quelle qu'en soit la cause. La
 cause est nommée dans chaque message, sous la forme `the decision circuit is off: <cause>`, la cause
-étant `--no-decision`, `Orkeon:Decision:Enabled=false` ou `no decision provider resolved`, et, dans le
-passage par les relais d'un essai de la forge, `the forge's trial pass without System One` (cause `trial`) ; quand
-l'option et le réglage valent tous deux, c'est l'option qui est nommée. Un essai de la forge n'émet aucun
+étant `--no-decision`, `Orkeon:Decision:Enabled=false`, `no decision provider resolved` ou, pour un fournisseur
+hébergé (TypeSafe, Liquid) dont la clé n'est ni dans son réglage ni dans sa variable d'environnement, `no Liquid API
+key: set the environment variable LIQUID_API_KEY, or Orkeon:Liquid:ApiKey` (cause `no-key`, qui nomme la variable
+que choisit `ApiKeyEnvVar`), et, dans le passage par les relais d'un essai de la forge, `the forge's trial pass
+without System One` (cause `trial`) ; quand l'option et le réglage valent tous deux, c'est l'option qui est nommée.
+La clé est cherchée là où le fournisseur la lit à chaque appel, le réglage d'abord, quand l'hôte résout son
+circuit, sans aucun appel réseau ; un fournisseur local (Kev) n'est jamais coupé par elle. Un essai de la forge n'émet aucun
 `run.decision` : son passage indique `circuit` et `cause` sur les lignes `run.started`, `task.completed` et
 `llm.call.*` du flux de la forge. Chaque consommateur qui se
 dégrade le dit en un avertissement :
@@ -370,7 +374,7 @@ dégrade le dit en un avertissement :
 | --- | --- |
 | Tâche de décision | Répond par son repli, comme ci-dessus. |
 | Outil `system_one_decide` | Retiré : une crew qui le liste échoue au chargement sous `StrictTools` (le défaut des runners), en nommant l'outil et la cause (`tool 'system_one_decide' withheld: the decision circuit is off: --no-decision`) ; une crew `required` rencontre à la place le refus de son mode ; sinon il est ignoré avec un avertissement. Sous `--validate`, c'est une ligne `WARNING:`, l'outil n'est pas compté dans `tools resolved` et le code de sortie reste 0. |
-| Profil de décision | Construit sans le modèle : ses appels vont au `fallback` de la `route`, sinon à la `target` ; un `verify` n'escalade jamais ; un `guard` laisse passer l'appel, sauf dans un profil `failClosed`, où chaque appel est bloqué. Un avertissement à la première résolution du profil. |
+| Profil de décision | Construit sans le modèle : ses appels vont au `fallback` de la `route`, sinon à la `target` ; un `verify` n'escalade jamais ; un `guard` laisse passer l'appel, sauf dans un profil `failClosed`, où chaque appel est bloqué. Un avertissement à la première résolution du profil. `--validate` le dit de chaque agent dont le `llm.profile` nomme un profil `failClosed` doté d'un `guard`, par une ligne `WARNING:` (`agent 'A' runs on the decision profile 'guarded', fail-closed with a guard stage: a run would block every call through it now (the decision circuit is off: --no-decision)`) ; la sortie reste 0 et le run n'est pas refusé avant sa première tâche. |
 | Juge LLM (`Orkeon:Guardian:Llm`) | `FailMode: Closed` refuse de démarrer, en nommant la cause (l'hôte runner le vérifie avec ses réglages) ; `Open` retire le juge du pipeline, avec un avertissement, et les autres gardiens restent. |
 | Reranker `decision` | Laisse passer les passages dans leur ordre de récupération, comme `none`, avec un avertissement. |
 | Skills d'un agent (`skills: { auto: true }`) | L'agent porte sa liste `fallback`, sinon aucun skill, et la tâche s'exécute ; `agent.skills` indique `mode: fallback` et `reason: circuit-off`, avec la cause en `detail`. Un avertissement par run. |
@@ -429,8 +433,8 @@ avertissement, pour rencontrer ce refus plutôt qu'un outil inconnu. Avec `mode:
 tâche de décision reçoit la réponse de son relais `without:` ([plus bas](#le-relais-without)). `--validate` signale le refus
 qu'un run rencontrerait par une ligne `WARNING:` et sort en `0` ([le CLI](../reference/cli.md#orkeon-run)), et un run
 émet un événement `run.decision` avec le mode, le circuit que suit le run et sa cause : `off` avec la cause
-`no-provider` sur un hôte dont le circuit est allumé mais qui n'a pas de modèle de décision, comme le dit le refus
-([le bus d'événements](./run-event-bus.md)).
+`no-provider` sur un hôte dont le circuit est allumé mais qui n'a pas de modèle de décision, et `no-key` sur un hôte
+dont le fournisseur hébergé n'a pas de clé, comme le dit le refus ([le bus d'événements](./run-event-bus.md)).
 
 #### Circuit coupé, selon le mode
 

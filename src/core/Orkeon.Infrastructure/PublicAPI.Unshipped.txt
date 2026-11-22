@@ -47,3 +47,4 @@ Orkeon.Infrastructure.Configuration.ThinkingYamlConfig.Enabled.get -> object?
 Orkeon.Infrastructure.LLMs.LlmProviderFactoryOptions.Modules.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Application.Interfaces.Ports.ILlmProviderModule!>?
 Orkeon.Infrastructure.LLMs.LlmProviderFactoryOptions.Modules.init -> void
 static Orkeon.Infrastructure.LLMs.LlmProviderFactory.WithoutMounts(System.Net.Http.IHttpClientFactory! httpClientFactory, Microsoft.Extensions.Logging.ILoggerFactory! loggerFactory, System.Collections.Generic.IEnumerable<Orkeon.Application.Interfaces.Ports.ILlmProviderModule!>! modules) -> Orkeon.Infrastructure.LLMs.LlmProviderFactory!
+static Orkeon.Infrastructure.LLMs.Decision.DecisionProfileServiceCollectionExtensions.BlocksEveryCallWithTheCircuitOff(Orkeon.Infrastructure.LLMs.Decision.DecisionProfileOptions! profile) -> bool

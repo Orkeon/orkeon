@@ -17,4 +17,10 @@ public enum DecisionCircuitCause
     /// the relays while the host's circuit is on (#431).
     /// </summary>
     Trial,
+
+    /// <summary>
+    /// The decision provider is hosted and has no API key, neither in its <c>ApiKey</c> setting nor in its
+    /// environment variable (#451): no call to it could succeed. <see cref="DecisionCircuit.Detail"/> names both.
+    /// </summary>
+    NoKey,
 }

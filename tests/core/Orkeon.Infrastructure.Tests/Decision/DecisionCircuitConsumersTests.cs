@@ -47,6 +47,8 @@ public sealed class DecisionCircuitConsumersTests
         {
             services.AddSingleton<IDecisionModel>(model);
             services.AddOrkeonDecisionProvider(configuration, DecisionProviderDescriptor.TypeSafe);
+            // A hosted provider without its key turns the circuit off (#451): the provider here has one.
+            services.AddSingleton(new Orkeon.Infrastructure.LLMs.Profiles.LlmKeyEnvironment(_ => "ts-test", _ => null));
         }
 
         services.AddSingleton<IPromptSanitizer>(new MockPromptSanitizer());

@@ -2,7 +2,10 @@
 Orkeon.Application.Crew.Execution.DecisionCircuit.Cause.get -> Orkeon.Application.Crew.Execution.DecisionCircuitCause?
 Orkeon.Application.Crew.Execution.DecisionCircuit.Cause.init -> void
 Orkeon.Application.Crew.Execution.DecisionCircuit.OffReason.get -> string?
+Orkeon.Application.Crew.Execution.DecisionCircuit.Detail.get -> string?
+Orkeon.Application.Crew.Execution.DecisionCircuit.Detail.init -> void
 Orkeon.Application.Crew.Execution.DecisionCircuitCause
+Orkeon.Application.Crew.Execution.DecisionCircuitCause.NoKey = 4 -> Orkeon.Application.Crew.Execution.DecisionCircuitCause
 Orkeon.Application.Crew.Execution.DecisionCircuitCause.NoProvider = 2 -> Orkeon.Application.Crew.Execution.DecisionCircuitCause
 Orkeon.Application.Crew.Execution.DecisionCircuitCause.Settings = 1 -> Orkeon.Application.Crew.Execution.DecisionCircuitCause
 Orkeon.Application.Crew.Execution.DecisionCircuitCause.Switch = 0 -> Orkeon.Application.Crew.Execution.DecisionCircuitCause

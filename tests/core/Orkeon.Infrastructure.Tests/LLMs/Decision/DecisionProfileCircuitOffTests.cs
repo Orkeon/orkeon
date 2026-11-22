@@ -190,4 +190,25 @@ public sealed class DecisionProfileCircuitOffTests
         var warning = Assert.Single(host.Logs.Logger.Entries, e => e.Level == LogLevel.Warning);
         Assert.Contains("the decision circuit is off: --no-decision", warning.Message, StringComparison.Ordinal);
     }
+
+    [Theory]
+    [InlineData(true, new[] { "guard" }, true)]
+    [InlineData(true, new[] { "route", "Guard" }, true)]
+    [InlineData(false, new[] { "guard" }, false)]
+    [InlineData(true, new[] { "route", "verify" }, false)]
+    [InlineData(true, new string[0], false)]
+    [Trait("BR", "CH-452")]
+    public void ShouldSayTheProfileBlocksEveryCall_OnlyWhenItIsFailClosedAndHoldsAGuard(bool failClosed, string[] kinds, bool expected)
+    {
+        // Arrange
+        var profile = new DecisionProfileOptions { Target = Target, FailClosed = failClosed };
+        foreach (var kind in kinds)
+            profile.Stages.Add(new DecisionStageOptions { Kind = kind });
+
+        // Act
+        var blocks = DecisionProfileServiceCollectionExtensions.BlocksEveryCallWithTheCircuitOff(profile);
+
+        // Assert
+        Assert.Equal(expected, blocks);
+    }
 }
