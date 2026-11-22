@@ -289,6 +289,15 @@ ne la déclarent donc pas, et demander une clé hors de la whitelist lève une e
 passant une `Action<ScriptServiceWhitelist>` à `AddScriptCommands` (`Add(name, factory)`,
 `AddOptional(name, factory)`).
 
+`pick` est le choix de profil et de niveau de réflexion de System One pour une commande (expérimental, ORKEXP008) :
+`await ctx.services.get("pick").pick(request, { profile: { ladder: [...] }, effort: { max: "high" } })`
+répond `{ profile?, effort? }`, chacun `{ value, reason, picked, probability }`, avec le contrat de
+`ctx.llm.pick`. Il en diffère sur quatre points : un refus est préfixé `services.get("pick").pick { <option> } ...` ;
+l'appel suit de lui-même l'annulation de la commande (`ctx.signal`) ; la consommation LLM est portée au crédit de
+l'instance de commande en cours ; il n'y a pas de rôle d'agent (le modèle de décision en lit un vide). Le service
+est optionnel : `ctx.services.has("pick")` n'est vrai que lorsque l'hôte câble un `ISystemOnePicker` (`orkeon run`,
+`orkeon-repl`, `orkeon-host`, `mcp serve --crew`).
+
 ## Dispatcher des commandes vers des agents
 
 Une commande peut s'adresser à un **agent vivant par son nom** et laisser *sa*

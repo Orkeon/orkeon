@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — `ctx.services.get("pick")`, System One's pick for a command (#463)
+
+A scripted command (`*.cmd.ts`) can ask System One for a profile and/or a thinking level:
+`ctx.services.get("pick").pick(request, options)`, with the contract of `ctx.llm.pick` (#460) and the same answer
+`{ profile?, effort? }`. A refusal is prefixed `services.get("pick").pick { <option> } ...`; the call follows the
+command's cancellation (`ctx.signal`) by itself; the LLM usage is credited to the running command instance; there is
+no agent role (the decision model reads an empty one). The service is optional: `ctx.services.has("pick")` is true only
+when the host wires an `ISystemOnePicker` (`orkeon run`, `orkeon-repl`, `orkeon-host`, `mcp serve --crew`).
+Experimental (`ORKEXP008`), like `ctx.llm.pick`. The typings declare `PickService` in `orkeon-cli.d.ts`.
+
 ### Added — `Llm:WorkspaceId`, the Anthropic workspace from the settings (#468)
 
 An Anthropic identity-linked key refuses every call that does not name its workspace (`anthropic-workspace-id`).

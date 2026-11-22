@@ -287,6 +287,15 @@ and by command, below) where the host keeps a cost manager or command instances;
 and asking for a key outside the whitelist throws. Hosts add their own by passing an `Action<ScriptServiceWhitelist>` to
 `AddScriptCommands` (`Add(name, factory)`, `AddOptional(name, factory)`).
 
+`pick` is System One's profile and thinking-level pick for a command (experimental, ORKEXP008):
+`await ctx.services.get("pick").pick(request, { profile: { ladder: [...] }, effort: { max: "high" } })`
+answers `{ profile?, effort? }`, each `{ value, reason, picked, probability }`, with the contract of
+`ctx.llm.pick`. It differs in four points: a refusal is prefixed `services.get("pick").pick { <option> } ...`;
+the call follows the command's cancellation (`ctx.signal`) by itself; the LLM usage is credited to the running
+command instance; there is no agent role (the decision model reads an empty one). The service is optional:
+`ctx.services.has("pick")` is true only when the host wires an `ISystemOnePicker` (`orkeon run`, `orkeon-repl`,
+`orkeon-host`, `mcp serve --crew`).
+
 ## Dispatching commands to agents
 
 A command can address a **live agent by name** and let *its* response decide when

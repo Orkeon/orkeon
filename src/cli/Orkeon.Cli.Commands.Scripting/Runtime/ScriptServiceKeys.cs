@@ -60,4 +60,11 @@ public static class ScriptServiceKeys
     /// the host keeps a cost manager or command instances.
     /// </summary>
     public const string Usage = "usage";
+
+    /// <summary>
+    /// Optional, experimental (ORKEXP008): System One's pick of a profile and a thinking level —
+    /// <c>ctx.services.get("pick")</c> (<see cref="PickService"/>), the contract of <c>ctx.llm.pick</c> for a command.
+    /// Present when the host wires a System One pick.
+    /// </summary>
+    public const string Pick = "pick";
 }

@@ -1,6 +1,7 @@
 using System.Reflection;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Orkeon.Application.Crew.Routing;
 using Orkeon.Application.Interfaces.Ports;
 using Orkeon.Application.Interfaces.Security;
 using Orkeon.Cli.Abstractions.Runners;
@@ -66,7 +67,12 @@ public static class DefaultScriptServiceWhitelist
                 (sp.GetService<ICostBudgetManager>(), sp.GetService<CommandInstanceRegistry>()) is var (cost, instances)
                 && (cost is not null || instances is not null)
                     ? new ScriptSessionUsage(cost, instances)
-                    : null);
+                    : null)
+            // Optional, experimental: System One's pick (#463), the contract of ctx.llm.pick for a command — present
+            // when the host wires an ISystemOnePicker.
+            .AddOptional(ScriptServiceKeys.Pick, sp => sp.GetService<ISystemOnePicker>() is { } picker
+                ? new PickService.Registration(picker)
+                : null);
     }
 
     /// <summary>

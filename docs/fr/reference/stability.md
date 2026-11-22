@@ -67,7 +67,7 @@ signature ne porte aucun type de ce genre reste sous l'engagement ci-dessus.
   | `ORKEXP005` | Capacités par modèle |
   | `ORKEXP006` | Sécurité HTTP de l'hôte |
   | `ORKEXP007` | Ports d'historique des exécutions |
-  | `ORKEXP008` | Le choix de System One pour un appelant qui n'exécute aucune tâche |
+  | `ORKEXP008` | Le choix de System One pour un appelant qui n'exécute aucune tâche (`ctx.llm.pick`, `ctx.services.get("pick")`) |
   | `ORKEXP009` | Port d'élagage de conversation |
 
 - **Types internes** : tout ce qui n'est listé dans aucun `PublicAPI.Shipped.txt`.
