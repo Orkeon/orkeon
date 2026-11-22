@@ -147,13 +147,14 @@ internal sealed class ObservedRunContext : IAsyncDisposable
 
         // BUS-03: wrap every registered tool so its calls become events. Doing it here —
         // where tools enter the process — covers the agent loops and the scripting facade at
-        // once.
+        // once. A tool the container withholds resolves to null (system_one_decide with the decision
+        // circuit off, a dropped plugin tool): the null passes through, its consumers skip it (#448).
         foreach (var descriptor in services.Where(d => d.ServiceType == typeof(IBaseTool) && !d.IsKeyedService).ToList())
         {
             services.Remove(descriptor);
             services.Add(new ServiceDescriptor(
                 typeof(IBaseTool),
-                sp => new ObservedTool((IBaseTool)Materialize(sp, descriptor)!, _events),
+                sp => Materialize(sp, descriptor) is IBaseTool tool ? new ObservedTool(tool, _events) : null!,
                 descriptor.Lifetime));
         }
 
