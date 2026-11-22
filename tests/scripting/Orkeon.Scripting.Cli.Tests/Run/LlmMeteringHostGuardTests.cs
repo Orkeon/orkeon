@@ -92,7 +92,7 @@ public sealed class LlmMeteringHostGuardTests : IDisposable
     {
         // A section naming a provider module carries no address: the host starts, probes nothing,
         // and serves the module's provider on every surface, metered.
-        var settings = Path.Combine(_root, "appsettings.json");
+        var settings = Path.Join(_root, "appsettings.json");
         await File.WriteAllTextAsync(
             settings, """{ "Llm": { "Provider": "fake-cli", "Model": "opus" } }""", TestContext.Current.CancellationToken);
         var sink = new RecordingUsageSink();
