@@ -162,6 +162,9 @@ public static class ScriptingCliServiceCollectionExtensions
                     ToolLimits = sp.GetService<IOptions<Orkeon.Domain.Tools.ToolResultLimitsOptions>>()?.Value,
                     AgentInstances = sp.GetService<IOptions<Orkeon.Scripting.Configuration.ScriptAgentInstanceOptions>>()?.Value,
                     FileSystem = sp.GetService<IFileSystemService>(),
+                    // ctx.llm.pick (#460): the pick is scoped; this factory is a singleton for the REPL's life, so
+                    // the pick takes one scope of the same life (a scoped service is never resolved from the root).
+                    SystemOnePicker = sp.CreateScope().ServiceProvider.GetService<Orkeon.Application.Crew.Routing.ISystemOnePicker>(),
                 },
                 ragBackend: Orkeon.Scripting.Bindings.RagScriptingBackendFactory.Build(sp));
         });

@@ -983,6 +983,10 @@ internal static partial class RunCommand
 
         var ragBackend = Orkeon.Scripting.Bindings.RagScriptingBackendFactory.Build(host.Services);
 
+        // ctx.llm.pick (#460): System One's pick is scoped (the run scope's circuit and observer); the script is the
+        // run, so its scope lasts as long as this method.
+        using var pickScope = host.Services.CreateScope();
+
         var engineFactory = new JsEngineFactory(
             limits: cliLimits,
             loggerFactory: loggerFactory,
@@ -1005,6 +1009,7 @@ internal static partial class RunCommand
                 AgentInstances = Microsoft.Extensions.Configuration.ConfigurationBinder.Get<Orkeon.Scripting.Configuration.ScriptAgentInstanceOptions>(configuration.GetSection(Orkeon.Scripting.Configuration.ScriptAgentInstanceOptions.SectionName)),
                 // RT-06: a script agent's .workingRoot(...) is checked against these mounts.
                 FileSystem = fileSystem,
+                SystemOnePicker = pickScope.ServiceProvider.GetService<Orkeon.Application.Crew.Routing.ISystemOnePicker>(),
             },
             ragBackend: ragBackend)
         {

@@ -145,7 +145,7 @@ Five options of `ctx.llm.act(prompt, options)` shape the loop itself (the full l
   `effort must be low|medium|high|xhigh|max`. `agentBuilder().effort(...)`, `LlmConfig.with({ effort })` and
   `taskBuilder().withEffort(...)` also take `"auto"` (System One's pick at each task's start, #439) and refuse any other
   value with `effort must be low|medium|high|xhigh|max|auto, not '<value>'`; a `ctx.llm` call refuses `"auto"`, a pick
-  being made per task, never per call. Anthropic takes the five levels; a provider whose field knows
+  being made per task, never per call; a body that runs no task asks for one itself with `ctx.llm.pick(request, { profile, effort })` (#460, [scripting DSL](../reference/scripting-dsl.md)), through the host's `ISystemOnePicker` (`ORKEXP008`) resolved from the run's scope, and passes the answer to its calls. Anthropic takes the five levels; a provider whose field knows
   fewer (its declared `EffortLevels`: the three of the default for Ollama's `think`, Gemini, Azure OpenAI and Mistral; up to `xhigh` for OpenAI and Grok; all five for Z.ai, Anthropic, OpenRouter, DeepSeek, Kimi, Qwen, Together AI, Hugging Face, MiniMax and Mammouth AI), or a model that takes fewer (the per-model table of `docs/architecture/llm-providers.md`), sends the
   highest level both take below the one asked, and logs a warning saying so, never a silent change.
   The prompt cache is requested the same way on an agent, `agentBuilder().cache({ systemPrompt: true, tools: true,

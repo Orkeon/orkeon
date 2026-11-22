@@ -36,6 +36,55 @@ declare global {
         delete(key: string): Promise<boolean>;
     }
 
+    // ctx.llm.pick (#460): System One's profile and thinking-level pick for a script that runs no task.
+    /** The profile part of `ctx.llm.pick`: profiles the host declares, cheapest first. */
+    interface PickProfileOptions {
+        /** Two or more profiles the host declares, each once, none blank nor `"auto"`. Left out: `Orkeon:Decision:Route:Ladder`. */
+        readonly ladder?: readonly string[];
+        /** The lowest rung the answer may be: a rung of the ladder. A pick under it answers it, reason `"floor"`. */
+        readonly floor?: string;
+        /** The highest rung the answer may be: a rung of the ladder. A pick above it answers it, reason `"ceiling"`. */
+        readonly ceiling?: string;
+        /** What stands without a pick: any profile the host declares. Left out: the host's `"default"`. */
+        readonly fallback?: string;
+    }
+
+    /** The thinking-level part of `ctx.llm.pick`: the levels of `Orkeon:Decision:Effort:Levels` between `min` and `max`. */
+    interface PickEffortOptions {
+        readonly min?: EffortLevel;
+        readonly max?: EffortLevel;
+        /** The level that stands without a pick. Left out: `null`, and the profile's own thinking stands. */
+        readonly fallback?: EffortLevel;
+    }
+
+    /** What `ctx.llm.pick` asks: a profile, a thinking level, or both (one decision call). */
+    interface PickOptions {
+        readonly profile?: PickProfileOptions;
+        readonly effort?: PickEffortOptions;
+    }
+
+    /** Why a profile pick answers what it answers. */
+    type PickProfileReason = "model" | "low-confidence" | "no-answer" | "circuit-off" | "no-ladder" | "floor" | "ceiling";
+    /** Why a thinking-level pick answers what it answers. */
+    type PickEffortReason = "model" | "low-confidence" | "no-answer" | "circuit-off" | "single-level";
+
+    /** One answer of `ctx.llm.pick`. */
+    interface PickAnswer<TValue, TReason> {
+        /** The profile or level to use: the model's pick (held between floor and ceiling), else the fallback. */
+        readonly value: TValue;
+        readonly reason: TReason;
+        /** What the decision model answered, when it answered one of the options; else `null`. */
+        readonly picked: string | null;
+        /** The probability the answer gave `picked`; else `null`. */
+        readonly probability: number | null;
+    }
+
+    /** The answer of `ctx.llm.pick`: a key for each part asked, the other absent. */
+    interface PickResult {
+        readonly profile?: PickAnswer<string, PickProfileReason>;
+        readonly effort?: PickAnswer<EffortLevel | null, PickEffortReason>;
+    }
+
     interface LlmFacade {
         /**
          * One prompt, the answer. A call a stage of the host's decision profile blocks rejects
@@ -84,6 +133,21 @@ declare global {
          */
         extract<T>(prompt: string | readonly Message[] | MessageList, schema: JsonSchema, opts?: ExtractOptions): Promise<T>;
         decide<T extends string>(prompt: string, choices: readonly T[], opts?: LlmCallOptions): Promise<T>;
+        /**
+         * System One's pick for a script that runs no task (#460): the profile among a ladder and the thinking level
+         * among the host's levels that `request` needs, in ONE decision call for both, each held to a probability of
+         * 0.6 or its fallback. No call when one rung or one level is left, with the decision circuit off, or in a
+         * crew on `decision.mode: "none"` (`"circuit-off"`). Nothing is kept: the answer is a value the script
+         * holds. Every refused option rejects with an `InvalidScriptError` naming it, before any call.
+         *
+         * ```ts
+         * const { profile, effort } = await ctx.llm.pick(request, {
+         *     profile: { ladder: ["small", "large"], fallback: "small" },
+         *     effort: { min: "low", max: "high" },
+         * });
+         * ```
+         */
+        pick(request: string, options: PickOptions): Promise<PickResult>;
         /**
          * A deterministic local vector per text, for exercising the API without a model: no provider is
          * called, so `opts` is read by nothing (an unknown `llm.profile` does not throw here).

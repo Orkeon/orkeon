@@ -1635,7 +1635,8 @@ public static partial class RunnerExecution
         ICrewFactory factory,
         string configPath,
         ILogger logger,
-        CancellationToken ct)
+        CancellationToken ct,
+        IServiceProvider? scopeServices = null)
     {
         var sp = host.Services;
         var fileSystem = sp.GetRequiredService<IFileSystemService>();
@@ -1671,6 +1672,9 @@ public static partial class RunnerExecution
                 AgentInstances = configuration.GetSection(Orkeon.Scripting.Configuration.ScriptAgentInstanceOptions.SectionName).Get<Orkeon.Scripting.Configuration.ScriptAgentInstanceOptions>(),
                 // RT-06: a script agent's .workingRoot(...) is checked against these mounts.
                 FileSystem = sp.GetService<IFileSystemService>(),
+                // ctx.llm.pick (#460): the run scope's pick, its circuit and its observer (agent.route, agent.effort);
+                // a load without a run scope (--validate) runs no body and wires none.
+                SystemOnePicker = scopeServices?.GetService<Orkeon.Application.Crew.Routing.ISystemOnePicker>(),
             },
             ragBackend: Orkeon.Scripting.Bindings.RagScriptingBackendFactory.Build(sp));
 

@@ -245,6 +245,33 @@ token counts the provider gave. `decide` raises the provider's failure the same 
 (`ctx.llm.decide: the provider failed: …`) instead of reporting an empty answer. `chat`, like `complete`, answers a failed call with the
 `<undefined-llm:…>` marker holding the provider's sentence, never with an empty content.
 
+`pick(request, { profile, effort })` asks System One what a task on `llm.profile: auto` and `effort: auto` would be
+given, for a body that runs no task (#460): the profile `request` needs among a ladder, the thinking level among the
+host's levels, or both in **one** decision call, each held to a probability of 0.6 or its fallback, the request cut in
+the middle at 4,000 characters. It answers `{ profile?, effort? }`, a key for each part asked, each
+`{ value, reason, picked, probability }`; the host keeps nothing, and the script passes `value` to its next calls
+(`{ llm: { profile } }`, `{ effort }`).
+
+- `profile: { ladder?, floor?, ceiling?, fallback? }`. `ladder` is two or more profiles the host declares, cheapest
+  first, each once; left out, it is [`Orkeon:Decision:Route:Ladder`](configuration.md#orkeondecisionroute), and with
+  none the fallback stands (`no-ladder`). `floor` and `ceiling` are rungs of the ladder: they hold the model's pick
+  with no other call (`value` is the rung kept, `picked` the model's, reason `floor` or `ceiling`), and when they
+  leave one rung that rung is the answer with no call. `fallback` is any declared profile (default: `default`), never
+  clamped.
+- `effort: { min?, max?, fallback? }`. The levels offered are those of
+  [`Orkeon:Decision:Effort:Levels`](configuration.md#orkeondecisioneffort) between `min` and `max`; one level left is
+  the answer with no call (`single-level`). `fallback` is a level; left out, `value` is `null` and the profile's own
+  thinking stands.
+- Reasons: `model`, `low-confidence`, `no-answer` (no option answered, or the call failed), `circuit-off` (the
+  decision circuit is off, or the crew runs on `decision({ mode: "none" })`: no call), plus `no-ladder`, `floor`,
+  `ceiling` for the profile and `single-level` for the effort. Each answer is also an `agent.route` or `agent.effort`
+  event of the run, with the agent's role and a null `taskId`.
+- Refused with an `InvalidScriptError` naming the option, before any call: a ladder of fewer than two rungs; a
+  repeated, blank or `auto` rung; a rung, floor, ceiling or fallback the host does not declare; a floor or ceiling off
+  the ladder; a floor above the ceiling; an unknown level; `min` above `max`; no level left between them; neither
+  `profile` nor `effort`. A host that wires no pick (`ScriptingHostPorts.SystemOnePicker`, `ORKEXP008`) rejects the
+  call; `orkeon run`, the REPL, `orkeon-host` and `mcp serve --crew` wire it. The run's cancellation cancels the call.
+
 `act` is the LLM ⇄ tool-call loop: it offers the model the built-ins the agent selected with
 `.tools([...])` and its `withAutonomousTool` instances — whose `execute` runs in the script,
 on the engine's own thread — until the model stops asking or `maxIterations` (default 10,

@@ -75,13 +75,15 @@ public sealed partial class JsLlmFacade
     /// gate, and the agent's tools the host does not offer (GAP-27).
     /// </param>
     /// <param name="observability">The sinks and the attribution of the calls.</param>
+    /// <param name="picking">System One's pick behind <c>pick</c> and the agent it picks for (#460).</param>
     internal JsLlmFacade(
         Engine engine,
         ILlmProvider? provider,
         CancellationToken ct,
         IReadOnlyList<IBaseTool>? tools = null,
         JsLlmActGuards? guards = null,
-        JsLlmObservability? observability = null)
+        JsLlmObservability? observability = null,
+        JsLlmPicking? picking = null)
     {
         _engine = engine;
         _provider = provider;
@@ -105,6 +107,7 @@ public sealed partial class JsLlmFacade
         _agentName = observability?.AgentName ?? string.Empty;
         _toolInvocation = observability?.ToolInvocation;
         embed = EmbedAsync;
+        _picking = picking;
     }
 
     /// <summary>

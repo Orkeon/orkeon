@@ -73,6 +73,7 @@
          the ORKEXP diagnostics are meant for consumers outside this repo. -->
     <NoWarn>$(NoWarn);ORKEXP001;ORKEXP002;ORKEXP003;ORKEXP004;ORKEXP005</NoWarn>
     <NoWarn>$(NoWarn);ORKEXP006;ORKEXP007</NoWarn>
+    <NoWarn>$(NoWarn);ORKEXP008</NoWarn>
     <!-- An undeclared public API change is a build error, not an opinion. -->
     <WarningsAsErrors Condition="'$(OrkeonFreezePublicApi)' == 'true'">$(WarningsAsErrors);RS0016;RS0017</WarningsAsErrors>
   </PropertyGroup>

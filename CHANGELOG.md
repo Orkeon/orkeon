@@ -33,6 +33,20 @@ two, both `terminal: true`. The values of `recoverable` do not change, the envel
   rule is one predicate, `DecisionProfileServiceCollectionExtensions.BlocksEveryCallWithTheCircuitOff`, used by the
   profile's build too.
 
+### Added — `ctx.llm.pick`: System One's profile and thinking level for a script that runs no task (#460)
+
+`ctx.llm.pick(request, { profile: { ladder?, floor?, ceiling?, fallback? }, effort: { min?, max?, fallback? } })`
+answers what a task on `llm.profile: auto` and `effort: auto` would be given: `{ profile?, effort? }`, each
+`{ value, reason, picked, probability }`, in one decision call for both, each held to 0.6 or its fallback. The ladder
+defaults to `Orkeon:Decision:Route:Ladder`, the levels are `Orkeon:Decision:Effort:Levels` between `min` and `max`;
+`floor` and `ceiling` clamp the model's pick with no other call (reasons `floor`, `ceiling`), one rung or one level
+left answers with no call, and the circuit off or a crew on `decision.mode: none` answers `circuit-off` with no call.
+Every refused option throws an `InvalidScriptError` naming it before any call. Each answer is an `agent.route` or
+`agent.effort` event with the agent's role and a null `taskId` (the observer's `AgentRouteNotice` and
+`AgentEffortNotice` carry an empty `TaskId`). The seam is public and experimental (`ORKEXP008`): `ISystemOnePicker` and
+its records in `Orkeon.Application`, registered scoped by `AddOrkeonApplication`, and `ScriptingHostPorts.SystemOnePicker`,
+which `orkeon run`, the REPL, `orkeon-host` and `mcp serve --crew` set. The task path of System One is unchanged.
+
 ### Added — LLM provider modules: `Llm:Provider` names a provider shipped outside the core
 
 A provider can now live outside `Orkeon.Infrastructure` and be chosen by name. A host registers an

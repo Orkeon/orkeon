@@ -71,6 +71,9 @@ internal sealed record JsExecutionEnvironment
     /// <summary>Optional run event stream: told each time this agent spawns a child (<c>agent.spawned</c>).</summary>
     public Orkeon.Application.Runs.IRunEventSink? RunEvents { get; init; }
 
+    /// <summary>System One's pick behind <c>ctx.llm.pick</c> (#460); null when the host wires none.</summary>
+    public Orkeon.Application.Crew.Routing.ISystemOnePicker? Picker { get; init; }
+
     /// <summary>
     /// The configured tool-result cuts and fan-out bound of <c>ctx.llm.act</c>; a host sets it from
     /// <c>IOptions&lt;ToolResultLimitsOptions&gt;</c>, the defaults apply otherwise.

@@ -1,1 +1,4 @@
 #nullable enable
+Orkeon.Scripting.Runtime.JsLlmFacade.pick.get -> Jint.Native.JsValue!
+[ORKEXP008]Orkeon.Scripting.ScriptingHostPorts.SystemOnePicker.get -> Orkeon.Application.Crew.Routing.ISystemOnePicker?
+[ORKEXP008]Orkeon.Scripting.ScriptingHostPorts.SystemOnePicker.init -> void
