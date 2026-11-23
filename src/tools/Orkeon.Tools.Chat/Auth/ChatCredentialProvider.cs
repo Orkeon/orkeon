@@ -72,7 +72,8 @@ internal sealed class ChatCredentialProvider
     {
         ArgumentNullException.ThrowIfNull(account);
         var key = TokenKey(account);
-        if (_fresh.TryGetValue(key, out var cached) && _oauth.IsFresh(cached.ExpiresAt) && cached.AccessToken != refused)
+        // A user's tokens are read from the store at each call: another process may have signed out.
+        if (account.IsApplication && _fresh.TryGetValue(key, out var cached) && _oauth.IsFresh(cached.ExpiresAt) && cached.AccessToken != refused)
             return cached.AccessToken;
 
         var gate = Gate(key);
@@ -84,10 +85,7 @@ internal sealed class ChatCredentialProvider
 
             var tokens = await _store.ReadAsync(key, cancellationToken).ConfigureAwait(false);
             if (tokens is not null && _oauth.IsFresh(tokens.ExpiresAt) && tokens.AccessToken != refused)
-            {
-                _fresh[key] = tokens;
                 return tokens.AccessToken;
-            }
 
             if (tokens?.RefreshToken is not { } refreshToken)
                 throw new ChatToolException(ChatErrorCode.SignInRequired, LoginHint(account));
@@ -121,7 +119,6 @@ internal sealed class ChatCredentialProvider
                 await _store.WriteAsync(key, refreshed, cancellationToken).ConfigureAwait(false);
             }
 
-            _fresh[key] = refreshed;
             return refreshed.AccessToken;
         }
         finally

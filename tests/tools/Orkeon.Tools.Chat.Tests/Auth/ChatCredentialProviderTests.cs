@@ -14,12 +14,21 @@ public sealed class ChatCredentialProviderTests : IDisposable
     private static CancellationToken Token => TestContext.Current.CancellationToken;
 
     [Fact]
-    public async Task Should_serve_a_fresh_token_without_reading_the_store_twice()
+    public async Task Should_serve_a_fresh_token_without_any_request()
     {
         Assert.Equal("first-access", await Access());
         Assert.Equal("first-access", await Access());
 
-        Assert.Equal(1, _fixture.Store.Reads);
+        Assert.Empty(_fixture.Handler.Requests);
+    }
+
+    [Fact]
+    public async Task Should_ask_for_a_sign_in_once_another_process_signed_out()
+    {
+        Assert.Equal("first-access", await Access());
+        await _fixture.Store.DeleteAccountAsync("work", keptKey: null, Token);
+
+        Assert.Equal(ChatErrorCode.SignInRequired, (await Assert.ThrowsAsync<ChatToolException>(Access)).Code);
         Assert.Empty(_fixture.Handler.Requests);
     }
 

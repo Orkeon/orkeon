@@ -134,7 +134,8 @@ demande une nouvelle connexion.
 machine. Un jeton refusé plus tard (expiré, révoqué, un consentement retiré) fait répondre
 `SignInRequired` aux outils, avec la commande à lancer.
 
-**Se déconnecter.** `orkeon chat logout team` supprime les jetons stockés. Rien n'est révoqué chez
+**Se déconnecter.** `orkeon chat logout team` supprime les jetons stockés : un processus en cours cesse de
+les employer à son prochain appel. Rien n'est révoqué chez
 Microsoft, qui n'a pas de point de révocation pour ces jetons, et la commande le dit : un
 administrateur du tenant retire l'accès de l'application dans le centre d'administration Microsoft
 Entra (**Applications d'entreprise**, l'application, **Autorisations**).

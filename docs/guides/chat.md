@@ -128,7 +128,8 @@ asks for a new sign-in.
 refused later (expired, revoked, a consent withdrawn) makes the tools answer `SignInRequired` with
 the command to run.
 
-**Sign out.** `orkeon chat logout team` deletes the stored tokens. It revokes nothing at Microsoft,
+**Sign out.** `orkeon chat logout team` deletes the stored tokens: a process that runs stops using them at
+its next call. It revokes nothing at Microsoft,
 which has no revocation endpoint for these tokens, and the command says so: a tenant administrator
 removes the application's access in the Microsoft Entra admin center (**Enterprise applications**,
 the application, **Permissions**).
