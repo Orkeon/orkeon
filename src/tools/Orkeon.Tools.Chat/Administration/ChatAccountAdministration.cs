@@ -430,7 +430,16 @@ public sealed class ChatAccountAdministration
             {
                 var chats = await session.Provider.ListChatsAsync(1, null, cancellationToken).ConfigureAwait(false);
                 if (session.Account.IsApplication)
-                    await CheckApplicationPlacesAsync(session, rules, chats.Items, blocking, cancellationToken).ConfigureAwait(false);
+                {
+                    var found = new List<ChatConversation>(chats.Items);
+                    while (chats.Next is { } next)
+                    {
+                        chats = await session.Provider.ListChatsAsync(ChatDefaults.MaxPage, next, cancellationToken).ConfigureAwait(false);
+                        found.AddRange(chats.Items);
+                    }
+
+                    await CheckApplicationPlacesAsync(session, rules, found, blocking, cancellationToken).ConfigureAwait(false);
+                }
             }
         }
         catch (ChatToolException ex) when (ex.Code is ChatErrorCode.ConsentMissing or ChatErrorCode.InvalidRequest)

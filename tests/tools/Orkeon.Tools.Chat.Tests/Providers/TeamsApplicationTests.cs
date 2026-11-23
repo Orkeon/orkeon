@@ -94,6 +94,9 @@ public sealed class TeamsApplicationTests : IDisposable
     [InlineData("missing", "names a file that does not exist")]
     [InlineData("relative", "is not an absolute path")]
     [InlineData("folder", "names a file that cannot be read")]
+    [InlineData("empty", "names an empty file, or one that is not a regular file")]
+    [InlineData("pipe", "names an empty file, or one that is not a regular file")]
+    [InlineData("linked-pipe", "names an empty file, or one that is not a regular file")]
     [InlineData("large", "names a file too large for a credential")]
     [InlineData("not-a-key", "is not usable")]
     [InlineData("unset", "which is not set")]
@@ -104,6 +107,9 @@ public sealed class TeamsApplicationTests : IDisposable
             "missing" => Path.Join(_folder.FullName, "canary-none"),
             "relative" => "canary-relative.pem",
             "folder" => _folder.FullName,
+            "empty" => WriteFile(string.Empty),
+            "pipe" => Pipe(),
+            "linked-pipe" => File.CreateSymbolicLink(Path.Join(_folder.FullName, "canary-link"), Pipe()).FullName,
             "large" => WriteFile(new string('c', 70_000)),
             "not-a-key" => WriteFile("canary-content"),
             _ => " ",
@@ -164,6 +170,23 @@ public sealed class TeamsApplicationTests : IDisposable
         Assert.Equal(1, Convert.ToInt32(result["count"], System.Globalization.CultureInfo.InvariantCulture));
         Assert.Empty(fixture.Graph.To(HttpMethod.Get, "me/chats"));
         Assert.Empty(fixture.Graph.To(HttpMethod.Get, "me"));
+    }
+
+    [Fact]
+    public async Task Should_list_and_check_the_allowed_chats_a_page_at_a_time()
+    {
+        string[] ids = ["19:a@thread.v2", "19:b@thread.v2", "19:c@thread.v2"];
+        using var fixture = Create(TestChatAccounts.Application([.. ids.Select(id => $"chat:{id}")]));
+        foreach (var id in ids)
+            fixture.Graph.Get($"chats/{id}", Samples.Chat(id, "group", "Weekly", (Samples.Ada, "Ada")));
+
+        var first = await fixture.ResultAsync("chat_list", ("kind", "chats"), ("limit", 2));
+        Assert.Equal((2, 2), (Count(first), ids.Sum(id => fixture.Graph.To(HttpMethod.Get, $"chats/{id}").Count)));
+        var last = await fixture.ResultAsync("chat_list", ("kind", "chats"), ("limit", 2), ("cursor", first["next_cursor"]!));
+
+        Assert.Equal(1, Count(last));
+        Assert.Null(last.GetValueOrDefault("next_cursor"));
+        Assert.True(Assert.Single((await fixture.Administration.CheckAsync("work", Token)).Rights).Ready);
     }
 
     [Fact]
@@ -418,6 +441,16 @@ public sealed class TeamsApplicationTests : IDisposable
         else
             options.Auth.FederatedTokenFileEnvVar = TestChatAccounts.ApplicationVariable;
         return options;
+    }
+
+    private string Pipe()
+    {
+        Assert.SkipWhen(OperatingSystem.IsWindows(), "A named pipe is no file on Windows.");
+        var path = Path.Join(_folder.FullName, "canary-pipe");
+        using var made = System.Diagnostics.Process.Start("mkfifo", [path]);
+        made.WaitForExit();
+        Assert.Equal(0, made.ExitCode);
+        return path;
     }
 
     private string WriteFile(string content)

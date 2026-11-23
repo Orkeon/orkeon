@@ -190,7 +190,7 @@ application post as a user.
   of a PEM file with the certificate and its unencrypted RSA key; `FederatedTokenFileEnvVar`, the
   absolute path of a token file its issuer rotates (workload identity); `ClientSecretEnvVar`, the secret
   itself. It is read again for each token. Orkeon reads these files outside its virtual file system: do
-  not put them under a directory you mount for a crew, whose file tools would read them.
+  not put them under a directory you mount for a crew, whose file tools would read them. A file that is empty, or is no regular file (a pipe), is refused.
 - **The token stays in memory**: nothing is written to the token store. `login` is refused, `logout` has
   nothing to forget, and `check` obtains a token and looks the places up.
 - **`Tenant` is mandatory**: an id or a domain, not `common`, `organizations` or `consumers`.

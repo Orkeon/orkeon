@@ -27,8 +27,16 @@ internal static class ChatCredentialFile
         string failure;
         try
         {
+            // A pipe would hold the opening until someone writes in it, and a device has no length either.
+            var named = new FileInfo(path);
+            if ((named.ResolveLinkTarget(returnFinalTarget: true) ?? named) is FileInfo { Exists: true, Length: 0 })
+                throw Refuse(variable, "names an empty file, or one that is not a regular file");
+
             // A device would never end: the read stops at a size no credential has.
             using var file = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+            if (!file.CanSeek)
+                throw Refuse(variable, "names an empty file, or one that is not a regular file");
+
             var buffer = new byte[MaxBytes + 1];
             var length = await file.ReadAtLeastAsync(buffer, buffer.Length, throwOnEndOfStream: false, cancellationToken).ConfigureAwait(false);
             if (length <= MaxBytes)

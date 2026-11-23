@@ -62,7 +62,7 @@ internal sealed class TeamsProvider : IChatProvider
     public async Task<ChatPage<ChatConversation>> ListChatsAsync(int top, string? page, CancellationToken cancellationToken)
     {
         if (_graph.Account.IsApplication)
-            return new ChatPage<ChatConversation>(await AllowedChatsAsync(cancellationToken).ConfigureAwait(false), null);
+            return await AllowedChatsAsync(top, page, cancellationToken).ConfigureAwait(false);
         var query = string.Create(CultureInfo.InvariantCulture, $"$expand=members&$top={top}");
         var json = await _graph.GetAsync(Address("me/chats", query, page), ChatScopes.ChatRead, cancellationToken).ConfigureAwait(false);
         var chats = GraphJson.Items(json).Select(ReadChat).Where(chat => chat.Id.Length > 0).ToList();
@@ -401,10 +401,14 @@ internal sealed class TeamsProvider : IChatProvider
     }
 
     /// <summary>The chats the allowed places name: no request lists the chats of an application.</summary>
-    private async Task<IReadOnlyList<ChatConversation>> AllowedChatsAsync(CancellationToken cancellationToken)
+    private async Task<ChatPage<ChatConversation>> AllowedChatsAsync(int top, string? page, CancellationToken cancellationToken)
     {
+        var skipped = 0;
+        if (page is not null && (!page.StartsWith(Skip, StringComparison.Ordinal) || !int.TryParse(page.AsSpan(Skip.Length), NumberStyles.None, CultureInfo.InvariantCulture, out skipped)))
+            throw new ChatToolException(ChatErrorCode.InvalidRequest, "`cursor` is not one this listing handed out.");
+        var ids = _graph.Account.ReadPlaces.Where(place => place.Form == PlaceForm.Chat).Select(place => place.Value).Distinct(StringComparer.Ordinal).ToList();
         var chats = new List<ChatConversation>();
-        foreach (var id in _graph.Account.ReadPlaces.Where(place => place.Form == PlaceForm.Chat).Select(place => place.Value).Distinct(StringComparer.Ordinal))
+        foreach (var id in ids.Skip(skipped).Take(top))
         {
             try
             {
@@ -416,8 +420,11 @@ internal sealed class TeamsProvider : IChatProvider
             }
         }
 
-        return chats;
+        var next = (long)skipped + top;
+        return new ChatPage<ChatConversation>(chats, next < ids.Count ? string.Create(CultureInfo.InvariantCulture, $"{Skip}{next}") : null);
     }
+
+    private const string Skip = "$skip=";
 
     private void RefuseApplication(string why)
     {

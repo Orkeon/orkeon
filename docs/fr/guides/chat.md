@@ -198,7 +198,8 @@ laisse aucune application publier en tant qu'utilisateur.
   chemin absolu d'un fichier de jeton que son émetteur renouvelle (workload identity) ;
   `ClientSecretEnvVar`, le secret lui-même. Il est relu pour chaque jeton. Orkeon lit ces fichiers hors
   de son système de fichiers virtuel : ne les mettez pas sous un répertoire que vous montez pour une
-  crew, dont les outils de fichiers les liraient.
+  crew, dont les outils de fichiers les liraient. Un fichier vide, ou qui n'est pas un fichier ordinaire
+  (un tube), est refusé.
 - **Le jeton reste en mémoire** : rien n'est écrit dans le magasin de jetons. `login` est refusé,
   `logout` n'a rien à oublier, et `check` obtient un jeton et cherche les lieux.
 - **`Tenant` est obligatoire** : un id ou un domaine, pas `common`, `organizations` ni `consumers`.
