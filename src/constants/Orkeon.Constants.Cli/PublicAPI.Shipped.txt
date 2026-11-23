@@ -31,3 +31,5 @@ const Orkeon.Constants.Cli.SessionStateKeys.DefaultPermissionMode = "default_per
 const Orkeon.Constants.Cli.SessionStateKeys.SelectedModel = "selected_model" -> string!
 const Orkeon.Constants.Cli.SessionStateKeys.SessionStartOutput = "session_start_output" -> string!
 static Orkeon.Constants.Cli.RunOptionNames.Flag(string! name) -> string!
+const Orkeon.Constants.Cli.RunExitCodes.DecisionUnavailable = 69 -> int
+const Orkeon.Constants.Cli.RunOptionNames.NoDecision = "no-decision" -> string!

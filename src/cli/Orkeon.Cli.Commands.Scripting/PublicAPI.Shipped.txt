@@ -743,3 +743,6 @@ virtual Orkeon.Cli.Commands.Scripting.Args.ArgSpec.Equals(Orkeon.Cli.Commands.Sc
 virtual Orkeon.Cli.Commands.Scripting.Args.ArgSpec.PrintMembers(System.Text.StringBuilder! builder) -> bool
 ~override Orkeon.Cli.Commands.Scripting.Loading.ValidationResult.Equals(object obj) -> bool
 ~override Orkeon.Cli.Commands.Scripting.Loading.ValidationResult.ToString() -> string
+[ORKEXP008]Orkeon.Cli.Commands.Scripting.Runtime.PickService
+[ORKEXP008]Orkeon.Cli.Commands.Scripting.Runtime.PickService.pick.get -> Jint.Native.JsValue!
+const Orkeon.Cli.Commands.Scripting.Runtime.ScriptServiceKeys.Pick = "pick" -> string!

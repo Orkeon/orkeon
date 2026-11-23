@@ -150,3 +150,6 @@ static Orkeon.Constants.Llm.ModelProviderCatalog.Find(string? key) -> Orkeon.Con
 static Orkeon.Constants.Llm.ModelProviderCatalog.InCategory(Orkeon.Constants.Llm.ModelProviderCategory category) -> System.Collections.Generic.IReadOnlyList<Orkeon.Constants.Llm.ModelProviderDescriptor!>!
 static Orkeon.Constants.Llm.ModelProviderDescriptor.operator !=(Orkeon.Constants.Llm.ModelProviderDescriptor? left, Orkeon.Constants.Llm.ModelProviderDescriptor? right) -> bool
 static Orkeon.Constants.Llm.ModelProviderDescriptor.operator ==(Orkeon.Constants.Llm.ModelProviderDescriptor? left, Orkeon.Constants.Llm.ModelProviderDescriptor? right) -> bool
+Orkeon.Constants.Llm.LlmModelContextWindows
+static Orkeon.Constants.Llm.LlmModelContextWindows.ContextWindowTokens(string? model) -> int?
+const Orkeon.Constants.Llm.LlmProfileNames.Auto = "auto" -> string!

@@ -8,7 +8,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     
     <!-- NuGet Package Properties -->
-    <VersionPrefix>1.3.0</VersionPrefix>
+    <VersionPrefix>1.4.0</VersionPrefix>
     <Authors>Orkeon Contributors</Authors>
     <Company>Orkeon</Company>
     <Product>Orkeon</Product>

@@ -1,4 +1,1 @@
 #nullable enable
-[ORKEXP008]Orkeon.Cli.Commands.Scripting.Runtime.PickService
-[ORKEXP008]Orkeon.Cli.Commands.Scripting.Runtime.PickService.pick.get -> Jint.Native.JsValue!
-const Orkeon.Cli.Commands.Scripting.Runtime.ScriptServiceKeys.Pick = "pick" -> string!

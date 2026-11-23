@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.4.0] - 2026-11-22
+
+A minor release: it adds public members (`PublicAPI.Shipped.txt` grows), so it is not a patch. It also carries
+eleven changes marked **[breaking]** below, made on purpose as exceptions to the 1.x commitment of
+[the stability policy](docs/reference/stability.md); each entry gives the migration. Two of them edit the frozen
+surface, four lines in all, and ask for a recompilation:
+
+- `ThinkingYamlConfig.Effort` and `Enabled` are `object?`, where they were `string?` and `bool?` (#439).
+- The constructors of `CrewFactory` and `SequentialCrewOrchestrator` take new trailing optional parameters
+  (#429, #433, #434, #439).
+
+The nine others change a behaviour and leave every signature as it was:
+
+- An enumeration setting is written by its name, never as a number (#464).
+- A hosted decision provider without its key turns the decision circuit off (#451).
+- The start-time settings check refuses what the binder took without a word (#449, #450, #454, #455, #456).
+- `auto` is a reserved LLM profile name (#434).
+- The agent loops compact a long conversation by default (#432).
+- A script budget that names one dimension no longer caps the others (#436).
+- A procedural crew's budget refuses a limit it cannot read (#436).
+- A `when:` list refuses an unquoted `no` (#430).
+- With the decision circuit off, no consumer asks the decision model (#433).
+
 ### Fixed — a crew whose decision task declares no `expected_output` loads (#476)
 
 The crew validator and the forge ask a decision task for no expected output (#431: it runs no agent and its output is
@@ -13406,7 +13429,8 @@ Initial public development snapshot. Core domain model established in C# followi
 - Standalone mode (no Redis required)
 - Console application entry point
 
-[Unreleased]: https://github.com/Orkeon/orkeon/compare/v1.3.0...HEAD
+[Unreleased]: https://github.com/Orkeon/orkeon/compare/v1.4.0...HEAD
+[1.4.0]: https://github.com/Orkeon/orkeon/compare/v1.3.0...v1.4.0
 [1.3.0]: https://github.com/Orkeon/orkeon/compare/v1.2.0...v1.3.0
 [1.2.0]: https://github.com/Orkeon/orkeon/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/Orkeon/orkeon/compare/v1.0.0...v1.1.0

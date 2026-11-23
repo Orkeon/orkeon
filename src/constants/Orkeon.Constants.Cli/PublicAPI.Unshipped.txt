@@ -1,3 +1,1 @@
 #nullable enable
-const Orkeon.Constants.Cli.RunExitCodes.DecisionUnavailable = 69 -> int
-const Orkeon.Constants.Cli.RunOptionNames.NoDecision = "no-decision" -> string!
