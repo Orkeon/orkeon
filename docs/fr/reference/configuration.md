@@ -2785,6 +2785,10 @@ une valeur : le secret reste hors du fichier. `orkeon settings <clé>` décrit c
 | `Llm:Profiles:<nom>:ApiKeyEnvVar` | La clé d'API de ce profil, lue de la même façon. | L'environnement du processus, puis les variables de l'utilisateur sous Windows. |
 | `Orkeon:Tools:Email:Accounts:<nom>:Auth:PasswordEnvVar` | Le mot de passe, ou mot de passe d'application, du compte e-mail. | L'environnement du processus, puis les variables de l'utilisateur sous Windows. |
 | `Orkeon:Tools:Email:Accounts:<nom>:Auth:ClientSecretEnvVar` | Le secret client OAuth du compte e-mail. | L'environnement du processus, puis les variables de l'utilisateur sous Windows. |
+| `Orkeon:Tools:Chat:Accounts:<nom>:Auth:CertificatePathEnvVar` | Le chemin du fichier PEM, certificat et clé, de l'application chat. | L'environnement du processus, puis les variables de l'utilisateur sous Windows. |
+| `Orkeon:Tools:Chat:Accounts:<nom>:Auth:ClientSecretEnvVar` | Le secret client de l'application chat. | L'environnement du processus, puis les variables de l'utilisateur sous Windows. |
+| `Orkeon:Tools:Chat:Accounts:<nom>:Auth:FederatedTokenFileEnvVar` | Le chemin du fichier de jeton fédéré de l'application chat. | L'environnement du processus, puis les variables de l'utilisateur sous Windows. |
+| `Orkeon:Tools:Chat:Accounts:<nom>:Webhook:UrlEnvVar` | L'adresse du webhook Workflows. | L'environnement du processus, puis les variables de l'utilisateur sous Windows. |
 | `Orkeon:Tools:Drive:Accounts:<nom>:Auth:ClientSecretEnvVar` | Le secret client OAuth du compte Google Drive. | L'environnement du processus, puis les variables de l'utilisateur sous Windows. |
 | `Orkeon:TypeSafe:ApiKeyEnvVar` | La clé du modèle de décision TypeSafe ; la clé nomme `TYPESAFE_API_KEY` quand rien ne la règle. | L'environnement du processus, puis les variables de l'utilisateur sous Windows. |
 | `Orkeon:Liquid:ApiKeyEnvVar` | La clé du modèle de décision Liquid ; la clé nomme `LIQUID_API_KEY` quand rien ne la règle. | L'environnement du processus, puis les variables de l'utilisateur sous Windows. |

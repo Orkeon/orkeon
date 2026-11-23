@@ -33,7 +33,8 @@ internal static class ChatCredentialFile
             var length = await file.ReadAtLeastAsync(buffer, buffer.Length, throwOnEndOfStream: false, cancellationToken).ConfigureAwait(false);
             if (length <= MaxBytes)
             {
-                using var text = new StreamReader(new MemoryStream(buffer, 0, length), Encoding.UTF8);
+                using var bytes = new MemoryStream(buffer, 0, length);
+                using var text = new StreamReader(bytes, Encoding.UTF8);
                 return await text.ReadToEndAsync(cancellationToken).ConfigureAwait(false);
             }
 

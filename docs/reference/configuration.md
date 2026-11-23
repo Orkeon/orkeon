@@ -2702,6 +2702,10 @@ value: the secret stays out of the file. `orkeon settings <key>` describes each.
 | `Llm:Profiles:<name>:ApiKeyEnvVar` | The API key of that profile, read the same way. | The process environment, then the user's own variables under Windows. |
 | `Orkeon:Tools:Email:Accounts:<name>:Auth:PasswordEnvVar` | The password, or app password, of the e-mail account. | The process environment, then the user's own variables under Windows. |
 | `Orkeon:Tools:Email:Accounts:<name>:Auth:ClientSecretEnvVar` | The OAuth client secret of the e-mail account. | The process environment, then the user's own variables under Windows. |
+| `Orkeon:Tools:Chat:Accounts:<name>:Auth:CertificatePathEnvVar` | The path of the PEM file, certificate and key, of the chat application. | The process environment, then the user's own variables under Windows. |
+| `Orkeon:Tools:Chat:Accounts:<name>:Auth:ClientSecretEnvVar` | The client secret of the chat application. | The process environment, then the user's own variables under Windows. |
+| `Orkeon:Tools:Chat:Accounts:<name>:Auth:FederatedTokenFileEnvVar` | The path of the federated token file of the chat application. | The process environment, then the user's own variables under Windows. |
+| `Orkeon:Tools:Chat:Accounts:<name>:Webhook:UrlEnvVar` | The address of the Workflows webhook. | The process environment, then the user's own variables under Windows. |
 | `Orkeon:Tools:Drive:Accounts:<name>:Auth:ClientSecretEnvVar` | The OAuth client secret of the Google Drive account. | The process environment, then the user's own variables under Windows. |
 | `Orkeon:TypeSafe:ApiKeyEnvVar` | The key of the TypeSafe decision model; the key names `TYPESAFE_API_KEY` when nothing sets it. | The process environment, then the user's own variables under Windows. |
 | `Orkeon:Liquid:ApiKeyEnvVar` | The key of the Liquid decision model; the key names `LIQUID_API_KEY` when nothing sets it. | The process environment, then the user's own variables under Windows. |
