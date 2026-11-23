@@ -82,6 +82,19 @@ public sealed class PlaceGateTests
         Assert.Equal(Samples.BuildsPlace, (await fixture.AdmitAsync(Samples.BuildsPlace)).Place);
     }
 
+    [Fact]
+    public async Task Should_resolve_an_entry_again_once_its_consent_is_given()
+    {
+        using var fixture = new ChatFixture(TestChatAccounts.Teams(send: ["team:Platform"]));
+        fixture.Graph
+            .On(HttpMethod.Get, "me/joinedTeams", _ => GraphStub.Error(HttpStatusCode.Forbidden, "denied"))
+            .Get("me/joinedTeams", Samples.List(Samples.Named(Samples.Platform, "Platform")))
+            .Get($"teams/{Samples.Platform}/channels", Samples.List(Samples.Channel(Samples.Builds, "builds")));
+        Assert.NotEmpty((await fixture.Session.Gate.RulesAsync(PlaceUse.Send, TestContext.Current.CancellationToken)).Problems);
+
+        Assert.Equal(Samples.BuildsPlace, (await fixture.AdmitAsync(Samples.BuildsPlace)).Place);
+    }
+
     [Theory]
     [InlineData(Samples.BuildsPlace)]
     [InlineData("chat:" + Samples.Group)]

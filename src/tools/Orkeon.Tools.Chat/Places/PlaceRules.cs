@@ -24,6 +24,9 @@ internal sealed record PlaceRules
     /// <summary>The entries set aside, each a sentence naming it.</summary>
     public IReadOnlyList<string> Problems { get; init; } = [];
 
+    /// <summary>Whether an entry was set aside for a consent that may come: the rules are resolved again at the next use.</summary>
+    public bool Provisional { get; init; }
+
     /// <summary>Whether an entry is about people.</summary>
     public bool NamesPeople => Users.Count > 0 || Domains.Count > 0;
 

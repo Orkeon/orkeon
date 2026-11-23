@@ -41,7 +41,7 @@ internal sealed class PlaceGate : IDisposable
     /// <inheritdoc />
     public void Dispose() => _resolving.Dispose();
 
-    /// <summary>The allowed places for <paramref name="use"/>, resolved once. A failure to reach the service is not kept.</summary>
+    /// <summary>The allowed places for <paramref name="use"/>, resolved once. A failure to reach the service is not kept, nor a missing consent.</summary>
     public async Task<PlaceRules> RulesAsync(PlaceUse use, CancellationToken cancellationToken)
     {
         await _resolving.WaitAsync(cancellationToken).ConfigureAwait(false);
@@ -50,7 +50,9 @@ internal sealed class PlaceGate : IDisposable
             if (_rules.TryGetValue(use, out var known))
                 return known;
             var rules = await ResolveRulesAsync(use == PlaceUse.Read ? _account.ReadPlaces : _account.SendPlaces, cancellationToken).ConfigureAwait(false);
-            _rules[use] = rules;
+            // A consent may be given while this process runs.
+            if (!rules.Provisional)
+                _rules[use] = rules;
             return rules;
         }
         finally
@@ -194,6 +196,7 @@ internal sealed class PlaceGate : IDisposable
         var users = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var domains = new List<string>();
         var problems = new List<string>();
+        var provisional = false;
         foreach (var entry in entries)
         {
             try
@@ -223,6 +226,7 @@ internal sealed class PlaceGate : IDisposable
             }
             catch (ChatToolException ex) when (ex.Code is ChatErrorCode.NotFound or ChatErrorCode.ConsentMissing or ChatErrorCode.InvalidRequest)
             {
+                provisional |= ex.Code == ChatErrorCode.ConsentMissing;
                 problems.Add($"'{entry.Text}' is set aside: {ex.Message}");
             }
         }
@@ -236,6 +240,7 @@ internal sealed class PlaceGate : IDisposable
             Users = users,
             Domains = domains,
             Problems = problems,
+            Provisional = provisional,
         };
     }
 
