@@ -99,6 +99,8 @@ declare global {
         chatDelete(input: ChatDeleteInput, ctx?: ExecutionContext): Promise<ChatMessageWriteResult>;
         /** Sets or removes the account's reaction on a message of a chat it may post in; a channel is refused. Needs React. */
         chatReact(input: ChatReactInput, ctx?: ExecutionContext): Promise<ChatReactResult>;
+        /** The transcripts of a meeting, or with `transcript_id` the text of one, screened: exactly one of `place` and `join_link`. Needs Meetings and its chat among the places to read. */
+        chatMeetings(input: ChatMeetingsInput, ctx?: ExecutionContext): Promise<ChatMeetingsResult>;
 
         /** A plugin or MCP tool, by name: its input is not known here. */
         [name: string]: (input: never, ctx?: ExecutionContext) => Promise<unknown>;
@@ -931,6 +933,40 @@ declare global {
         reaction: string;
         /** Removes the reaction instead of setting it. */
         remove?: boolean;
+    }
+
+    interface ChatMeetingsInput extends ChatAccountInput {
+        /** The chat of the meeting, `chat:<id>`: also needs Read. */
+        place?: string;
+        /** Instead of `place`: the join link of the meeting. */
+        join_link?: string;
+        /** Reads this transcript instead of listing them. */
+        transcript_id?: string;
+        /** The previous page's `next_cursor`, with the same arguments. */
+        cursor?: string;
+    }
+
+    interface ChatMeetingsResult {
+        readonly account: string;
+        /** The chat of the meeting, by its id. */
+        readonly place: string;
+        readonly notice: string;
+        /** Untrusted text. */
+        readonly subject?: string;
+        /** ISO 8601 UTC. */
+        readonly start?: string;
+        readonly transcripts?: readonly { readonly id: string; readonly created?: string; readonly ended?: string }[];
+        readonly transcript_id?: string;
+        /** One page, a line per speech (`[time] speaker: words`): untrusted text. */
+        readonly text?: string;
+        /** The tenant hides who speaks. */
+        readonly no_speakers?: boolean;
+        readonly withheld?: boolean;
+        /** Why it is withheld. */
+        readonly reason?: string;
+        /** The prompt-injection verdict on the subject and the whole text, when not clean. */
+        readonly screening?: "suspicious" | "rejected";
+        readonly next_cursor?: string;
     }
 
     interface ChatReactResult extends ChatMessageWriteResult {

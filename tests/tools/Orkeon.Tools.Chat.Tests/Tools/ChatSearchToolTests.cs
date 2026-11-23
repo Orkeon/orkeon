@@ -46,6 +46,28 @@ public sealed class ChatSearchToolTests
     }
 
     [Fact]
+    public async Task Should_not_fail_on_a_hidden_place_out_of_reach()
+    {
+        using var fixture = Searching("chat:" + Samples.Group, "user:*@example.org");
+        const string Unreached = "19:33333333-3333-3333-3333-333333333333_44444444-4444-4444-4444-444444444444@unq.gbl.spaces";
+        Finds(fixture, ChatHit("1", Unreached));
+        fixture.Graph.On(HttpMethod.Get, "chats/" + Unreached, _ => GraphStub.Error(HttpStatusCode.InternalServerError, "x"));
+
+        Assert.Empty(ToolResults.Objects(await fixture.ResultAsync("chat_search", ("text", "x")), "hits"));
+        Assert.Single(fixture.Graph.To(HttpMethod.Get, "chats/" + Unreached));
+    }
+
+    [Fact]
+    public async Task Should_find_an_allowed_chat_after_many_hidden_ones()
+    {
+        using var fixture = Searching("chat:" + Samples.Group);
+        Finds(fixture, [.. Enumerable.Range(0, 45).Select(i => ChatHit("1", $"19:hidden{i}@thread.v2")), ChatHit("1", Samples.Group)]);
+        fixture.Graph.Get($"chats/{Samples.Group}/messages/1", Samples.Message("1", "found"));
+
+        Assert.Single(ToolResults.Objects(await fixture.ResultAsync("chat_search", ("text", "x")), "hits"));
+    }
+
+    [Fact]
     public async Task Should_answer_the_same_with_hidden_hits_as_with_none()
     {
         using var none = Searching("chat:" + Samples.Direct);

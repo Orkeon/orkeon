@@ -15,12 +15,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   when `Auth:AdminGranted` names `ChannelMessages`. `AddOrkeonChatTools(configuration)` is inert until an account is
   declared. Tested offline, not run on a real tenant ([guide](docs/guides/chat.md),
   [ADR-021](docs/adr/ADR-021-chat-tool-family.md)).
+- `chat_meetings` (Read), bringing the family to ten tools and the built-in tool classes to 134. It lists the
+  transcripts of a Teams meeting and reads the text of one, `[hh:mm:ss] speaker: words`, a page at a time. It needs the
+  right `Meetings` and `AdminGranted: ["Meetings"]` (`OnlineMeetings.Read` and `OnlineMeetingTranscript.Read.All`, asked
+  only then, else `ConsentMissing` before any request), and `Read` when the meeting is named by `place`. Exactly one of
+  `join_link` (https, the host of the account's cloud) and `place` (`chat:<id>`); the meeting's chat must be in
+  `Read:AllowedPlaces`, a link whose chat Graph does not tell is refused, channel meetings are refused. The whole text is
+  screened on each page and withheld whole under `WithholdRejected`. The calendar is not read; only meetings the signed-in
+  user organises or Graph returns under `me/onlineMeetings`; transcripts expire. `chat_meetings` is in `TrustedTools`.
+  Not run on a real tenant.
 - `chat_search` (Read), `chat_edit`, `chat_delete` and `chat_react` (Execute), bringing the family to nine tools and the
   built-in tool classes to 133. Search reaches only the places allowed for reading, checks each hit's place by ids and
   reads the text from that place; its window is bounded (5 requests of 25 hits, 40 places). Edit and delete act on
   messages the account itself sent, in `Send:AllowedPlaces`; in a channel they need `ChannelEdit` and `ChannelMessages`
   in `Auth:AdminGranted`; delete is a soft delete; edit works in the worldwide cloud only and refuses a message with
-  attachments or a quote. `chat_react` works in chats only. Edits, deletions and reactions count in `Send:MaxPerHour`
+  attachments, images or a quote. `chat_react` works in chats only. Edits, deletions and reactions count in `Send:MaxPerHour`
   and in the pace of a place. Sign-in: `Edit` and `Delete` also ask `Team.ReadBasic.All`, `Channel.ReadBasic.All` and
   `User.ReadBasic.All` (and `ChannelMessage.Read.All` with `ChannelMessages`); `React` asks `ChatMessage.Send` and
   `User.ReadBasic.All`, no longer `ChannelMessage.Send`. `chat_search` is in `TrustedTools`. Not run on a real tenant.

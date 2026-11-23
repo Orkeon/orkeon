@@ -19,6 +19,8 @@ namespace Orkeon.Tools.Chat.Providers.Teams;
 /// </summary>
 internal sealed class GraphClient
 {
+    private const string SpeakersNotAllowed = "SpeakerAttributionNotAllowed";
+    private const string TranscriptsDisabled = "GraphAccessToTranscriptsDisabled";
     private const string ApiName = "Microsoft Graph";
     private const string MayHaveBeenPosted =
         " The message may have been posted all the same: read the place before sending it again.";
@@ -57,6 +59,10 @@ internal sealed class GraphClient
     /// <summary>GETs a JSON object. <paramref name="permission"/> is what a 403 answer names.</summary>
     public Task<JsonElement> GetAsync(string path, string permission, CancellationToken cancellationToken, bool eventual = false) =>
         SendAsync(HttpMethod.Get, path, body: null, permission, eventual, cancellationToken);
+
+    /// <summary>GETs a text, in one of the formats of <paramref name="accept"/>.</summary>
+    public Task<string> GetTextAsync(string path, string accept, string permission, CancellationToken cancellationToken) =>
+        SendTextAsync(HttpMethod.Get, path, body: null, permission, eventual: false, cancellationToken, accept: accept);
 
     /// <summary>POSTs a question, such as a search: nothing is written, and an answer that is not JSON is a failure.</summary>
     public Task<JsonElement> QueryAsync(string path, JsonNode body, string permission, CancellationToken cancellationToken)
@@ -123,6 +129,13 @@ internal sealed class GraphClient
         HttpMethod method, string path, string? body, string permission, bool eventual, CancellationToken cancellationToken, string doubt = "", bool? isWrite = null)
     {
         var writes = isWrite ?? method != HttpMethod.Get;
+        return ReadJson(await SendTextAsync(method, path, body, permission, eventual, cancellationToken, doubt, writes).ConfigureAwait(false), writes);
+    }
+
+    private async Task<string> SendTextAsync(
+        HttpMethod method, string path, string? body, string permission, bool eventual, CancellationToken cancellationToken,
+        string doubt = "", bool writes = false, string accept = "")
+    {
         var address = new Uri(_account.ApiBase, path);
         if (!IsApiAddress(address) || !address.AbsolutePath.StartsWith(_account.ApiBase.AbsolutePath, StringComparison.Ordinal))
             throw new ChatToolException(ChatErrorCode.InvalidRequest, $"Refusing to send the account's token to an address outside {ApiName}.");
@@ -134,9 +147,9 @@ internal sealed class GraphClient
         while (true)
         {
             var token = await _credentials.GetAccessTokenAsync(_account, cancellationToken, refused).ConfigureAwait(false);
-            using var response = await SendOnceAsync(method, address, body, token, eventual, writes, doubt, cancellationToken).ConfigureAwait(false);
+            using var response = await SendOnceAsync(method, address, body, token, eventual, accept, writes, doubt, cancellationToken).ConfigureAwait(false);
             if (response.IsSuccessStatusCode)
-                return await ReadAsync(response, writes, cancellationToken).ConfigureAwait(false);
+                return await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
 
             // The refused token may have been revoked, or replaced in the store by a new sign-in.
             if (response.StatusCode == HttpStatusCode.Unauthorized && refused is null)
@@ -186,7 +199,7 @@ internal sealed class GraphClient
     }
 
     private async Task<HttpResponseMessage> SendOnceAsync(
-        HttpMethod method, Uri address, string? body, string token, bool eventual, bool isWrite, string doubt, CancellationToken cancellationToken)
+        HttpMethod method, Uri address, string? body, string token, bool eventual, string accept, bool isWrite, string doubt, CancellationToken cancellationToken)
     {
         using var request = new HttpRequestMessage(method, address);
         if (body is not null)
@@ -194,10 +207,18 @@ internal sealed class GraphClient
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
         if (eventual)
             request.Headers.Add("ConsistencyLevel", "eventual");
+        if (accept.Length > 0)
+            request.Headers.Accept.ParseAdd(accept);
 
         try
         {
-            return await _http().SendAsync(request, cancellationToken).ConfigureAwait(false);
+            return accept.Length == 0
+                ? await _http().SendAsync(request, cancellationToken).ConfigureAwait(false)
+                : await SendBoundedAsync(request, cancellationToken).ConfigureAwait(false);
+        }
+        catch (HttpRequestException ex) when (ex.HttpRequestError == HttpRequestError.ConfigurationLimitExceeded)
+        {
+            throw new ChatToolException(ChatErrorCode.NotSupportedByAccount, "The text is too long to be read.", ex);
         }
         catch (HttpRequestException ex)
         {
@@ -217,9 +238,27 @@ internal sealed class GraphClient
         }
     }
 
-    private static async Task<JsonElement> ReadAsync(HttpResponseMessage response, bool isWrite, CancellationToken cancellationToken)
+    // The client's own time limit ends at the headers here, so it is set again for the whole.
+    private async Task<HttpResponseMessage> SendBoundedAsync(HttpRequestMessage request, CancellationToken cancellationToken)
     {
-        var text = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+        var http = _http();
+        using var limit = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        limit.CancelAfter(http.Timeout);
+        var response = await http.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, limit.Token).ConfigureAwait(false);
+        try
+        {
+            await response.Content.LoadIntoBufferAsync(ChatDefaults.MaxTranscriptBytes, limit.Token).ConfigureAwait(false);
+            return response;
+        }
+        catch
+        {
+            response.Dispose();
+            throw;
+        }
+    }
+
+    private static JsonElement ReadJson(string text, bool isWrite)
+    {
         try
         {
             var json = JsonElement.Parse(string.IsNullOrWhiteSpace(text) ? "{}" : text);
@@ -244,6 +283,21 @@ internal sealed class GraphClient
         var body = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
         var detail = GraphJson.Error(body);
         var status = (int)response.StatusCode;
+        if (response.StatusCode == HttpStatusCode.Forbidden)
+        {
+            switch (GraphJson.InnerErrorCode(body))
+            {
+                case TranscriptsDisabled:
+                    return new ChatToolException(
+                        ChatErrorCode.ConsentMissing,
+                        $"The tenant does not let applications read meeting transcripts: a Teams administrator changes that setting, signing in again does not ({detail}).");
+                case SpeakersNotAllowed:
+                    return new ChatToolException(ChatErrorCode.NotSupportedByAccount, $"The tenant does not let applications read who speaks in a transcript ({detail}).");
+                default:
+                    break;
+            }
+        }
+
         return response.StatusCode switch
         {
             HttpStatusCode.Unauthorized => new ChatToolException(

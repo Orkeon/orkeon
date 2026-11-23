@@ -120,7 +120,10 @@ internal sealed class ChatSearchTool : ToolBase<ChatSearchRequest, ChatSearchRes
     private static async IAsyncEnumerable<ChatSearchHit> AllowedAsync(
         ChatSession session, ChatSearchQuery query, bool channels, [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken)
     {
+        // Out of reach here, the service fails the search; further on it only leaves a hit out.
+        var rules = await session.Gate.RulesAsync(PlaceUse.Read, cancellationToken).ConfigureAwait(false);
         var places = new Dictionary<string, bool>(StringComparer.Ordinal);
+        var lookups = 0;
         var seen = new HashSet<(string, string)>();
         for (var request = 0; request < ChatDefaults.MaxSearchRequests; request++)
         {
@@ -130,7 +133,9 @@ internal sealed class ChatSearchTool : ToolBase<ChatSearchRequest, ChatSearchRes
                 var place = hit.Place.Place;
                 if (!places.TryGetValue(place, out var allowed))
                 {
-                    allowed = places.Count < ChatDefaults.MaxSearchPlaces && await IsAllowedAsync(session, place, cancellationToken).ConfigureAwait(false);
+                    allowed = PlaceReference.TryParse(place, out var reference)
+                        && (!PlaceGate.NeedsLookup(reference, rules) || ++lookups <= ChatDefaults.MaxSearchPlaces)
+                        && await IsAllowedAsync(session, reference, cancellationToken).ConfigureAwait(false);
                     places[place] = allowed;
                 }
 
@@ -143,17 +148,16 @@ internal sealed class ChatSearchTool : ToolBase<ChatSearchRequest, ChatSearchRes
         }
     }
 
-    private static async Task<bool> IsAllowedAsync(ChatSession session, string place, CancellationToken cancellationToken)
+    private static async Task<bool> IsAllowedAsync(ChatSession session, PlaceReference place, CancellationToken cancellationToken)
     {
-        if (!PlaceReference.TryParse(place, out var reference))
-            return false;
         try
         {
-            await session.Gate.AdmitAsync(reference, PlaceUse.Read, cancellationToken).ConfigureAwait(false);
+            await session.Gate.AdmitAsync(place, PlaceUse.Read, cancellationToken).ConfigureAwait(false);
             return true;
         }
-        catch (ChatToolException ex) when (ex.Code is ChatErrorCode.PlaceNotAllowed or ChatErrorCode.NotFound or ChatErrorCode.ConsentMissing or ChatErrorCode.InvalidRequest)
+        catch (ChatToolException ex) when (ex.Code != ChatErrorCode.SignInRequired)
         {
+            // Whatever the reason: an error here would tell that the hit exists.
             return false;
         }
     }
@@ -186,7 +190,7 @@ internal sealed class ChatSearchTool : ToolBase<ChatSearchRequest, ChatSearchRes
     };
 
     private static List<string> Words(string text) =>
-        text.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries).Where(word => word.Any(char.IsLetterOrDigit)).ToList();
+        text.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries).Where(word => word.EnumerateRunes().Any(Rune.IsLetterOrDigit)).ToList();
 
     private static string Scope(ChatSearchRequest request) => "search:" + Convert.ToHexString(SHA256.HashData(
         Encoding.UTF8.GetBytes($"{request.Text?.Trim()}\n{request.Author?.Trim()}\n{request.MentionsMe == true}")))[..16];

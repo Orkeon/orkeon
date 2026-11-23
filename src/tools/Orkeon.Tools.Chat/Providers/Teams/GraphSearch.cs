@@ -43,7 +43,7 @@ internal static class GraphSearch
         }
 
         var literal = string.Join(' ', kept.ToString().Split(' ', StringSplitOptions.RemoveEmptyEntries));
-        return literal.Any(char.IsLetterOrDigit) ? literal : string.Empty;
+        return literal.EnumerateRunes().Any(Rune.IsLetterOrDigit) ? literal : string.Empty;
     }
 
     /// <summary>The hits of an answer, as ids: a hit whose ids have not their shapes is dropped, its summary is never read.</summary>

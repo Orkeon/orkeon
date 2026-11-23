@@ -261,6 +261,54 @@ internal sealed class TeamsProvider : IChatProvider
             cancellationToken);
     }
 
+    /// <inheritdoc />
+    public async Task<string?> GetMeetingLinkAsync(string chatId, CancellationToken cancellationToken)
+    {
+        var json = await _graph.GetAsync($"chats/{GraphClient.Segment(chatId)}", ChatScopes.ChatRead, cancellationToken).ConfigureAwait(false);
+        return GraphJson.Object(json, "onlineMeetingInfo") is { } meeting ? GraphJson.Text(meeting, "joinWebUrl") : null;
+    }
+
+    /// <inheritdoc />
+    public async Task<ChatMeeting?> FindMeetingAsync(string joinLink, CancellationToken cancellationToken)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(joinLink);
+        // In a literal of the filter a quote is doubled; the rest is encoded, a percent sign included.
+        var filter = Uri.EscapeDataString($"JoinWebUrl eq '{joinLink.Replace("'", "''", StringComparison.Ordinal)}'");
+        var json = await _graph.GetAsync($"me/onlineMeetings?$filter={filter}", ChatScopes.OnlineMeetingsRead, cancellationToken).ConfigureAwait(false);
+        var found = GraphJson.Items(json).ToList();
+        if (found.Count > 1)
+            throw new ChatToolException(ChatErrorCode.NotFound, "Several meetings have this link; none is read.");
+        if (found.Count == 0 || GraphJson.Text(found[0], "id") is not { Length: > 0 } id)
+            return null;
+        var chat = GraphJson.Object(found[0], "chatInfo") is { } info ? GraphJson.Text(info, "threadId") : null;
+        return new ChatMeeting(id, GraphJson.Text(found[0], "subject"), GraphJson.Date(found[0], "startDateTime"), chat);
+    }
+
+    /// <inheritdoc />
+    public Task<IReadOnlyList<ChatTranscript>> ListTranscriptsAsync(string meetingId, CancellationToken cancellationToken) =>
+        ListAsync(
+            $"me/onlineMeetings/{GraphClient.Segment(meetingId)}/transcripts", string.Empty, ChatScopes.TranscriptRead,
+            json => GraphJson.Text(json, "id") is { Length: > 0 } id
+                ? new ChatTranscript(id, GraphJson.Date(json, "createdDateTime"), GraphJson.Date(json, "endDateTime"))
+                : null,
+            cancellationToken);
+
+    /// <inheritdoc />
+    public async Task<ChatTranscriptText> ReadTranscriptAsync(string meetingId, string transcriptId, CancellationToken cancellationToken)
+    {
+        var path = $"me/onlineMeetings/{GraphClient.Segment(meetingId)}/transcripts/{GraphClient.Segment(transcriptId)}/content";
+        try
+        {
+            return new ChatTranscriptText(await _graph.GetTextAsync(path, "text/vtt", ChatScopes.TranscriptRead, cancellationToken).ConfigureAwait(false), HasSpeakers: true);
+        }
+        catch (ChatToolException ex) when (ex.Code == ChatErrorCode.NotSupportedByAccount && ex.InnerException is null)
+        {
+            return new ChatTranscriptText(
+                await _graph.GetTextAsync(path, "application/vnd.microsoft.graph.transcript+text", ChatScopes.TranscriptRead, cancellationToken).ConfigureAwait(false),
+                HasSpeakers: false);
+        }
+    }
+
     private static string MessagePath(ChatTarget target, string? thread, string messageId)
     {
         if (!target.IsChannel)

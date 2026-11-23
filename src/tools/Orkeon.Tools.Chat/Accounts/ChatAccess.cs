@@ -44,6 +44,18 @@ internal sealed class ChatAccess
         ? parsed
         : throw new ChatToolException(ChatErrorCode.InvalidRequest, $"`place` is not a place: {PlaceReference.Syntax}");
 
+    /// <summary>Refuses to read transcripts the administrator has not opened, before any request.</summary>
+    public static void DemandMeetings(ResolvedChatAccount account)
+    {
+        ArgumentNullException.ThrowIfNull(account);
+        if (account.IsGranted(ChatAdminGrants.Meetings))
+            return;
+        throw new ChatToolException(
+            ChatErrorCode.ConsentMissing,
+            $"Reading meeting transcripts needs {ChatScopes.TranscriptRead}, which a tenant administrator grants to the application. Once granted, an operator adds " +
+            $"Meetings under {ChatDefaults.SectionName}:Accounts:{account.Name}:Auth:AdminGranted and runs `orkeon chat login {account.Name}` again.");
+    }
+
     /// <summary>Refuses to edit or delete in a channel the administrator has not opened for it, before any request: the author is read first.</summary>
     public static void DemandChannelEdit(ResolvedChatAccount account)
     {

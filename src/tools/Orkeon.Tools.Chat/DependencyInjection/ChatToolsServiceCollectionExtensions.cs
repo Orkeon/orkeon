@@ -21,7 +21,7 @@ namespace Orkeon.Tools.Chat.DependencyInjection;
 public static class ChatToolsServiceCollectionExtensions
 {
     /// <summary>
-    /// Registers the nine chat tools and their services, bound to the
+    /// Registers the ten chat tools and their services, bound to the
     /// <c>Orkeon:Tools:Chat</c> section of <paramref name="configuration"/>. Nothing is validated
     /// or dialled here: the tools can be listed with no account configured, and an account is
     /// checked when a call first uses it. A second call adds nothing: the first configuration
@@ -82,6 +82,7 @@ public static class ChatToolsServiceCollectionExtensions
         AddTool(services, sp => new ChatReadTool(sp.GetRequiredService<ChatAccess>(), sp.GetRequiredService<ChatContentScreen>(), Logger<ChatReadTool>(sp)));
         AddTool(services, sp => new ChatMembersTool(sp.GetRequiredService<ChatAccess>(), sp.GetRequiredService<ChatContentScreen>(), Logger<ChatMembersTool>(sp)));
         AddTool(services, sp => new ChatSearchTool(sp.GetRequiredService<ChatAccess>(), sp.GetRequiredService<ChatContentScreen>(), Logger<ChatSearchTool>(sp)));
+        AddTool(services, sp => new ChatMeetingsTool(sp.GetRequiredService<ChatAccess>(), sp.GetRequiredService<ChatContentScreen>(), Logger<ChatMeetingsTool>(sp)));
         AddTool(services, sp => new ChatSendTool(sp.GetRequiredService<ChatAccess>(), sp.GetRequiredService<WriteTurns>(), Logger<ChatSendTool>(sp)));
         AddTool(services, sp => new ChatEditTool(sp.GetRequiredService<ChatAccess>(), sp.GetRequiredService<WriteTurns>(), Logger<ChatEditTool>(sp)));
         AddTool(services, sp => new ChatDeleteTool(sp.GetRequiredService<ChatAccess>(), sp.GetRequiredService<WriteTurns>(), Logger<ChatDeleteTool>(sp)));

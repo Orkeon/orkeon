@@ -51,7 +51,7 @@ internal static class ChatScopes
         (ChatRights.Delete, ChannelMessageReadWrite, ChatAdminGrants.ChannelEdit),
         (ChatRights.React, ChatMessageSend, ChatAdminGrants.None),
         (ChatRights.React, UserRead, ChatAdminGrants.None),
-        (ChatRights.Meetings, OnlineMeetingsRead, ChatAdminGrants.None),
+        (ChatRights.Meetings, OnlineMeetingsRead, ChatAdminGrants.Meetings),
         (ChatRights.Meetings, TranscriptRead, ChatAdminGrants.Meetings),
     ];
 
@@ -62,7 +62,10 @@ internal static class ChatScopes
             .Distinct(StringComparer.Ordinal)
             .ToList();
 
-    /// <summary>Whether a tenant administrator has to consent to <paramref name="permission"/>.</summary>
+    /// <summary>
+    /// Whether a tenant administrator has to consent to <paramref name="permission"/>. Not to the one
+    /// that finds a meeting, which is only asked together with the transcripts it is of use for.
+    /// </summary>
     public static bool NeedsAdministrator(string permission) =>
-        permission == ChannelMemberRead || Table.Any(row => row.Permission == permission && row.Needs != ChatAdminGrants.None);
+        permission == ChannelMemberRead || permission != OnlineMeetingsRead && Table.Any(row => row.Permission == permission && row.Needs != ChatAdminGrants.None);
 }

@@ -340,14 +340,14 @@ Teams as the signed-in user, where colleagues and guests write. Its defense foll
   application is a public client, with no secret at all.
 - **Rights are declared per account, and mandatory**, and the sign-in asks for the permissions they
   need; an administrator's permission is asked only when `AdminGranted` names it. `chat_send`,
-  `chat_edit`, `chat_delete` and `chat_react` are Execute, the five other tools Read.
+  `chat_edit`, `chat_delete` and `chat_react` are Execute, the six other tools Read. `chat_meetings` also needs `Meetings` in `AdminGranted`: its two permissions are asked only then.
 - **Places fail closed, in both directions.** An empty `Read:AllowedPlaces` reads nowhere, an empty
   `Send:AllowedPlaces` posts nowhere. Names are resolved to ids once and ids alone are compared, so a
   place renamed later takes nothing over; an ambiguous name sets its entry aside. A domain is matched
   on the home tenant's address, never on the e-mail address of a guest's profile.
 - **Received content is untrusted.** Every result opens with a notice that it is data, and each
   message carries the verdict of the same `PromptInjectionDocumentValidator`; names are screened too.
-  `chat_list`, `chat_members`, `chat_read` and `chat_search` therefore bypass the result
+  `chat_list`, `chat_members`, `chat_read`, `chat_search` and `chat_meetings` therefore bypass the result
   sanitizer; `chat_edit`, `chat_delete` and `chat_react` return no text of others and are not trusted. `Screening:WithholdRejected` withholds a rejected message; a deleted message and one Teams marks as
   a policy violation are always withheld.
 - **A post is bounded.** Raw HTML is encoded, only `http` and `https` links are kept, mentions take
@@ -362,7 +362,10 @@ Teams as the signed-in user, where colleagues and guests write. Its defense foll
 - **A search shows only what may be read.** `chat_search` looks only at the places allowed for
   reading: each hit's place is checked by ids before anything of it is shown, and the text is read
   from that place, never from the search summary.
-- **Forged crews never touch a chat.** `orkeon forge` removes the nine chat tools from the catalogue:
+- **A meeting is read only through a chat that may be read.** `chat_meetings` takes the chat of a
+  meeting from the service, never from the link's text: a link whose chat the service does not tell
+  is refused, and so is a channel meeting. The whole transcript is screened on each page.
+- **Forged crews never touch a chat.** `orkeon forge` removes the ten chat tools from the catalogue:
   there is no trial tenant.
 
 **Honest limits.** The family has not been run on a real tenant. The screen flags, and a paraphrased

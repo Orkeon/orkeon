@@ -369,7 +369,7 @@ des deux autres :
   d'outil, et l'application est un client public, sans aucun secret.
 - **Les droits sont déclarés par compte, et obligatoires**, et la connexion demande les permissions
   qu'ils exigent ; une permission d'administrateur n'est demandée que quand `AdminGranted` la nomme.
-  `chat_send`, `chat_edit`, `chat_delete` et `chat_react` sont Execute, les cinq autres outils Read.
+  `chat_send`, `chat_edit`, `chat_delete` et `chat_react` sont Execute, les six autres outils Read. `chat_meetings` exige aussi `Meetings` dans `AdminGranted` : ses deux permissions ne sont demandées qu'alors.
 - **Les lieux sont fermés par défaut, dans les deux sens.** Une liste `Read:AllowedPlaces` vide ne lit
   nulle part, une liste `Send:AllowedPlaces` vide ne publie nulle part. Les noms sont résolus en ids
   une fois et seuls les ids sont comparés : un lieu renommé plus tard ne prend la place d'aucun autre ;
@@ -377,7 +377,7 @@ des deux autres :
   à l'adresse e-mail du profil d'un invité.
 - **Le contenu reçu n'est pas fiable.** Chaque résultat s'ouvre sur un avis disant que c'est une
   donnée, et chaque message porte le verdict du même `PromptInjectionDocumentValidator` ; les noms
-  sont filtrés aussi, et `chat_list`, `chat_members`, `chat_read` et `chat_search` contournent donc le filtrage des
+  sont filtrés aussi, et `chat_list`, `chat_members`, `chat_read`, `chat_search` et `chat_meetings` contournent donc le filtrage des
   résultats ; `chat_edit`, `chat_delete` et `chat_react` ne rendent aucun texte d'autrui et ne sont pas de confiance. `Screening:WithholdRejected` retient un message rejeté ; un message supprimé et
   un message que Teams marque comme violation d'une politique sont toujours retenus.
 - **Une publication est bornée.** Le HTML brut est encodé, seuls les liens `http` et `https` sont
@@ -394,7 +394,11 @@ des deux autres :
 - **Une recherche ne montre que ce qui peut être lu.** `chat_search` ne regarde que les lieux où la
   lecture est autorisée : le lieu de chaque résultat est vérifié par ses ids avant d'en montrer quoi
   que ce soit, et le texte est relu dans ce lieu, jamais dans le résumé de la recherche.
-- **Les crews forgés ne touchent jamais un chat.** `orkeon forge` retire les neuf outils chat du
+- **Une réunion n'est lue que par une conversation qui peut l'être.** `chat_meetings` prend la
+  conversation d'une réunion au service, jamais au texte du lien : un lien dont le service n'indique
+  pas la conversation est refusé, tout comme une réunion de canal. La transcription entière est
+  filtrée à chaque page.
+- **Les crews forgés ne touchent jamais un chat.** `orkeon forge` retire les dix outils chat du
   catalogue : il n'y a pas de tenant d'essai.
 
 **Limites honnêtes.** La famille n'a pas été jouée sur un vrai tenant. Le filtre signale, et une

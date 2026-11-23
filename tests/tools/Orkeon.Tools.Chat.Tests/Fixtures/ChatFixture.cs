@@ -56,6 +56,7 @@ internal sealed class ChatFixture : IDisposable
         Add(new ChatMembersTool(access, screen));
         var turns = new WriteTurns(new SendQuota(Time), new PostPacer(Time));
         Add(new ChatSearchTool(access, screen));
+        Add(new ChatMeetingsTool(access, screen));
         Add(new ChatSendTool(access, turns));
         Add(new ChatEditTool(access, turns));
         Add(new ChatDeleteTool(access, turns));

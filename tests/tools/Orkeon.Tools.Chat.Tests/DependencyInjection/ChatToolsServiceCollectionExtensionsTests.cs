@@ -14,7 +14,7 @@ namespace Orkeon.Tools.Chat.Tests.DependencyInjection;
 public sealed class ChatToolsServiceCollectionExtensionsTests
 {
     private static readonly string[] ToolNames =
-    ["chat_accounts", "chat_delete", "chat_edit", "chat_list", "chat_members", "chat_react", "chat_read", "chat_search", "chat_send"];
+    ["chat_accounts", "chat_delete", "chat_edit", "chat_list", "chat_meetings", "chat_members", "chat_react", "chat_read", "chat_search", "chat_send"];
 
     private static CancellationToken Token => TestContext.Current.CancellationToken;
 

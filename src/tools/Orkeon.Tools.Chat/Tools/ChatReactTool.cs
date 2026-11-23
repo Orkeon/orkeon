@@ -81,9 +81,13 @@ internal sealed partial class ChatReactTool : ToolBase<ChatReactRequest, ChatRea
         var reaction = text?.Trim() ?? string.Empty;
         return reaction.Length is > 0 and <= MaxReactionLength
             && new StringInfo(reaction).LengthInTextElements == 1
-            && reaction.EnumerateRunes().Any(rune => !rune.IsAscii)
+            && reaction.EnumerateRunes().Any(IsSymbol)
             && !reaction.EnumerateRunes().Any(rune => Rune.IsLetter(rune) || Rune.IsControl(rune) || Rune.IsWhiteSpace(rune) || rune == Rune.ReplacementChar);
     }
+
+    private static bool IsSymbol(Rune rune) =>
+        !rune.IsAscii && (rune.Value is 0x203C or 0x2049
+            || Rune.GetUnicodeCategory(rune) is UnicodeCategory.OtherSymbol or UnicodeCategory.MathSymbol or UnicodeCategory.EnclosingMark);
 
     [LoggerMessage(Level = LogLevel.Information, Message = "chat_react: account {Account} {Action} a reaction on message {MessageId} in {Place}")]
     private static partial void LogReacted(ILogger logger, string account, string action, string messageId, string place);

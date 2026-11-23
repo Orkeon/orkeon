@@ -10,6 +10,7 @@ chat_accounts
 chat_delete
 chat_edit
 chat_list
+chat_meetings
 chat_members
 chat_react
 chat_read

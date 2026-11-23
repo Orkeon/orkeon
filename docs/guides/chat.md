@@ -27,7 +27,7 @@ chats, reads messages, looks people up and posts, within what the operator allow
 > **Test coverage.** The family is tested offline, against a scripted Microsoft Graph. It has not
 > been run on a real Microsoft 365 tenant. Report what differs.
 
-## The nine tools
+## The ten tools
 
 | Tool | Right needed | What it does |
 |---|---|---|
@@ -40,6 +40,7 @@ chats, reads messages, looks people up and posts, within what the operator allow
 | `chat_edit` | Edit | Rewrites a message the account itself sent, in an allowed place |
 | `chat_delete` | Delete | Deletes a message the account itself sent, in an allowed place |
 | `chat_react` | React | Sets or removes a reaction on a message of an allowed chat |
+| `chat_meetings` | Meetings (and `AdminGranted`) | Lists the transcripts of a meeting and reads the text of one, with who speaks, screened |
 
 Ids are Microsoft's own and opaque: pass them back exactly as `chat_list` or `chat_read` gave them.
 
@@ -132,11 +133,11 @@ the application, **Permissions**).
 | `CredentialsDirectory` | Where the tokens are kept (its `chat` subdirectory); default: `credentials` next to the user settings |
 | `Screening:WithholdRejected` | Withhold the text of a message the prompt-injection screen rejects (default `false`: flag only) |
 | `Accounts:<name>:Provider` | `Teams`, mandatory |
-| `Accounts:<name>:Rights` | Any of `Read`, `Send`, `Edit`, `Delete` and `React`, mandatory. `Meetings` opens no tool, see [Limits](#limits) |
+| `Accounts:<name>:Rights` | Any of `Read`, `Send`, `Edit`, `Delete`, `React` and `Meetings`, mandatory. `Meetings` also needs `AdminGranted: ["Meetings"]` |
 | `Accounts:<name>:Auth:ClientId` | The Microsoft Entra application, mandatory |
 | `Accounts:<name>:Auth:Tenant` | `organizations` (default), a tenant id or a tenant domain; `consumers` is refused |
 | `Accounts:<name>:Auth:Method` | `OAuth2` (default), the only method accepted |
-| `Accounts:<name>:Auth:AdminGranted` | The administrator permissions the tenant granted. `ChannelMessages` opens the reading of channel messages; `ChannelEdit` with it opens editing and deleting in a channel |
+| `Accounts:<name>:Auth:AdminGranted` | The administrator permissions the tenant granted. `ChannelMessages` opens the reading of channel messages; `ChannelEdit` with it opens editing and deleting in a channel; `Meetings` opens `chat_meetings` |
 | `Accounts:<name>:Cloud` | `Global` (default), `UsGov` or `UsGovDoD`; the China cloud is refused |
 | `Accounts:<name>:Read:AllowedPlaces` | Where the account may read; empty: nowhere |
 | `Accounts:<name>:Send:AllowedPlaces` | Where the account may post, edit, delete and react; empty: nowhere |
@@ -161,12 +162,15 @@ is fixed.
 | `Send` | `ChannelMessage.Send`, `ChatMessage.Send`, `Chat.Create`, `Team.ReadBasic.All`, `Channel.ReadBasic.All`, `User.ReadBasic.All` | `chat_send`, and `chat_list` for teams and channels, `chat_members` for a person |
 | `Edit`, `Delete` | `Chat.ReadWrite`, `Team.ReadBasic.All`, `Channel.ReadBasic.All`, `User.ReadBasic.All`; with `ChannelMessages`, `ChannelMessage.Read.All`; with `ChannelEdit`, `ChannelMessage.ReadWrite` (administrator) | `chat_edit`, `chat_delete` |
 | `React` | `ChatMessage.Send`, `User.ReadBasic.All` | `chat_react` |
+| `Meetings` with `AdminGranted: ["Meetings"]` | `OnlineMeetings.Read`, `OnlineMeetingTranscript.Read.All` (administrator) | `chat_meetings` |
 
 - **Reading a channel needs an administrator.** Without `ChannelMessages` in `AdminGranted`,
   `chat_read` on a channel answers `ConsentMissing` before any request. Chats need no
   administrator's permission.
 - **Editing or deleting in a channel needs both `ChannelEdit` and `ChannelMessages`** in
   `AdminGranted`: the author of the message is read first. A chat needs neither.
+- **Meetings need an administrator.** The two permissions are asked only when `AdminGranted` names
+  `Meetings`; without it `chat_meetings` answers `ConsentMissing` before any request.
 - **The members of a channel** need `ChannelMember.Read.All`, an administrator's permission that no
   right asks for: without it, `chat_members` on a channel answers `ConsentMissing`.
 - **A crew whose chat tools need a right no ready account grants is refused at start**, before any
@@ -275,6 +279,28 @@ const found = await tools.chatSearch({ text: "release blocker", mentions_me: tru
 - **Channels are left out** without `ChannelMessages` in `AdminGranted`; `limits` says so.
 - **A reply whose thread the hit does not tell is withheld**, with a reason.
 
+**Meetings.** `chat_meetings` lists the transcripts of a meeting, then reads the text of one.
+
+```ts
+const list = await tools.chatMeetings({ join_link: "https://teams.microsoft.com/l/meetup-join/..." });
+await tools.chatMeetings({ place: "chat:19:abc@thread.v2", transcript_id: list.transcripts[0].id });
+```
+
+- **It needs the `Meetings` right, and `Meetings` in `AdminGranted`.** Without the administrator's grant the answer is `ConsentMissing`, before any request.
+- **Name the meeting one way**: exactly one of `join_link` and `place`. `join_link` is an https link
+  on the host of the account's cloud; the government hosts are not confirmed by Microsoft's pages.
+  `place` is `chat:<id>` and also needs `Read`.
+- **Its chat must be in `Read:AllowedPlaces`.** A link whose chat Graph does not tell is refused: it
+  is not confirmed that Graph always returns `chatInfo.threadId`. Meetings of a channel are refused.
+- **The text is `[hh:mm:ss] speaker: words`**, a page at a time (`cursor`). The whole text is screened
+  on each page, in overlapping parts, and withheld whole when the screen rejects it and `Screening:WithholdRejected` is on.
+- **A tenant setting can close transcripts**: the answer is a clear error. A tenant that hides the
+  speakers gives `no_speakers`.
+- **It sees only some meetings**: those the signed-in user organises, or that Graph returns under
+  `me/onlineMeetings`. The calendar is not read. Transcripts expire, and one over
+  4 MiB is refused.
+- **It is in `TrustedTools`**: it screens what it returns.
+
 **Edit, delete, react.** They work in a place of `Send:AllowedPlaces` and return no text of others.
 
 ```ts
@@ -287,7 +313,7 @@ await tools.chatDelete({ place: "chat:19:abc@thread.v2", message_id: "1700000000
   `Edit` and `Delete`. In a channel, pass `thread` for a reply. A `user:` place uses the existing
   one-to-one chat and never opens one.
 - **`chat_edit` replaces the whole text and its mentions.** It works in the worldwide cloud only and
-  refuses a message with attachments or a quote, which a rewrite would drop.
+  refuses a message with attachments, images or a quote, which a rewrite would drop.
 - **`chat_delete` is a soft delete**: the service keeps the message recoverable.
 - **`chat_react`** works in chats only (`chat:<id>` or `user:<address>`): a channel answers
   `NotSupportedByAccount` until it is tried on a real tenant. It needs `React` and takes one emoji
@@ -341,9 +367,7 @@ no token store: a chat tool called there says so.
 
 - **Not run on a real tenant.** Neither the sign-in nor the tools were tried on one, in any cloud.
 - **Teams only, as a signed-in user.** Not shipped: a send-only webhook account (`TeamsWebhook` is
-  refused), a read-only application account (`ClientCredentials` is refused), meetings and their transcripts, and an inbound Teams channel in `orkeon-host`.
-- **A right no tool uses.** `Meetings`, like the grants other than `ChannelMessages` and
-  `ChannelEdit`, is read and asks for its permissions, but no tool uses it. Leave it out.
+  refused), a read-only application account (`ClientCredentials` is refused), and an inbound Teams channel in `orkeon-host`.
 - **Channel reactions, and edits in the government clouds.** `chat_react` refuses a channel and
   `chat_edit` the government clouds, until tried on a real tenant. The search window is bounded, see
   [Using the tools](#using-the-tools).

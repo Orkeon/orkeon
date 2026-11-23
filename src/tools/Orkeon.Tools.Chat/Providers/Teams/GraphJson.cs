@@ -12,6 +12,20 @@ internal static class GraphJson
     public static string? Text(JsonElement element, string name) =>
         Member(element, name) is { ValueKind: JsonValueKind.String } value ? value.GetString() : null;
 
+    /// <summary>The code of the inner error of a failure's body, or null.</summary>
+    public static string? InnerErrorCode(string body)
+    {
+        try
+        {
+            var json = JsonElement.Parse(string.IsNullOrWhiteSpace(body) ? "{}" : body);
+            return Object(json, "error") is { } error && Object(error, "innerError") is { } inner ? Text(inner, "code") : null;
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
+    }
+
     /// <summary>The object member <paramref name="name"/>, or null.</summary>
     public static JsonElement? Object(JsonElement element, string name) =>
         Member(element, name) is { ValueKind: JsonValueKind.Object } value ? value : null;

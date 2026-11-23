@@ -30,7 +30,7 @@ et publie, dans les limites de ce qu'autorise l'opérateur :
 > **Couverture de test.** La famille est testée hors ligne, contre un Microsoft Graph scripté. Elle
 > n'a pas été jouée sur un vrai tenant Microsoft 365. Signalez ce qui diffère.
 
-## Les neuf outils
+## Les dix outils
 
 | Outil | Droit requis | Ce qu'il fait |
 |---|---|---|
@@ -43,6 +43,7 @@ et publie, dans les limites de ce qu'autorise l'opérateur :
 | `chat_edit` | Edit | Réécrit un message que le compte a lui-même envoyé, dans un lieu autorisé |
 | `chat_delete` | Delete | Supprime un message que le compte a lui-même envoyé, dans un lieu autorisé |
 | `chat_react` | React | Pose ou retire une réaction sur un message d'une conversation autorisée |
+| `chat_meetings` | Meetings (et `AdminGranted`) | Liste les transcriptions d'une réunion et lit le texte de l'une d'elles, avec qui parle, filtré |
 
 Les ids sont ceux de Microsoft, et opaques : repassez-les exactement tels que `chat_list` ou
 `chat_read` les ont rendus.
@@ -141,7 +142,7 @@ Entra (**Applications d'entreprise**, l'application, **Autorisations**).
 | `CredentialsDirectory` | Où sont gardés les jetons (son sous-répertoire `chat`) ; par défaut `credentials` à côté des réglages de l'utilisateur |
 | `Screening:WithholdRejected` | Retenir le texte d'un message que le filtre anti-injection de prompt rejette (défaut `false` : signaler seulement) |
 | `Accounts:<nom>:Provider` | `Teams`, obligatoire |
-| `Accounts:<nom>:Rights` | Parmi `Read`, `Send`, `Edit`, `Delete` et `React`, obligatoire. `Meetings` n'ouvre aucun outil, voir [Limites](#limites) |
+| `Accounts:<nom>:Rights` | Parmi `Read`, `Send`, `Edit`, `Delete`, `React` et `Meetings`, obligatoire. `Meetings` exige aussi `AdminGranted: ["Meetings"]` |
 | `Accounts:<nom>:Auth:ClientId` | L'application Microsoft Entra, obligatoire |
 | `Accounts:<nom>:Auth:Tenant` | `organizations` (défaut), un id de tenant ou un domaine de tenant ; `consumers` est refusé |
 | `Accounts:<nom>:Auth:Method` | `OAuth2` (défaut), la seule méthode acceptée |
@@ -170,12 +171,15 @@ valeur seule là où une liste est attendue. Un `Screening:WithholdRejected` ill
 | `Send` | `ChannelMessage.Send`, `ChatMessage.Send`, `Chat.Create`, `Team.ReadBasic.All`, `Channel.ReadBasic.All`, `User.ReadBasic.All` | `chat_send`, et `chat_list` pour les équipes et les canaux, `chat_members` pour une personne |
 | `Edit`, `Delete` | `Chat.ReadWrite`, `Team.ReadBasic.All`, `Channel.ReadBasic.All`, `User.ReadBasic.All` ; avec `ChannelMessages`, `ChannelMessage.Read.All` ; avec `ChannelEdit`, `ChannelMessage.ReadWrite` (administrateur) | `chat_edit`, `chat_delete` |
 | `React` | `ChatMessage.Send`, `User.ReadBasic.All` | `chat_react` |
+| `Meetings` avec `AdminGranted: ["Meetings"]` | `OnlineMeetings.Read`, `OnlineMeetingTranscript.Read.All` (administrateur) | `chat_meetings` |
 
 - **Lire un canal demande un administrateur.** Sans `ChannelMessages` dans `AdminGranted`,
   `chat_read` sur un canal répond `ConsentMissing` avant toute requête. Les conversations ne
   demandent aucune permission d'administrateur.
 - **Modifier ou supprimer dans un canal demande à la fois `ChannelEdit` et `ChannelMessages`** dans
   `AdminGranted` : l'auteur du message est lu d'abord. Une conversation n'en demande aucun.
+- **Les réunions demandent un administrateur.** Les deux permissions ne sont demandées que quand
+  `AdminGranted` nomme `Meetings` ; sans lui, `chat_meetings` répond `ConsentMissing` avant toute requête.
 - **Les membres d'un canal** demandent `ChannelMember.Read.All`, une permission d'administrateur
   qu'aucun droit ne demande : sans elle, `chat_members` sur un canal répond `ConsentMissing`.
 - **Un crew dont les outils chat exigent un droit qu'aucun compte prêt n'accorde est refusé au
@@ -290,6 +294,30 @@ const found = await tools.chatSearch({ text: "release blocker", mentions_me: tru
 - **Les canaux sont écartés** sans `ChannelMessages` dans `AdminGranted` ; `limits` le dit.
 - **Une réponse dont le résultat ne dit pas le fil est retenue**, avec une raison.
 
+**Réunions.** `chat_meetings` liste les transcriptions d'une réunion, puis lit le texte de l'une d'elles.
+
+```ts
+const list = await tools.chatMeetings({ join_link: "https://teams.microsoft.com/l/meetup-join/..." });
+await tools.chatMeetings({ place: "chat:19:abc@thread.v2", transcript_id: list.transcripts[0].id });
+```
+
+- **Il exige le droit `Meetings`, et `Meetings` dans `AdminGranted`.** Sans l'accord de l'administrateur, la réponse est `ConsentMissing`, avant toute requête.
+- **Désignez la réunion d'une seule façon** : exactement un de `join_link` et `place`. `join_link` est
+  un lien https sur l'hôte du cloud du compte ; les hôtes gouvernementaux ne sont pas confirmés par
+  les pages de Microsoft. `place` est `chat:<id>` et exige aussi `Read`.
+- **Sa conversation doit figurer dans `Read:AllowedPlaces`.** Un lien dont Graph n'indique pas la
+  conversation est refusé : il n'est pas confirmé que Graph rend toujours `chatInfo.threadId`. Les
+  réunions d'un canal sont refusées.
+- **Le texte est `[hh:mm:ss] intervenant : paroles`**, page par page (`cursor`). Le texte entier est
+  filtré à chaque page, par morceaux qui se chevauchent, et retenu en bloc quand le filtre le rejette et que
+  `Screening:WithholdRejected` est actif.
+- **Un réglage du tenant peut fermer les transcriptions** : la réponse est une erreur claire. Un
+  tenant qui masque les intervenants donne `no_speakers`.
+- **Il ne voit que certaines réunions** : celles que l'utilisateur connecté organise, ou que Graph
+  rend sous `me/onlineMeetings`. Le calendrier n'est pas lu. Les transcriptions expirent, et une
+  de plus de 4 Mio est refusée.
+- **Il est dans `TrustedTools`** : il filtre ce qu'il rend.
+
 **Modifier, supprimer, réagir.** Ils agissent dans un lieu de `Send:AllowedPlaces` et ne rendent
 aucun texte d'autrui.
 
@@ -303,7 +331,7 @@ await tools.chatDelete({ place: "chat:19:abc@thread.v2", message_id: "1700000000
   droits sont `Edit` et `Delete`. Dans un canal, passez `thread` pour une réponse. Un lieu `user:`
   prend la conversation à deux qui existe et n'en ouvre jamais.
 - **`chat_edit` remplace tout le texte et ses mentions.** Il ne marche que dans le cloud mondial et
-  refuse un message à pièce jointe ou à citation, qu'une réécriture perdrait.
+  refuse un message à pièce jointe, à image ou à citation, qu'une réécriture perdrait.
 - **`chat_delete` est une suppression logique** : le service garde le message récupérable.
 - **`chat_react`** ne marche que dans les conversations (`chat:<id>` ou `user:<adresse>`) : un canal
   répond `NotSupportedByAccount` tant qu'il n'a pas été essayé sur un vrai tenant. Il exige `React` et
@@ -360,11 +388,7 @@ des outils du VFS, **pas** d'un `shell_command` qui tourne sous le même utilisa
   cloud.
 - **Teams seulement, en utilisateur connecté.** Pas livrés : un compte webhook qui ne fait que publier
   (`TeamsWebhook` est refusé), un compte d'application en lecture seule (`ClientCredentials` est
-  refusé), les réunions et leurs
-  transcriptions, et un canal Teams entrant dans `orkeon-host`.
-- **Un droit dont aucun outil ne se sert.** `Meetings`, comme les permissions accordées autres que
-  `ChannelMessages` et `ChannelEdit`, est lu et demande ses autorisations, mais aucun outil ne s'en
-  sert. Ne le mettez pas.
+  refusé), et un canal Teams entrant dans `orkeon-host`.
 - **Réactions de canal, et modification dans les clouds gouvernementaux.** `chat_react` refuse un
   canal et `chat_edit` les clouds gouvernementaux, tant qu'ils n'ont pas été essayés sur un vrai
   tenant. La fenêtre de recherche est bornée, voir [Utiliser les outils](#utiliser-les-outils).

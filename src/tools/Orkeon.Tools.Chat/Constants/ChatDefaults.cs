@@ -49,6 +49,21 @@ internal static class ChatDefaults
     /// <summary>The most places one search looks up to tell whether they are allowed.</summary>
     public const int MaxSearchPlaces = 40;
 
+    /// <summary>The longest join link of a meeting.</summary>
+    public const int MaxJoinLinkChars = 2048;
+
+    /// <summary>The longest transcript read, in bytes.</summary>
+    public const int MaxTranscriptBytes = 4 * 1024 * 1024;
+
+    /// <summary>A long text is screened by parts of this length.</summary>
+    public const int ScreeningPart = 16 * 1024;
+
+    /// <summary>What two parts in a row share, for a phrase a cut falls in.</summary>
+    public const int ScreeningOverlap = 2 * 1024;
+
+    /// <summary>The longest line of a transcript; a longer speech goes on to another line.</summary>
+    public const int MaxTranscriptLine = 500;
+
     /// <summary>The longest text or author a search takes.</summary>
     public const int MaxSearchChars = 500;
 

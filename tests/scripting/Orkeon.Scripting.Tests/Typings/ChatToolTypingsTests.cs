@@ -24,7 +24,7 @@ public sealed class ChatToolTypingsTests
         await using var services = BuildChatTools();
 
         var reachable = (await EvaluateAsync(services, """
-            Promise.resolve(['chatAccounts', 'chatList', 'chatRead', 'chatMembers', 'chatSend', 'chatSearch', 'chatEdit', 'chatDelete', 'chatReact']
+            Promise.resolve(['chatAccounts', 'chatList', 'chatRead', 'chatMembers', 'chatSend', 'chatSearch', 'chatEdit', 'chatDelete', 'chatReact', 'chatMeetings']
                 .every(name => typeof tools[name] === 'function'))
             """)).AsBoolean();
 

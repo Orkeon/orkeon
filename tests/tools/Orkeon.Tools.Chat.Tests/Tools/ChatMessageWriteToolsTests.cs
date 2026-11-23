@@ -131,6 +131,16 @@ public sealed class ChatMessageWriteToolsTests
         Assert.Empty(fixture.Graph.Writes);
     }
 
+    [Fact]
+    public async Task Should_not_rewrite_a_message_whose_images_it_would_drop()
+    {
+        using var fixture = Changing(GroupPlace);
+        Own(fixture, GroupMessage, message => message["body"] = new JsonObject { ["contentType"] = "html", ["content"] = "<p>x <img src=\"a\"></p>" });
+
+        Assert.Contains("a rewrite would drop", await fixture.ErrorAsync("chat_edit", Arguments("chat_edit", GroupPlace)), StringComparison.Ordinal);
+        Assert.Empty(fixture.Graph.Writes);
+    }
+
     [Theory]
     [InlineData("chat_edit")]
     [InlineData("chat_delete")]
@@ -178,6 +188,8 @@ public sealed class ChatMessageWriteToolsTests
 
     [Theory]
     [InlineData("like")]
+    [InlineData("\u202e")]
+    [InlineData("\u0301")]
     [InlineData("é")]
     [InlineData("👍👍")]
     [InlineData("1")]

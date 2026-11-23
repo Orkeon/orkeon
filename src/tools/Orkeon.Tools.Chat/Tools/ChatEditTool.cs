@@ -57,11 +57,11 @@ internal sealed partial class ChatEditTool : ToolBase<ChatEditRequest, ChatMessa
         var html = MessageBody.Render(request.Text, request.Format);
         var target = await MessageWrites.AdmitAsync(session, place, cancellationToken).ConfigureAwait(false);
         var message = await MessageWrites.OwnAsync(session, target, request.Thread, request.MessageId, cancellationToken).ConfigureAwait(false);
-        if (message.Attachments.Count > 0)
+        if (message.Attachments.Count > 0 || message.HasImages)
         {
             throw new ChatToolException(
                 ChatErrorCode.NotSupportedByAccount,
-                $"Message '{request.MessageId}' quotes a message or carries attachments, which a rewrite would drop; nothing was changed. Post another message instead.");
+                $"Message '{request.MessageId}' quotes a message or carries attachments or images, which a rewrite would drop; nothing was changed. Post another message instead.");
         }
 
         var mentions = await MessageBody.MentionsAsync(session.Provider, request.Mentions, cancellationToken).ConfigureAwait(false);

@@ -106,6 +106,9 @@ internal sealed record ChatMessage
     /// <summary>Its text: untrusted.</summary>
     public string Text { get; init; } = string.Empty;
 
+    /// <summary>Whether the body holds images.</summary>
+    public bool HasImages { get; init; }
+
     /// <summary>Whether the body hid text from a reader.</summary>
     public bool HadHiddenText { get; init; }
 
@@ -200,3 +203,16 @@ internal sealed record ChatSearchHit(ChatTarget Place, string? Thread, string Me
 
 /// <summary>A window of hits, and whether the service has more.</summary>
 internal sealed record ChatSearchPage(IReadOnlyList<ChatSearchHit> Hits, bool More);
+
+/// <summary>A meeting.</summary>
+/// <param name="Id">Its id.</param>
+/// <param name="Subject">Its subject: untrusted text.</param>
+/// <param name="Start">When it starts.</param>
+/// <param name="ChatId">The chat it is held in, when the service tells.</param>
+internal sealed record ChatMeeting(string Id, string? Subject, DateTimeOffset? Start, string? ChatId);
+
+/// <summary>A transcript of a meeting.</summary>
+internal sealed record ChatTranscript(string Id, DateTimeOffset? Created, DateTimeOffset? Ended);
+
+/// <summary>The content of a transcript. <paramref name="HasSpeakers"/> is false when it is plain text.</summary>
+internal sealed record ChatTranscriptText(string Content, bool HasSpeakers);

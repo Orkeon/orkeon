@@ -64,6 +64,18 @@ internal interface IChatProvider
     /// <summary>Sets or removes the account's reaction on a message of a chat. A write: the place is checked first.</summary>
     Task ReactAsync(ChatTarget target, string messageId, string reaction, bool remove, CancellationToken cancellationToken) => throw Unsupported("react to a message");
 
+    /// <summary>The join link of a meeting's chat, or null for another chat. The place is checked first.</summary>
+    Task<string?> GetMeetingLinkAsync(string chatId, CancellationToken cancellationToken) => throw Unsupported("find the meeting of a chat");
+
+    /// <summary>The meeting of a join link. Nothing of it may be shown before its chat is checked.</summary>
+    Task<ChatMeeting?> FindMeetingAsync(string joinLink, CancellationToken cancellationToken) => throw Unsupported("find a meeting");
+
+    /// <summary>The transcripts of a meeting.</summary>
+    Task<IReadOnlyList<ChatTranscript>> ListTranscriptsAsync(string meetingId, CancellationToken cancellationToken) => throw Unsupported("list transcripts");
+
+    /// <summary>A transcript as WebVTT, or as plain text when the tenant hides who speaks.</summary>
+    Task<ChatTranscriptText> ReadTranscriptAsync(string meetingId, string transcriptId, CancellationToken cancellationToken) => throw Unsupported("read a transcript");
+
     private static ChatToolException Unsupported(string what) =>
         new(ChatErrorCode.NotSupportedByAccount, $"This chat account cannot {what}.");
 }

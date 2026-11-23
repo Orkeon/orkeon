@@ -47,7 +47,7 @@ flowchart LR
     you --> code["Orkeon Code<br/>a coding assistant<br/>on your repository"]
     you --> cli["orkeon CLI<br/>YAML · TypeScript (.ork.ts)"]
     you --> app["Your own .NET app<br/>C# builders, NuGet"]
-    studio & workshop & code & cli & app --> runtime["The Orkeon runtime<br/>virtual file system · budgets · sandbox<br/>133 tools · 16 LLM providers"]
+    studio & workshop & code & cli & app --> runtime["The Orkeon runtime<br/>virtual file system · budgets · sandbox<br/>134 tools · 16 LLM providers"]
     runtime --> world(["Your files, mailboxes, drives, APIs<br/>— only the ones you mounted, with the rights you gave"])
 ```
 
@@ -147,7 +147,7 @@ The team you forge from a sentence is the YAML the CLI runs, and the crew your o
 
 ## What's in the box
 
-133 built-in tools (mail over IMAP, SMTP and Microsoft Graph; Google Drive and OneDrive; Microsoft Teams; web, HTTP, databases, Office and PDF, secure code execution, semantic code analysis) · 16 LLM providers (14 vendors, 2 aggregators), local models included (Ollama, Docker Model Runner, embedded llama.cpp) · 6 memory providers · 6 orchestration strategies, from a plain sequence to a graph or an autonomous team under budget · a staged RAG pipeline · checkpoint and resume · plugins in isolated load contexts · 104 runnable examples. Every number here is recomputed by CI on each change — a README that disagrees fails the build.
+134 built-in tools (mail over IMAP, SMTP and Microsoft Graph; Google Drive and OneDrive; Microsoft Teams; web, HTTP, databases, Office and PDF, secure code execution, semantic code analysis) · 16 LLM providers (14 vendors, 2 aggregators), local models included (Ollama, Docker Model Runner, embedded llama.cpp) · 6 memory providers · 6 orchestration strategies, from a plain sequence to a graph or an autonomous team under budget · a staged RAG pipeline · checkpoint and resume · plugins in isolated load contexts · 104 runnable examples. Every number here is recomputed by CI on each change — a README that disagrees fails the build.
 
 ## Install
 
