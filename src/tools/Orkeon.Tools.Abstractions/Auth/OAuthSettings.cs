@@ -34,6 +34,12 @@ internal sealed record OAuthSettings
     /// <summary>Device authorization endpoint of the device-code flow.</summary>
     public Uri? DeviceCodeEndpoint { get; init; }
 
+    /// <summary>
+    /// RFC 7009 token revocation endpoint, or null when the provider has none: the Microsoft identity
+    /// platform publishes none, so its tokens are deleted at logout and not revoked.
+    /// </summary>
+    public Uri? RevocationEndpoint { get; init; }
+
     /// <summary>Audience (resource) the token is issued for, sent when the provider asks for one (Auth0, Okta).</summary>
     public string? Audience { get; init; }
 

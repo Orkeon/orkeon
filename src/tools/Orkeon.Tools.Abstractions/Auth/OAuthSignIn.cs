@@ -19,12 +19,41 @@ internal static class OAuthSignIn
         OAuth2Client oauth, OAuthSettings settings, string? clientSecret, string account, string? loginHint,
         IOAuthLoginInteraction interaction, CancellationToken cancellationToken)
     {
+        ArgumentNullException.ThrowIfNull(settings);
+        return RunAsync(oauth, settings, settings.Flow, clientSecret, account, loginHint, interaction, cancellationToken);
+    }
+
+    /// <summary>
+    /// Runs <paramref name="flow"/>, chosen at the sign-in whatever <see cref="OAuthSettings.Flow"/>
+    /// says, and returns the tokens it obtained. A flow whose endpoint the settings lack fails before
+    /// anything is sent or listened to.
+    /// </summary>
+    /// <param name="oauth">The OAuth client.</param>
+    /// <param name="settings">The account's OAuth settings.</param>
+    /// <param name="flow">The flow to run: the device code or the loopback.</param>
+    /// <param name="clientSecret">The client secret, when the account declares one.</param>
+    /// <param name="account">The account name, shown to the user.</param>
+    /// <param name="loginHint">The address the provider may pre-fill, or null.</param>
+    /// <param name="interaction">The terminal conversation.</param>
+    /// <param name="cancellationToken">Cancels the sign-in.</param>
+    public static Task<OAuthTokenSet> RunAsync(
+        OAuth2Client oauth, OAuthSettings settings, OAuthFlow flow, string? clientSecret, string account, string? loginHint,
+        IOAuthLoginInteraction interaction, CancellationToken cancellationToken)
+    {
         ArgumentNullException.ThrowIfNull(oauth);
         ArgumentNullException.ThrowIfNull(settings);
         ArgumentNullException.ThrowIfNull(interaction);
-        return settings.Flow == OAuthFlow.DeviceCode
-            ? DeviceAsync(oauth, settings, clientSecret, account, interaction, cancellationToken)
-            : LoopbackAsync(oauth, settings, clientSecret, account, loginHint, interaction, cancellationToken);
+        return flow switch
+        {
+            OAuthFlow.DeviceCode when settings.DeviceCodeEndpoint is null => throw new OAuthException(
+                OAuthFailure.InvalidConfiguration, $"Account '{account}' cannot sign in with a device code: its provider has no device authorization endpoint."),
+            OAuthFlow.LoopbackPkce when settings.AuthorizationEndpoint is null => throw new OAuthException(
+                OAuthFailure.InvalidConfiguration, $"Account '{account}' cannot sign in with the browser: its provider has no authorization endpoint."),
+            OAuthFlow.DeviceCode => DeviceAsync(oauth, settings, clientSecret, account, interaction, cancellationToken),
+            OAuthFlow.LoopbackPkce => LoopbackAsync(oauth, settings, clientSecret, account, loginHint, interaction, cancellationToken),
+            _ => throw new OAuthException(
+                OAuthFailure.InvalidConfiguration, $"Account '{account}' has no interactive sign-in: the {flow} flow involves no user."),
+        };
     }
 
     private static async Task<OAuthTokenSet> DeviceAsync(
