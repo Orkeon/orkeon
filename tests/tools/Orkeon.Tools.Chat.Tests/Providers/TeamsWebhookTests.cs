@@ -200,6 +200,16 @@ public sealed class TeamsWebhookTests
     }
 
     [Fact]
+    public async Task Should_count_nothing_while_the_variable_holds_no_address()
+    {
+        using var fixture = Create(maxPerHour: 1);
+        fixture.Variables.Remove(TestChatAccounts.WebhookVariable);
+
+        for (var attempt = 0; attempt < 2; attempt++)
+            Assert.Contains(TestChatAccounts.WebhookVariable, await fixture.ErrorAsync("chat_send", ("text", "x")), StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task Should_read_a_changed_address_at_the_next_post()
     {
         using var fixture = Create();

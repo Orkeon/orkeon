@@ -136,6 +136,8 @@ internal static class ChatAccountResolver
                 problems.Add("Read:AllowedPlaces holds '*', which for Auth:Method ClientCredentials would be every conversation of the tenant: name the places");
             else if (place.Form is PlaceForm.User or PlaceForm.Domain)
                 problems.Add($"Read:AllowedPlaces entry '{place.Text}' names a person, and an application has no one-to-one chat of its own: name the chat by its id");
+            else if (place.Form is PlaceForm.Team or PlaceForm.Channel && !ChatIds.IsDirectoryId(place.Value))
+                problems.Add($"Read:AllowedPlaces entry '{place.Text}' names a team by its name, which any team of the tenant can take, and an application reaches them all: write the team's id");
         }
     }
 

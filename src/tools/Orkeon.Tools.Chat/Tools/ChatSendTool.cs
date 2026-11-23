@@ -110,6 +110,7 @@ internal sealed partial class ChatSendTool : ToolBase<ChatSendRequest, ChatSendR
 
         var payload = TeamsWebhookProvider.Payload(request.Text, Format(request) == Markdown);
         var slot = $"webhook:{account.Name}";
+        webhook.RequireAddress();
         _pacer.RefuseWhenBusy(slot);
         ConsumeQuota(account);
         await _pacer.WaitAsync(slot, cancellationToken).ConfigureAwait(false);

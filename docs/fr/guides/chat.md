@@ -182,7 +182,7 @@ laisse aucune application publier en tant qu'utilisateur.
     "Tenant": "contoso.com",
     "CertificatePathEnvVar": "TEAMS_WATCH_CERTIFICATE"
   },
-  "Read": { "AllowedPlaces": ["team:Platform/channel:Alerts", "chat:19:...@thread.v2"] }
+  "Read": { "AllowedPlaces": ["team:<id de l'équipe>/channel:Alerts", "chat:19:...@thread.v2"] }
 }
 ```
 
@@ -202,7 +202,8 @@ laisse aucune application publier en tant qu'utilisateur.
   `AdminGranted` est refusé.
 - **Elles atteignent toutes les équipes et toutes les conversations du tenant** : `Read:AllowedPlaces`
   est la seule limite qu'Orkeon ajoute. `*` est refusé, et les entrées `user:` aussi, puisqu'une
-  application n'a aucune conversation à deux et ne cherche personne. `team:T` couvre aussi les canaux
+  application n'a aucune conversation à deux et ne cherche personne. Une équipe s'écrit par son id : toute
+  équipe du tenant pourrait prendre un nom, tandis qu'un canal peut s'écrire par le sien. `team:<id>` couvre aussi les canaux
   privés de l'équipe.
 - `chat_list` ne liste que les lieux autorisés. `chat_members` avec `person` répond
   `NotSupportedByAccount`, et un message est rendu sans l'adresse de son auteur.

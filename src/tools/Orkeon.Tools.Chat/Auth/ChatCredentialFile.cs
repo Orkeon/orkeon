@@ -27,7 +27,7 @@ internal static class ChatCredentialFile
         string failure;
         try
         {
-            // A device or a pipe would never end: the read stops at a size no credential has.
+            // A device would never end: the read stops at a size no credential has.
             using var file = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
             var buffer = new byte[MaxBytes + 1];
             var length = await file.ReadAtLeastAsync(buffer, buffer.Length, throwOnEndOfStream: false, cancellationToken).ConfigureAwait(false);

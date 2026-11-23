@@ -20,7 +20,7 @@ internal sealed class TeamsProvider : IChatProvider
 
     private readonly GraphClient _graph;
     private readonly ConcurrentDictionary<string, ChatPerson> _people = new(StringComparer.OrdinalIgnoreCase);
-    private readonly ConcurrentDictionary<string, IReadOnlyList<ChatTeam>> _allowedTeams = new(StringComparer.OrdinalIgnoreCase);
+    private readonly ConcurrentDictionary<string, ChatTeam> _allowedTeams = new(StringComparer.OrdinalIgnoreCase);
     private ChatPerson? _self;
 
     /// <summary>Creates the provider over <paramref name="graph"/>.</summary>
@@ -218,7 +218,7 @@ internal sealed class TeamsProvider : IChatProvider
     }
 
     /// <summary>
-    /// The teams the allowed places name, by id or by name: an application reaches every team of the
+    /// The teams the allowed places name, by id: an application reaches every team of the
     /// tenant, and lists no other. A team once found is kept, so a rename changes nothing until the next start.
     /// </summary>
     private async Task<IReadOnlyList<ChatTeam>> AllowedTeamsAsync(CancellationToken cancellationToken)
@@ -229,37 +229,27 @@ internal sealed class TeamsProvider : IChatProvider
             .Select(place => place.Value.Trim())
             .Distinct(StringComparer.OrdinalIgnoreCase))
         {
-            if (!_allowedTeams.TryGetValue(written, out var found))
-            {
-                found = await FindTeamsAsync(written, cancellationToken).ConfigureAwait(false);
-                if (found.Count > 0)
-                    _allowedTeams[written] = found;
-            }
-
-            teams.AddRange(found.Where(team => teams.TrueForAll(known => known.Id != team.Id)));
+            if (!_allowedTeams.TryGetValue(written, out var found) && await FindTeamAsync(written, cancellationToken).ConfigureAwait(false) is { } team)
+                _allowedTeams[written] = found = team;
+            if (found is not null)
+                teams.Add(found);
         }
 
         return teams;
     }
 
-    private async Task<IReadOnlyList<ChatTeam>> FindTeamsAsync(string nameOrId, CancellationToken cancellationToken)
+    private async Task<ChatTeam?> FindTeamAsync(string id, CancellationToken cancellationToken)
     {
-        if (ChatIds.IsDirectoryId(nameOrId))
+        try
         {
-            try
-            {
-                var json = await _graph.GetAsync($"teams/{GraphClient.Segment(nameOrId)}?$select=id,displayName", ChatScopes.TeamRead, cancellationToken).ConfigureAwait(false);
-                return Named(json, (id, name) => new ChatTeam(id, name)) is { } team ? [team] : [];
-            }
-            catch (ChatToolException ex) when (ex.Code == ChatErrorCode.NotFound)
-            {
-                return [];
-            }
+            var json = await _graph.GetAsync($"teams/{GraphClient.Segment(id)}?$select=id,displayName", ChatScopes.TeamRead, cancellationToken).ConfigureAwait(false);
+            return Named(json, (key, name) => new ChatTeam(key, name));
         }
-
-        var filter = Uri.EscapeDataString($"displayName eq '{nameOrId.Replace("'", "''", StringComparison.Ordinal)}'");
-        return await ListAsync(
-            "teams", $"$filter={filter}&$select=id,displayName", ChatScopes.TeamRead, team => Named(team, (id, name) => new ChatTeam(id, name)), cancellationToken).ConfigureAwait(false);
+        catch (ChatToolException ex) when (ex.Code is ChatErrorCode.NotFound or ChatErrorCode.InvalidRequest)
+        {
+            // One wrong entry must not close the others: the check says which.
+            return null;
+        }
     }
 
     /// <summary>The chats the allowed places name: no request lists the chats of an application.</summary>
@@ -272,9 +262,9 @@ internal sealed class TeamsProvider : IChatProvider
             {
                 chats.Add(await GetChatAsync(id, cancellationToken).ConfigureAwait(false));
             }
-            catch (ChatToolException ex) when (ex.Code == ChatErrorCode.NotFound)
+            catch (ChatToolException ex) when (ex.Code is ChatErrorCode.NotFound or ChatErrorCode.InvalidRequest)
             {
-                // Gone, or of another tenant: there is nothing to list.
+                // Gone, mistyped, or of another tenant: there is nothing to list, and the check says it.
             }
         }
 

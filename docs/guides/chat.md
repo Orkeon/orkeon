@@ -172,7 +172,7 @@ application post as a user.
     "Tenant": "contoso.com",
     "CertificatePathEnvVar": "TEAMS_WATCH_CERTIFICATE"
   },
-  "Read": { "AllowedPlaces": ["team:Platform/channel:Alerts", "chat:19:...@thread.v2"] }
+  "Read": { "AllowedPlaces": ["team:<team id>/channel:Alerts", "chat:19:...@thread.v2"] }
 }
 ```
 
@@ -190,7 +190,8 @@ application post as a user.
   `OnlineMeetingTranscript.Read.All` and an application access policy. `AdminGranted` is refused.
 - **They reach every team and every chat of the tenant**: `Read:AllowedPlaces` is the only limit Orkeon
   adds. `*` is refused, and so are `user:` entries, since an application has no one-to-one chat of its
-  own and looks nobody up. `team:T` covers the private channels of the team too.
+  own and looks nobody up. A team is written by its id: a name could be taken by any team of the tenant,
+  while a channel may be written by its name. `team:<id>` covers the private channels of the team too.
 - `chat_list` lists the allowed places alone. `chat_members` with `person` answers
   `NotSupportedByAccount`, and a message is returned without its author's address.
 - The clouds are those of the other accounts. Not tried on a real tenant.

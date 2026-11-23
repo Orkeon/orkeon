@@ -414,13 +414,38 @@ public sealed class ChatAccountAdministration
             var rules = await session.Gate.RulesAsync(use, cancellationToken).ConfigureAwait(false);
             blocking.AddRange(rules.Problems.Select(problem => $"{use}:AllowedPlaces entry {problem}"));
             if (use == PlaceUse.Read)
-                _ = await session.Provider.ListChatsAsync(1, null, cancellationToken).ConfigureAwait(false);
-            if (session.Account.IsApplication)
-                _ = await session.Provider.ListTeamsAsync(cancellationToken).ConfigureAwait(false);
+            {
+                var chats = await session.Provider.ListChatsAsync(1, null, cancellationToken).ConfigureAwait(false);
+                if (session.Account.IsApplication)
+                    await CheckApplicationPlacesAsync(session, rules, chats.Items, blocking, cancellationToken).ConfigureAwait(false);
+            }
         }
         catch (ChatToolException ex) when (ex.Code is ChatErrorCode.ConsentMissing or ChatErrorCode.InvalidRequest)
         {
             blocking.Add(ex.Message);
+        }
+    }
+
+    /// <summary>An application's places are ids, which nothing resolves: each is compared with what was found.</summary>
+    private static async Task CheckApplicationPlacesAsync(
+        ChatSession session, PlaceRules rules, IReadOnlyList<ChatConversation> chats, List<string> blocking, CancellationToken cancellationToken)
+    {
+        blocking.AddRange(rules.Chats
+            .Where(id => chats.All(chat => !string.Equals(chat.Id, id, StringComparison.Ordinal)))
+            .Select(id => $"Read:AllowedPlaces names the chat '{id}', which was not found"));
+
+        var teams = await session.Provider.ListTeamsAsync(cancellationToken).ConfigureAwait(false);
+        var known = teams.Select(team => team.Id).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        blocking.AddRange(rules.Teams.Concat(rules.Channels.Select(place => place.Team))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .Where(id => !known.Contains(id))
+            .Select(id => $"Read:AllowedPlaces names the team '{id}', which was not found"));
+        foreach (var team in rules.Channels.Where(place => known.Contains(place.Team)).GroupBy(place => place.Team, StringComparer.OrdinalIgnoreCase))
+        {
+            var channels = await session.Provider.ListChannelsAsync(team.Key, cancellationToken).ConfigureAwait(false);
+            blocking.AddRange(team
+                .Where(place => channels.All(channel => !string.Equals(channel.Id, place.Channel, StringComparison.Ordinal)))
+                .Select(place => $"Read:AllowedPlaces names the channel '{place.Channel}', which was not found in its team"));
         }
     }
 

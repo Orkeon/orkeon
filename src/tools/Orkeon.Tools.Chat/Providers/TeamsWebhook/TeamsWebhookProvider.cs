@@ -146,6 +146,9 @@ internal sealed class TeamsWebhookProvider : IChatProvider
     /// <inheritdoc />
     public Task<ChatPerson> GetSelfAsync(CancellationToken cancellationToken) => throw NotSupported("act as a user");
 
+    /// <summary>Throws when the variable holds no usable address, before a post is counted.</summary>
+    public void RequireAddress() => _ = _credentials.WebhookAddress(_account);
+
     /// <inheritdoc />
     public Task<IReadOnlyList<ChatTeam>> ListTeamsAsync(CancellationToken cancellationToken) => throw NotSupported("list places");
 

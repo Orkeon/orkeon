@@ -15,6 +15,7 @@ public sealed class TeamsApplicationTests : IDisposable
     private const string Secret = "s3cret-canary";
     private const string Issued = """{"access_token":"app-1","expires_in":3599}""";
     private const string Team = "00000000-0000-0000-0000-00000000000a";
+    private const string Gone = "00000000-0000-0000-0000-00000000000f";
     private const string Channel = "19:general@thread.tacv2";
     private const string Chat = "19:weekly@thread.v2";
 
@@ -134,18 +135,17 @@ public sealed class TeamsApplicationTests : IDisposable
     }
 
     [Fact]
-    public async Task Should_list_the_allowed_teams_alone_found_by_name_or_id()
+    public async Task Should_list_the_allowed_teams_alone_past_a_wrong_one_and_read_each_once()
     {
-        using var fixture = Create(TestChatAccounts.Application("team:O'Brien", $"team:{Team}/channel:{Channel}"));
-        fixture.Graph.Get("teams", Samples.List(Samples.Named("00000000-0000-0000-0000-00000000000b", "O'Brien")))
-            .Get($"teams/{Team}", Samples.Named(Team, "Platform"));
+        using var fixture = Create(TestChatAccounts.Application($"team:{Gone}", $"team:{Team}/channel:{Channel}", $"team:{Team}/channel:19:other@thread.tacv2"));
+        fixture.Graph.Get($"teams/{Team}", Samples.Named(Team, "Platform"));
 
         var result = await fixture.ResultAsync("chat_list", ("kind", "teams"));
         await fixture.ResultAsync("chat_list", ("kind", "teams"));
 
-        Assert.Equal(2, Convert.ToInt32(result["count"], System.Globalization.CultureInfo.InvariantCulture));
-        var search = Assert.Single(fixture.Graph.To(HttpMethod.Get, "teams"));
-        Assert.Contains("$filter=displayName eq 'O''Brien'", search.DecodedUri, StringComparison.Ordinal);
+        Assert.Equal(1, Count(result));
+        Assert.Single(fixture.Graph.To(HttpMethod.Get, $"teams/{Team}"));
+        Assert.Empty(fixture.Graph.To(HttpMethod.Get, "teams"));
         Assert.Empty(fixture.Graph.To(HttpMethod.Get, "me/joinedTeams"));
         Assert.Empty(fixture.Graph.To(HttpMethod.Get, "me"));
     }
@@ -248,8 +248,12 @@ public sealed class TeamsApplicationTests : IDisposable
     [Fact]
     public async Task Should_check_the_sign_in_and_the_places()
     {
-        using var fixture = Create(TestChatAccounts.Application($"chat:{Chat}", "team:Gone"));
-        fixture.Graph.Get($"chats/{Chat}", Samples.Chat(Chat, "group", "Weekly")).Get("teams", Samples.List());
+        using var fixture = Create(TestChatAccounts.Application(
+            $"chat:{Chat}", "chat:19:gone@thread.v2", $"team:{Gone}", $"team:{Team}/channel:{Channel}", $"team:{Team}/channel:19:lost@thread.tacv2"));
+        fixture.Graph.Get($"chats/{Chat}", Samples.Chat(Chat, "group", "Weekly"))
+            .Get($"teams/{Team}", Samples.Named(Team, "Platform"))
+            .Get($"teams/{Team}/allChannels", Samples.List(Samples.Named(Channel, "General")))
+            .Get($"teams/{Team}/channels", Samples.List(Samples.Named(Channel, "General")));
 
         var check = await fixture.Administration.CheckAsync("work", Token);
 
@@ -257,7 +261,9 @@ public sealed class TeamsApplicationTests : IDisposable
         Assert.True(check.Contacted);
         var read = Assert.Single(check.Rights);
         Assert.Equal((nameof(ChatRights.Read), false), (read.Right, read.Ready));
-        Assert.Contains(read.Missing, line => line.Contains("'team:Gone' is set aside", StringComparison.Ordinal));
+        Assert.Equal(4, read.Missing.Count);
+        foreach (var wrong in new[] { "chat '19:gone@thread.v2'", $"team '{Gone}'", "channel '19:lost@thread.tacv2'" })
+            Assert.Single(read.Missing, line => line.Contains(wrong, StringComparison.Ordinal));
         Assert.Contains(read.Missing, line => line.StartsWith("no message was read", StringComparison.Ordinal));
     }
 
@@ -280,6 +286,8 @@ public sealed class TeamsApplicationTests : IDisposable
     [InlineData("value", "Auth:ClientSecretEnvVar is the NAME of an environment variable")]
     [InlineData("any", "Read:AllowedPlaces holds '*'")]
     [InlineData("user", "Read:AllowedPlaces entry 'user:ada@example.org' names a person")]
+    [InlineData("team", "Read:AllowedPlaces entry 'team:Platform' names a team by its name")]
+    [InlineData("channel", "Read:AllowedPlaces entry 'team:Platform/channel:Alerts' names a team by its name")]
     [InlineData("domain", "Read:AllowedPlaces entry 'user:*@example.org' names a person")]
     [InlineData("tenant-unset", "Auth:Tenant is required")]
     [InlineData("Common", "Auth:Tenant is required")]
@@ -297,6 +305,8 @@ public sealed class TeamsApplicationTests : IDisposable
             case "value": options.Auth.ClientSecretEnvVar = "a~b"; break;
             case "any": options.Read.AllowedPlaces.Add("*"); break;
             case "user": options.Read.AllowedPlaces.Add("user:ada@example.org"); break;
+            case "team": options.Read.AllowedPlaces.Add("team:Platform"); break;
+            case "channel": options.Read.AllowedPlaces.Add("team:Platform/channel:Alerts"); break;
             case "domain": options.Read.AllowedPlaces.Add("user:*@example.org"); break;
             case "tenant-unset": options.Auth.Tenant = null; break;
             default: options.Auth.Tenant = wrong; break;
