@@ -2,7 +2,8 @@
 
 Part of [Orkeon](https://github.com/Orkeon/orkeon) — build and orchestrate AI agent teams in .NET, described in declarative YAML, programmatic TypeScript (`.ork.ts`) or pure C#.
 
-**Orkeon.Tools.Chat** gives agents the chat their team uses: `chat_accounts`, `chat_list`, `chat_read`, `chat_members` and `chat_send`. Microsoft Teams goes through Microsoft Graph over plain HTTP with no vendor SDK, as the signed-in user. Accounts sign in once with OAuth2 (`orkeon chat login`). A Workflows webhook posts into one place with no sign-in.
+**Orkeon.Tools.Chat** gives agents the chat their team uses: `chat_accounts`, `chat_list`, `chat_read`, `chat_members` and `chat_send`. Microsoft Teams goes through Microsoft Graph over plain HTTP with no vendor SDK, as the signed-in user. Accounts sign in once with OAuth2 (`orkeon chat login`). An application reads
+with a credential of its own. A Workflows webhook posts into one place with no sign-in.
 
 Accounts, rights and the places an agent may read or post in are the operator's configuration (`Orkeon:Tools:Chat`); an agent only names an account. Reading and posting are closed until places are allowed.
 

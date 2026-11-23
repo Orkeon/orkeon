@@ -45,7 +45,7 @@ internal sealed class ChatFixture : IDisposable
         var bound = Microsoft.Extensions.Options.Options.Create(Options);
         Registry = new ChatAccountRegistry(bound);
         Account = Registry.Resolve("work");
-        if (signedIn && !Account.IsWebhook)
+        if (signedIn && !Account.IsWebhook && !Account.IsApplication)
             SignIn(Account.OAuth.Scopes);
 
         _sessions = ChatSessions.Over(Credentials, () => _http, Time, () => _hookHttp);

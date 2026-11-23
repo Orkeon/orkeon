@@ -19,6 +19,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - A `TeamsWebhook` chat account posts into one place through a Workflows webhook, with no sign-in: `Webhook:UrlEnvVar`
   names the variable of its address, `Rights` is `Send`, and `chat_send` takes no `place` there. Not tried on a real
   workflow.
+- A Teams chat account can be an application that only reads: `Auth:Method` `ClientCredentials` with exactly one of
+  `Auth:CertificatePathEnvVar`, `Auth:FederatedTokenFileEnvVar` and `Auth:ClientSecretEnvVar`, a named tenant, named
+  places (`*` and `user:` are refused) and a token kept in memory alone. Not tried on a real tenant.
 - `orkeon chat accounts`, `login` (the browser, or `--device-code`), `logout` and `check`.
 - The shared OAuth client takes the flow at the sign-in, token revocation, a client assertion and
   `OAuthSettings.Prompt`; left null, `Prompt` keeps the Google parameters of before. E-mail and drive accounts sign in

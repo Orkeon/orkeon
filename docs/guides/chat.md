@@ -23,6 +23,8 @@ chats, reads messages, looks people up and posts, within what the operator allow
 - **Every `Teams` account signs in once** (`orkeon chat login` in a terminal), in the browser or with a
   device code, and the tools refresh the access token by themselves. There is no secret to store:
   the application is a public client.
+- **An application account signs in by itself**, with a credential of the host, and only reads
+  ([below](#an-application-that-only-reads)).
 - **A webhook account signs in nowhere**: it posts into one place, and its address is the secret
   ([below](#a-webhook-to-post-into-one-place)).
 
@@ -154,6 +156,45 @@ trigger, and put the address it gives in an environment variable:
 
 Not tried on a real workflow.
 
+## An application that only reads
+
+A service has nobody to sign in. An account whose `Auth:Method` is `ClientCredentials` is the
+application itself: it reads the places you name, and posts nothing, since Microsoft Graph lets no
+application post as a user.
+
+```json
+"watch": {
+  "Provider": "Teams",
+  "Rights": "Read",
+  "Auth": {
+    "Method": "ClientCredentials",
+    "ClientId": "<application id>",
+    "Tenant": "contoso.com",
+    "CertificatePathEnvVar": "TEAMS_WATCH_CERTIFICATE"
+  },
+  "Read": { "AllowedPlaces": ["team:Platform/channel:Alerts", "chat:19:...@thread.v2"] }
+}
+```
+
+- **One credential, named by its variable**, exactly one of: `CertificatePathEnvVar`, the absolute path
+  of a PEM file with the certificate and its unencrypted RSA key; `FederatedTokenFileEnvVar`, the
+  absolute path of a token file its issuer rotates (workload identity); `ClientSecretEnvVar`, the secret
+  itself. It is read again for each token. Orkeon reads these files outside its virtual file system: do
+  not put them under a directory you mount for a crew, whose file tools would read them.
+- **The token stays in memory**: nothing is written to the token store. `login` is refused, `logout` has
+  nothing to forget, and `check` obtains a token and looks the places up.
+- **`Tenant` is mandatory**: an id or a domain, not `common`, `organizations` or `consumers`.
+- **Application permissions**, granted by an administrator in the registration and not at a sign-in:
+  `Team.ReadBasic.All`, `Channel.ReadBasic.All`, `ChannelMessage.Read.All`, `Chat.Read.All`, and
+  `ChannelMember.Read.All` for `chat_members` on a channel. For `Meetings`, which no tool uses yet,
+  `OnlineMeetingTranscript.Read.All` and an application access policy. `AdminGranted` is refused.
+- **They reach every team and every chat of the tenant**: `Read:AllowedPlaces` is the only limit Orkeon
+  adds. `*` is refused, and so are `user:` entries, since an application has no one-to-one chat of its
+  own and looks nobody up. `team:T` covers the private channels of the team too.
+- `chat_list` lists the allowed places alone. `chat_members` with `person` answers
+  `NotSupportedByAccount`, and a message is returned without its author's address.
+- The clouds are those of the other accounts. Not tried on a real tenant.
+
 ## Settings reference
 
 | Key (under `Orkeon:Tools:Chat`) | Meaning |
@@ -164,8 +205,9 @@ Not tried on a real workflow.
 | `Accounts:<name>:Provider` | `Teams` or `TeamsWebhook`, mandatory |
 | `Accounts:<name>:Rights` | `Read`, `Send` or both, mandatory. The other names the key takes open no tool, see [Limits](#limits) |
 | `Accounts:<name>:Auth:ClientId` | The Microsoft Entra application, mandatory |
-| `Accounts:<name>:Auth:Tenant` | `organizations` (default), a tenant id or a tenant domain; `consumers` is refused |
-| `Accounts:<name>:Auth:Method` | `OAuth2` (default), the only method accepted |
+| `Accounts:<name>:Auth:Tenant` | `organizations` (default), a tenant id or a tenant domain; `consumers` is refused, and `ClientCredentials` takes no alias |
+| `Accounts:<name>:Auth:Method` | `OAuth2` (default), or `ClientCredentials` for an application that only reads |
+| `Accounts:<name>:Auth:CertificatePathEnvVar`, `FederatedTokenFileEnvVar`, `ClientSecretEnvVar` | For `ClientCredentials`, exactly one: the NAME of the variable of the credential |
 | `Accounts:<name>:Auth:AdminGranted` | The administrator permissions the tenant granted. `ChannelMessages` opens the reading of channel messages, `ChannelMembers` the list of a channel's members |
 | `Accounts:<name>:Cloud` | `Global` (default), `UsGov` or `UsGovDoD`; the China cloud is refused |
 | `Accounts:<name>:Webhook:UrlEnvVar` | The NAME of the variable that holds the address of a `TeamsWebhook` account |
@@ -333,13 +375,13 @@ no token store: a chat account that signs in says so there.
 | `SignInRequired` | No usable token: run `orkeon chat login <account>` |
 | `Throttled` | Microsoft or `MaxPerHour` asks to wait, or too many posts wait in the place; a `Retry-After` of five seconds or less is waited for |
 | `NotFound` | No such place, message or person, or no chat yet with that person |
-| `NotSupportedByAccount` | The provider cannot do it: replies of a chat message, a chat with oneself |
+| `NotSupportedByAccount` | The provider cannot do it: replies of a chat message, a chat with oneself, a person for an application |
 | `InvalidRequest`, `ServerError` | The call is malformed; the service or the network failed |
 
 ## Limits
 
 - **Not run on a real tenant.** Neither the sign-in nor the tools were tried on one, in any cloud.
-- **Teams only, as a signed-in user, or by a webhook that posts.** Not shipped: a read-only application account (`ClientCredentials` is refused), search, editing,
+- **Teams only, as a signed-in user, as an application that reads, or by a webhook that posts.** Not shipped: search, editing,
   deletion, reactions, meetings and their transcripts, and an inbound Teams channel in `orkeon-host`.
 - **Rights no tool uses.** `Edit`, `Delete`, `React` and `Meetings`, like the grants other than
   `ChannelMessages` and `ChannelMembers`, are read and ask for their permissions, but no tool uses them. Leave them out.

@@ -36,6 +36,18 @@ internal static class TestChatAccounts
         return options;
     }
 
+    /// <summary>The variable that holds, or leads to, an application's credential.</summary>
+    public const string ApplicationVariable = "ORKEON_TEST_CHAT_APP";
+
+    /// <summary>An application account, signed in with a client secret.</summary>
+    public static ChatAccountOptions Application(params string[] read)
+    {
+        var options = Teams(ChatRights.Read, read);
+        options.Auth.Method = ChatAuthMethod.ClientCredentials;
+        options.Auth.ClientSecretEnvVar = ApplicationVariable;
+        return options;
+    }
+
     /// <summary><paramref name="options"/> resolved.</summary>
     public static ResolvedChatAccount Resolve(ChatAccountOptions options, string name = "work")
     {

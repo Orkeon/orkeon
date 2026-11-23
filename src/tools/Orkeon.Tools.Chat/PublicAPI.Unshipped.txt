@@ -10,6 +10,8 @@ Orkeon.Tools.Chat.Administration.ChatAccountAdministration.LoginAsync(string! ac
 Orkeon.Tools.Chat.Administration.ChatAccountAdministration.LogoutAsync(string! account, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Orkeon.Tools.Chat.Administration.ChatLogoutResult!>!
 Orkeon.Tools.Chat.Administration.ChatAccountStatus
 Orkeon.Tools.Chat.Administration.ChatAccountStatus.<Clone>$() -> Orkeon.Tools.Chat.Administration.ChatAccountStatus!
+Orkeon.Tools.Chat.Administration.ChatAccountStatus.Application.get -> bool
+Orkeon.Tools.Chat.Administration.ChatAccountStatus.Application.init -> void
 Orkeon.Tools.Chat.Administration.ChatAccountStatus.ChatAccountStatus() -> void
 Orkeon.Tools.Chat.Administration.ChatAccountStatus.Cloud.get -> string?
 Orkeon.Tools.Chat.Administration.ChatAccountStatus.Cloud.init -> void

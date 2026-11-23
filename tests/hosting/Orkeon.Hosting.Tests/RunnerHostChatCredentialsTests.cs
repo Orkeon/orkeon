@@ -62,6 +62,16 @@ public sealed class RunnerHostChatCredentialsTests : IDisposable
     }
 
     [Fact]
+    public void An_application_alone_needs_no_credentials_root()
+    {
+        const string application = """{ "Accounts": { "ops": { "Provider": "Teams", "Rights": "Read", "Auth": { "Method": "ClientCredentials", "ClientSecretEnvVar": "S" } } } }""";
+
+        using var host = RunnerHost.Build(WriteSettings(chat: application), new RunnerMountPlan());
+
+        Assert.DoesNotContain(Mounts(host), m => m.VirtualPath == RunnerVirtualRoots.Credentials);
+    }
+
+    [Fact]
     public void Both_families_share_one_credentials_directory_each_in_its_subdirectory()
     {
         var tokens = Path.Combine(_root, "tokens");

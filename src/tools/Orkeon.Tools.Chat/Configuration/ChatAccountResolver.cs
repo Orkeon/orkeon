@@ -39,8 +39,7 @@ internal static class ChatAccountResolver
             problems.Add("Webhook:UrlEnvVar goes with Provider TeamsWebhook alone");
         if (options.Rights == ChatRights.None)
             problems.Add("Rights is required and says what an agent may do, e.g. \"Rights\": \"Read, Send\"");
-        if (options.Auth.Method == ChatAuthMethod.ClientCredentials)
-            problems.Add("Auth:Method ClientCredentials is not supported: write OAuth2, or leave it out");
+        var application = ResolveApplication(options, problems);
 
         var granted = ResolveGrants(options.Auth.AdminGranted, problems);
         var cloud = options.Cloud ?? ChatCloud.Global;
@@ -48,6 +47,12 @@ internal static class ChatAccountResolver
         var oauth = endpoints is null ? null : ResolveOAuth(options, granted, endpoints.Value.Authority, problems);
         var read = ResolvePlaces(options.Read.AllowedPlaces, "Read:AllowedPlaces", problems);
         var send = ResolvePlaces(options.Send.AllowedPlaces, "Send:AllowedPlaces", problems);
+        if (options.Auth.Method == ChatAuthMethod.ClientCredentials)
+        {
+            oauth = oauth is null ? null : ResolveApplicationOAuth(oauth, options.Auth, endpoints!.Value.Api, problems);
+            CheckApplicationPlaces(read, problems);
+        }
+
         if (options.Send.MaxPerHour is <= 0)
             problems.Add(CapProblem);
 
@@ -61,15 +66,77 @@ internal static class ChatAccountResolver
             Name = name,
             Provider = options.Provider.Value,
             Rights = options.Rights,
-            AdminGranted = granted,
+            // An administrator grants every permission of an application: there is none to wait for.
+            AdminGranted = application is null ? granted : Enum.GetValues<ChatAdminGrants>().Aggregate((all, grant) => all | grant),
             Cloud = cloud,
             ApiBase = endpoints!.Value.Api,
             OAuth = oauth,
+            Application = application,
             ReadPlaces = read,
             SendPlaces = send,
             MaxPerHour = options.Send.MaxPerHour,
         };
         return new ChatAccountResolution(account, []);
+    }
+
+    /// <summary>The credential of an application account; null, and the keys of one refused, for a user's.</summary>
+    private static ChatApplication? ResolveApplication(ChatAccountOptions options, List<string> problems)
+    {
+        (ChatApplicationCredential Kind, string Key, string? Declared)[] credentials =
+        [
+            (ChatApplicationCredential.Certificate, "Auth:CertificatePathEnvVar", options.Auth.CertificatePathEnvVar),
+            (ChatApplicationCredential.FederatedToken, "Auth:FederatedTokenFileEnvVar", options.Auth.FederatedTokenFileEnvVar),
+            (ChatApplicationCredential.Secret, "Auth:ClientSecretEnvVar", options.Auth.ClientSecretEnvVar),
+        ];
+        var declared = credentials.Where(credential => !string.IsNullOrWhiteSpace(credential.Declared)).ToList();
+        if (options.Auth.Method != ChatAuthMethod.ClientCredentials)
+        {
+            problems.AddRange(declared.Select(credential => $"{credential.Key} goes with Auth:Method ClientCredentials alone"));
+            return null;
+        }
+
+        if ((options.Rights & ~(ChatRights.Read | ChatRights.Meetings)) != 0)
+            problems.Add("Rights holds more than Read and Meetings, and Auth:Method ClientCredentials only reads: Microsoft Graph lets no application post as a user");
+        if (options.Auth.AdminGranted.Any(entry => !string.IsNullOrWhiteSpace(entry)))
+            problems.Add("Auth:AdminGranted goes with Auth:Method OAuth2 alone: an administrator grants every permission of an application");
+        if (declared.Count != 1)
+        {
+            problems.Add("Auth:Method ClientCredentials takes exactly one of Auth:CertificatePathEnvVar, Auth:FederatedTokenFileEnvVar and Auth:ClientSecretEnvVar");
+            return null;
+        }
+
+        return ResolveVariable(declared[0].Declared, declared[0].Key, problems) is { } variable ? new ChatApplication(declared[0].Kind, variable) : null;
+    }
+
+    private static OAuthSettings ResolveApplicationOAuth(OAuthSettings user, ChatAuthOptions auth, Uri api, List<string> problems)
+    {
+        // An application has no home tenant to be found in: the aliases designate none.
+        var tenant = auth.Tenant?.Trim();
+        if (string.IsNullOrEmpty(tenant)
+            || string.Equals(tenant, "common", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(tenant, "organizations", StringComparison.OrdinalIgnoreCase))
+        {
+            problems.Add("Auth:Tenant is required for Auth:Method ClientCredentials: your organization's tenant id or domain, not an alias");
+        }
+
+        return new OAuthSettings
+        {
+            ClientId = user.ClientId,
+            Flow = OAuthFlow.ClientCredentials,
+            TokenEndpoint = user.TokenEndpoint,
+            Scopes = [new Uri(api, "/.default").AbsoluteUri],
+        };
+    }
+
+    private static void CheckApplicationPlaces(IReadOnlyList<PlaceReference> places, List<string> problems)
+    {
+        foreach (var place in places)
+        {
+            if (place.Form == PlaceForm.Any)
+                problems.Add("Read:AllowedPlaces holds '*', which for Auth:Method ClientCredentials would be every conversation of the tenant: name the places");
+            else if (place.Form is PlaceForm.User or PlaceForm.Domain)
+                problems.Add($"Read:AllowedPlaces entry '{place.Text}' names a person, and an application has no one-to-one chat of its own: name the chat by its id");
+        }
     }
 
     /// <summary>A webhook: the address fixes the place, so nothing but its variable and the cap is read.</summary>

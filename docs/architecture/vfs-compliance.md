@@ -94,6 +94,7 @@ These accesses cannot go through the VFS by nature and are **permanently** allow
 | Watcher bridge | `Analysis/.../FileSystemWatcherCodebaseWatcher.cs` | `EXCEPTION-WATCHER-BRIDGE` | Adapts `System.IO.FileSystemWatcher` to `ICodebaseWatcher` |
 | RaggableTree probe | `Analysis/Core/FileSystemDiscoverer.cs` (diagnostic probe only) | `OUT-OF-SCOPE` | The *batch discovery itself* runs on `EnumerateFilesAsync`; the probe deliberately counts physical entries to distinguish "VFS yielded nothing" from "disk empty" |
 | SQLite persistence | `SqliteMemoryProvider`, `SqliteStateStore` | governed | The engine needs a real path; the `Data Source` is resolved via `ResolveAndValidate` before reaching the driver |
+| Operator credential file | `Tools.Chat/Auth/ChatCredentialFile.cs` | `OUT-OF-SCOPE` | The certificate or federated token file of a chat application account, named by an environment variable and rotated by the host. It is under no mount, and must not be: a mount would let the agents' file tools read the key |
 
 ## Adding a new tool or service
 

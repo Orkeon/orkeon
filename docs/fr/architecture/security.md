@@ -388,6 +388,10 @@ des deux autres :
   un lien de pagination vers un autre hôte est refusé. Les jetons sont écrits par `orkeon chat login`
   dans le sous-répertoire `chat` de la racine interne `/credentials`
   ([conformité VFS](./vfs-compliance.md)).
+- **Un compte d'application ne fait que lire, et son jeton n'est jamais stocké.** Son identifiant est
+  nommé par une variable d'environnement et lu pour chaque jeton, les fichiers hors du VFS
+  ([pourquoi](vfs-compliance.md)). Ses permissions couvrent le tenant : les lieux nommés sont la limite,
+  `*` est refusé.
 - **L'adresse d'un webhook est le secret.** Un compte `TeamsWebhook` nomme la variable qui la contient ;
   elle doit être en `https`, elle est lue à chaque publication, et aucun journal, aucune erreur, aucun
   événement ne la porte. Il publie dans le seul lieu de l'adresse, une fois par appel, sans suivre de

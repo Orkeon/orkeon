@@ -67,13 +67,13 @@ internal sealed class ChatAccountOptions
 /// <summary>Authentication of an account. No secret is written here.</summary>
 internal sealed class ChatAuthOptions
 {
-    /// <summary><c>OAuth2</c> (default): a user signs in.</summary>
+    /// <summary><c>OAuth2</c> (default): a user signs in. <c>ClientCredentials</c>: an application signs in as itself, to read alone.</summary>
     public ChatAuthMethod? Method { get; set; }
 
     /// <summary>The id of your Microsoft Entra application.</summary>
     public string? ClientId { get; set; }
 
-    /// <summary>The tenant id or domain; <c>organizations</c> when unset.</summary>
+    /// <summary>The tenant id or domain; <c>organizations</c> when unset. Mandatory for <c>ClientCredentials</c>.</summary>
     public string? Tenant { get; set; }
 
     /// <summary>
@@ -81,6 +81,15 @@ internal sealed class ChatAuthOptions
     /// <c>ChannelEdit</c>, <c>Meetings</c>, <c>ChannelMembers</c>. Each adds its scope to the next sign-in.
     /// </summary>
     public List<string> AdminGranted { get; } = [];
+
+    /// <summary>Name of the environment variable holding the path of a PEM file with the certificate and its key, for <c>ClientCredentials</c>.</summary>
+    public string? CertificatePathEnvVar { get; set; }
+
+    /// <summary>Name of the environment variable holding the path of a federated token file, for <c>ClientCredentials</c>.</summary>
+    public string? FederatedTokenFileEnvVar { get; set; }
+
+    /// <summary>Name of the environment variable holding the client secret, for <c>ClientCredentials</c>.</summary>
+    public string? ClientSecretEnvVar { get; set; }
 }
 
 /// <summary>The webhook of an account. Its address is a secret, and is never written here.</summary>

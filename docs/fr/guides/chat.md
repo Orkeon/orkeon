@@ -26,6 +26,8 @@ et publie, dans les limites de ce qu'autorise l'opérateur :
 - **Chaque compte `Teams` se connecte une fois** (`orkeon chat login` dans un terminal), par le navigateur ou
   par code d'appareil, et les outils rafraîchissent eux-mêmes le jeton d'accès. Il n'y a aucun secret
   à conserver : l'application est un client public.
+- **Un compte d'application se connecte tout seul**, avec un identifiant de l'hôte, et ne fait que lire
+  ([plus bas](#une-application-qui-ne-fait-que-lire)).
 - **Un compte webhook ne se connecte nulle part** : il publie dans un seul lieu, et son adresse est le
   secret ([plus bas](#un-webhook-pour-publier-dans-un-seul-lieu)).
 
@@ -164,6 +166,48 @@ par **tout le monde**, et mettez l'adresse qu'il donne dans une variable d'envir
 
 Pas essayé sur un vrai flux.
 
+## Une application qui ne fait que lire
+
+Un service n'a personne pour se connecter. Un compte dont `Auth:Method` vaut `ClientCredentials` est
+l'application elle-même : il lit les lieux que vous nommez et ne publie rien, puisque Microsoft Graph ne
+laisse aucune application publier en tant qu'utilisateur.
+
+```json
+"watch": {
+  "Provider": "Teams",
+  "Rights": "Read",
+  "Auth": {
+    "Method": "ClientCredentials",
+    "ClientId": "<id de l'application>",
+    "Tenant": "contoso.com",
+    "CertificatePathEnvVar": "TEAMS_WATCH_CERTIFICATE"
+  },
+  "Read": { "AllowedPlaces": ["team:Platform/channel:Alerts", "chat:19:...@thread.v2"] }
+}
+```
+
+- **Un identifiant, nommé par sa variable**, exactement un parmi : `CertificatePathEnvVar`, le chemin
+  absolu d'un fichier PEM avec le certificat et sa clé RSA non chiffrée ; `FederatedTokenFileEnvVar`, le
+  chemin absolu d'un fichier de jeton que son émetteur renouvelle (workload identity) ;
+  `ClientSecretEnvVar`, le secret lui-même. Il est relu pour chaque jeton. Orkeon lit ces fichiers hors
+  de son système de fichiers virtuel : ne les mettez pas sous un répertoire que vous montez pour une
+  crew, dont les outils de fichiers les liraient.
+- **Le jeton reste en mémoire** : rien n'est écrit dans le magasin de jetons. `login` est refusé,
+  `logout` n'a rien à oublier, et `check` obtient un jeton et cherche les lieux.
+- **`Tenant` est obligatoire** : un id ou un domaine, pas `common`, `organizations` ni `consumers`.
+- **Des permissions d'application**, accordées par un administrateur dans l'enregistrement et non à une
+  connexion : `Team.ReadBasic.All`, `Channel.ReadBasic.All`, `ChannelMessage.Read.All`, `Chat.Read.All`,
+  et `ChannelMember.Read.All` pour `chat_members` sur un canal. Pour `Meetings`, dont aucun outil ne se
+  sert encore, `OnlineMeetingTranscript.Read.All` et une stratégie d'accès d'application.
+  `AdminGranted` est refusé.
+- **Elles atteignent toutes les équipes et toutes les conversations du tenant** : `Read:AllowedPlaces`
+  est la seule limite qu'Orkeon ajoute. `*` est refusé, et les entrées `user:` aussi, puisqu'une
+  application n'a aucune conversation à deux et ne cherche personne. `team:T` couvre aussi les canaux
+  privés de l'équipe.
+- `chat_list` ne liste que les lieux autorisés. `chat_members` avec `person` répond
+  `NotSupportedByAccount`, et un message est rendu sans l'adresse de son auteur.
+- Les clouds sont ceux des autres comptes. Pas essayé sur un vrai tenant.
+
 ## Référence des réglages
 
 | Clé (sous `Orkeon:Tools:Chat`) | Signification |
@@ -174,8 +218,9 @@ Pas essayé sur un vrai flux.
 | `Accounts:<nom>:Provider` | `Teams` ou `TeamsWebhook`, obligatoire |
 | `Accounts:<nom>:Rights` | `Read`, `Send` ou les deux, obligatoire. Les autres noms que prend la clé n'ouvrent aucun outil, voir [Limites](#limites) |
 | `Accounts:<nom>:Auth:ClientId` | L'application Microsoft Entra, obligatoire |
-| `Accounts:<nom>:Auth:Tenant` | `organizations` (défaut), un id de tenant ou un domaine de tenant ; `consumers` est refusé |
-| `Accounts:<nom>:Auth:Method` | `OAuth2` (défaut), la seule méthode acceptée |
+| `Accounts:<nom>:Auth:Tenant` | `organizations` (défaut), un id de tenant ou un domaine de tenant ; `consumers` est refusé, et `ClientCredentials` ne prend pas d'alias |
+| `Accounts:<nom>:Auth:Method` | `OAuth2` (défaut), ou `ClientCredentials` pour une application qui ne fait que lire |
+| `Accounts:<nom>:Auth:CertificatePathEnvVar`, `FederatedTokenFileEnvVar`, `ClientSecretEnvVar` | Pour `ClientCredentials`, exactement un : le NOM de la variable de l'identifiant |
 | `Accounts:<nom>:Auth:AdminGranted` | Les permissions d'administrateur accordées par le tenant. `ChannelMessages` ouvre la lecture des messages de canal, `ChannelMembers` la liste des membres d'un canal |
 | `Accounts:<nom>:Cloud` | `Global` (défaut), `UsGov` ou `UsGovDoD` ; le cloud de Chine est refusé |
 | `Accounts:<nom>:Webhook:UrlEnvVar` | Le NOM de la variable qui contient l'adresse d'un compte `TeamsWebhook` |
@@ -350,15 +395,14 @@ des outils du VFS, **pas** d'un `shell_command` qui tourne sous le même utilisa
 | `SignInRequired` | Aucun jeton utilisable : lancez `orkeon chat login <account>` |
 | `Throttled` | Microsoft ou `MaxPerHour` demande d'attendre, ou trop de publications attendent dans le lieu ; un `Retry-After` de cinq secondes ou moins est attendu |
 | `NotFound` | Aucun lieu, message ou personne de ce nom, ou pas encore de conversation avec cette personne |
-| `NotSupportedByAccount` | Le fournisseur ne sait pas le faire : les réponses d'un message de conversation, une conversation avec soi-même |
+| `NotSupportedByAccount` | Le fournisseur ne sait pas le faire : les réponses d'un message de conversation, une conversation avec soi-même, une personne pour une application |
 | `InvalidRequest`, `ServerError` | L'appel est mal formé ; le service ou le réseau a échoué |
 
 ## Limites
 
 - **Pas joué sur un vrai tenant.** Ni la connexion ni les outils n'y ont été essayés, dans aucun
   cloud.
-- **Teams seulement, en utilisateur connecté, ou par un webhook qui publie.** Pas livrés : un compte d'application en lecture seule (`ClientCredentials` est
-  refusé), la recherche, la modification, la suppression, les réactions, les réunions et leurs
+- **Teams seulement, en utilisateur connecté, en application qui lit, ou par un webhook qui publie.** Pas livrés : la recherche, la modification, la suppression, les réactions, les réunions et leurs
   transcriptions, et un canal Teams entrant dans `orkeon-host`.
 - **Des droits dont aucun outil ne se sert.** `Edit`, `Delete`, `React` et `Meetings`, comme les
   permissions accordées autres que `ChannelMessages` et `ChannelMembers`, sont lus et demandent leurs autorisations, mais

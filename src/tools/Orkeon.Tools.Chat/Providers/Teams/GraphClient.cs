@@ -239,7 +239,9 @@ internal sealed class GraphClient
                 $"{ApiName} refused the token. {ChatCredentialProvider.LoginHint(_account)} ({detail})"),
             HttpStatusCode.Forbidden => new ChatToolException(
                 ChatErrorCode.ConsentMissing,
-                $"{ApiName} denied this to chat account '{_account.Name}': the signed-in user may not do it, or the application lacks the {permission} permission, which {Grantor(permission)} ({detail})."),
+                _account.IsApplication
+                    ? $"{ApiName} denied this to chat account '{_account.Name}': its application lacks the {ChatScopes.OfApplication(permission)} application permission, which a tenant administrator grants ({detail})."
+                    : $"{ApiName} denied this to chat account '{_account.Name}': the signed-in user may not do it, or the application lacks the {permission} permission, which {Grantor(permission)} ({detail})."),
             HttpStatusCode.NotFound or HttpStatusCode.Gone => new ChatToolException(
                 ChatErrorCode.NotFound,
                 $"{ApiName} found no such place, message or person, or the account cannot see it: list again ({detail})."),

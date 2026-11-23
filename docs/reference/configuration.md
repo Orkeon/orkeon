@@ -216,13 +216,13 @@ closed list, and what it means.
 | [RAG](#rag) | [`Orkeon:Rag`](#orkeonrag), [`Orkeon:Rag:Ingestion`](#orkeonragingestion), [`Orkeon:Rag:QueryRouting`](#orkeonragqueryrouting), [`Orkeon:Rag:Retrieval:Hybrid`](#orkeonragretrievalhybrid), [`Orkeon:Rag:WebFallback`](#orkeonragwebfallback) | 34 |
 | [Files and sandbox](#files-and-sandbox) | [`Orkeon:CodeSandbox`](#orkeoncodesandbox), [`Orkeon:CodeSandbox:Docker`](#orkeoncodesandboxdocker), [`Orkeon:FileSystem`](#orkeonfilesystem), [`Orkeon:Sandbox`](#orkeonsandbox), [`PathSecurity`](#pathsecurity) | 33 |
 | [Security](#security) | [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:Guardian`](#orkeonguardian), [`Orkeon:Security:PermissionGate`](#orkeonsecuritypermissiongate), [`Secrets`](#secrets), [`Security:Audit`](#securityaudit), [`Security:Prompt`](#securityprompt), [`Security:ToolResults`](#securitytoolresults), [`Security:Url`](#securityurl), [`Security:Vault`](#securityvault) | 40 |
-| [Tools](#tools) | [`BRAVE_API_KEY`](#brave_api_key), [`MCP`](#mcp), [`MCP:Server`](#mcpserver), [`Orkeon:Bridge`](#orkeonbridge), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Tools:Bridge`](#orkeontoolsbridge), [`Orkeon:Tools:Chat`](#orkeontoolschat), [`Orkeon:Tools:Drive`](#orkeontoolsdrive), [`Orkeon:Tools:Email`](#orkeontoolsemail), [`Orkeon:Tools:Firefox`](#orkeontoolsfirefox), [`Orkeon:Tools:GitHub`](#orkeontoolsgithub), [`Orkeon:Tools:ResultLimits`](#orkeontoolsresultlimits), [`Orkeon:Tools:Shell`](#orkeontoolsshell), [`Plugins`](#plugins), [`RaggableTree`](#raggabletree) | 145 |
+| [Tools](#tools) | [`BRAVE_API_KEY`](#brave_api_key), [`MCP`](#mcp), [`MCP:Server`](#mcpserver), [`Orkeon:Bridge`](#orkeonbridge), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Tools:Bridge`](#orkeontoolsbridge), [`Orkeon:Tools:Chat`](#orkeontoolschat), [`Orkeon:Tools:Drive`](#orkeontoolsdrive), [`Orkeon:Tools:Email`](#orkeontoolsemail), [`Orkeon:Tools:Firefox`](#orkeontoolsfirefox), [`Orkeon:Tools:GitHub`](#orkeontoolsgithub), [`Orkeon:Tools:ResultLimits`](#orkeontoolsresultlimits), [`Orkeon:Tools:Shell`](#orkeontoolsshell), [`Plugins`](#plugins), [`RaggableTree`](#raggabletree) | 148 |
 | [Orchestration and persistence](#orchestration-and-persistence) | [`Orkeon:Checkpointing`](#orkeoncheckpointing), [`Orkeon:Compaction`](#orkeoncompaction), [`Orkeon:Compaction:Prune`](#orkeoncompactionprune), [`Orkeon:Consensus`](#orkeonconsensus), [`Orkeon:CrewFactory`](#orkeoncrewfactory), [`Orkeon:ExecutionState:Persistence`](#orkeonexecutionstatepersistence), [`Orkeon:HumanInput`](#orkeonhumaninput), [`Orkeon:RunHistory`](#orkeonrunhistory), [`Orkeon:Skills`](#orkeonskills) | 39 |
 | [Scripts and console](#scripts-and-console) | [`Orkeon:Cli:ConsoleStreaming`](#orkeoncliconsolestreaming), [`Orkeon:Cli:Memory`](#orkeonclimemory), [`Orkeon:Cli:ScriptCommands`](#orkeoncliscriptcommands), [`Orkeon:Cli:ScriptHost`](#orkeoncliscripthost), [`Orkeon:Cli:Session`](#orkeonclisession), [`Orkeon:Cli:Tui`](#orkeonclitui), [`Orkeon:Scripting:AgentInstances`](#orkeonscriptingagentinstances), [`Orkeon:Scripting:AgentMemory`](#orkeonscriptingagentmemory), [`Orkeon:Scripting:Limits`](#orkeonscriptinglimits), [`Orkeon:Scripting:Toolchain`](#orkeonscriptingtoolchain) | 35 |
 | [Service host and A2A](#service-host-and-a2a) | [`A2A`](#a2a), [`A2A:Security`](#a2asecurity), [`A2A:Security:AzureAD`](#a2asecurityazuread), [`A2A:Security:Oidc`](#a2asecurityoidc), [`Orkeon:Host`](#orkeonhost), [`Orkeon:Host:Discord`](#orkeonhostdiscord) | 59 |
 | [Observability](#observability) | [`Logging`](#logging), [`Orkeon:Monitoring`](#orkeonmonitoring), [`Telemetry`](#telemetry) | 8 |
 
-89 sections, 588 keys. Read by no shipped binary, only by a host written in C# (6): [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting), [`Orkeon:VectorSearch`](#orkeonvectorsearch), [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Monitoring`](#orkeonmonitoring).
+89 sections, 591 keys. Read by no shipped binary, only by a host written in C# (6): [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting), [`Orkeon:VectorSearch`](#orkeonvectorsearch), [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Monitoring`](#orkeonmonitoring).
 <!-- /settings-index -->
 
 How to read a table:
@@ -1712,7 +1712,8 @@ never copied into the process; the process environment alone on Linux and macOS.
 Bound by `AddOrkeonChatTools(configuration)` and validated lazily, as the drive section is: an account
 is validated the first time a tool or an `orkeon chat` command uses it, every problem reported at
 once, and a value that cannot be read sets that one account aside instead of failing the host. No key
-holds a secret: the application is a public client, and a webhook's address is named by its variable. Walkthroughs and the tools:
+holds a secret: the application is a public client, and a webhook's address or an application's credential is named by
+its variable. Walkthroughs and the tools:
 [Chat tools](../guides/chat.md).
 
 - **`DefaultAccount`** — the account a call that names none uses (optional with a single account).
@@ -1723,7 +1724,8 @@ holds a secret: the application is a public client, and a webhook's address is n
 - **`Screening:WithholdRejected`** — withhold the text of a message the prompt-injection screen
   rejects (default `false`: flag only).
 - **`Accounts:<name>`** — one account. `Provider` (`Teams`), `Rights` and `Auth:ClientId` are
-  **mandatory**; a `TeamsWebhook` takes `Rights` `Send`, `Webhook:UrlEnvVar` and `Send:MaxPerHour`
+  **mandatory**; a `Teams` account of `Auth:Method` `ClientCredentials` is an application that only reads, with a named
+  tenant and one credential; a `TeamsWebhook` takes `Rights` `Send`, `Webhook:UrlEnvVar` and `Send:MaxPerHour`
   alone; the rights the tools use are `Read` and `Send`. An empty `Read:AllowedPlaces` reads
   nowhere, an empty `Send:AllowedPlaces` posts nowhere, and `Auth:AdminGranted` opens the
   reading of channels (`ChannelMessages`) and their members (`ChannelMembers`).
@@ -1734,9 +1736,12 @@ holds a secret: the application is a public client, and a webhook's address is n
 | Key | Type | Default | Values | Meaning |
 |---|---|---|---|---|
 | `Accounts:<name>:Auth:AdminGranted` | list of string | `[]` |  | What the tenant administrator has consented to for the application: `ChannelMessages`, `ChannelEdit`, `Meetings`, `ChannelMembers`. Each adds its scope to the next sign-in. |
+| `Accounts:<name>:Auth:CertificatePathEnvVar` | string | — |  | Name of the environment variable holding the path of a PEM file with the certificate and its key, for `ClientCredentials`. |
 | `Accounts:<name>:Auth:ClientId` | string | — |  | The id of your Microsoft Entra application. |
-| `Accounts:<name>:Auth:Method` | enum | — | `OAuth2`, `ClientCredentials` | `OAuth2` (default): a user signs in. |
-| `Accounts:<name>:Auth:Tenant` | string | — |  | The tenant id or domain; `organizations` when unset. |
+| `Accounts:<name>:Auth:ClientSecretEnvVar` | string | — |  | Name of the environment variable holding the client secret, for `ClientCredentials`. |
+| `Accounts:<name>:Auth:FederatedTokenFileEnvVar` | string | — |  | Name of the environment variable holding the path of a federated token file, for `ClientCredentials`. |
+| `Accounts:<name>:Auth:Method` | enum | — | `OAuth2`, `ClientCredentials` | `OAuth2` (default): a user signs in. `ClientCredentials`: an application signs in as itself, to read alone. |
+| `Accounts:<name>:Auth:Tenant` | string | — |  | The tenant id or domain; `organizations` when unset. Mandatory for `ClientCredentials`. |
 | `Accounts:<name>:Cloud` | enum | — | `Global`, `UsGov`, `UsGovDoD`, `China` | The Microsoft cloud: `Global` (default), `UsGov` or `UsGovDoD`. Not read for a `TeamsWebhook`. |
 | `Accounts:<name>:Provider` | enum | — | `Teams`, `TeamsWebhook` | `Teams`, or `TeamsWebhook` to post into one place with no sign-in. Mandatory. |
 | `Accounts:<name>:Read:AllowedPlaces` | list of string | `[]` |  | The places an agent may read. Empty means none. |

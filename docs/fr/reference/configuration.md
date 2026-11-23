@@ -231,13 +231,13 @@ qu'elle accepte quand leur liste est fermée, et son sens.
 | [RAG](#rag) | [`Orkeon:Rag`](#orkeonrag), [`Orkeon:Rag:Ingestion`](#orkeonragingestion), [`Orkeon:Rag:QueryRouting`](#orkeonragqueryrouting), [`Orkeon:Rag:Retrieval:Hybrid`](#orkeonragretrievalhybrid), [`Orkeon:Rag:WebFallback`](#orkeonragwebfallback) | 34 |
 | [Fichiers et bac à sable](#fichiers-et-bac-à-sable) | [`Orkeon:CodeSandbox`](#orkeoncodesandbox), [`Orkeon:CodeSandbox:Docker`](#orkeoncodesandboxdocker), [`Orkeon:FileSystem`](#orkeonfilesystem), [`Orkeon:Sandbox`](#orkeonsandbox), [`PathSecurity`](#pathsecurity) | 33 |
 | [Sécurité](#sécurité) | [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:Guardian`](#orkeonguardian), [`Orkeon:Security:PermissionGate`](#orkeonsecuritypermissiongate), [`Secrets`](#secrets), [`Security:Audit`](#securityaudit), [`Security:Prompt`](#securityprompt), [`Security:ToolResults`](#securitytoolresults), [`Security:Url`](#securityurl), [`Security:Vault`](#securityvault) | 40 |
-| [Outils](#outils) | [`BRAVE_API_KEY`](#brave_api_key), [`MCP`](#mcp), [`MCP:Server`](#mcpserver), [`Orkeon:Bridge`](#orkeonbridge), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Tools:Bridge`](#orkeontoolsbridge), [`Orkeon:Tools:Chat`](#orkeontoolschat), [`Orkeon:Tools:Drive`](#orkeontoolsdrive), [`Orkeon:Tools:Email`](#orkeontoolsemail), [`Orkeon:Tools:Firefox`](#orkeontoolsfirefox), [`Orkeon:Tools:GitHub`](#orkeontoolsgithub), [`Orkeon:Tools:ResultLimits`](#orkeontoolsresultlimits), [`Orkeon:Tools:Shell`](#orkeontoolsshell), [`Plugins`](#plugins), [`RaggableTree`](#raggabletree) | 145 |
+| [Outils](#outils) | [`BRAVE_API_KEY`](#brave_api_key), [`MCP`](#mcp), [`MCP:Server`](#mcpserver), [`Orkeon:Bridge`](#orkeonbridge), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Tools:Bridge`](#orkeontoolsbridge), [`Orkeon:Tools:Chat`](#orkeontoolschat), [`Orkeon:Tools:Drive`](#orkeontoolsdrive), [`Orkeon:Tools:Email`](#orkeontoolsemail), [`Orkeon:Tools:Firefox`](#orkeontoolsfirefox), [`Orkeon:Tools:GitHub`](#orkeontoolsgithub), [`Orkeon:Tools:ResultLimits`](#orkeontoolsresultlimits), [`Orkeon:Tools:Shell`](#orkeontoolsshell), [`Plugins`](#plugins), [`RaggableTree`](#raggabletree) | 148 |
 | [Orchestration et persistance](#orchestration-et-persistance) | [`Orkeon:Checkpointing`](#orkeoncheckpointing), [`Orkeon:Compaction`](#orkeoncompaction), [`Orkeon:Compaction:Prune`](#orkeoncompactionprune), [`Orkeon:Consensus`](#orkeonconsensus), [`Orkeon:CrewFactory`](#orkeoncrewfactory), [`Orkeon:ExecutionState:Persistence`](#orkeonexecutionstatepersistence), [`Orkeon:HumanInput`](#orkeonhumaninput), [`Orkeon:RunHistory`](#orkeonrunhistory), [`Orkeon:Skills`](#orkeonskills) | 39 |
 | [Scripts et console](#scripts-et-console) | [`Orkeon:Cli:ConsoleStreaming`](#orkeoncliconsolestreaming), [`Orkeon:Cli:Memory`](#orkeonclimemory), [`Orkeon:Cli:ScriptCommands`](#orkeoncliscriptcommands), [`Orkeon:Cli:ScriptHost`](#orkeoncliscripthost), [`Orkeon:Cli:Session`](#orkeonclisession), [`Orkeon:Cli:Tui`](#orkeonclitui), [`Orkeon:Scripting:AgentInstances`](#orkeonscriptingagentinstances), [`Orkeon:Scripting:AgentMemory`](#orkeonscriptingagentmemory), [`Orkeon:Scripting:Limits`](#orkeonscriptinglimits), [`Orkeon:Scripting:Toolchain`](#orkeonscriptingtoolchain) | 35 |
 | [Hôte de service et A2A](#hôte-de-service-et-a2a) | [`A2A`](#a2a), [`A2A:Security`](#a2asecurity), [`A2A:Security:AzureAD`](#a2asecurityazuread), [`A2A:Security:Oidc`](#a2asecurityoidc), [`Orkeon:Host`](#orkeonhost), [`Orkeon:Host:Discord`](#orkeonhostdiscord) | 59 |
 | [Observabilité](#observabilité) | [`Logging`](#logging), [`Orkeon:Monitoring`](#orkeonmonitoring), [`Telemetry`](#telemetry) | 8 |
 
-89 sections, 588 clés. Lues par aucun binaire livré, seulement par un hôte écrit en C# (6) : [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting), [`Orkeon:VectorSearch`](#orkeonvectorsearch), [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Monitoring`](#orkeonmonitoring).
+89 sections, 591 clés. Lues par aucun binaire livré, seulement par un hôte écrit en C# (6) : [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting), [`Orkeon:VectorSearch`](#orkeonvectorsearch), [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Monitoring`](#orkeonmonitoring).
 <!-- /settings-index -->
 
 Lire un tableau :
@@ -1787,7 +1787,8 @@ outils : [Outils chat](../guides/chat.md).
 - **`Screening:WithholdRejected`** — retenir le texte d'un message que le filtre anti-injection de
   prompt rejette (défaut `false` : signaler seulement).
 - **`Accounts:<nom>`** — un compte. `Provider` (`Teams`), `Rights` et `Auth:ClientId` sont
-  **obligatoires** ; un `TeamsWebhook` ne prend que `Rights` `Send`, `Webhook:UrlEnvVar` et
+  **obligatoires** ; un compte `Teams` dont `Auth:Method` vaut `ClientCredentials` est une application qui
+  ne fait que lire, avec un tenant nommé et un identifiant ; un `TeamsWebhook` ne prend que `Rights` `Send`, `Webhook:UrlEnvVar` et
   `Send:MaxPerHour` ; les droits dont les outils se servent sont `Read` et `Send`. Une liste
   `Read:AllowedPlaces` vide ne lit nulle part, une liste `Send:AllowedPlaces` vide ne publie nulle
   part, et `Auth:AdminGranted` ouvre la lecture des canaux (`ChannelMessages`) et de leurs membres
@@ -1799,9 +1800,12 @@ outils : [Outils chat](../guides/chat.md).
 | Clé | Type | Défaut | Valeurs | Sens |
 |---|---|---|---|---|
 | `Accounts:<nom>:Auth:AdminGranted` | liste de chaînes | `[]` |  | Ce à quoi l'administrateur du tenant a consenti pour l'application : `ChannelMessages`, `ChannelEdit`, `Meetings`, `ChannelMembers`. Chaque valeur ajoute sa portée à la connexion suivante. |
+| `Accounts:<nom>:Auth:CertificatePathEnvVar` | chaîne | — |  | Nom de la variable d'environnement qui contient le chemin d'un fichier PEM avec le certificat et sa clé, pour `ClientCredentials`. |
 | `Accounts:<nom>:Auth:ClientId` | chaîne | — |  | L'identifiant de votre application Microsoft Entra. |
-| `Accounts:<nom>:Auth:Method` | énumération | — | `OAuth2`, `ClientCredentials` | `OAuth2` (défaut) : un utilisateur se connecte. |
-| `Accounts:<nom>:Auth:Tenant` | chaîne | — |  | L'identifiant ou le domaine du tenant ; `organizations` s'il n'est pas renseigné. |
+| `Accounts:<nom>:Auth:ClientSecretEnvVar` | chaîne | — |  | Nom de la variable d'environnement qui contient le secret client, pour `ClientCredentials`. |
+| `Accounts:<nom>:Auth:FederatedTokenFileEnvVar` | chaîne | — |  | Nom de la variable d'environnement qui contient le chemin d'un fichier de jeton fédéré, pour `ClientCredentials`. |
+| `Accounts:<nom>:Auth:Method` | énumération | — | `OAuth2`, `ClientCredentials` | `OAuth2` (défaut) : un utilisateur se connecte. `ClientCredentials` : une application se connecte en son propre nom, pour lire seulement. |
+| `Accounts:<nom>:Auth:Tenant` | chaîne | — |  | L'identifiant ou le domaine du tenant ; `organizations` s'il n'est pas renseigné. Obligatoire pour `ClientCredentials`. |
 | `Accounts:<nom>:Cloud` | énumération | — | `Global`, `UsGov`, `UsGovDoD`, `China` | Le cloud Microsoft : `Global` (défaut), `UsGov` ou `UsGovDoD`. Non lu pour un `TeamsWebhook`. |
 | `Accounts:<nom>:Provider` | énumération | — | `Teams`, `TeamsWebhook` | `Teams`, ou `TeamsWebhook` pour publier dans un seul lieu sans connexion. Obligatoire. |
 | `Accounts:<nom>:Read:AllowedPlaces` | liste de chaînes | `[]` |  | Les lieux qu'un agent peut lire. Vide signifie aucun. |

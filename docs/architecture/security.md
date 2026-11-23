@@ -357,6 +357,10 @@ Teams as the signed-in user, where colleagues and guests write. Its defense foll
   followed; a paging link to another host is refused. Tokens are written by `orkeon chat login` into
   the `chat` subdirectory of the internal root `/credentials`
   ([VFS compliance](./vfs-compliance.md)).
+- **An application account only reads, and its token is never stored.** Its credential is named by an
+  environment variable and read for each token, the file ones outside the VFS
+  ([why](vfs-compliance.md#ratified-permanent-exceptions)). Its permissions cover the tenant: the named
+  places are the limit, `*` is refused.
 - **A webhook's address is the secret.** A `TeamsWebhook` account names the variable that holds it; it
   must be `https`, it is read for each post, and no log, error or event carries it. It posts into the
   one place of the address, once per call, with no redirect followed and no answer read.

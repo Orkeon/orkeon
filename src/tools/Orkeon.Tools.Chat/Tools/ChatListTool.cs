@@ -136,7 +136,8 @@ internal sealed class ChatListTool : ToolBase<ChatListRequest, ChatListResponse>
     private async Task<IReadOnlyList<ChatPlaceDto>> ChatPlacesAsync(
         ChatSession session, IReadOnlyList<ChatConversation> chats, CancellationToken cancellationToken)
     {
-        var self = await session.Provider.GetSelfAsync(cancellationToken).ConfigureAwait(false);
+        // An application is a member of nothing: every name is someone else's.
+        var self = session.Account.IsApplication ? null : await session.Provider.GetSelfAsync(cancellationToken).ConfigureAwait(false);
         var places = new List<ChatPlaceDto>();
         foreach (var chat in chats)
         {
@@ -146,7 +147,7 @@ internal sealed class ChatListTool : ToolBase<ChatListRequest, ChatListResponse>
             if (!canRead && !canSend)
                 continue;
             var names = chat.Members
-                .Where(member => !string.Equals(member.UserId, self.Id, StringComparison.OrdinalIgnoreCase))
+                .Where(member => self is null || !string.Equals(member.UserId, self.Id, StringComparison.OrdinalIgnoreCase))
                 .Select(member => member.Name)
                 .Take(MaxNames)
                 .ToList();

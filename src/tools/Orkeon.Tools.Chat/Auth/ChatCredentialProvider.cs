@@ -45,6 +45,12 @@ internal sealed class ChatCredentialProvider
                 return null;
             }
 
+            if (account.Application is { } application)
+            {
+                _ = await CredentialAsync(account, application, cancellationToken).ConfigureAwait(false);
+                return null;
+            }
+
             var tokens = await _store.ReadAsync(TokenKey(account), cancellationToken).ConfigureAwait(false);
             return tokens is not null && (_oauth.IsFresh(tokens.ExpiresAt) || tokens.RefreshToken is not null)
                 ? null
@@ -73,6 +79,9 @@ internal sealed class ChatCredentialProvider
         await gate.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
+            if (account.Application is { } application)
+                return await ApplicationTokenAsync(account, application, key, refused, cancellationToken).ConfigureAwait(false);
+
             var tokens = await _store.ReadAsync(key, cancellationToken).ConfigureAwait(false);
             if (tokens is not null && _oauth.IsFresh(tokens.ExpiresAt) && tokens.AccessToken != refused)
             {
@@ -120,6 +129,69 @@ internal sealed class ChatCredentialProvider
             gate.Release();
         }
     }
+
+    /// <summary>An application's token: asked for when none is fresh, and kept in memory alone.</summary>
+    private async Task<string> ApplicationTokenAsync(
+        ResolvedChatAccount account, ChatApplication application, string key, string? refused, CancellationToken cancellationToken)
+    {
+        // Another call may have asked for one while this one waited.
+        if (_fresh.TryGetValue(key, out var cached) && _oauth.IsFresh(cached.ExpiresAt) && cached.AccessToken != refused)
+            return cached.AccessToken;
+
+        var (secret, assertion) = await CredentialAsync(account, application, cancellationToken).ConfigureAwait(false);
+        try
+        {
+            var tokens = ToChat(assertion is null
+                ? await _oauth.RequestClientCredentialsAsync(account.OAuth, secret!, cancellationToken).ConfigureAwait(false)
+                : await _oauth.RequestClientCredentialsAsync(account.OAuth, assertion, cancellationToken).ConfigureAwait(false));
+            _fresh[key] = tokens;
+            return tokens.AccessToken;
+        }
+        catch (OAuthException ex)
+        {
+            var known = Translate(ex);
+            throw known.Code == ChatErrorCode.SignInRequired
+                ? new ChatToolException(ChatErrorCode.InvalidConfiguration, $"The application of chat account '{account.Name}' was not signed in with {Origin(application)}: {ex.Message}", ex)
+                : known;
+        }
+    }
+
+    /// <summary>The credential of an application account, read again for each token. No refusal quotes it.</summary>
+    private async Task<(string? Secret, OAuthClientAssertion? Assertion)> CredentialAsync(
+        ResolvedChatAccount account, ChatApplication application, CancellationToken cancellationToken)
+    {
+        var value = _environment.Read(application.EnvVar);
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            throw new ChatToolException(
+                ChatErrorCode.InvalidConfiguration,
+                $"The credential of chat account '{account.Name}' is read by the environment variable {application.EnvVar}, which {_environment.Unset}.");
+        }
+
+        if (application.Kind == ChatApplicationCredential.Secret)
+            return (value.Trim(), null);
+
+        var text = await ChatCredentialFile.ReadAsync(value.Trim(), application.EnvVar, cancellationToken).ConfigureAwait(false);
+        try
+        {
+            return (null, application.Kind == ChatApplicationCredential.Certificate
+                ? OAuthClientAssertion.FromCertificatePem(text)
+                : OAuthClientAssertion.FromFederatedToken(text));
+        }
+        catch (OAuthException ex)
+        {
+            throw new ChatToolException(ChatErrorCode.InvalidConfiguration, $"{Capital(Origin(application))} is not usable: {ex.Message}", ex);
+        }
+    }
+
+    private static string Origin(ChatApplication application) => application.Kind switch
+    {
+        ChatApplicationCredential.Certificate => $"the certificate file named by {application.EnvVar}",
+        ChatApplicationCredential.FederatedToken => $"the federated token file named by {application.EnvVar}",
+        _ => $"the client secret of {application.EnvVar}",
+    };
+
+    private static string Capital(string text) => char.ToUpperInvariant(text[0]) + text[1..];
 
     /// <summary>Stores tokens obtained by an interactive sign-in, in place of every other of the account.</summary>
     public async Task StoreAsync(ResolvedChatAccount account, ChatTokenSet tokens, CancellationToken cancellationToken)
@@ -245,6 +317,7 @@ internal sealed class ChatCredentialProvider
         || exception.Message.Contains("AADSTS90094", StringComparison.Ordinal);
 
     /// <summary>The sentence that says how to sign an account in.</summary>
-    public static string LoginHint(ResolvedChatAccount account) =>
-        $"Chat account '{account.Name}' needs a sign-in: run `orkeon chat login {account.Name}` in a terminal.";
+    public static string LoginHint(ResolvedChatAccount account) => account.Application is { } application
+        ? $"Chat account '{account.Name}' is an application: an operator checks {Origin(application)}."
+        : $"Chat account '{account.Name}' needs a sign-in: run `orkeon chat login {account.Name}` in a terminal.";
 }

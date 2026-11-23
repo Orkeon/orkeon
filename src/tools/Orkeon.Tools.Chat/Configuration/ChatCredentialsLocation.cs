@@ -17,7 +17,7 @@ public static class ChatCredentialsLocation
     public static bool NeedsTokenStore(IConfiguration chatSection)
     {
         ArgumentNullException.ThrowIfNull(chatSection);
-        return Bind(chatSection).Accounts.Values.Any(account => account.Provider != ChatProvider.TeamsWebhook);
+        return Bind(chatSection).Accounts.Values.Any(account => account.Provider != ChatProvider.TeamsWebhook && account.Auth.Method != ChatAuthMethod.ClientCredentials);
     }
 
     /// <summary>The operator's <c>CredentialsDirectory</c>, or null to use the host's default.</summary>

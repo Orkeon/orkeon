@@ -51,7 +51,7 @@ public sealed class ChatOptionsBinderTests
     [InlineData("Auth:Method", "Basic", "Auth:Method is not one of OAuth2, ClientCredentials")]
     [InlineData("Send:MaxPerHour", "many", "Send:MaxPerHour is not a whole number")]
     [InlineData("Send:AllowedPlace", "*", "Send:AllowedPlace is not an account setting: Send carries AllowedPlaces, MaxPerHour")]
-    [InlineData("Auth:ClientSecret", "x", "Auth:ClientSecret is not an account setting: Auth carries Method, ClientId, Tenant, AdminGranted")]
+    [InlineData("Auth:ClientSecret", "x", "Auth:ClientSecret is not an account setting: Auth carries Method, ClientId, Tenant, AdminGranted, CertificatePathEnvVar, FederatedTokenFileEnvVar, ClientSecretEnvVar")]
     [InlineData("Send:MaxPerHour", "", "Send:MaxPerHour is not a whole number")]
     [InlineData("Send:AllowedPlaces", "chat:1", "Send:AllowedPlaces is a single value where a list is expected")]
     [InlineData("Read:AllowedPlaces", "*", "Read:AllowedPlaces is a single value where a list is expected")]

@@ -42,7 +42,7 @@ internal enum ChatAuthMethod
     /// <summary>A user signs in.</summary>
     OAuth2,
 
-    /// <summary>An application signs in as itself. Refused: no provider serves it.</summary>
+    /// <summary>An application signs in as itself, to read alone.</summary>
     ClientCredentials,
 }
 

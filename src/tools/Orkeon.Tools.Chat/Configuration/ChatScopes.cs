@@ -54,6 +54,9 @@ internal static class ChatScopes
             .Distinct(StringComparer.Ordinal)
             .ToList();
 
+    /// <summary>The application permission that stands for a delegated one.</summary>
+    public static string OfApplication(string permission) => permission == ChatRead ? "Chat.Read.All" : permission;
+
     /// <summary>Whether a tenant administrator has to consent to <paramref name="permission"/>.</summary>
     public static bool NeedsAdministrator(string permission) =>
         Table.Any(row => row.Permission == permission && row.Needs != ChatAdminGrants.None);

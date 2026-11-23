@@ -63,8 +63,8 @@ public sealed class ChatRightsCheck
         // A webhook posts into one place, and has nothing to list or to look up.
         if (account.Provider == nameof(ChatProvider.TeamsWebhook))
             return tool == SendTool;
-        // A person is looked up in the directory, where no place counts.
-        if (tool == "chat_members" && (granted & (ChatRights.Read | ChatRights.Send)) != 0)
+        // A person is looked up in the directory, where no place counts; an application looks nobody up.
+        if (!account.Application && tool == "chat_members" && (granted & (ChatRights.Read | ChatRights.Send)) != 0)
             return true;
         // The places to post in are listed too.
         if (tool == "chat_list" && granted.HasFlag(ChatRights.Send) && account.SendPlaces > 0)

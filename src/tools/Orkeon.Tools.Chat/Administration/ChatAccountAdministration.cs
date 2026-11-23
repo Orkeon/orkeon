@@ -27,6 +27,10 @@ public sealed record ChatAccountStatus
     [JsonPropertyName("rights")]
     public string? Rights { get; init; }
 
+    /// <summary>Whether an application signs in as itself, and not a user.</summary>
+    [JsonPropertyName("application")]
+    public bool Application { get; init; }
+
     /// <summary>The Microsoft cloud it lives in; null for a webhook.</summary>
     [JsonPropertyName("cloud")]
     public string? Cloud { get; init; }
@@ -169,6 +173,7 @@ public sealed class ChatAccountAdministration
                 Cloud = account.IsWebhook ? null : account.Cloud.ToString(),
                 ReadPlaces = account.ReadPlaces.Count,
                 // A webhook posts into the one place of its address.
+                Application = account.IsApplication,
                 SendPlaces = account.IsWebhook ? 1 : account.SendPlaces.Count,
                 IsDefault = isDefault,
                 Ready = problem is null,
@@ -194,6 +199,13 @@ public sealed class ChatAccountAdministration
             throw new ChatToolException(
                 ChatErrorCode.NotSupportedByAccount,
                 $"Chat account '{resolved.Name}' is a webhook: there is nothing to sign in. Its address comes from the environment variable {resolved.WebhookUrlEnvVar}.");
+        }
+
+        if (resolved.Application is { } application)
+        {
+            throw new ChatToolException(
+                ChatErrorCode.NotSupportedByAccount,
+                $"Chat account '{resolved.Name}' is an application: it signs in by itself, with the credential read by the environment variable {application.EnvVar}. Run `orkeon chat check {resolved.Name}`.");
         }
 
         ChatTokenSet tokens;
@@ -244,6 +256,19 @@ public sealed class ChatAccountAdministration
             };
         }
 
+        // An application's token is in the memory of the process that asked for it, and lapses within the hour.
+        if (resolved?.IsApplication == true)
+        {
+            var dropped = await _credentials.ForgetAsync(name, resolved, CancellationToken.None).ConfigureAwait(false);
+            _sessions.Forget(resolved);
+            return new ChatLogoutResult
+            {
+                Deleted = dropped,
+                Revoked = false,
+                Notice = "The account is an application: it signs in by itself and stores no token. An administrator withdraws its credential or its permissions.",
+            };
+        }
+
         var revoked = false;
         string? notice = null;
         var stored = resolved is null ? null : await _credentials.StoredAsync(resolved, cancellationToken).ConfigureAwait(false);
@@ -278,6 +303,8 @@ public sealed class ChatAccountAdministration
         var resolved = _accounts.Resolve(account);
         if (resolved.IsWebhook)
             return await CheckWebhookAsync(resolved, cancellationToken).ConfigureAwait(false);
+        if (resolved.IsApplication)
+            return await CheckApplicationAsync(resolved, cancellationToken).ConfigureAwait(false);
         var session = _sessions.Get(resolved);
         var user = await UserAsync(session, cancellationToken).ConfigureAwait(false);
         var tokens = await _credentials.StoredAsync(resolved, cancellationToken).ConfigureAwait(false);
@@ -320,6 +347,36 @@ public sealed class ChatAccountAdministration
         return new ChatCheckResult { Account = account.Name, Contacted = false, Rights = [send] };
     }
 
+    /// <summary>
+    /// Signs the application in and looks its places up. Its token does not say its permissions in a
+    /// form to rely on: what no request of the check needs is told as such.
+    /// </summary>
+    private async Task<ChatCheckResult> CheckApplicationAsync(ResolvedChatAccount account, CancellationToken cancellationToken)
+    {
+        _ = await _credentials.GetAccessTokenAsync(account, cancellationToken).ConfigureAwait(false);
+        var session = _sessions.Get(account);
+        var rights = new List<ChatRightStatus>();
+        if (account.Grants(ChatRights.Read))
+        {
+            var blocking = new List<string>();
+            await CheckPlacesAsync(session, ChatRights.Read, blocking, cancellationToken).ConfigureAwait(false);
+            rights.Add(new ChatRightStatus
+            {
+                Right = nameof(ChatRights.Read),
+                Ready = blocking.Count == 0,
+                Missing =
+                [
+                    .. blocking,
+                    $"no message was read: a channel's need the application permission {ChatScopes.ChannelMessageRead}, its members {ChatScopes.ChannelMemberRead}, a chat's messages {ChatScopes.OfApplication(ChatScopes.ChatRead)}",
+                ],
+            });
+        }
+
+        if (account.Grants(ChatRights.Meetings))
+            rights.Add(new ChatRightStatus { Right = nameof(ChatRights.Meetings), Ready = true, Missing = ["no tool uses this right"] });
+        return new ChatCheckResult { Account = account.Name, Rights = rights };
+    }
+
     /// <summary>The signed-in user, read only when a right of the account asks for the permission to.</summary>
     private async Task<string?> UserAsync(ChatSession session, CancellationToken cancellationToken)
     {
@@ -358,6 +415,8 @@ public sealed class ChatAccountAdministration
             blocking.AddRange(rules.Problems.Select(problem => $"{use}:AllowedPlaces entry {problem}"));
             if (use == PlaceUse.Read)
                 _ = await session.Provider.ListChatsAsync(1, null, cancellationToken).ConfigureAwait(false);
+            if (session.Account.IsApplication)
+                _ = await session.Provider.ListTeamsAsync(cancellationToken).ConfigureAwait(false);
         }
         catch (ChatToolException ex) when (ex.Code is ChatErrorCode.ConsentMissing or ChatErrorCode.InvalidRequest)
         {

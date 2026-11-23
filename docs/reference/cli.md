@@ -410,6 +410,8 @@ these — a tool that finds no usable token answers with the `orkeon chat login 
   the browser ended on; closing standard input aborts the sign-in with exit code `130`.
 - **`logout`** deletes the tokens. Microsoft has no revocation endpoint for them: the command says
   where a tenant administrator removes the application's access.
+- An **application** account signs in by itself (`login` refuses it), and `check` obtains a token and looks
+  its places up.
 - A **webhook** account has nothing to sign in (`login` refuses it), and `check` sends nothing: it says
   whether the variable of its address holds one.
 - **`check`** connects with the stored tokens and reports each right of the account (the default or

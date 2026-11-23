@@ -351,7 +351,7 @@ and serves its tools to an MCP client, `human_input` aside — see
 | FileSystem (8), Data (22), Web core (6), `shell_command`, `list_mounts`, session (6) | ✅ | ✅ |
 | E-mail (13) — the mailbox tools refuse every call until an account is declared under `Orkeon:Tools:Email` | ✅ (OAuth tokens under the internal `/credentials` root) | ✅ password accounts only — the REPL keeps no token store, so an OAuth account is refused |
 | Drive (11) — every tool but `drive_accounts` refuses each call until an account is declared under `Orkeon:Tools:Drive` and signed in | ✅ (OAuth tokens under the internal `/credentials` root) | registered, but every account is refused: all sign in with OAuth, and the REPL keeps no token store |
-| Chat (5) — every tool but `chat_accounts` refuses each call until an account is declared under `Orkeon:Tools:Chat` and signed in (a webhook does not sign in) | ✅ (OAuth tokens under the internal `/credentials` root) | registered, but an account that signs in is refused: the REPL keeps no token store; a webhook account works |
+| Chat (5) — every tool but `chat_accounts` refuses each call until an account is declared under `Orkeon:Tools:Chat` and signed in (a webhook or an application does not sign in) | ✅ (OAuth tokens under the internal `/credentials` root) | registered, but an account that signs in is refused: the REPL keeps no token store; a webhook or an application account works |
 | EventHub (7) | ✅ | ❌ |
 | Analysis (29) | ✅ (unless `RaggableTree:Enabled` = `false`) | ✅ |
 | `local_embed_text` | ✅ while RaggableTree is enabled with its default local embedding provider | ✅ |

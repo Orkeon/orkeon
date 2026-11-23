@@ -3042,10 +3042,28 @@
       "description": "What the tenant administrator has consented to for the application: `ChannelMessages`, `ChannelEdit`, `Meetings`, `ChannelMembers`. Each adds its scope to the next sign-in."
     },
     {
+      "path": "Orkeon:Tools:Chat:Accounts:<name>:Auth:CertificatePathEnvVar",
+      "section": "Orkeon:Tools:Chat",
+      "type": "string",
+      "description": "Name of the environment variable holding the path of a PEM file with the certificate and its key, for `ClientCredentials`."
+    },
+    {
       "path": "Orkeon:Tools:Chat:Accounts:<name>:Auth:ClientId",
       "section": "Orkeon:Tools:Chat",
       "type": "string",
       "description": "The id of your Microsoft Entra application."
+    },
+    {
+      "path": "Orkeon:Tools:Chat:Accounts:<name>:Auth:ClientSecretEnvVar",
+      "section": "Orkeon:Tools:Chat",
+      "type": "string",
+      "description": "Name of the environment variable holding the client secret, for `ClientCredentials`."
+    },
+    {
+      "path": "Orkeon:Tools:Chat:Accounts:<name>:Auth:FederatedTokenFileEnvVar",
+      "section": "Orkeon:Tools:Chat",
+      "type": "string",
+      "description": "Name of the environment variable holding the path of a federated token file, for `ClientCredentials`."
     },
     {
       "path": "Orkeon:Tools:Chat:Accounts:<name>:Auth:Method",
@@ -3055,13 +3073,13 @@
         "OAuth2",
         "ClientCredentials"
       ],
-      "description": "`OAuth2` (default): a user signs in."
+      "description": "`OAuth2` (default): a user signs in. `ClientCredentials`: an application signs in as itself, to read alone."
     },
     {
       "path": "Orkeon:Tools:Chat:Accounts:<name>:Auth:Tenant",
       "section": "Orkeon:Tools:Chat",
       "type": "string",
-      "description": "The tenant id or domain; `organizations` when unset."
+      "description": "The tenant id or domain; `organizations` when unset. Mandatory for `ClientCredentials`."
     },
     {
       "path": "Orkeon:Tools:Chat:Accounts:<name>:Cloud",

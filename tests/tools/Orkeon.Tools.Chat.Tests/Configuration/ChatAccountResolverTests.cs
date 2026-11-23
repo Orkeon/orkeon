@@ -89,7 +89,9 @@ public sealed class ChatAccountResolverTests
 
     [Theory]
     [InlineData("webhook", "Webhook:UrlEnvVar goes with Provider TeamsWebhook alone")]
-    [InlineData("application", "Auth:Method ClientCredentials is not supported: write OAuth2, or leave it out")]
+    [InlineData("certificate", "Auth:CertificatePathEnvVar goes with Auth:Method ClientCredentials alone")]
+    [InlineData("federated", "Auth:FederatedTokenFileEnvVar goes with Auth:Method ClientCredentials alone")]
+    [InlineData("secret", "Auth:ClientSecretEnvVar goes with Auth:Method ClientCredentials alone")]
     [InlineData("grant", "Auth:AdminGranted holds an entry that is not one of ChannelMessages, ChannelEdit, Meetings, ChannelMembers")]
     [InlineData("grant-none", "Auth:AdminGranted holds an entry that is not one of ChannelMessages, ChannelEdit, Meetings, ChannelMembers")]
     [InlineData("china", "Cloud China is not supported: Microsoft's pages give two different sign-in hosts for it")]
@@ -107,7 +109,9 @@ public sealed class ChatAccountResolverTests
         switch (wrong)
         {
             case "webhook": options.Webhook.UrlEnvVar = "HOOK"; break;
-            case "application": options.Auth.Method = ChatAuthMethod.ClientCredentials; break;
+            case "certificate": options.Auth.CertificatePathEnvVar = "V"; break;
+            case "federated": options.Auth.FederatedTokenFileEnvVar = "V"; break;
+            case "secret": options.Auth.ClientSecretEnvVar = "V"; break;
             case "grant": options.Auth.AdminGranted.Add("Everything"); break;
             case "grant-none": options.Auth.AdminGranted.Add("None"); break;
             case "china": options.Cloud = ChatCloud.China; break;

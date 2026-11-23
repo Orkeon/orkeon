@@ -4,16 +4,23 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using Orkeon.Tools.Chat.Configuration;
 using Orkeon.Tools.Chat.Constants;
+using Orkeon.Tools.Chat.Places;
 
 namespace Orkeon.Tools.Chat.Providers.Teams;
 
-/// <summary>Microsoft Teams through Microsoft Graph v1.0, as the signed-in user.</summary>
+/// <summary>
+/// Microsoft Teams through Microsoft Graph v1.0, as the signed-in user — or as an application, which
+/// is nobody: it lists the places it was allowed, and looks nobody up.
+/// </summary>
 internal sealed class TeamsProvider : IChatProvider
 {
     private const string PersonFields = "$select=id,displayName,userPrincipalName,mail,userType,creationType";
 
+    private const string NoDirectory = "looks nobody up: the ids of a place's members come from chat_members with `place`";
+
     private readonly GraphClient _graph;
     private readonly ConcurrentDictionary<string, ChatPerson> _people = new(StringComparer.OrdinalIgnoreCase);
+    private readonly ConcurrentDictionary<string, IReadOnlyList<ChatTeam>> _allowedTeams = new(StringComparer.OrdinalIgnoreCase);
     private ChatPerson? _self;
 
     /// <summary>Creates the provider over <paramref name="graph"/>.</summary>
@@ -28,6 +35,7 @@ internal sealed class TeamsProvider : IChatProvider
     {
         if (_self is { } known)
             return known;
+        RefuseApplication("has no user of its own");
         var json = await _graph.GetAsync($"me?{PersonFields}", ChatScopes.UserRead, cancellationToken).ConfigureAwait(false);
         var self = ReadPerson(json) ?? throw Unexpected("the signed-in user");
         _self = self;
@@ -35,8 +43,9 @@ internal sealed class TeamsProvider : IChatProvider
     }
 
     /// <inheritdoc />
-    public Task<IReadOnlyList<ChatTeam>> ListTeamsAsync(CancellationToken cancellationToken) =>
-        ListAsync("me/joinedTeams", string.Empty, ChatScopes.TeamRead, team => Named(team, (id, name) => new ChatTeam(id, name)), cancellationToken);
+    public Task<IReadOnlyList<ChatTeam>> ListTeamsAsync(CancellationToken cancellationToken) => _graph.Account.IsApplication
+        ? AllowedTeamsAsync(cancellationToken)
+        : ListAsync("me/joinedTeams", string.Empty, ChatScopes.TeamRead, team => Named(team, (id, name) => new ChatTeam(id, name)), cancellationToken);
 
     /// <inheritdoc />
     public Task<IReadOnlyList<ChatChannel>> ListChannelsAsync(string teamId, CancellationToken cancellationToken) =>
@@ -50,6 +59,8 @@ internal sealed class TeamsProvider : IChatProvider
     /// <inheritdoc />
     public async Task<ChatPage<ChatConversation>> ListChatsAsync(int top, string? page, CancellationToken cancellationToken)
     {
+        if (_graph.Account.IsApplication)
+            return new ChatPage<ChatConversation>(await AllowedChatsAsync(cancellationToken).ConfigureAwait(false), null);
         var query = string.Create(CultureInfo.InvariantCulture, $"$expand=members&$top={top}");
         var json = await _graph.GetAsync(Address("me/chats", query, page), ChatScopes.ChatRead, cancellationToken).ConfigureAwait(false);
         var chats = GraphJson.Items(json).Select(ReadChat).Where(chat => chat.Id.Length > 0).ToList();
@@ -76,6 +87,7 @@ internal sealed class TeamsProvider : IChatProvider
     public async Task<ChatPerson?> GetPersonAsync(string userId, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(userId);
+        RefuseApplication(NoDirectory);
         if (_people.TryGetValue(userId, out var known))
             return known;
         try
@@ -96,6 +108,7 @@ internal sealed class TeamsProvider : IChatProvider
     public async Task<IReadOnlyList<ChatPerson>> FindByAddressAsync(string address, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(address);
+        RefuseApplication(NoDirectory);
         // The sign-in name first; then the mail, which is how a guest is found by the home address.
         if (await GetPersonAsync(address, cancellationToken).ConfigureAwait(false) is { } person && person.HasAddress(address))
             return [person];
@@ -110,6 +123,7 @@ internal sealed class TeamsProvider : IChatProvider
     public async Task<IReadOnlyList<ChatPerson>> FindByNameAsync(string name, int top, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(name);
+        RefuseApplication(NoDirectory);
         var words = name.Replace("\\", "\\\\", StringComparison.Ordinal).Replace("\"", "\\\"", StringComparison.Ordinal);
         var search = Uri.EscapeDataString($"\"displayName:{words}\"");
         var path = string.Create(CultureInfo.InvariantCulture, $"users?$search={search}&{PersonFields}&$top={top}");
@@ -120,6 +134,7 @@ internal sealed class TeamsProvider : IChatProvider
     /// <inheritdoc />
     public async Task<string?> FindDirectChatAsync(string userId, CancellationToken cancellationToken)
     {
+        RefuseApplication("has no one-to-one chat");
         string? page = null;
         for (var read = 0; read < ChatDefaults.MaxChatPages; read++)
         {
@@ -200,6 +215,76 @@ internal sealed class TeamsProvider : IChatProvider
         var permission = target.IsChannel ? ChatScopes.ChannelMessageSend : ChatScopes.ChatMessageSend;
         var json = await _graph.PostAsync(path, body, permission, cancellationToken).ConfigureAwait(false);
         return new ChatSent(GraphJson.Text(json, "id"), GraphJson.Date(json, "createdDateTime"));
+    }
+
+    /// <summary>
+    /// The teams the allowed places name, by id or by name: an application reaches every team of the
+    /// tenant, and lists no other. A team once found is kept, so a rename changes nothing until the next start.
+    /// </summary>
+    private async Task<IReadOnlyList<ChatTeam>> AllowedTeamsAsync(CancellationToken cancellationToken)
+    {
+        var teams = new List<ChatTeam>();
+        foreach (var written in _graph.Account.ReadPlaces
+            .Where(place => place.Form is PlaceForm.Team or PlaceForm.Channel)
+            .Select(place => place.Value.Trim())
+            .Distinct(StringComparer.OrdinalIgnoreCase))
+        {
+            if (!_allowedTeams.TryGetValue(written, out var found))
+            {
+                found = await FindTeamsAsync(written, cancellationToken).ConfigureAwait(false);
+                if (found.Count > 0)
+                    _allowedTeams[written] = found;
+            }
+
+            teams.AddRange(found.Where(team => teams.TrueForAll(known => known.Id != team.Id)));
+        }
+
+        return teams;
+    }
+
+    private async Task<IReadOnlyList<ChatTeam>> FindTeamsAsync(string nameOrId, CancellationToken cancellationToken)
+    {
+        if (ChatIds.IsDirectoryId(nameOrId))
+        {
+            try
+            {
+                var json = await _graph.GetAsync($"teams/{GraphClient.Segment(nameOrId)}?$select=id,displayName", ChatScopes.TeamRead, cancellationToken).ConfigureAwait(false);
+                return Named(json, (id, name) => new ChatTeam(id, name)) is { } team ? [team] : [];
+            }
+            catch (ChatToolException ex) when (ex.Code == ChatErrorCode.NotFound)
+            {
+                return [];
+            }
+        }
+
+        var filter = Uri.EscapeDataString($"displayName eq '{nameOrId.Replace("'", "''", StringComparison.Ordinal)}'");
+        return await ListAsync(
+            "teams", $"$filter={filter}&$select=id,displayName", ChatScopes.TeamRead, team => Named(team, (id, name) => new ChatTeam(id, name)), cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>The chats the allowed places name: no request lists the chats of an application.</summary>
+    private async Task<IReadOnlyList<ChatConversation>> AllowedChatsAsync(CancellationToken cancellationToken)
+    {
+        var chats = new List<ChatConversation>();
+        foreach (var id in _graph.Account.ReadPlaces.Where(place => place.Form == PlaceForm.Chat).Select(place => place.Value).Distinct(StringComparer.Ordinal))
+        {
+            try
+            {
+                chats.Add(await GetChatAsync(id, cancellationToken).ConfigureAwait(false));
+            }
+            catch (ChatToolException ex) when (ex.Code == ChatErrorCode.NotFound)
+            {
+                // Gone, or of another tenant: there is nothing to list.
+            }
+        }
+
+        return chats;
+    }
+
+    private void RefuseApplication(string why)
+    {
+        if (_graph.Account.IsApplication)
+            throw new ChatToolException(ChatErrorCode.NotSupportedByAccount, $"Chat account '{_graph.Account.Name}' is an application, which {why}.");
     }
 
     private static string ChannelPath(ChatTarget target) =>

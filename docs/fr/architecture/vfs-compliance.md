@@ -94,6 +94,7 @@ Ces accès ne peuvent pas passer par le VFS par nature et sont **définitivement
 | Watcher bridge | `Analysis/.../FileSystemWatcherCodebaseWatcher.cs` | `EXCEPTION-WATCHER-BRIDGE` | Adapte `System.IO.FileSystemWatcher` vers `ICodebaseWatcher` |
 | Sonde RaggableTree | `Analysis/Core/FileSystemDiscoverer.cs` (sonde diagnostique uniquement) | `OUT-OF-SCOPE` | La *découverte batch elle-même* utilise `EnumerateFilesAsync` ; la sonde compte délibérément les entrées physiques pour distinguer « le VFS n'a rien renvoyé » de « le disque est vide » |
 | Persistance SQLite | `SqliteMemoryProvider`, `SqliteStateStore` | gouverné | Le moteur exige un chemin réel ; le `Data Source` est résolu via `ResolveAndValidate` avant d'atteindre le driver |
+| Fichier d'identifiant de l'opérateur | `Tools.Chat/Auth/ChatCredentialFile.cs` | `OUT-OF-SCOPE` | Le certificat ou le fichier de jeton fédéré d'un compte chat d'application, nommé par une variable d'environnement et renouvelé par l'hôte. Il n'est sous aucun montage, et ne doit pas l'être : un montage laisserait les outils de fichiers des agents lire la clé |
 
 ## Ajouter un nouvel outil ou service
 

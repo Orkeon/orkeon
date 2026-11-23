@@ -3,6 +3,22 @@ using Orkeon.Tools.Chat.Places;
 
 namespace Orkeon.Tools.Chat.Configuration;
 
+/// <summary>What an application proves its identity with.</summary>
+internal enum ChatApplicationCredential
+{
+    /// <summary>A PEM file with the certificate and its private key.</summary>
+    Certificate,
+
+    /// <summary>A file holding a token another identity provider issued.</summary>
+    FederatedToken,
+
+    /// <summary>A client secret.</summary>
+    Secret,
+}
+
+/// <summary>The credential of an application account: its kind and the variable to read it by.</summary>
+internal sealed record ChatApplication(ChatApplicationCredential Kind, string EnvVar);
+
 /// <summary>An account after presets and validation: everything a provider needs, nothing left to guess.</summary>
 internal sealed record ResolvedChatAccount
 {
@@ -40,6 +56,12 @@ internal sealed record ResolvedChatAccount
 
     /// <summary>The variable that holds a webhook's address; null for an account of Microsoft Graph.</summary>
     public string? WebhookUrlEnvVar { get; init; }
+
+    /// <summary>The credential of an account an application signs in with; null when a user signs in.</summary>
+    public ChatApplication? Application { get; init; }
+
+    /// <summary>Whether an application signs in as itself: nobody's chats, and no right to write.</summary>
+    public bool IsApplication => Application is not null;
 
     /// <summary>Whether the account is a webhook: it posts into one place, and has no token.</summary>
     public bool IsWebhook => Provider == ChatProvider.TeamsWebhook;
