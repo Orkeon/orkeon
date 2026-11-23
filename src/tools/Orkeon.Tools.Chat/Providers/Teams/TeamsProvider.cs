@@ -18,6 +18,8 @@ internal sealed class TeamsProvider : IChatProvider
 
     private const string NoDirectory = "looks nobody up: the ids of a place's members come from chat_members with `place`";
 
+    private const string OnlyReads = "reads as itself and has no message of its own";
+
     private readonly GraphClient _graph;
     private readonly ConcurrentDictionary<string, ChatPerson> _people = new(StringComparer.OrdinalIgnoreCase);
     private readonly ConcurrentDictionary<string, ChatTeam> _allowedTeams = new(StringComparer.OrdinalIgnoreCase);
@@ -196,6 +198,7 @@ internal sealed class TeamsProvider : IChatProvider
     {
         ArgumentNullException.ThrowIfNull(target);
         ArgumentNullException.ThrowIfNull(message);
+        RefuseApplication(OnlyReads);
         JsonNode body = GraphMessages.Write(message);
         string path;
         if (target.IsChannel)
@@ -216,6 +219,151 @@ internal sealed class TeamsProvider : IChatProvider
         var json = await _graph.PostAsync(path, body, permission, cancellationToken).ConfigureAwait(false);
         return new ChatSent(GraphJson.Text(json, "id"), GraphJson.Date(json, "createdDateTime"));
     }
+
+    /// <inheritdoc />
+    public async Task<ChatMessage> GetMessageAsync(ChatTarget target, string? thread, string messageId, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(target);
+        var permission = target.IsChannel ? ChatScopes.ChannelMessageRead : ChatScopes.ChatRead;
+        var json = await _graph.GetAsync(MessagePath(target, thread, messageId), permission, cancellationToken).ConfigureAwait(false);
+        var message = GraphMessages.Read(json, target.IsChannel);
+        return message.Id == messageId ? message : throw Unexpected("the message asked for");
+    }
+
+    /// <inheritdoc />
+    public async Task<ChatSearchPage> SearchAsync(ChatSearchQuery query, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(query);
+        RefuseApplication("searches nothing: Microsoft Graph searches messages for a signed-in user alone");
+        var request = new JsonObject
+        {
+            ["entityTypes"] = new JsonArray(JsonValue.Create("chatMessage")),
+            ["query"] = new JsonObject { ["queryString"] = GraphSearch.QueryString(query) },
+            ["from"] = query.Skip,
+            ["size"] = query.Top,
+        };
+        var json = await _graph.QueryAsync("search/query", new JsonObject { ["requests"] = new JsonArray(request) }, ChatScopes.ChatRead, cancellationToken).ConfigureAwait(false);
+        return GraphSearch.Read(json);
+    }
+
+    /// <inheritdoc />
+    public Task EditAsync(ChatTarget target, string? thread, string messageId, ChatOutgoing message, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(target);
+        ArgumentNullException.ThrowIfNull(message);
+        RefuseApplication(OnlyReads);
+        return _graph.WriteAsync(
+            HttpMethod.Patch, MessagePath(target, thread, messageId), GraphMessages.Write(message), WritePermission(target),
+            " The message may have been rewritten all the same: read it before trying again.", cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public async Task DeleteAsync(ChatTarget target, string? thread, string messageId, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(target);
+        RefuseApplication(OnlyReads);
+        // A chat's message is deleted under its user, the one form Graph documents.
+        var owner = target.IsChannel ? string.Empty : $"users/{GraphClient.Segment((await GetSelfAsync(cancellationToken).ConfigureAwait(false)).Id)}/";
+        await _graph.WriteAsync(
+            HttpMethod.Post, $"{owner}{MessagePath(target, thread, messageId)}/softDelete", body: null, WritePermission(target),
+            " The message may have been deleted all the same: read the place before trying again.", cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <inheritdoc />
+    public Task ReactAsync(ChatTarget target, string messageId, string reaction, bool remove, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(target);
+        RefuseApplication(OnlyReads);
+        return _graph.WriteAsync(
+            HttpMethod.Post,
+            $"{MessagePath(target, thread: null, messageId)}/{(remove ? "unsetReaction" : "setReaction")}",
+            new JsonObject { ["reactionType"] = reaction },
+            ChatScopes.ChatMessageSend,
+            " The reaction may have changed all the same: read the message before trying again.",
+            cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public async Task<ChatMeetingLink?> GetMeetingLinkAsync(string chatId, CancellationToken cancellationToken)
+    {
+        var json = await _graph.GetAsync($"chats/{GraphClient.Segment(chatId)}", ChatScopes.ChatRead, cancellationToken).ConfigureAwait(false);
+        if (GraphJson.Object(json, "onlineMeetingInfo") is not { } meeting || GraphJson.Text(meeting, "joinWebUrl") is not { } link)
+            return null;
+        return new ChatMeetingLink(link, GraphJson.Object(meeting, "organizer") is { } organizer ? GraphJson.Text(organizer, "id") : null);
+    }
+
+    /// <inheritdoc />
+    public async Task<ChatMeeting?> FindMeetingAsync(string joinLink, string? organizer, CancellationToken cancellationToken)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(joinLink);
+        var owner = MeetingOwner(organizer);
+        // In a literal of the filter a quote is doubled; the rest is encoded, a percent sign included.
+        var filter = Uri.EscapeDataString($"JoinWebUrl eq '{joinLink.Replace("'", "''", StringComparison.Ordinal)}'");
+        var json = await _graph.GetAsync($"{MeetingsPath(owner)}?$filter={filter}", ChatScopes.OnlineMeetingsRead, cancellationToken).ConfigureAwait(false);
+        var found = GraphJson.Items(json).ToList();
+        if (found.Count > 1)
+            throw new ChatToolException(ChatErrorCode.NotFound, "Several meetings have this link; none is read.");
+        if (found.Count == 0 || GraphJson.Text(found[0], "id") is not { Length: > 0 } id)
+            return null;
+        var chat = GraphJson.Object(found[0], "chatInfo") is { } info ? GraphJson.Text(info, "threadId") : null;
+        return new ChatMeeting(id, GraphJson.Text(found[0], "subject"), GraphJson.Date(found[0], "startDateTime"), chat, owner);
+    }
+
+    /// <inheritdoc />
+    public Task<IReadOnlyList<ChatTranscript>> ListTranscriptsAsync(ChatMeeting meeting, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(meeting);
+        return ListAsync(
+            $"{MeetingPath(meeting)}/transcripts", string.Empty, ChatScopes.TranscriptRead,
+            json => GraphJson.Text(json, "id") is { Length: > 0 } id
+                ? new ChatTranscript(id, GraphJson.Date(json, "createdDateTime"), GraphJson.Date(json, "endDateTime"))
+                : null,
+            cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public async Task<ChatTranscriptText> ReadTranscriptAsync(ChatMeeting meeting, string transcriptId, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(meeting);
+        var path = $"{MeetingPath(meeting)}/transcripts/{GraphClient.Segment(transcriptId)}/content";
+        try
+        {
+            return new ChatTranscriptText(await _graph.GetTextAsync(path, "text/vtt", ChatScopes.TranscriptRead, cancellationToken).ConfigureAwait(false), HasSpeakers: true);
+        }
+        catch (ChatToolException ex) when (ex.Code == ChatErrorCode.NotSupportedByAccount && ex.InnerException is null)
+        {
+            return new ChatTranscriptText(
+                await _graph.GetTextAsync(path, "application/vnd.microsoft.graph.transcript+text", ChatScopes.TranscriptRead, cancellationToken).ConfigureAwait(false),
+                HasSpeakers: false);
+        }
+    }
+
+    /// <summary>The user an application reads a meeting under: who organizes it, whom its access policy must hold.</summary>
+    private string? MeetingOwner(string? organizer)
+    {
+        if (!_graph.Account.IsApplication)
+            return null;
+        return organizer is not null && ChatIds.IsDirectoryId(organizer)
+            ? organizer
+            : throw new ChatToolException(
+                ChatErrorCode.NotSupportedByAccount,
+                $"Chat account '{_graph.Account.Name}' is an application, which finds a meeting by its chat alone, when the chat tells who organizes it: pass `place`, the chat of the meeting.");
+    }
+
+    private static string MeetingsPath(string? owner) => owner is null ? "me/onlineMeetings" : $"users/{GraphClient.Segment(owner)}/onlineMeetings";
+
+    private static string MeetingPath(ChatMeeting meeting) => $"{MeetingsPath(meeting.Organizer)}/{GraphClient.Segment(meeting.Id)}";
+
+    private static string MessagePath(ChatTarget target, string? thread, string messageId)
+    {
+        if (!target.IsChannel)
+            return $"{ChatPath(target)}/messages/{GraphClient.Segment(messageId)}";
+        return thread is null
+            ? $"{ChannelPath(target)}/messages/{GraphClient.Segment(messageId)}"
+            : $"{ChannelPath(target)}/messages/{GraphClient.Segment(thread)}/replies/{GraphClient.Segment(messageId)}";
+    }
+
+    private static string WritePermission(ChatTarget target) => target.IsChannel ? ChatScopes.ChannelMessageReadWrite : ChatScopes.ChatReadWrite;
 
     /// <summary>
     /// The teams the allowed places name, by id: an application reaches every team of the

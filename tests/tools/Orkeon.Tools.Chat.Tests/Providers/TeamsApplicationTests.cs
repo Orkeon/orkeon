@@ -1,9 +1,12 @@
 using System.Net;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
+using System.Text.Json.Nodes;
 using Orkeon.Tools.Chat.Accounts;
 using Orkeon.Tools.Chat.Auth;
 using Orkeon.Tools.Chat.Configuration;
+using Orkeon.Tools.Chat.Places;
+using Orkeon.Tools.Chat.Providers;
 using Orkeon.Tools.Chat.Tests.Doubles;
 using Orkeon.Tools.Chat.Tests.Fixtures;
 
@@ -204,10 +207,18 @@ public sealed class TeamsApplicationTests : IDisposable
     {
         using var fixture = Create();
         var provider = fixture.Session.Provider;
+        var chat = new ChatTarget { ChatId = Chat };
+        var text = new ChatOutgoing("x", [], ReplyTo: null);
 
         Func<Task>[] calls =
         [
             () => provider.GetSelfAsync(Token), () => provider.FindDirectChatAsync(Samples.Ada, Token), () => provider.OpenDirectChatAsync(Samples.Ada, Token),
+            () => provider.SearchAsync(new ChatSearchQuery(["x"], null, null, 0, 5), Token),
+            () => provider.SendAsync(chat, text, Token),
+            () => provider.EditAsync(chat, null, "1", text, Token),
+            () => provider.DeleteAsync(chat, null, "1", Token),
+            () => provider.ReactAsync(chat, "1", "x", remove: false, Token),
+            () => provider.FindMeetingAsync("https://teams.microsoft.com/l/x", organizer: null, Token),
         ];
         foreach (var call in calls)
             Assert.Equal(ChatErrorCode.NotSupportedByAccount, (await Assert.ThrowsAsync<ChatToolException>(call)).Code);
@@ -276,6 +287,60 @@ public sealed class TeamsApplicationTests : IDisposable
 
         Assert.True(status is { Ready: true, Application: true });
         Assert.Single(new ChatRightsCheck(fixture.Administration).Check(["chat_members"], [status]));
+        Assert.Single(new ChatRightsCheck(fixture.Administration).Check(["chat_search"], [status with { ReadPlaces = 1 }]));
+    }
+
+    [Fact]
+    public async Task Should_read_the_transcript_of_an_allowed_chat_under_who_organizes_it()
+    {
+        using var fixture = CreateMeeting(Samples.Ada);
+        fixture.Graph.Get(Meetings, Samples.List(new JsonObject { ["id"] = "MSo1", ["subject"] = "Weekly", ["chatInfo"] = new JsonObject { ["threadId"] = Chat } }.ToJsonString()))
+            .Get(Meetings + "/MSo1/transcripts", Samples.List(new JsonObject { ["id"] = "MSMj" }.ToJsonString()))
+            .On(HttpMethod.Get, Meetings + "/MSo1/transcripts/MSMj/content", _ => new FakeHttpResponse(HttpStatusCode.OK, "WEBVTT\n\n00:00:16.246 --> 00:00:17.726\n<v Ada>Ship it.</v>\n", "text/vtt"));
+
+        var listed = await fixture.ResultAsync("chat_meetings", ("place", $"chat:{Chat}"));
+        var read = await fixture.ResultAsync("chat_meetings", ("place", $"chat:{Chat}"), ("transcript_id", "MSMj"));
+
+        Assert.Equal("MSMj", Assert.Single(ToolResults.Objects(listed, "transcripts"))["id"]);
+        Assert.Equal("[00:00:16] Ada: Ship it.", read["text"]);
+        Assert.DoesNotContain(fixture.Handler.Requests, request => request.Uri.AbsolutePath.Contains("/me", StringComparison.Ordinal));
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("../me")]
+    public async Task Should_refuse_a_meeting_whose_organizer_is_not_told_and_a_join_link(string? organizer)
+    {
+        using var fixture = CreateMeeting(organizer);
+
+        Assert.Contains("pass `place`", await fixture.ErrorAsync("chat_meetings", ("place", $"chat:{Chat}")), StringComparison.Ordinal);
+        Assert.Contains("pass `place`", await fixture.ErrorAsync("chat_meetings", ("join_link", JoinLink)), StringComparison.Ordinal);
+        Assert.DoesNotContain(fixture.Handler.Requests, request => request.Uri.AbsolutePath.Contains("onlineMeetings", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task Should_name_the_access_policy_a_refused_meeting_may_lack()
+    {
+        using var fixture = CreateMeeting(Samples.Ada);
+        fixture.Graph.Refuse(Meetings);
+
+        var error = await fixture.ErrorAsync("chat_meetings", ("place", $"chat:{Chat}"));
+
+        Assert.Contains("lacks the OnlineMeetings.Read.All application permission", error, StringComparison.Ordinal);
+        Assert.Contains("application access policy", error, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Should_check_that_meetings_are_found_by_their_chat()
+    {
+        var options = TestChatAccounts.Application($"chat:{Chat}");
+        options.Rights = ChatRights.Meetings;
+        using var fixture = Create(options);
+
+        var meetings = Assert.Single((await fixture.Administration.CheckAsync("work", Token)).Rights);
+
+        Assert.False(meetings.Ready);
+        Assert.Contains(meetings.Missing, line => line.Contains("needs the Read right", StringComparison.Ordinal));
     }
 
     [Theory]
@@ -317,6 +382,21 @@ public sealed class TeamsApplicationTests : IDisposable
         Assert.Null(resolution.Account);
         Assert.StartsWith(problem, Assert.Single(resolution.Problems).Replace("Auth:Method ClientCredentials takes", "takes", StringComparison.Ordinal), StringComparison.Ordinal);
         Assert.DoesNotContain("a~b", resolution.Problems[0], StringComparison.Ordinal);
+    }
+
+    private const string Meetings = "users/" + Samples.Ada + "/onlineMeetings";
+    private const string JoinLink = "https://teams.microsoft.com/l/meetup-join/19%3aweekly%40thread.v2/0";
+
+    private static ChatFixture CreateMeeting(string? organizer)
+    {
+        var options = TestChatAccounts.Application($"chat:{Chat}");
+        options.Rights = ChatRights.Read | ChatRights.Meetings;
+        var fixture = Create(options);
+        var meeting = new JsonObject { ["joinWebUrl"] = JoinLink };
+        if (organizer is not null)
+            meeting["organizer"] = new JsonObject { ["id"] = organizer };
+        fixture.Graph.Get($"chats/{Chat}", new JsonObject { ["id"] = Chat, ["onlineMeetingInfo"] = meeting }.ToJsonString());
+        return fixture;
     }
 
     private static int Count(Dictionary<string, object?> result) => Convert.ToInt32(result["count"], System.Globalization.CultureInfo.InvariantCulture);

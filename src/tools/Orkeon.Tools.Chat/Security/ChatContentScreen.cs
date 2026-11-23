@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Options;
 using Orkeon.Rag.Validation;
+using Orkeon.Tools.Chat.Constants;
 using Orkeon.Tools.Chat.Configuration;
 
 namespace Orkeon.Tools.Chat.Security;
@@ -50,6 +51,28 @@ internal sealed class ChatContentScreen
         return new ChatScreeningResult(verdict, analysis.Reasons, _withholdRejected && analysis.Verdict == PromptInjectionVerdict.Rejected);
     }
 
+    /// <summary>
+    /// Screens long texts by overlapping parts, for the worst verdict of them: what the detector adds
+    /// up over hours of speech would reject an honest meeting, and its cost grows faster than the text.
+    /// </summary>
+    public ChatScreeningResult ScreenLong(params IEnumerable<string> texts)
+    {
+        var worst = Screen();
+        foreach (var text in texts)
+        {
+            for (var at = 0; at < text.Length; at += ChatDefaults.ScreeningPart - ChatDefaults.ScreeningOverlap)
+            {
+                var part = Screen(text.Substring(at, Math.Min(ChatDefaults.ScreeningPart, text.Length - at)));
+                if (part.Verdict == "rejected")
+                    return part;
+                if (part.Verdict != "clean")
+                    worst = part;
+            }
+        }
+
+        return worst;
+    }
+
     /// <summary>A name or a topic as a result shows it: one line, shortened, withheld when the policy says so.</summary>
     public string? Label(string? name)
     {
@@ -58,8 +81,8 @@ internal sealed class ChatContentScreen
         var line = ChatToolHelpers.OneLine(name).Trim();
         if (line.Length == 0)
             return null;
-        if (line.Length > Constants.ChatDefaults.MaxLabelChars)
-            line = ChatToolHelpers.Head(line, Constants.ChatDefaults.MaxLabelChars);
+        if (line.Length > ChatDefaults.MaxLabelChars)
+            line = ChatToolHelpers.Head(line, ChatDefaults.MaxLabelChars);
         return Screen(line).Withhold ? WithheldName : line;
     }
 

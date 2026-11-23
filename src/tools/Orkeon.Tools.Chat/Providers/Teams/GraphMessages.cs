@@ -32,6 +32,7 @@ internal static class GraphMessages
             Created = GraphJson.Date(json, "createdDateTime"),
             Edited = GraphJson.Date(json, "lastEditedDateTime"),
             Text = string.IsNullOrWhiteSpace(subject) ? rendered.Text : $"{subject.Trim()}\n{rendered.Text}",
+            HasImages = isHtml && html.Contains("<img", StringComparison.OrdinalIgnoreCase),
             HadHiddenText = rendered.HadHiddenContent,
             IsMessage = GraphJson.Text(json, "messageType") is null or "message",
             IsDeleted = GraphJson.Text(json, "deletedDateTime") is not null,
@@ -43,8 +44,7 @@ internal static class GraphMessages
                 .GroupBy(reaction => reaction, StringComparer.Ordinal)
                 .ToDictionary(group => group.Key, group => group.Count(), StringComparer.Ordinal),
             Attachments = GraphJson.Items(json, "attachments")
-                .Select(attachment => GraphJson.Text(attachment, "name") ?? GraphJson.Text(attachment, "contentType"))
-                .OfType<string>()
+                .Select(attachment => GraphJson.Text(attachment, "name") ?? GraphJson.Text(attachment, "contentType") ?? "attachment")
                 .ToList(),
             Replies = isChannel && GraphJson.Text(json, "replyToId") is null ? GraphJson.Items(json, "replies").Count() : null,
             MoreReplies = GraphJson.Text(json, "replies@odata.nextLink") is not null,

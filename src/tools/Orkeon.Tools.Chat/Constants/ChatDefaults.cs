@@ -40,6 +40,36 @@ internal static class ChatDefaults
     /// <summary>How many Graph pages one <c>chat_read</c> goes through to find messages inside its dates.</summary>
     public const int MaxPagesPerRead = 5;
 
+    /// <summary>The hits one request of a search asks for, and the most a <c>chat_search</c> page shows.</summary>
+    public const int MaxSearchPage = 25;
+
+    /// <summary>The messages a <c>chat_search</c> page shows when the call does not say.</summary>
+    public const int DefaultSearchPage = 10;
+
+    /// <summary>How many requests of hits one search goes through: what is past them is not found.</summary>
+    public const int MaxSearchRequests = 5;
+
+    /// <summary>The most places one search looks up to tell whether they are allowed.</summary>
+    public const int MaxSearchPlaces = 40;
+
+    /// <summary>The longest join link of a meeting.</summary>
+    public const int MaxJoinLinkChars = 2048;
+
+    /// <summary>The longest transcript read, in bytes.</summary>
+    public const int MaxTranscriptBytes = 4 * 1024 * 1024;
+
+    /// <summary>A long text is screened by parts of this length.</summary>
+    public const int ScreeningPart = 16 * 1024;
+
+    /// <summary>What two parts in a row share, for a phrase a cut falls in.</summary>
+    public const int ScreeningOverlap = 2 * 1024;
+
+    /// <summary>The longest line of a transcript; a longer speech goes on to another line.</summary>
+    public const int MaxTranscriptLine = 500;
+
+    /// <summary>The longest text or author a search takes.</summary>
+    public const int MaxSearchChars = 500;
+
     /// <summary>How many pages of the user's chats are searched for the one-to-one chat with a person.</summary>
     public const int MaxChatPages = 10;
 

@@ -318,15 +318,12 @@ public sealed class ChatAccountAdministration
             foreach (var row in ChatScopes.Table.Where(row => row.Right == right))
             {
                 if (!resolved.IsGranted(row.Needs))
-                    notes.Add($"{Served(row.Needs)} needs {row.Permission}: a tenant administrator grants it, then {row.Needs} goes into Auth:AdminGranted and the account signs in again");
+                    (right == ChatRights.Meetings ? blocking : notes).Add($"{Served(row.Needs)} needs {row.Permission}: a tenant administrator grants it, then {row.Needs} goes into Auth:AdminGranted and the account signs in again");
                 else if (!granted.Contains(row.Permission))
                     blocking.Add($"{row.Permission} was not granted at the sign-in: run `orkeon chat login {resolved.Name}`");
             }
 
-            if (right is ChatRights.Read or ChatRights.Send)
-                await CheckPlacesAsync(session, right, blocking, cancellationToken).ConfigureAwait(false);
-            if (right is ChatRights.Edit or ChatRights.Delete or ChatRights.React or ChatRights.Meetings)
-                notes.Add("no tool uses this right");
+            await CheckPlacesAsync(session, right, blocking, cancellationToken).ConfigureAwait(false);
 
             rights.Add(new ChatRightStatus { Right = right.ToString(), Ready = blocking.Count == 0, Missing = [.. blocking, .. notes] });
         }
@@ -373,7 +370,23 @@ public sealed class ChatAccountAdministration
         }
 
         if (account.Grants(ChatRights.Meetings))
-            rights.Add(new ChatRightStatus { Right = nameof(ChatRights.Meetings), Ready = true, Missing = ["no tool uses this right"] });
+        {
+            var blocking = new List<string>();
+            if (!account.Grants(ChatRights.Read))
+                blocking.Add("an application finds a meeting by its chat, which needs the Read right");
+            await CheckPlacesAsync(session, ChatRights.Meetings, blocking, cancellationToken).ConfigureAwait(false);
+            rights.Add(new ChatRightStatus
+            {
+                Right = nameof(ChatRights.Meetings),
+                Ready = blocking.Count == 0,
+                Missing =
+                [
+                    .. blocking,
+                    $"no transcript was read: it needs the application permissions {ChatScopes.OfApplication(ChatScopes.OnlineMeetingsRead)} and {ChatScopes.TranscriptRead}, an application access policy that holds who organizes the meeting, and {ChatScopes.OfApplication(ChatScopes.ChatRead)} for its chat",
+                ],
+            });
+        }
+
         return new ChatCheckResult { Account = account.Name, Rights = rights };
     }
 
@@ -401,7 +414,7 @@ public sealed class ChatAccountAdministration
 
     private static async Task CheckPlacesAsync(ChatSession session, ChatRights right, List<string> blocking, CancellationToken cancellationToken)
     {
-        var use = right == ChatRights.Read ? PlaceUse.Read : PlaceUse.Send;
+        var use = right is ChatRights.Read or ChatRights.Meetings ? PlaceUse.Read : PlaceUse.Send;
         var places = use == PlaceUse.Read ? session.Account.ReadPlaces : session.Account.SendPlaces;
         if (places.Count == 0)
         {
@@ -413,7 +426,7 @@ public sealed class ChatAccountAdministration
         {
             var rules = await session.Gate.RulesAsync(use, cancellationToken).ConfigureAwait(false);
             blocking.AddRange(rules.Problems.Select(problem => $"{use}:AllowedPlaces entry {problem}"));
-            if (use == PlaceUse.Read)
+            if (right == ChatRights.Read)
             {
                 var chats = await session.Provider.ListChatsAsync(1, null, cancellationToken).ConfigureAwait(false);
                 if (session.Account.IsApplication)
@@ -454,6 +467,7 @@ public sealed class ChatAccountAdministration
         ChatAdminGrants.ChannelMessages => "reading a channel's messages",
         ChatAdminGrants.ChannelMembers => "listing a channel's members",
         ChatAdminGrants.Meetings => "reading a transcript",
+        ChatAdminGrants.ChannelEdit => "editing or deleting in a channel",
         _ => "acting in a channel",
     };
 }

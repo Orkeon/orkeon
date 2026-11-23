@@ -126,6 +126,9 @@ internal sealed record ChatMessage
     /// <summary>Its text: untrusted.</summary>
     public string Text { get; init; } = string.Empty;
 
+    /// <summary>Whether the body holds images.</summary>
+    public bool HasImages { get; init; }
+
     /// <summary>Whether the body hid text from a reader.</summary>
     public bool HadHiddenText { get; init; }
 
@@ -203,3 +206,39 @@ internal sealed record ChatOutgoing(string Html, IReadOnlyList<ChatPerson> Menti
 /// <param name="Id">Its id, when the service's answer could be read.</param>
 /// <param name="Created">When.</param>
 internal sealed record ChatSent(string? Id, DateTimeOffset? Created);
+
+/// <summary>What a search looks for. Every criterion given must hold.</summary>
+/// <param name="Words">The words a message holds, each taken literally.</param>
+/// <param name="From">The address of its author.</param>
+/// <param name="Mentions">The directory id of a person it mentions.</param>
+/// <param name="Skip">How many hits to pass.</param>
+/// <param name="Top">How many hits to return.</param>
+internal sealed record ChatSearchQuery(IReadOnlyList<string> Words, string? From, string? Mentions, int Skip, int Top);
+
+/// <summary>A hit of a search: where the message is and nothing of what it says.</summary>
+/// <param name="Place">The place, by its ids, not checked against the allowed ones.</param>
+/// <param name="Thread">The message it replies to, when the service's link tells.</param>
+/// <param name="MessageId">The message.</param>
+internal sealed record ChatSearchHit(ChatTarget Place, string? Thread, string MessageId);
+
+/// <summary>A window of hits, and whether the service has more.</summary>
+internal sealed record ChatSearchPage(IReadOnlyList<ChatSearchHit> Hits, bool More);
+
+/// <summary>A meeting.</summary>
+/// <param name="Id">Its id.</param>
+/// <param name="Subject">Its subject: untrusted text.</param>
+/// <param name="Start">When it starts.</param>
+/// <param name="ChatId">The chat it is held in, when the service tells.</param>
+/// <param name="Organizer">The user it was found under, for an application; null for the signed-in user.</param>
+internal sealed record ChatMeeting(string Id, string? Subject, DateTimeOffset? Start, string? ChatId, string? Organizer = null);
+
+/// <summary>How the meeting of a chat is found.</summary>
+/// <param name="JoinLink">Its join link.</param>
+/// <param name="Organizer">The directory id of who organizes it, when the service tells.</param>
+internal sealed record ChatMeetingLink(string JoinLink, string? Organizer);
+
+/// <summary>A transcript of a meeting.</summary>
+internal sealed record ChatTranscript(string Id, DateTimeOffset? Created, DateTimeOffset? Ended);
+
+/// <summary>The content of a transcript. <paramref name="HasSpeakers"/> is false when it is plain text.</summary>
+internal sealed record ChatTranscriptText(string Content, bool HasSpeakers);

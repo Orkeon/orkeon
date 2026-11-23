@@ -7,7 +7,7 @@
 **Statut** : Accepté · **Date** : 2026-11-23
 · **Portée** : la famille `Orkeon.Tools.Chat`, `Orkeon.Tools.Abstractions/Auth` (le client OAuth qu'elle partage avec les familles e-mail et drive), `Orkeon.Hosting` (le sous-répertoire `chat` de `/credentials`), `orkeon chat` (`Orkeon.Scripting.Cli`), `Orkeon.Host` (le canal entrant Teams), le paquet ombrelle `Orkeon.Tools`
 
-Cet ADR consigne la décision et la conception. Il ne livre aucun outil : les outils arrivent avec les lots qui le suivent, et ces lots corrigent les décomptes, l'inventaire, la page des limites et CONTRIBUTING.
+Cet ADR consigne la décision et la conception. Il ne livre aucun outil : les outils arrivent avec les lots qui le suivent, et ces lots corrigent les décomptes, l'inventaire, la page des limites et CONTRIBUTING. Construits à ce jour : `chat_accounts`, `chat_list`, `chat_read`, `chat_members`, `chat_send`, `chat_search`, `chat_edit`, `chat_delete`, `chat_react` et `chat_meetings` ; une modification, une suppression et une réaction comptent dans `Send:MaxPerHour` et dans la cadence d'un lieu, comme une publication.
 
 ## Contexte
 

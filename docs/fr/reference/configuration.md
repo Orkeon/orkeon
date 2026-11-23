@@ -1519,7 +1519,7 @@ aux `email_*` par défaut. La longueur ne se règle pas ici mais sous `Orkeon:To
 | Clé | Type | Défaut | Valeurs | Sens |
 |---|---|---|---|---|
 | `Policy` | énumération | `"Warn"` | `None`, `Warn`, `Block` | La politique appliquée à un résultat d'outil réussi. Défaut `Warn` : le résultat arrive au modèle balisé comme donnée, et tout motif d'injection est journalisé et audité. `Block` retient un résultat qui porte un motif High ou Critical (le modèle en est informé) ; `None` laisse passer les résultats intacts et sans balise. |
-| `TrustedTools` | liste de chaînes | `["email_accounts", "email_create_folder", "email_delete", "email_draft", "email_folders", "email_mark", "email_move", "email_parser", "email_read", "email_rename_folder", "email_save_attachment", "email_search", "email_send", "drive_read", "chat_list", "chat_members", "chat_read"]` |  | Outils dont les résultats contournent le filtrage. Par défaut les outils `email_*`, qui filtrent ce qu'ils lisent avec `PromptInjectionDocumentValidator` et le marquent eux-mêmes comme non fiable (ADR-012), `drive_read`, qui fait de même avec le texte d'un fichier (ADR-013), et `chat_list`, `chat_members` et `chat_read`, qui filtrent les noms et les messages qu'ils rendent (ADR-021) — les baliser de nouveau empilerait deux enveloppes. Les autres outils `drive_*` rendent des noms et des métadonnées qu'ils ne filtrent pas, et restent assainis. Les entrées de la configuration s'ajoutent à celles-ci. |
+| `TrustedTools` | liste de chaînes | `["email_accounts", "email_create_folder", "email_delete", "email_draft", "email_folders", "email_mark", "email_move", "email_parser", "email_read", "email_rename_folder", "email_save_attachment", "email_search", "email_send", "drive_read", "chat_list", "chat_meetings", "chat_members", "chat_read", "chat_search"]` |  | Outils dont les résultats contournent le filtrage. Par défaut les outils `email_*`, qui filtrent ce qu'ils lisent avec `PromptInjectionDocumentValidator` et le marquent eux-mêmes comme non fiable (ADR-012), `drive_read`, qui fait de même avec le texte d'un fichier (ADR-013), et `chat_list`, `chat_members` et `chat_read`, qui filtrent les noms et les messages qu'ils rendent (ADR-021) — les baliser de nouveau empilerait deux enveloppes. Les autres outils `drive_*` rendent des noms et des métadonnées qu'ils ne filtrent pas, et restent assainis. Les entrées de la configuration s'ajoutent à celles-ci. |
 <!-- /settings -->
 
 ### `Security:Url`
@@ -1775,7 +1775,8 @@ Parcours par fournisseur et table clé par clé :
 Lié par `AddOrkeonChatTools(configuration)` et validé paresseusement, comme la section drive : un
 compte est validé la première fois qu'un outil ou une commande `orkeon chat` s'en sert, tous ses
 problèmes signalés d'un coup, et une valeur illisible met ce seul compte de côté au lieu de faire
-échouer l'hôte. Aucune clé ne contient de secret : l'application est un client public. Parcours et
+échouer l'hôte. Aucune clé ne contient de secret : l'application est un client public, et l'adresse d'un
+webhook ou l'identifiant d'une application est nommé par sa variable. Parcours et
 outils : [Outils chat](../guides/chat.md).
 
 - **`DefaultAccount`** — le compte qu'utilise un appel qui n'en nomme aucun (facultatif avec un seul
@@ -1786,13 +1787,16 @@ outils : [Outils chat](../guides/chat.md).
   nomme un autre, celui de l'e-mail l'emporte, puis celui du drive, et le runner le dit au démarrage.
 - **`Screening:WithholdRejected`** — retenir le texte d'un message que le filtre anti-injection de
   prompt rejette (défaut `false` : signaler seulement).
-- **`Accounts:<nom>`** — un compte. `Provider` (`Teams`), `Rights` et `Auth:ClientId` sont
+- **`Accounts:<nom>`** — un compte. `Provider` (`Teams` ou `TeamsWebhook`), `Rights` et, pour `Teams`, `Auth:ClientId` sont
   **obligatoires** ; un compte `Teams` dont `Auth:Method` vaut `ClientCredentials` est une application qui
   ne fait que lire, avec un tenant nommé et un identifiant ; un `TeamsWebhook` ne prend que `Rights` `Send`, `Webhook:UrlEnvVar` et
-  `Send:MaxPerHour` ; les droits dont les outils se servent sont `Read` et `Send`. Une liste
-  `Read:AllowedPlaces` vide ne lit nulle part, une liste `Send:AllowedPlaces` vide ne publie nulle
-  part, et `Auth:AdminGranted` ouvre la lecture des canaux (`ChannelMessages`) et de leurs membres
-  (`ChannelMembers`).
+  `Send:MaxPerHour` ; les droits dont les outils se servent sont `Read`, `Send`, `Edit`, `Delete`, `React` et `Meetings`. Une liste
+  `Read:AllowedPlaces` vide ne lit nulle part, une liste `Send:AllowedPlaces` vide ne publie, ne
+  modifie, ne supprime et ne réagit nulle part, et `Auth:AdminGranted` ouvre la lecture des canaux
+  (`ChannelMessages`), de leurs membres (`ChannelMembers`), la modification et la suppression dans les
+  canaux (`ChannelEdit`, avec `ChannelMessages`) et `chat_meetings` (`Meetings`).
+  `Send:MaxPerHour` compte ensemble publications, modifications, suppressions et réactions.
+  `chat_search` et `chat_meetings` sont dans `TrustedTools` : ils filtrent ce qu'ils rendent, comme `chat_read`.
 
 <!-- settings:Orkeon:Tools:Chat -->
 **Lue par** : `orkeon`, `orkeon-host`, `orkeon-repl`.

@@ -38,12 +38,20 @@ internal static class ChatScopes
         (ChatRights.Send, ChannelRead, ChatAdminGrants.None),
         (ChatRights.Send, UserRead, ChatAdminGrants.None),
         (ChatRights.Edit, ChatReadWrite, ChatAdminGrants.None),
+        (ChatRights.Edit, TeamRead, ChatAdminGrants.None),
+        (ChatRights.Edit, ChannelRead, ChatAdminGrants.None),
+        (ChatRights.Edit, UserRead, ChatAdminGrants.None),
+        (ChatRights.Edit, ChannelMessageRead, ChatAdminGrants.ChannelMessages),
         (ChatRights.Edit, ChannelMessageReadWrite, ChatAdminGrants.ChannelEdit),
         (ChatRights.Delete, ChatReadWrite, ChatAdminGrants.None),
+        (ChatRights.Delete, TeamRead, ChatAdminGrants.None),
+        (ChatRights.Delete, ChannelRead, ChatAdminGrants.None),
+        (ChatRights.Delete, UserRead, ChatAdminGrants.None),
+        (ChatRights.Delete, ChannelMessageRead, ChatAdminGrants.ChannelMessages),
         (ChatRights.Delete, ChannelMessageReadWrite, ChatAdminGrants.ChannelEdit),
         (ChatRights.React, ChatMessageSend, ChatAdminGrants.None),
-        (ChatRights.React, ChannelMessageSend, ChatAdminGrants.None),
-        (ChatRights.Meetings, OnlineMeetingsRead, ChatAdminGrants.None),
+        (ChatRights.React, UserRead, ChatAdminGrants.None),
+        (ChatRights.Meetings, OnlineMeetingsRead, ChatAdminGrants.Meetings),
         (ChatRights.Meetings, TranscriptRead, ChatAdminGrants.Meetings),
     ];
 
@@ -55,9 +63,17 @@ internal static class ChatScopes
             .ToList();
 
     /// <summary>The application permission that stands for a delegated one.</summary>
-    public static string OfApplication(string permission) => permission == ChatRead ? "Chat.Read.All" : permission;
+    public static string OfApplication(string permission) => permission switch
+    {
+        ChatRead => "Chat.Read.All",
+        OnlineMeetingsRead => "OnlineMeetings.Read.All",
+        _ => permission,
+    };
 
-    /// <summary>Whether a tenant administrator has to consent to <paramref name="permission"/>.</summary>
+    /// <summary>
+    /// Whether a tenant administrator has to consent to <paramref name="permission"/>. Not to the one
+    /// that finds a meeting, which is only asked together with the transcripts it is of use for.
+    /// </summary>
     public static bool NeedsAdministrator(string permission) =>
-        Table.Any(row => row.Permission == permission && row.Needs != ChatAdminGrants.None);
+        permission != OnlineMeetingsRead && Table.Any(row => row.Permission == permission && row.Needs != ChatAdminGrants.None);
 }

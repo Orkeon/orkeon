@@ -20,7 +20,12 @@ public sealed class ChatToolContractTests
     [InlineData("chat_list", "Read")]
     [InlineData("chat_read", "Read")]
     [InlineData("chat_members", "Read")]
+    [InlineData("chat_search", "Read")]
+    [InlineData("chat_meetings", "Read")]
     [InlineData("chat_send", "Execute")]
+    [InlineData("chat_edit", "Execute")]
+    [InlineData("chat_delete", "Execute")]
+    [InlineData("chat_react", "Execute")]
     public void Should_declare_its_name_access_and_category(string name, string access)
     {
         using var fixture = new ChatFixture(TestChatAccounts.Teams());
@@ -79,7 +84,12 @@ public sealed class ChatToolContractTests
     [InlineData("chat_list", "")]
     [InlineData("chat_read", "place")]
     [InlineData("chat_members", "")]
+    [InlineData("chat_search", "")]
+    [InlineData("chat_meetings", "")]
     [InlineData("chat_send", "text")]
+    [InlineData("chat_edit", "place,message_id,text")]
+    [InlineData("chat_delete", "place,message_id")]
+    [InlineData("chat_react", "place,message_id,reaction")]
     public void Should_require_only_what_the_tool_cannot_do_without(string name, string required)
     {
         using var fixture = new ChatFixture(TestChatAccounts.Teams());

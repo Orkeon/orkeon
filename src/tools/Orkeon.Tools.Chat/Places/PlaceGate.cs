@@ -98,6 +98,16 @@ internal sealed class PlaceGate : IDisposable
         }
     }
 
+    /// <summary>Whether admitting a place, given by its ids, asks the service anything.</summary>
+    public static bool NeedsLookup(PlaceReference place, PlaceRules rules)
+    {
+        ArgumentNullException.ThrowIfNull(place);
+        ArgumentNullException.ThrowIfNull(rules);
+        return place.Form == PlaceForm.Channel
+            ? !rules.Any && rules.AllowsChannel(place.Value, place.Channel) && !rules.NamesChannel(place.Value, place.Channel)
+            : !rules.AllowsChat(place.Value) && rules.NamesPeople && place.Value.EndsWith(DirectChatMarker, StringComparison.OrdinalIgnoreCase);
+    }
+
     /// <summary>The id of a team a call names, listed or read by whoever may see it.</summary>
     public async Task<string> TeamIdAsync(string nameOrId, CancellationToken cancellationToken)
     {

@@ -7,9 +7,14 @@ arcadedb_query
 batch_anchors
 cache_search
 chat_accounts
+chat_delete
+chat_edit
 chat_list
+chat_meetings
 chat_members
+chat_react
 chat_read
+chat_search
 chat_send
 codebase_map
 codebase_search

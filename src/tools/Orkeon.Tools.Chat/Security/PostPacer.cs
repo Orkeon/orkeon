@@ -6,7 +6,7 @@ namespace Orkeon.Tools.Chat.Security;
 /// <summary>Spaces the posts in one place: Graph takes one a second per channel and per chat.</summary>
 internal sealed class PostPacer
 {
-    private readonly Dictionary<string, DateTimeOffset> _next = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, DateTimeOffset> _next = new(StringComparer.OrdinalIgnoreCase);
     private readonly Lock _gate = new();
     private readonly TimeProvider _time;
 

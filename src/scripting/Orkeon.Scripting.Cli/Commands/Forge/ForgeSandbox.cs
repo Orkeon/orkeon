@@ -24,7 +24,7 @@ internal static class ForgeSandbox
         new HashSet<string>(StringComparer.Ordinal)
         {
             "shell_command", "code_interpreter",
-            "chat_accounts", "chat_list", "chat_members", "chat_read", "chat_send",
+            "chat_accounts", "chat_delete", "chat_edit", "chat_list", "chat_meetings", "chat_members", "chat_react", "chat_read", "chat_search", "chat_send",
             "drive_accounts", "drive_create_folder", "drive_delete", "drive_download", "drive_info", "drive_list",
             "drive_move", "drive_read", "drive_search", "drive_share", "drive_upload",
         };

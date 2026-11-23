@@ -29,7 +29,7 @@ internal enum ChatRights
     /// <summary>Delete messages the account sent.</summary>
     Delete = 8,
 
-    /// <summary>Set and remove reactions.</summary>
+    /// <summary>Set and remove reactions in chats.</summary>
     React = 16,
 
     /// <summary>Read meeting transcripts.</summary>

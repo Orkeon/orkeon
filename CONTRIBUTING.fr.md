@@ -382,7 +382,7 @@ demandent pas davantage, **la surface fonctionnelle ne grandit pas** :
   troisième, actée par le propriétaire le 2026-10-17, pour la même raison
   ([ADR-013](docs/fr/adr/ADR-013-drive-tool-family.md)). L'outil `firefox` est la
   quatrième. La famille chat (`Orkeon.Tools.Chat`, Microsoft Teams d'abord,
-  cinq outils) est la cinquième, actée par le propriétaire le 2026-11-23
+  dix outils) est la cinquième, actée par le propriétaire le 2026-11-23
   ([ADR-021](docs/fr/adr/ADR-021-chat-tool-family.md)). Le pont d'outils
   (`orkeon bridge serve`, [ADR-019](docs/fr/adr/ADR-019-tool-bridge.md))
   n'ajoute aucun outil : il exécute sur une autre machine les outils intégrés

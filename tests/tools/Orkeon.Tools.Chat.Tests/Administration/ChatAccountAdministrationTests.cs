@@ -224,8 +224,27 @@ public sealed class ChatAccountAdministrationTests
         Assert.Contains(result.Rights[0].Missing, line => line.Contains("listing a channel's members needs ChannelMember.Read.All", StringComparison.Ordinal));
         Assert.Equal((false, 3), (result.Rights[0].Ready, result.Rights[0].Missing.Count));
         Assert.Equal(["Send:AllowedPlaces is empty, which allows no place"], result.Rights[1].Missing);
-        Assert.Equal((true, "no tool uses this right"), (result.Rights[2].Ready, Assert.Single(result.Rights[2].Missing)));
+        Assert.Equal((false, "Send:AllowedPlaces is empty, which allows no place"), (result.Rights[2].Ready, Assert.Single(result.Rights[2].Missing)));
         Assert.Empty(fixture.Graph.Writes);
+    }
+
+    [Theory]
+    [InlineData(ChatRights.Meetings, "Meetings", "Read:AllowedPlaces")]
+    [InlineData(ChatRights.Edit, "ChannelEdit", "Send:AllowedPlaces")]
+    [InlineData(ChatRights.Delete, "ChannelEdit", "Send:AllowedPlaces")]
+    public async Task Should_check_the_places_and_the_grant_of_each_right(object right, string grant, string places)
+    {
+        var checkedRight = (ChatRights)right;
+        using var fixture = new ChatFixture(TestChatAccounts.Teams(checkedRight, granted: grant));
+        using var closed = new ChatFixture(TestChatAccounts.Teams(checkedRight, read: ["*"], send: ["*"]));
+
+        var empty = Assert.Single((await fixture.Administration.CheckAsync("work", Token)).Rights);
+        var waiting = Assert.Single((await closed.Administration.CheckAsync("work", Token)).Rights);
+
+        Assert.Equal((false, $"{places} is empty, which allows no place"), (empty.Ready, empty.Missing[0]));
+        // Nothing of a transcript opens without its grant; chats are edited without the channels'.
+        Assert.Equal(checkedRight != ChatRights.Meetings, waiting.Ready);
+        Assert.Contains(waiting.Missing, line => line.Contains($"then {grant} goes into Auth:AdminGranted", StringComparison.Ordinal));
     }
 
     [Fact]
@@ -240,20 +259,16 @@ public sealed class ChatAccountAdministrationTests
         Assert.Equal(["ChannelMessage.Send was not granted at the sign-in: run `orkeon chat login work`"], right.Missing);
     }
 
-    [Theory]
-    [InlineData("Edit")]
-    [InlineData("Delete")]
-    [InlineData("React")]
-    [InlineData("Meetings")]
-    public async Task Should_check_an_account_whose_scopes_do_not_open_its_user(string right)
+    [Fact]
+    public async Task Should_check_an_account_whose_scopes_do_not_open_its_user()
     {
-        using var fixture = new ChatFixture(TestChatAccounts.Teams(Enum.Parse<ChatRights>(right)));
+        using var fixture = new ChatFixture(TestChatAccounts.Teams(ChatRights.Meetings, read: ["*"], granted: "Meetings"));
 
         var result = await fixture.Administration.CheckAsync("work", Token);
 
         Assert.Null(result.User);
         Assert.True(result.Ready);
-        Assert.Equal(right, Assert.Single(result.Rights).Right);
+        Assert.Equal("Meetings", Assert.Single(result.Rights).Right);
         Assert.Empty(fixture.Handler.Requests);
     }
 
@@ -299,6 +314,16 @@ public sealed class ChatAccountAdministrationTests
     [InlineData("chat_list", "Send", 0, 0, false)]
     [InlineData("chat_members", "Send", 0, 0, true)]
     [InlineData("chat_members", "Edit", 1, 1, false)]
+    [InlineData("chat_search", "Read", 1, 0, true)]
+    [InlineData("chat_search", "Send", 1, 1, false)]
+    [InlineData("chat_edit", "Edit", 0, 1, true)]
+    [InlineData("chat_edit", "Edit", 1, 0, false)]
+    [InlineData("chat_delete", "Delete", 0, 1, true)]
+    [InlineData("chat_delete", "Edit", 1, 1, false)]
+    [InlineData("chat_react", "React", 0, 1, true)]
+    [InlineData("chat_react", "Send", 1, 1, false)]
+    [InlineData("chat_meetings", "Meetings", 1, 0, true)]
+    [InlineData("chat_meetings", "Meetings", 0, 1, false)]
     [InlineData("chat_accounts", "Edit", 0, 0, true)]
     [InlineData("web_search", "Edit", 0, 0, true)]
     public void Should_tell_the_rights_a_crew_lacks(string tool, string rights, int read, int send, bool enough)

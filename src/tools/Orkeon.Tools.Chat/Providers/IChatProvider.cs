@@ -45,4 +45,37 @@ internal interface IChatProvider
 
     /// <summary>Posts a message. A write: the place is checked first.</summary>
     Task<ChatSent> SendAsync(ChatTarget target, ChatOutgoing message, CancellationToken cancellationToken);
+
+    /// <summary>One message of a place: <paramref name="thread"/> is the message it replies to, for a reply in a channel.</summary>
+    Task<ChatMessage> GetMessageAsync(ChatTarget target, string? thread, string messageId, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// A window of what the service's search finds, as ids alone: the places they are in are
+    /// not checked, and nothing of a hit may be shown before its place is.
+    /// </summary>
+    Task<ChatSearchPage> SearchAsync(ChatSearchQuery query, CancellationToken cancellationToken);
+
+    /// <summary>Rewrites a message. A write: the place and the author are checked first.</summary>
+    Task EditAsync(ChatTarget target, string? thread, string messageId, ChatOutgoing message, CancellationToken cancellationToken);
+
+    /// <summary>Deletes a message, recoverably. A write: the place and the author are checked first.</summary>
+    Task DeleteAsync(ChatTarget target, string? thread, string messageId, CancellationToken cancellationToken);
+
+    /// <summary>Sets or removes the account's reaction on a message of a chat. A write: the place is checked first.</summary>
+    Task ReactAsync(ChatTarget target, string messageId, string reaction, bool remove, CancellationToken cancellationToken);
+
+    /// <summary>The join link of a meeting's chat, or null for another chat. The place is checked first.</summary>
+    Task<ChatMeetingLink?> GetMeetingLinkAsync(string chatId, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// The meeting of a join link; an application finds it under its <paramref name="organizer"/>, as
+    /// the chat tells. Nothing of it may be shown before its chat is checked.
+    /// </summary>
+    Task<ChatMeeting?> FindMeetingAsync(string joinLink, string? organizer, CancellationToken cancellationToken);
+
+    /// <summary>The transcripts of a meeting.</summary>
+    Task<IReadOnlyList<ChatTranscript>> ListTranscriptsAsync(ChatMeeting meeting, CancellationToken cancellationToken);
+
+    /// <summary>A transcript as WebVTT, or as plain text when the tenant hides who speaks.</summary>
+    Task<ChatTranscriptText> ReadTranscriptAsync(ChatMeeting meeting, string transcriptId, CancellationToken cancellationToken);
 }

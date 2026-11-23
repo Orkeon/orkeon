@@ -10,16 +10,16 @@
 La famille chat permet aux agents de lire et de publier là où une équipe discute. Les outils sont
 nommés d'après la fonction (`chat_*`) et leur premier fournisseur est **Microsoft Teams**, avec un
 compte professionnel ou scolaire, via Microsoft Graph v1.0 en HTTP simple, sans SDK de fournisseur.
-Un agent liste les équipes, les canaux et les conversations, lit les messages, cherche des personnes
-et publie, dans les limites de ce qu'autorise l'opérateur :
+Un agent liste les équipes, les canaux et les conversations, lit et cherche les messages, cherche des
+personnes, publie, modifie, supprime, réagit et lit les transcriptions de réunions, dans les limites de ce qu'autorise l'opérateur :
 
 - **L'opérateur déclare les comptes** sous `Orkeon:Tools:Chat`. Un agent nomme un compte (ou prend
   celui par défaut), jamais un id client, un tenant ou un jeton.
-- **`Rights` est obligatoire** pour chaque compte. `Read` et `Send` sont les droits dont les outils
-  se servent.
+- **`Rights` est obligatoire** pour chaque compte. `Read`, `Send`, `Edit`, `Delete`,
+  `React` et `Meetings` sont les droits dont les outils se servent.
 - **Les lieux sont fermés par défaut, en lecture comme en publication** : avec une liste
   `Read:AllowedPlaces` vide, un compte ne lit nulle part ; avec une liste `Send:AllowedPlaces` vide,
-  il ne publie nulle part.
+  il ne publie, ne modifie, ne supprime et ne réagit nulle part.
 - **Les portées suivent les droits** : une connexion demande à Microsoft ce qu'exigent les `Rights`
   du compte, et une permission d'administrateur seulement quand l'opérateur dit qu'elle est accordée
   (`Auth:AdminGranted`).
@@ -34,7 +34,7 @@ et publie, dans les limites de ce qu'autorise l'opérateur :
 > **Couverture de test.** La famille est testée hors ligne, contre un Microsoft Graph scripté. Elle
 > n'a pas été jouée sur un vrai tenant Microsoft 365. Signalez ce qui diffère.
 
-## Les cinq outils
+## Les dix outils
 
 | Outil | Droit requis | Ce qu'il fait |
 |---|---|---|
@@ -43,6 +43,11 @@ et publie, dans les limites de ce qu'autorise l'opérateur :
 | `chat_read` | Read | Les messages d'un canal ou d'une conversation, les plus récents d'abord, ou les réponses d'un message de canal, filtrés |
 | `chat_members` | Read ; pour chercher une personne, Send suffit | Les membres d'un lieu, ou la fiche d'annuaire d'une personne |
 | `chat_send` | Send | Publie un message, ou une réponse, dans un lieu autorisé |
+| `chat_search` | Read | Trouve des messages par mots, par auteur ou qui mentionnent l'utilisateur connecté, dans les lieux où la lecture est autorisée, filtrés |
+| `chat_edit` | Edit | Réécrit un message que le compte a lui-même envoyé, dans un lieu autorisé |
+| `chat_delete` | Delete | Supprime un message que le compte a lui-même envoyé, dans un lieu autorisé |
+| `chat_react` | React | Pose ou retire une réaction sur un message d'une conversation autorisée |
+| `chat_meetings` | Meetings (et `AdminGranted`) | Liste les transcriptions d'une réunion et lit le texte de l'une d'elles, avec qui parle, filtré |
 
 Les ids sont ceux de Microsoft, et opaques : repassez-les exactement tels que `chat_list` ou
 `chat_read` les ont rendus.
@@ -82,9 +87,10 @@ Les ids sont ceux de Microsoft, et opaques : repassez-les exactement tels que `c
 5. Copiez l'**ID d'application (client)**.
 
 **Consentement d'administrateur.** Ces autorisations déléguées demandent un administrateur du
-tenant : `ChannelMessage.Read.All`, `ChannelMember.Read.All`, `TeamMember.Read.All` et
-`ChatMember.Read`. La famille ne demande que les deux premières, chacune quand `AdminGranted` la
-nomme : `ChannelMessages` pour la première, `ChannelMembers` pour la seconde. Un tenant peut aussi exiger le consentement d'un administrateur pour toute
+tenant : `ChannelMessage.Read.All`, `ChannelMember.Read.All`, `ChannelMessage.ReadWrite`,
+`OnlineMeetingTranscript.Read.All`, `TeamMember.Read.All` et `ChatMember.Read`. La famille ne demande que
+les quatre premières, chacune quand `AdminGranted` nomme son accord : `ChannelMessages`,
+`ChannelMembers`, `ChannelEdit` et `Meetings`, dans cet ordre. Un tenant peut aussi exiger le consentement d'un administrateur pour toute
 application : sa politique décide.
 
 ## Déclarer le compte et se connecter
@@ -153,8 +159,8 @@ par **tout le monde**, et mettez l'adresse qu'il donne dans une variable d'envir
   doit être en `https`, elle est relue à chaque publication, et aucun journal, aucune erreur, aucun
   événement ne la porte.
 - **L'adresse est le lieu** : `Rights` vaut `Send` et rien d'autre, le compte ne prend pas
-  d'`AllowedPlaces`, et `chat_send` ne prend ni `place`, ni `reply_to`, ni `mentions`. Le message est
-  signé par le bot Workflows. `Auth` et `Cloud` ne sont pas lus.
+  d'`AllowedPlaces`, et `chat_send` ne prend ni `place`, ni `reply_to`, ni `mentions`. Le compte
+  ne prend en charge que `chat_send`. Le message est signé par le bot Workflows. `Auth` et `Cloud` ne sont pas lus.
 - **Le texte est enveloppé dans une carte adaptative**, l'enveloppe que prend le flux. Teams lit le
   Markdown d'une carte, plus réduit que celui d'un message ; `format: "text"` est affiché tel quel. La
   charge entière fait au plus 28 Ko.
@@ -197,16 +203,21 @@ laisse aucune application publier en tant qu'utilisateur.
 - **`Tenant` est obligatoire** : un id ou un domaine, pas `common`, `organizations` ni `consumers`.
 - **Des permissions d'application**, accordées par un administrateur dans l'enregistrement et non à une
   connexion : `Team.ReadBasic.All`, `Channel.ReadBasic.All`, `ChannelMessage.Read.All`, `Chat.Read.All`,
-  et `ChannelMember.Read.All` pour `chat_members` sur un canal. Pour `Meetings`, dont aucun outil ne se
-  sert encore, `OnlineMeetingTranscript.Read.All` et une stratégie d'accès d'application.
+  et `ChannelMember.Read.All` pour `chat_members` sur un canal. Pour `Meetings`,
+  `OnlineMeetings.Read.All`, `OnlineMeetingTranscript.Read.All` et une stratégie d'accès d'application.
   `AdminGranted` est refusé.
 - **Elles atteignent toutes les équipes et toutes les conversations du tenant** : `Read:AllowedPlaces`
   est la seule limite qu'Orkeon ajoute. `*` est refusé, et les entrées `user:` aussi, puisqu'une
   application n'a aucune conversation à deux et ne cherche personne. Une équipe s'écrit par son id : toute
   équipe du tenant pourrait prendre un nom, tandis qu'un canal peut s'écrire par le sien. `team:<id>` couvre aussi les canaux
   privés de l'équipe.
-- `chat_list` ne liste que les lieux autorisés. `chat_members` avec `person` répond
-  `NotSupportedByAccount`, et un message est rendu sans l'adresse de son auteur.
+- **`chat_meetings` trouve une réunion par sa conversation** (`place`, donc `Read` aussi) : les
+  transcriptions sont lues sous l'utilisateur que la conversation désigne comme organisateur, que la
+  stratégie d'accès d'application doit contenir. Un `join_link`, ou une conversation qui n'indique pas
+  son organisateur, répond `NotSupportedByAccount`.
+- `chat_list` ne liste que les lieux autorisés. `chat_members` avec `person`, `chat_search`, les
+  mentions de l'utilisateur et ce qui écrit répondent `NotSupportedByAccount` : `Rights` ne prend que `Read`
+  et `Meetings`. Un message est rendu sans l'adresse de son auteur.
 - Les clouds sont ceux des autres comptes. Pas essayé sur un vrai tenant.
 
 ## Référence des réglages
@@ -217,17 +228,17 @@ laisse aucune application publier en tant qu'utilisateur.
 | `CredentialsDirectory` | Où sont gardés les jetons (son sous-répertoire `chat`) ; par défaut `credentials` à côté des réglages de l'utilisateur |
 | `Screening:WithholdRejected` | Retenir le texte d'un message que le filtre anti-injection de prompt rejette (défaut `false` : signaler seulement) |
 | `Accounts:<nom>:Provider` | `Teams` ou `TeamsWebhook`, obligatoire |
-| `Accounts:<nom>:Rights` | `Read`, `Send` ou les deux, obligatoire. Les autres noms que prend la clé n'ouvrent aucun outil, voir [Limites](#limites) |
+| `Accounts:<nom>:Rights` | Parmi `Read`, `Send`, `Edit`, `Delete`, `React` et `Meetings`, obligatoire. Avec `OAuth2`, `Meetings` exige aussi `AdminGranted: ["Meetings"]`. Un `TeamsWebhook` prend `Send` seul, une application `Read` et `Meetings` |
 | `Accounts:<nom>:Auth:ClientId` | L'application Microsoft Entra, obligatoire |
 | `Accounts:<nom>:Auth:Tenant` | `organizations` (défaut), un id de tenant ou un domaine de tenant ; `consumers` est refusé, et `ClientCredentials` ne prend pas d'alias |
 | `Accounts:<nom>:Auth:Method` | `OAuth2` (défaut), ou `ClientCredentials` pour une application qui ne fait que lire |
 | `Accounts:<nom>:Auth:CertificatePathEnvVar`, `FederatedTokenFileEnvVar`, `ClientSecretEnvVar` | Pour `ClientCredentials`, exactement un : le NOM de la variable de l'identifiant |
-| `Accounts:<nom>:Auth:AdminGranted` | Les permissions d'administrateur accordées par le tenant. `ChannelMessages` ouvre la lecture des messages de canal, `ChannelMembers` la liste des membres d'un canal |
+| `Accounts:<nom>:Auth:AdminGranted` | Les permissions d'administrateur accordées par le tenant. `ChannelMessages` ouvre la lecture des messages de canal ; `ChannelMembers`, la liste des membres d'un canal ; `ChannelEdit`, avec `ChannelMessages`, la modification et la suppression dans un canal ; `Meetings`, `chat_meetings` |
 | `Accounts:<nom>:Cloud` | `Global` (défaut), `UsGov` ou `UsGovDoD` ; le cloud de Chine est refusé |
 | `Accounts:<nom>:Webhook:UrlEnvVar` | Le NOM de la variable qui contient l'adresse d'un compte `TeamsWebhook` |
 | `Accounts:<nom>:Read:AllowedPlaces` | Où le compte peut lire ; vide : nulle part |
-| `Accounts:<nom>:Send:AllowedPlaces` | Où le compte peut publier ; vide : nulle part |
-| `Accounts:<nom>:Send:MaxPerHour` | Le plus de publications tentées sur une heure glissante, pour ce processus ; non renseigné : aucun plafond |
+| `Accounts:<nom>:Send:AllowedPlaces` | Là où le compte peut publier, modifier, supprimer et réagir ; vide : nulle part |
+| `Accounts:<nom>:Send:MaxPerHour` | Le plus de publications, modifications, suppressions et réactions tentées sur une heure glissante, pour ce processus ; non renseigné : aucun plafond |
 
 La section est validée paresseusement : un compte cassé est signalé, tous ses problèmes d'un coup,
 quand un appel ou `orkeon chat` s'en sert, et ne casse jamais un crew qui n'ouvre aucun chat. Une clé
@@ -243,10 +254,13 @@ valeur seule là où une liste est attendue. Un `Screening:WithholdRejected` ill
 
 | Droit | Autorisations déléguées demandées | Outils |
 |---|---|---|
-| `Read` | `Team.ReadBasic.All`, `Channel.ReadBasic.All`, `Chat.Read`, `User.ReadBasic.All` | `chat_list`, `chat_read`, `chat_members` |
-| `Read` avec `AdminGranted: ["ChannelMessages"]` | les mêmes, plus `ChannelMessage.Read.All` (administrateur) | `chat_read` sur un canal |
+| `Read` | `Team.ReadBasic.All`, `Channel.ReadBasic.All`, `Chat.Read`, `User.ReadBasic.All` | `chat_list`, `chat_read`, `chat_members`, `chat_search` |
+| `Read` avec `AdminGranted: ["ChannelMessages"]` | les mêmes, plus `ChannelMessage.Read.All` (administrateur) | `chat_read` et `chat_search` sur un canal |
 | `Read` avec `AdminGranted: ["ChannelMembers"]` | les mêmes, plus `ChannelMember.Read.All` (administrateur) | `chat_members` sur un canal |
 | `Send` | `ChannelMessage.Send`, `ChatMessage.Send`, `Chat.Create`, `Team.ReadBasic.All`, `Channel.ReadBasic.All`, `User.ReadBasic.All` | `chat_send`, et `chat_list` pour les équipes et les canaux, `chat_members` pour une personne |
+| `Edit`, `Delete` | `Chat.ReadWrite`, `Team.ReadBasic.All`, `Channel.ReadBasic.All`, `User.ReadBasic.All` ; avec `ChannelMessages`, `ChannelMessage.Read.All` ; avec `ChannelEdit`, `ChannelMessage.ReadWrite` (administrateur) | `chat_edit`, `chat_delete` |
+| `React` | `ChatMessage.Send`, `User.ReadBasic.All` | `chat_react` |
+| `Meetings` avec `AdminGranted: ["Meetings"]` | `OnlineMeetings.Read`, `OnlineMeetingTranscript.Read.All` (administrateur) | `chat_meetings` |
 
 - **Lire un canal demande un administrateur.** Sans `ChannelMessages` dans `AdminGranted`,
   `chat_read` sur un canal répond `ConsentMissing` avant toute requête. Les conversations ne
@@ -254,6 +268,10 @@ valeur seule là où une liste est attendue. Un `Screening:WithholdRejected` ill
 - **Les membres d'un canal** demandent aussi un administrateur (`ChannelMember.Read.All`). Sans
   `ChannelMembers` dans `AdminGranted`, `chat_members` sur un canal répond `ConsentMissing`, qui
   nomme la permission, avant toute requête.
+- **Modifier ou supprimer dans un canal demande à la fois `ChannelEdit` et `ChannelMessages`** dans
+  `AdminGranted` : l'auteur du message est lu d'abord. Une conversation n'en demande aucun.
+- **Les réunions demandent un administrateur.** Les deux permissions ne sont demandées que quand
+  `AdminGranted` nomme `Meetings` ; sans lui, `chat_meetings` répond `ConsentMissing` avant toute requête.
 - **Un crew dont les outils chat exigent un droit qu'aucun compte prêt n'accorde est refusé au
   départ**, avant tout appel au modèle, avec une ligne par outil, comme pour les outils mail et
   drive.
@@ -308,7 +326,7 @@ dans un réglage qui doit durer.
   pour partager un fichier, publiez le lien d'un `drive_upload`. Un message rendu fait au plus 80 Ko,
   la taille que Microsoft recommande (Graph en accepte environ 100).
 - **La publication est cadencée.** Une publication par seconde et par lieu, et `Send:MaxPerHour`
-  compte les tentatives, dans ce processus seulement. Une publication qui attendrait son tour plus de
+  compte les tentatives, dans ce processus seulement. Une modification, une suppression et une réaction comptent dans les deux, comme une publication : chacune se voit dans le lieu ou prévient quelqu'un, et un seul plafond les borne toutes. Une publication qui attendrait son tour plus de
   30 secondes répond `Throttled` et ne compte pas. Une publication n'est jamais répétée dès lors
   qu'elle a pu avoir lieu : l'erreur dit de lire d'abord le lieu.
 - **Le jeton reste auprès de Graph.** Il n'est envoyé qu'à l'hôte Graph du compte
@@ -354,6 +372,66 @@ await tools.chatSend({ place: page.place, text: "**Summary**\n\nNothing is block
 - `chat_send` exige `place`, sauf sur un compte webhook, qui le refuse.
 - `chat_send` ouvre la conversation à deux avec une personne quand il n'y en a pas.
 
+**Recherche.** `chat_search` prend `text`, `author` (une adresse, ou un id de `chat_members`) et
+`mentions_me`, au moins l'un d'eux, plus `text_chars`, `limit` (10 par défaut, 25 au plus) et `cursor`.
+
+```ts
+const found = await tools.chatSearch({ text: "release blocker", mentions_me: true });
+```
+
+- **Elle n'atteint que les lieux où la lecture est autorisée.** Le lieu de chaque résultat est
+  vérifié par ses ids avant d'en montrer quoi que ce soit, et le texte est relu dans ce lieu, jamais
+  dans le résumé de la recherche. Les résultats sont filtrés comme ceux de `chat_read`.
+- **Les mots sont littéraux** : tous, sans opérateur ni joker.
+- **La fenêtre est bornée** : 5 requêtes de 25 résultats, et 40 lieux consultés. Ce qui est au-delà
+  n'est pas trouvé, et aucun compte des résultats laissés de côté n'est donné : resserrez les mots.
+- **Les canaux sont écartés** sans `ChannelMessages` dans `AdminGranted` ; `limits` le dit.
+- **Une réponse dont le résultat ne dit pas le fil est retenue**, avec une raison.
+
+**Réunions.** `chat_meetings` liste les transcriptions d'une réunion, puis lit le texte de l'une d'elles.
+
+```ts
+const list = await tools.chatMeetings({ join_link: "https://teams.microsoft.com/l/meetup-join/..." });
+await tools.chatMeetings({ place: "chat:19:abc@thread.v2", transcript_id: list.transcripts[0].id });
+```
+
+- **Il exige le droit `Meetings`, et `Meetings` dans `AdminGranted`** sur le compte d'un utilisateur. Sans l'accord de l'administrateur, la réponse est `ConsentMissing`, avant toute requête.
+- **Désignez la réunion d'une seule façon** : exactement un de `join_link` et `place`. `join_link` est
+  un lien https sur l'hôte du cloud du compte ; les hôtes gouvernementaux ne sont pas confirmés par
+  les pages de Microsoft. `place` est `chat:<id>` et exige aussi `Read`.
+- **Sa conversation doit figurer dans `Read:AllowedPlaces`.** Un lien dont Graph n'indique pas la
+  conversation est refusé : il n'est pas confirmé que Graph rend toujours `chatInfo.threadId`. Les
+  réunions d'un canal sont refusées.
+- **Le texte est `[hh:mm:ss] intervenant : paroles`**, page par page (`cursor`). Le texte entier est
+  filtré à chaque page, par morceaux qui se chevauchent, et retenu en bloc quand le filtre le rejette et que
+  `Screening:WithholdRejected` est actif.
+- **Un réglage du tenant peut fermer les transcriptions** : la réponse est une erreur claire. Un
+  tenant qui masque les intervenants donne `no_speakers`.
+- **Il ne voit que certaines réunions** : celles que l'utilisateur connecté organise, ou que Graph
+  rend sous `me/onlineMeetings`. Le calendrier n'est pas lu. Les transcriptions expirent, et une
+  de plus de 4 Mio est refusée.
+- **Il est dans `TrustedTools`** : il filtre ce qu'il rend.
+
+**Modifier, supprimer, réagir.** Ils agissent dans un lieu de `Send:AllowedPlaces` et ne rendent
+aucun texte d'autrui.
+
+```ts
+await tools.chatEdit({ place: "chat:19:abc@thread.v2", message_id: "1700000000000", text: "Final." });
+await tools.chatReact({ place: "chat:19:abc@thread.v2", message_id: "1700000000000", reaction: "👍" });
+await tools.chatDelete({ place: "chat:19:abc@thread.v2", message_id: "1700000000000" });
+```
+
+- `chat_edit` et `chat_delete` n'agissent que sur un message que le compte a lui-même envoyé. Les
+  droits sont `Edit` et `Delete`. Dans un canal, passez `thread` pour une réponse. Un lieu `user:`
+  prend la conversation à deux qui existe et n'en ouvre jamais.
+- **`chat_edit` remplace tout le texte et ses mentions.** Il ne marche que dans le cloud mondial et
+  refuse un message à pièce jointe, à image ou à citation, qu'une réécriture perdrait.
+- **`chat_delete` est une suppression logique** : le service garde le message récupérable.
+- **`chat_react`** ne marche que dans les conversations (`chat:<id>` ou `user:<adresse>`) : un canal
+  répond `NotSupportedByAccount` tant qu'il n'a pas été essayé sur un vrai tenant. Il exige `React` et
+  prend un seul emoji ; `remove: true` le reprend.
+- **Aucun n'est répété après un échec ambigu** : l'erreur dit de lire d'abord le lieu.
+
 ## Commandes
 
 ```bash
@@ -368,8 +446,8 @@ Chaque verbe prend `--settings <fichier>` ; `login` et `check` prennent `--event
 `accounts --json` écrit un objet par compte : `name`, `provider`, `rights`, `cloud`, `default`,
 `ready`, `problem`, `configuration_problems`, `credential_problem`, `token_endpoint`. `check` rend
 compte de chaque droit : une permission manquante, une liste `AllowedPlaces` vide, une entrée mise de
-côté, un droit dont aucun outil ne se sert. Il ne nomme l'utilisateur connecté que quand un droit
-demande la permission de le lire (`Read`, `Send`) ([référence CLI](../reference/cli.md#orkeon-chat)).
+côté. Il ne nomme l'utilisateur connecté que quand un droit
+demande la permission de le lire (tous sauf `Meetings`) ([référence CLI](../reference/cli.md#orkeon-chat)).
 
 `logout` supprime aussi les jetons des réglages antérieurs du compte (droits plus larges, autre
 tenant), et marche pour un compte déclaré qui ne se résout plus ; un nouveau `login` les supprime
@@ -396,18 +474,18 @@ des outils du VFS, **pas** d'un `shell_command` qui tourne sous le même utilisa
 | `SignInRequired` | Aucun jeton utilisable : lancez `orkeon chat login <account>` |
 | `Throttled` | Microsoft ou `MaxPerHour` demande d'attendre, ou trop de publications attendent dans le lieu ; un `Retry-After` de cinq secondes ou moins est attendu |
 | `NotFound` | Aucun lieu, message ou personne de ce nom, ou pas encore de conversation avec cette personne |
-| `NotSupportedByAccount` | Le fournisseur ne sait pas le faire : les réponses d'un message de conversation, une conversation avec soi-même, une personne pour une application |
+| `NotSupportedByAccount` | Le fournisseur ne sait pas le faire : les réponses d'un message de conversation, une conversation avec soi-même, une réaction dans un canal ; une personne, une recherche, les mentions de l'utilisateur ou une écriture pour une application |
 | `InvalidRequest`, `ServerError` | L'appel est mal formé ; le service ou le réseau a échoué |
 
 ## Limites
 
 - **Pas joué sur un vrai tenant.** Ni la connexion ni les outils n'y ont été essayés, dans aucun
   cloud.
-- **Teams seulement, en utilisateur connecté, en application qui lit, ou par un webhook qui publie.** Pas livrés : la recherche, la modification, la suppression, les réactions, les réunions et leurs
-  transcriptions, et un canal Teams entrant dans `orkeon-host`.
-- **Des droits dont aucun outil ne se sert.** `Edit`, `Delete`, `React` et `Meetings`, comme les
-  permissions accordées autres que `ChannelMessages` et `ChannelMembers`, sont lus et demandent leurs autorisations, mais
-  aucun outil ne s'en sert. Ne les mettez pas.
+- **Teams seulement, en utilisateur connecté, en application qui lit, ou par un webhook qui publie.**
+  Pas livré : un canal Teams entrant dans `orkeon-host`.
+- **Réactions de canal, et modification dans les clouds gouvernementaux.** `chat_react` refuse un
+  canal et `chat_edit` les clouds gouvernementaux, tant qu'ils n'ont pas été essayés sur un vrai
+  tenant. La fenêtre de recherche est bornée, voir [Utiliser les outils](#utiliser-les-outils).
 - **Canaux partagés.** Les équipes viennent de `joinedTeams` de Graph, qui laisse de côté les équipes
   hôtes des canaux partagés.
 - **Le cloud de Chine est refusé** : les pages officielles de Microsoft ne s'accordent pas sur ses

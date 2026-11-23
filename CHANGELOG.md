@@ -10,12 +10,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added — chat tools: Microsoft Teams (#446)
 
 - The `chat_*` family (`Orkeon.Tools.Chat`, packed in `Orkeon.Tools`): `chat_accounts`, `chat_list`, `chat_read`,
-  `chat_members` and `chat_send`, over Microsoft Graph in plain HTTP. Accounts, rights and places live under
+  `chat_members`, `chat_send`, `chat_search`, `chat_edit`, `chat_delete`, `chat_react` and `chat_meetings`: ten tools,
+  which bring the built-in tool classes to 134, over Microsoft Graph in plain HTTP. Accounts, rights and places live under
   `Orkeon:Tools:Chat`; `Read:AllowedPlaces` and `Send:AllowedPlaces` are closed when empty, and a channel is read only
   when `Auth:AdminGranted` names `ChannelMessages`, its members listed when it names `ChannelMembers`. A
   `user:*@<domain>` entry matches a home address the directory establishes, and no one else. `AddOrkeonChatTools(configuration)` is inert until an account is
   declared. Tested offline, not run on a real tenant ([guide](docs/guides/chat.md),
   [ADR-021](docs/adr/ADR-021-chat-tool-family.md)).
+- `chat_search` (Read), `chat_edit`, `chat_delete` and `chat_react` (Execute). Search reaches only the places allowed for reading, checks each hit's place by ids and
+  reads the text from that place; its window is bounded (5 requests of 25 hits, 40 places). Edit and delete act on
+  messages the account itself sent, in `Send:AllowedPlaces`; in a channel they need `ChannelEdit` and `ChannelMessages`
+  in `Auth:AdminGranted`; delete is a soft delete; edit works in the worldwide cloud only and refuses a message with
+  attachments, images or a quote. `chat_react` works in chats only. Edits, deletions and reactions count in `Send:MaxPerHour`
+  and in the pace of a place. Sign-in: `Edit` and `Delete` also ask `Team.ReadBasic.All`, `Channel.ReadBasic.All` and
+  `User.ReadBasic.All` (and `ChannelMessage.Read.All` with `ChannelMessages`); `React` asks `ChatMessage.Send` and
+  `User.ReadBasic.All`, no longer `ChannelMessage.Send`. `chat_search` is in `TrustedTools`. Not run on a real tenant.
+- `chat_meetings` (Read) lists the
+  transcripts of a Teams meeting and reads the text of one, `[hh:mm:ss] speaker: words`, a page at a time. It needs the
+  right `Meetings` and `AdminGranted: ["Meetings"]` (`OnlineMeetings.Read` and `OnlineMeetingTranscript.Read.All`, asked
+  only then, else `ConsentMissing` before any request), and `Read` when the meeting is named by `place`. Exactly one of
+  `join_link` (https, the host of the account's cloud) and `place` (`chat:<id>`); the meeting's chat must be in
+  `Read:AllowedPlaces`, a link whose chat Graph does not tell is refused, channel meetings are refused. The whole text is
+  screened on each page and withheld whole under `WithholdRejected`. The calendar is not read; only meetings the signed-in
+  user organises or Graph returns under `me/onlineMeetings`; transcripts expire. `chat_meetings` is in `TrustedTools`.
+  Not run on a real tenant.
 - A `TeamsWebhook` chat account posts into one place through a Workflows webhook, with no sign-in: `Webhook:UrlEnvVar`
   names the variable of its address, `Rights` is `Send`, and `chat_send` takes no `place` there. Not tried on a real
   workflow.

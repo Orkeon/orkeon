@@ -4,7 +4,7 @@
 
 # Inventaire des tools Orkeon
 
-Cette page est le catalogue de référence des **129 classes de tools intégrées**. La règle
+Cette page est le catalogue de référence des **134 classes de tools intégrées**. La règle
 de comptage est celle qu'applique `scripts/check-doc-claims.py` : chaque fichier
 `*Tool.cs` sous `src/`, sauf l'interface (`IBaseTool.cs`) et l'infrastructure non-tool
 qui matche le glob (`MockTool.cs`, `JsTool.cs`, `ObservedTool.cs`, `AIAgentTool.cs`). Le même script
@@ -236,9 +236,9 @@ pour les deux fournisseurs, modèle de sécurité et commandes `orkeon drive` :
 
 ## Tools chat (`Orkeon.Tools.Chat`) — `AddOrkeonChatTools(configuration)`
 
-Cinq tools sur les comptes chat qu'un opérateur déclare sous `Orkeon:Tools:Chat` : Microsoft Teams
+Dix tools sur les comptes chat qu'un opérateur déclare sous `Orkeon:Tools:Chat` : Microsoft Teams
 via Microsoft Graph, en HTTP simple. Tant qu'un compte n'est pas déclaré et connecté
-(`orkeon chat login`), chaque tool sauf `chat_accounts` refuse tout appel en disant quoi faire. Un
+(`orkeon chat login` ; un webhook ou une application ne se connecte pas), chaque tool sauf `chat_accounts` refuse tout appel en disant quoi faire. Un
 agent nomme un compte (`account`, ou celui par défaut) — jamais un client ni un jeton — et les
 `Rights` du compte décident de ce qu'il peut faire ; `Read:AllowedPlaces` et `Send:AllowedPlaces`
 disent où, et une liste vide n'autorise aucun lieu. Un lieu est un canal
@@ -251,8 +251,13 @@ disent où, et une liste vide n'autorise aucun lieu. Un lieu est un canal
 | `chat_accounts` | `ChatAccountsTool` | aucun | Read | Lister les comptes configurés : le nom à passer en `account`, leur fournisseur et leurs droits, celui par défaut, si chacun est prêt | `{}` |
 | `chat_list` | `ChatListTool` | Read ; Send suffit pour les équipes et les canaux | Read | Lister les équipes, les canaux d'une équipe (`team`) ou les conversations (`kind`), avec `can_read` et `can_send` ; au plus `limit` éléments par page (20 par défaut, 50 au plus), `next_cursor` pour la suivante | `{ "kind": "channels", "team": "Engineering" }` |
 | `chat_read` | `ChatReadTool` | Read | Read | Lire les messages d'un canal ou d'une conversation, les plus récents d'abord, ou les réponses d'un message de canal (`message_id`) : l'avis de contenu non fiable d'abord, le verdict de filtrage de chaque message, `since` / `until`, `text_chars` (1000 par défaut). Un canal exige `AdminGranted: ["ChannelMessages"]` | `{ "place": "team:Engineering/channel:Releases", "since": "2026-11-01" }` |
-| `chat_members` | `ChatMembersTool` | Read ; Send suffit pour une personne | Read | Lister les membres d'un lieu, ou chercher une personne par nom, adresse ou id ; un canal exige `ChannelMember.Read.All` | `{ "person": "ana@example.com" }` |
+| `chat_members` | `ChatMembersTool` | Read ; Send suffit pour une personne | Read | Lister les membres d'un lieu, ou chercher une personne par nom, adresse ou id ; un canal exige `AdminGranted: ["ChannelMembers"]` (`ChannelMember.Read.All`) | `{ "person": "ana@example.com" }` |
 | `chat_send` | `ChatSendTool` | Send | Execute | Publier un message dans un lieu autorisé, en Markdown ou en texte simple, avec `mentions` par id d'annuaire et `reply_to` ; rien n'est chargé ; un compte `TeamsWebhook` ne prend pas de `place` | `{ "place": "user:ana@example.com", "text": "The report is ready." }` |
+| `chat_search` | `ChatSearchTool` | Read | Read | Chercher des messages par mots (`text`, tous, pris tels quels : ni opérateur ni joker), par auteur (`author`) ou qui mentionnent l'utilisateur (`mentions_me`), dans les seuls lieux où la lecture est autorisée ; le lieu de chaque résultat est vérifié par ses ids avant d'en montrer quoi que ce soit, et le texte est relu dans ce lieu, jamais dans le résumé de la recherche. Fenêtre bornée (5 requêtes de 25 résultats, 40 lieux), sans compte des résultats laissés de côté ; les canaux sont écartés sans `ChannelMessages` | `{ "text": "release blocker", "limit": 10 }` |
+| `chat_edit` | `ChatEditTool` | Edit | Execute | Réécrire un message que le compte a lui-même envoyé (`place`, `message_id`, `thread` pour une réponse de canal, `text`, `format`, `mentions`) ; lieu dans `Send:AllowedPlaces` ; un canal exige `ChannelEdit` et `ChannelMessages` dans `AdminGranted` ; cloud mondial seulement ; refuse un message à pièce jointe, à image ou à citation | `{ "place": "chat:19:abc@thread.v2", "message_id": "1700000000000", "text": "The report is final." }` |
+| `chat_delete` | `ChatDeleteTool` | Delete | Execute | Supprimer un message que le compte a lui-même envoyé, dans un lieu où il peut publier ; suppression logique, le service le garde récupérable ; un canal exige `ChannelEdit` et `ChannelMessages` | `{ "place": "chat:19:abc@thread.v2", "message_id": "1700000000000" }` |
+| `chat_react` | `ChatReactTool` | React | Execute | Poser ou retirer (`remove`) une réaction, un seul emoji, sur un message d'une conversation où le compte peut publier ; un canal répond `NotSupportedByAccount` | `{ "place": "chat:19:abc@thread.v2", "message_id": "1700000000000", "reaction": "👍" }` |
+| `chat_meetings` | `ChatMeetingsTool` | Meetings | Read | Lister les transcriptions d'une réunion et lire le texte de l'une d'elles, `[hh:mm:ss] intervenant : paroles`, page par page (`cursor`). La réunion se désigne par exactement un de `join_link` (https, l'hôte du cloud du compte) et `place` (`chat:<id>`, qui exige aussi `Read`) ; sa conversation doit figurer dans `Read:AllowedPlaces`, et un lien dont le service n'indique pas la conversation est refusé ; les réunions de canal sont refusées. Un compte d'application ne prend que `place`, et lit les transcriptions sous l'organisateur que la conversation indique. Exige `Meetings` dans `AdminGranted` sur le compte d'un utilisateur, sinon `ConsentMissing` avant toute requête. Le texte entier est filtré à chaque page et retenu en bloc quand le filtre le rejette sous `Screening:WithholdRejected` ; le tenant peut masquer les intervenants (`no_speakers`) | `{ "join_link": "https://teams.microsoft.com/l/meetup-join/...", "transcript_id": "MSMjMCMj..." }` |
 
 ## Tools d'analyse de codebase (`Orkeon.Tools.Analysis`) — `AddRaggableTreeTools()`
 
@@ -307,7 +312,7 @@ Vingt-neuf tools sur le graphe sémantique de code RaggableTree — le guide com
 
 ## Hors catalogue
 
-Délibérément **hors** des 129 classes de tools intégrées :
+Délibérément **hors** des 134 classes de tools intégrées :
 
 - `brief_submit` / `blueprint_submit` — internes à la commande `orkeon forge`
   (`ForgeSubmission.cs`, `Orkeon.Scripting.Cli`) ; les agents du moteur les utilisent,
@@ -333,14 +338,14 @@ le nombre qu'affichent le README et l'index de la documentation, vérifié par
 | `Orkeon.Tools.Analysis` (RaggableTree — voir [son guide](../architecture/raggable-tree.md)) | 29 |
 | `Orkeon.Tools.Email` (voir [son guide](../guides/email.md)) | 13 |
 | `Orkeon.Tools.Drive` (voir [son guide](../guides/drive.md)) | 11 |
-| `Orkeon.Tools.Chat` (voir [son guide](../guides/chat.md)) | 5 |
+| `Orkeon.Tools.Chat` (voir [son guide](../guides/chat.md)) | 10 |
 | `Orkeon.Infrastructure` (collaboration, session, sandbox, entrée humaine, `semantic_search`, `system_one_decide`, `memory_recall`, `mcp_prompt_get`) | 15 |
 | `Orkeon.Tools.Web` | 11 |
 | `Orkeon.Tools.EventHub` | 7 |
 | `Orkeon.Tools.FileSystem` | 8 |
 | `Orkeon.Tools.Rag` | 3 |
 | `Orkeon.Tools.Abstractions` / `Orkeon.Tools.Code` / `Orkeon.Tools.Embeddings.Local` / `Orkeon.Cli.Commands.Scripting` / `Orkeon.Scripting` | 1 chacun |
-| **Total** | **129** |
+| **Total** | **134** |
 
 ## Disponibilité par racine de composition
 
@@ -359,7 +364,7 @@ d'`orkeon run --list-tools` et sert ses outils à un client MCP, `human_input` �
 | FileSystem (8), Data (22), Web cœur (6), `shell_command`, `list_mounts`, session (6) | ✅ | ✅ |
 | E-mail (13) — les tools de boîte aux lettres refusent tout appel tant qu'aucun compte n'est déclaré sous `Orkeon:Tools:Email` | ✅ (jetons OAuth sous la racine interne `/credentials`) | ✅ comptes à mot de passe seulement — le REPL ne tient aucun magasin de jetons, un compte OAuth y est refusé |
 | Drive (11) — chaque tool sauf `drive_accounts` refuse tout appel tant qu'un compte n'est pas déclaré sous `Orkeon:Tools:Drive` et connecté | ✅ (jetons OAuth sous la racine interne `/credentials`) | enregistrés, mais chaque compte y est refusé : tous se connectent en OAuth, et le REPL ne tient aucun magasin de jetons |
-| Chat (5) — chaque tool sauf `chat_accounts` refuse tout appel tant qu'un compte n'est pas déclaré sous `Orkeon:Tools:Chat` et connecté (un webhook ou une application ne se connecte pas) | ✅ (jetons OAuth sous la racine interne `/credentials`) | enregistrés, mais un compte qui se connecte y est refusé : le REPL ne tient aucun magasin de jetons ; un compte webhook ou d'application marche |
+| Chat (10) — chaque tool sauf `chat_accounts` refuse tout appel tant qu'un compte n'est pas déclaré sous `Orkeon:Tools:Chat` et connecté (un webhook ou une application ne se connecte pas) | ✅ (jetons OAuth sous la racine interne `/credentials`) | enregistrés, mais un compte qui se connecte y est refusé : le REPL ne tient aucun magasin de jetons ; un compte webhook ou d'application marche |
 | EventHub (7) | ✅ | ❌ |
 | Analysis (29) | ✅ (sauf `RaggableTree:Enabled` = `false`) | ✅ |
 | `local_embed_text` | ✅ tant que RaggableTree est actif avec son provider d'embeddings local par défaut | ✅ |
@@ -431,7 +436,7 @@ services.AddOrkeonInMemoryEventHub();
 services.AddOrkeonEventHubTools();     // les 7 tools du hub d'événements
 services.AddOrkeonEmailTools(configuration); // les 13 tools email_* ; ceux de boîte aux lettres demandent un compte déclaré
 services.AddOrkeonDriveTools(configuration); // les 11 tools drive_* ; ils demandent un compte déclaré et connecté
-services.AddOrkeonChatTools(configuration);  // les 5 tools chat_* ; ils demandent un compte déclaré et connecté
+services.AddOrkeonChatTools(configuration);  // les 10 tools chat_* ; ils demandent un compte déclaré et connecté
 services.AddRaggableTreeTools();       // les 29 tools d'analyse
 services.AddOrkeonLocalEmbeddings();   // local_embed_text
 services.AddSemanticSearchTool();      // semantic_search (l'extension vit dans Orkeon.Hosting)
@@ -458,9 +463,14 @@ correspondance alphabétique complète :
 | `brave_search` | `BraveSearchTool` | `Orkeon.Tools.Web` |
 | `cache_search` | `CacheSearchTool` | `Orkeon.Tools.Web` |
 | `chat_accounts` | `ChatAccountsTool` | `Orkeon.Tools.Chat` |
+| `chat_delete` | `ChatDeleteTool` | `Orkeon.Tools.Chat` |
+| `chat_edit` | `ChatEditTool` | `Orkeon.Tools.Chat` |
 | `chat_list` | `ChatListTool` | `Orkeon.Tools.Chat` |
 | `chat_members` | `ChatMembersTool` | `Orkeon.Tools.Chat` |
+| `chat_meetings` | `ChatMeetingsTool` | `Orkeon.Tools.Chat` |
+| `chat_react` | `ChatReactTool` | `Orkeon.Tools.Chat` |
 | `chat_read` | `ChatReadTool` | `Orkeon.Tools.Chat` |
+| `chat_search` | `ChatSearchTool` | `Orkeon.Tools.Chat` |
 | `chat_send` | `ChatSendTool` | `Orkeon.Tools.Chat` |
 | `code_interpreter` | `SecureCodeInterpreterTool` | `Orkeon.Infrastructure` |
 | `codebase_map` | `CodebaseMapTool` | `Orkeon.Tools.Analysis` |

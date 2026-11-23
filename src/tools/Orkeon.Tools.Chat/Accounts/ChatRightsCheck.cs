@@ -7,6 +7,7 @@ namespace Orkeon.Tools.Chat.Accounts;
 public sealed class ChatRightsCheck
 {
     private const string SendTool = "chat_send";
+    private const string SearchTool = "chat_search";
 
     private readonly ChatAccountAdministration _administration;
 
@@ -39,7 +40,7 @@ public sealed class ChatRightsCheck
             if (accounts.Any(account => Grants(account, tool, right)))
                 continue;
 
-            var side = right == ChatRights.Send ? "Send" : "Read";
+            var side = Writes(right) ? "Send" : "Read";
             lines.Add(
                 $"{tool} needs the {right} right with a non-empty {side}:AllowedPlaces on a ready chat account, and no account has it. " +
                 $"Add it under Orkeon:Tools:Chat:Accounts:<name>:Rights and {side}.");
@@ -51,10 +52,17 @@ public sealed class ChatRightsCheck
     /// <summary>The right a chat tool needs.</summary>
     internal static ChatRights BaseRight(string tool) => tool switch
     {
-        "chat_list" or "chat_read" or "chat_members" => ChatRights.Read,
+        "chat_list" or "chat_read" or "chat_members" or SearchTool => ChatRights.Read,
         SendTool => ChatRights.Send,
+        "chat_edit" => ChatRights.Edit,
+        "chat_delete" => ChatRights.Delete,
+        "chat_react" => ChatRights.React,
+        "chat_meetings" => ChatRights.Meetings,
         _ => ChatRights.None,
     };
+
+    /// <summary>Whether what <paramref name="right"/> allows happens in the places to post in.</summary>
+    private static bool Writes(ChatRights right) => right is not (ChatRights.Read or ChatRights.Meetings);
 
     private static bool Grants(ChatAccountStatus account, string tool, ChatRights right)
     {
@@ -63,12 +71,14 @@ public sealed class ChatRightsCheck
         // A webhook posts into one place, and has nothing to list or to look up.
         if (account.Provider == nameof(ChatProvider.TeamsWebhook))
             return tool == SendTool;
+        if (account.Application && tool == SearchTool)
+            return false;
         // A person is looked up in the directory, where no place counts; an application looks nobody up.
         if (!account.Application && tool == "chat_members" && (granted & (ChatRights.Read | ChatRights.Send)) != 0)
             return true;
         // The places to post in are listed too.
         if (tool == "chat_list" && granted.HasFlag(ChatRights.Send) && account.SendPlaces > 0)
             return true;
-        return granted.HasFlag(right) && (right == ChatRights.Send ? account.SendPlaces : account.ReadPlaces) > 0;
+        return granted.HasFlag(right) && (Writes(right) ? account.SendPlaces : account.ReadPlaces) > 0;
     }
 }

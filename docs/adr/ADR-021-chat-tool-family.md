@@ -7,7 +7,7 @@
 **Status**: Accepted · **Date**: 2026-11-23
 · **Scope**: the `Orkeon.Tools.Chat` family, `Orkeon.Tools.Abstractions/Auth` (the OAuth client it shares with the e-mail and drive families), `Orkeon.Hosting` (the `chat` subdirectory of `/credentials`), `orkeon chat` (`Orkeon.Scripting.Cli`), `Orkeon.Host` (the inbound Teams channel), the `Orkeon.Tools` umbrella
 
-This ADR records the decision and the design. It ships no tool: the tools arrive with the lots that follow it, and those lots amend the counts, the inventory, the limitations page and CONTRIBUTING.
+This ADR records the decision and the design. It ships no tool: the tools arrive with the lots that follow it, and those lots amend the counts, the inventory, the limitations page and CONTRIBUTING. Built so far: `chat_accounts`, `chat_list`, `chat_read`, `chat_members`, `chat_send`, `chat_search`, `chat_edit`, `chat_delete`, `chat_react` and `chat_meetings`; an edit, a deletion and a reaction count in `Send:MaxPerHour` and in the pace of a place, like a post.
 
 ## Context
 

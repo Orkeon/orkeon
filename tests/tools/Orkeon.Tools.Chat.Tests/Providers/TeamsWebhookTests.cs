@@ -5,6 +5,8 @@ using Orkeon.Tools.Chat.Accounts;
 using Orkeon.Tools.Chat.Auth;
 using Orkeon.Tools.Chat.Configuration;
 using Orkeon.Tools.Chat.Constants;
+using Orkeon.Tools.Chat.Places;
+using Orkeon.Tools.Chat.Providers;
 using Orkeon.Tools.Chat.Providers.TeamsWebhook;
 using Orkeon.Tools.Chat.Tests.Doubles;
 using Orkeon.Tools.Chat.Tests.Fixtures;
@@ -248,6 +250,11 @@ public sealed class TeamsWebhookTests
     [InlineData("chat_list")]
     [InlineData("chat_read")]
     [InlineData("chat_members")]
+    [InlineData("chat_search")]
+    [InlineData("chat_edit")]
+    [InlineData("chat_delete")]
+    [InlineData("chat_react")]
+    [InlineData("chat_meetings")]
     public async Task Should_only_post(string tool)
     {
         using var fixture = Create();
@@ -255,8 +262,25 @@ public sealed class TeamsWebhookTests
         await fixture.ErrorAsync(tool, ("place", "chat:" + Samples.Group));
 
         Assert.Empty(fixture.Hook.Requests);
-        Assert.Equal(ChatErrorCode.NotSupportedByAccount,
-            (await Assert.ThrowsAsync<ChatToolException>(() => Provider(fixture).GetSelfAsync(Token))).Code);
+        var provider = Provider(fixture);
+        var chat = new ChatTarget { ChatId = Samples.Group };
+        var text = new ChatOutgoing("x", [], ReplyTo: null);
+        var meeting = new ChatMeeting("1", null, null, null);
+        Func<Task>[] calls =
+        [
+            () => provider.GetSelfAsync(Token),
+            () => provider.GetMessageAsync(chat, null, "1", Token),
+            () => provider.SearchAsync(new ChatSearchQuery(["x"], null, null, 0, 5), Token),
+            () => provider.EditAsync(chat, null, "1", text, Token),
+            () => provider.DeleteAsync(chat, null, "1", Token),
+            () => provider.ReactAsync(chat, "1", "x", remove: false, Token),
+            () => provider.GetMeetingLinkAsync(Samples.Group, Token),
+            () => provider.FindMeetingAsync("https://teams.microsoft.com/l/x", null, Token),
+            () => provider.ListTranscriptsAsync(meeting, Token),
+            () => provider.ReadTranscriptAsync(meeting, "1", Token),
+        ];
+        foreach (var call in calls)
+            Assert.Contains("is a webhook", (await Assert.ThrowsAsync<ChatToolException>(call)).Message, StringComparison.Ordinal);
     }
 
     private static TeamsWebhookProvider Provider(ChatFixture fixture) => Assert.IsType<TeamsWebhookProvider>(fixture.Session.Provider);

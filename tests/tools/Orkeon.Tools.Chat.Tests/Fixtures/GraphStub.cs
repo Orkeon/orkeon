@@ -17,6 +17,7 @@ internal sealed class GraphStub
         Handler = handler;
         handler.Map(HttpMethod.Get, "https://", Answer);
         handler.Map(HttpMethod.Post, "https://", Answer);
+        handler.Map(HttpMethod.Patch, "https://", Answer);
     }
 
     /// <summary>What received the requests.</summary>
@@ -24,7 +25,9 @@ internal sealed class GraphStub
 
     /// <summary>The Graph requests that write, in order.</summary>
     public IReadOnlyList<RecordedRequest> Writes =>
-        Handler.Requests.Where(request => request.Method != HttpMethod.Get && request.Uri.AbsolutePath.StartsWith("/v1.0/", StringComparison.Ordinal)).ToList();
+        Handler.Requests.Where(request => request.Method != HttpMethod.Get
+            && request.Uri.AbsolutePath.StartsWith("/v1.0/", StringComparison.Ordinal)
+            && request.Uri.AbsolutePath != "/v1.0/search/query").ToList();
 
     /// <summary>Answers a GET of Graph with JSON.</summary>
     public GraphStub Get(string path, string json) => On(HttpMethod.Get, path, _ => FakeHttpResponse.Json(json));

@@ -184,4 +184,31 @@ internal sealed class TeamsWebhookProvider : IChatProvider
 
     /// <inheritdoc />
     public Task<ChatSent> SendAsync(ChatTarget target, ChatOutgoing message, CancellationToken cancellationToken) => throw NotSupported("post in a place that is named");
+
+    /// <inheritdoc />
+    public Task<ChatMessage> GetMessageAsync(ChatTarget target, string? thread, string messageId, CancellationToken cancellationToken) => throw NotSupported("read a place");
+
+    /// <inheritdoc />
+    public Task<ChatSearchPage> SearchAsync(ChatSearchQuery query, CancellationToken cancellationToken) => throw NotSupported("search messages");
+
+    /// <inheritdoc />
+    public Task EditAsync(ChatTarget target, string? thread, string messageId, ChatOutgoing message, CancellationToken cancellationToken) => throw NotSupported("edit a message");
+
+    /// <inheritdoc />
+    public Task DeleteAsync(ChatTarget target, string? thread, string messageId, CancellationToken cancellationToken) => throw NotSupported("delete a message");
+
+    /// <inheritdoc />
+    public Task ReactAsync(ChatTarget target, string messageId, string reaction, bool remove, CancellationToken cancellationToken) => throw NotSupported("react to a message");
+
+    /// <inheritdoc />
+    public Task<ChatMeetingLink?> GetMeetingLinkAsync(string chatId, CancellationToken cancellationToken) => throw NotSupported("find a meeting");
+
+    /// <inheritdoc />
+    public Task<ChatMeeting?> FindMeetingAsync(string joinLink, string? organizer, CancellationToken cancellationToken) => throw NotSupported("find a meeting");
+
+    /// <inheritdoc />
+    public Task<IReadOnlyList<ChatTranscript>> ListTranscriptsAsync(ChatMeeting meeting, CancellationToken cancellationToken) => throw NotSupported("read a transcript");
+
+    /// <inheritdoc />
+    public Task<ChatTranscriptText> ReadTranscriptAsync(ChatMeeting meeting, string transcriptId, CancellationToken cancellationToken) => throw NotSupported("read a transcript");
 }
