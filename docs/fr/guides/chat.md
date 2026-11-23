@@ -23,9 +23,11 @@ et publie, dans les limites de ce qu'autorise l'opérateur :
 - **Les portées suivent les droits** : une connexion demande à Microsoft ce qu'exigent les `Rights`
   du compte, et une permission d'administrateur seulement quand l'opérateur dit qu'elle est accordée
   (`Auth:AdminGranted`).
-- **Chaque compte se connecte une fois** (`orkeon chat login` dans un terminal), par le navigateur ou
+- **Chaque compte `Teams` se connecte une fois** (`orkeon chat login` dans un terminal), par le navigateur ou
   par code d'appareil, et les outils rafraîchissent eux-mêmes le jeton d'accès. Il n'y a aucun secret
   à conserver : l'application est un client public.
+- **Un compte webhook ne se connecte nulle part** : il publie dans un seul lieu, et son adresse est le
+  secret ([plus bas](#un-webhook-pour-publier-dans-un-seul-lieu)).
 
 > **Couverture de test.** La famille est testée hors ligne, contre un Microsoft Graph scripté. Elle
 > n'a pas été jouée sur un vrai tenant Microsoft 365. Signalez ce qui diffère.
@@ -129,6 +131,39 @@ Microsoft, qui n'a pas de point de révocation pour ces jetons, et la commande l
 administrateur du tenant retire l'accès de l'application dans le centre d'administration Microsoft
 Entra (**Applications d'entreprise**, l'application, **Autorisations**).
 
+## Un webhook, pour publier dans un seul lieu
+
+Une crew qui ne fait que rendre compte — un build, un run de nuit — n'a besoin ni d'application ni de
+connexion. Dans Teams, ajoutez au canal ou à la conversation le flux **Publier dans un canal lorsqu'une
+requête webhook est reçue** (Workflows, qui remplace les connecteurs Office 365 retirés), déclenchable
+par **tout le monde**, et mettez l'adresse qu'il donne dans une variable d'environnement :
+
+```json
+"builds": {
+  "Provider": "TeamsWebhook",
+  "Rights": "Send",
+  "Webhook": { "UrlEnvVar": "TEAMS_BUILDS_WEBHOOK" },
+  "Send": { "MaxPerHour": 10 }
+}
+```
+
+- **L'adresse est un secret** : qui la détient peut publier. Seul le nom de sa variable est écrit. Elle
+  doit être en `https`, elle est relue à chaque publication, et aucun journal, aucune erreur, aucun
+  événement ne la porte.
+- **L'adresse est le lieu** : `Rights` vaut `Send` et rien d'autre, le compte ne prend pas
+  d'`AllowedPlaces`, et `chat_send` ne prend ni `place`, ni `reply_to`, ni `mentions`. Le message est
+  signé par le bot Workflows. `Auth` et `Cloud` ne sont pas lus.
+- **Le texte est enveloppé dans une carte adaptative**, l'enveloppe que prend le flux. Teams lit le
+  Markdown d'une carte, plus réduit que celui d'un message ; `format: "text"` est affiché tel quel. La
+  charge entière fait au plus 28 Ko.
+- **Accepté n'est pas publié.** Le flux répond avant de publier et ne donne aucun id de message : le
+  résultat le dit. Une publication est tentée une fois : après un délai dépassé, un `5xx` ou une
+  connexion coupée, l'erreur dit que le message est peut-être là. Aucune redirection n'est suivie.
+- `orkeon chat accounts` et `check` disent si la variable contient une adresse ; `check` n'envoie rien,
+  et `login` est refusé. Un flux réservé aux appelants connectés n'est pas servi : il demande un jeton.
+
+Pas essayé sur un vrai flux.
+
 ## Référence des réglages
 
 | Clé (sous `Orkeon:Tools:Chat`) | Signification |
@@ -136,13 +171,14 @@ Entra (**Applications d'entreprise**, l'application, **Autorisations**).
 | `DefaultAccount` | Le compte que prend un appel qui n'en nomme aucun ; facultatif avec un seul compte |
 | `CredentialsDirectory` | Où sont gardés les jetons (son sous-répertoire `chat`) ; par défaut `credentials` à côté des réglages de l'utilisateur |
 | `Screening:WithholdRejected` | Retenir le texte d'un message que le filtre anti-injection de prompt rejette (défaut `false` : signaler seulement) |
-| `Accounts:<nom>:Provider` | `Teams`, obligatoire |
+| `Accounts:<nom>:Provider` | `Teams` ou `TeamsWebhook`, obligatoire |
 | `Accounts:<nom>:Rights` | `Read`, `Send` ou les deux, obligatoire. Les autres noms que prend la clé n'ouvrent aucun outil, voir [Limites](#limites) |
 | `Accounts:<nom>:Auth:ClientId` | L'application Microsoft Entra, obligatoire |
 | `Accounts:<nom>:Auth:Tenant` | `organizations` (défaut), un id de tenant ou un domaine de tenant ; `consumers` est refusé |
 | `Accounts:<nom>:Auth:Method` | `OAuth2` (défaut), la seule méthode acceptée |
 | `Accounts:<nom>:Auth:AdminGranted` | Les permissions d'administrateur accordées par le tenant. `ChannelMessages` ouvre la lecture des messages de canal, `ChannelMembers` la liste des membres d'un canal |
 | `Accounts:<nom>:Cloud` | `Global` (défaut), `UsGov` ou `UsGovDoD` ; le cloud de Chine est refusé |
+| `Accounts:<nom>:Webhook:UrlEnvVar` | Le NOM de la variable qui contient l'adresse d'un compte `TeamsWebhook` |
 | `Accounts:<nom>:Read:AllowedPlaces` | Où le compte peut lire ; vide : nulle part |
 | `Accounts:<nom>:Send:AllowedPlaces` | Où le compte peut publier ; vide : nulle part |
 | `Accounts:<nom>:Send:MaxPerHour` | Le plus de publications tentées sur une heure glissante, pour ce processus ; non renseigné : aucun plafond |
@@ -269,6 +305,7 @@ await tools.chatSend({ place: page.place, text: "**Summary**\n\nNothing is block
   système sont sautés.
 - **`reply_to`** répond dans le fil d'un message de canal ; dans une conversation, il cite le message.
   `format` vaut `markdown` (défaut) ou `text`.
+- `chat_send` exige `place`, sauf sur un compte webhook, qui le refuse.
 - `chat_send` ouvre la conversation à deux avec une personne quand il n'y en a pas.
 
 ## Commandes
@@ -300,7 +337,7 @@ aux agents ne résout, à côté de ceux de `email` et `drive`. Un run garde un 
 répertoire d'identifiants pour les trois familles : quand elles en nomment de différents, celui de
 l'e-mail l'emporte, puis celui du drive. Comme pour eux, les jetons sont à l'abri
 des outils du VFS, **pas** d'un `shell_command` qui tourne sous le même utilisateur du système.
-`orkeon-repl` ne tient aucun magasin de jetons : un outil chat appelé là le dit.
+`orkeon-repl` ne tient aucun magasin de jetons : un compte chat qui se connecte le dit là.
 
 ## Erreurs
 
@@ -320,8 +357,7 @@ des outils du VFS, **pas** d'un `shell_command` qui tourne sous le même utilisa
 
 - **Pas joué sur un vrai tenant.** Ni la connexion ni les outils n'y ont été essayés, dans aucun
   cloud.
-- **Teams seulement, en utilisateur connecté.** Pas livrés : un compte webhook qui ne fait que publier
-  (`TeamsWebhook` est refusé), un compte d'application en lecture seule (`ClientCredentials` est
+- **Teams seulement, en utilisateur connecté, ou par un webhook qui publie.** Pas livrés : un compte d'application en lecture seule (`ClientCredentials` est
   refusé), la recherche, la modification, la suppression, les réactions, les réunions et leurs
   transcriptions, et un canal Teams entrant dans `orkeon-host`.
 - **Des droits dont aucun outil ne se sert.** `Edit`, `Delete`, `React` et `Meetings`, comme les

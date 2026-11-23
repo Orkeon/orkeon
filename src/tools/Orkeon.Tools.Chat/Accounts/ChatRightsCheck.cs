@@ -60,6 +60,9 @@ public sealed class ChatRightsCheck
     {
         if (!account.Ready || !Enum.TryParse<ChatRights>(account.Rights, out var granted))
             return false;
+        // A webhook posts into one place, and has nothing to list or to look up.
+        if (account.Provider == nameof(ChatProvider.TeamsWebhook))
+            return tool == SendTool;
         // A person is looked up in the directory, where no place counts.
         if (tool == "chat_members" && (granted & (ChatRights.Read | ChatRights.Send)) != 0)
             return true;

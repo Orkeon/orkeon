@@ -249,7 +249,7 @@ internal static class ChatCommand
     {
         ArgumentNullException.ThrowIfNull(result);
         var text = new StringBuilder();
-        text.Append("Chat account '").Append(result.Account).Append("' is reachable");
+        text.Append("Chat account '").Append(result.Account).Append(result.Contacted ? "' is reachable" : "' is a webhook, which was not called");
         if (result.User is { } user)
             text.Append(" as ").Append(user);
         text.Append('.');
@@ -276,7 +276,10 @@ internal static class ChatCommand
 
             if (account.Rights is not null)
             {
-                text.Append("  ").Append(account.Provider).Append(" · cloud ").AppendLine(account.Cloud);
+                text.Append("  ").Append(account.Provider);
+                if (account.Cloud is not null)
+                    text.Append(" · cloud ").Append(account.Cloud);
+                text.AppendLine();
                 text.Append("  rights: ").AppendLine(account.Rights);
                 text.Append("  allowed places: ")
                     .Append(CultureInfo.InvariantCulture, $"{account.ReadPlaces} to read, {account.SendPlaces} to post in").AppendLine();

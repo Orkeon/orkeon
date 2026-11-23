@@ -31,7 +31,7 @@ public sealed class ChatAccountAdministrationTests
 
         Assert.Equal(["broken", "work"], statuses.Select(status => status.Name));
         Assert.Equal(("?", false), (statuses[0].Provider, statuses[0].Ready));
-        Assert.Contains("Provider is required: Teams", statuses[0].ConfigurationProblems);
+        Assert.Contains("Provider is required: Teams or TeamsWebhook", statuses[0].ConfigurationProblems);
         Assert.Null(statuses[0].TokenEndpoint);
         var work = statuses[1];
         Assert.Equal(("Teams", "Read, Send", "Global", true, false), (work.Provider, work.Rights, work.Cloud, work.IsDefault, work.Ready));

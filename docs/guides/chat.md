@@ -20,9 +20,11 @@ chats, reads messages, looks people up and posts, within what the operator allow
 - **The scopes follow the rights**: a sign-in asks Microsoft for what the account's `Rights` need,
   and for an administrator's permission only when the operator says it was granted
   (`Auth:AdminGranted`).
-- **Every account signs in once** (`orkeon chat login` in a terminal), in the browser or with a
+- **Every `Teams` account signs in once** (`orkeon chat login` in a terminal), in the browser or with a
   device code, and the tools refresh the access token by themselves. There is no secret to store:
   the application is a public client.
+- **A webhook account signs in nowhere**: it posts into one place, and its address is the secret
+  ([below](#a-webhook-to-post-into-one-place)).
 
 > **Test coverage.** The family is tested offline, against a scripted Microsoft Graph. It has not
 > been run on a real Microsoft 365 tenant. Report what differs.
@@ -120,6 +122,38 @@ which has no revocation endpoint for these tokens, and the command says so: a te
 removes the application's access in the Microsoft Entra admin center (**Enterprise applications**,
 the application, **Permissions**).
 
+## A webhook, to post into one place
+
+A crew that only reports — a build, a nightly run — needs neither an application nor a sign-in. In
+Teams, add the workflow **Post to a channel when a webhook request is received** (Workflows, the
+replacement of the retired Office 365 connectors) to the channel or the chat, for **anyone** to
+trigger, and put the address it gives in an environment variable:
+
+```json
+"builds": {
+  "Provider": "TeamsWebhook",
+  "Rights": "Send",
+  "Webhook": { "UrlEnvVar": "TEAMS_BUILDS_WEBHOOK" },
+  "Send": { "MaxPerHour": 10 }
+}
+```
+
+- **The address is a secret**: whoever has it can post. Only the name of its variable is written. It
+  must be `https`, it is read again for each post, and no log, error or event carries it.
+- **The address is the place**: `Rights` is `Send` and nothing else, the account takes no
+  `AllowedPlaces`, and `chat_send` takes no `place`, no `reply_to` and no `mentions`. The message is
+  signed by the Workflows bot. `Auth` and `Cloud` are not read.
+- **The text is wrapped in an adaptive card**, the envelope the workflow takes. Teams reads the
+  Markdown of a card, a smaller set than that of a message; `format: "text"` is shown as written. The
+  whole payload is at most 28 KB.
+- **Accepted is not posted.** The workflow answers before it posts, and gives no message id: the
+  result says so. A post is tried once: after a time-out, a `5xx` or a cut connection the error says
+  the message may be there. No redirect is followed.
+- `orkeon chat accounts` and `check` say whether the variable holds an address; `check` sends nothing,
+  and `login` is refused. A workflow limited to signed-in callers is not served: it asks for a token.
+
+Not tried on a real workflow.
+
 ## Settings reference
 
 | Key (under `Orkeon:Tools:Chat`) | Meaning |
@@ -127,13 +161,14 @@ the application, **Permissions**).
 | `DefaultAccount` | The account a call uses when it names none; optional with a single account |
 | `CredentialsDirectory` | Where the tokens are kept (its `chat` subdirectory); default: `credentials` next to the user settings |
 | `Screening:WithholdRejected` | Withhold the text of a message the prompt-injection screen rejects (default `false`: flag only) |
-| `Accounts:<name>:Provider` | `Teams`, mandatory |
+| `Accounts:<name>:Provider` | `Teams` or `TeamsWebhook`, mandatory |
 | `Accounts:<name>:Rights` | `Read`, `Send` or both, mandatory. The other names the key takes open no tool, see [Limits](#limits) |
 | `Accounts:<name>:Auth:ClientId` | The Microsoft Entra application, mandatory |
 | `Accounts:<name>:Auth:Tenant` | `organizations` (default), a tenant id or a tenant domain; `consumers` is refused |
 | `Accounts:<name>:Auth:Method` | `OAuth2` (default), the only method accepted |
 | `Accounts:<name>:Auth:AdminGranted` | The administrator permissions the tenant granted. `ChannelMessages` opens the reading of channel messages, `ChannelMembers` the list of a channel's members |
 | `Accounts:<name>:Cloud` | `Global` (default), `UsGov` or `UsGovDoD`; the China cloud is refused |
+| `Accounts:<name>:Webhook:UrlEnvVar` | The NAME of the variable that holds the address of a `TeamsWebhook` account |
 | `Accounts:<name>:Read:AllowedPlaces` | Where the account may read; empty: nowhere |
 | `Accounts:<name>:Send:AllowedPlaces` | Where the account may post; empty: nowhere |
 | `Accounts:<name>:Send:MaxPerHour` | Most posts attempted in a sliding hour, for this process; unset: no cap |
@@ -254,6 +289,7 @@ await tools.chatSend({ place: page.place, text: "**Summary**\n\nNothing is block
 - **Order.** Newest first; a channel lists its threads by last activity. System events are skipped.
 - **`reply_to`** answers in the thread of a channel message; in a chat, it quotes the message.
   `format` is `markdown` (default) or `text`.
+- `chat_send` requires `place`, except on a webhook account, which refuses it.
 - `chat_send` opens the one-to-one chat with a person when there is none.
 
 ## Commands
@@ -284,7 +320,7 @@ In the `chat` subdirectory of the runner's internal `/credentials` root, which n
 resolves, beside the `email` and `drive` ones. A run keeps one credentials directory for the three
 families: when they name different ones, e-mail's wins, then drive's. As for those, the tokens are shielded from the VFS
 tools, **not** from a `shell_command` running as the same operating-system user. `orkeon-repl` keeps
-no token store: a chat tool called there says so.
+no token store: a chat account that signs in says so there.
 
 ## Errors
 
@@ -303,8 +339,7 @@ no token store: a chat tool called there says so.
 ## Limits
 
 - **Not run on a real tenant.** Neither the sign-in nor the tools were tried on one, in any cloud.
-- **Teams only, as a signed-in user.** Not shipped: a send-only webhook account (`TeamsWebhook` is
-  refused), a read-only application account (`ClientCredentials` is refused), search, editing,
+- **Teams only, as a signed-in user, or by a webhook that posts.** Not shipped: a read-only application account (`ClientCredentials` is refused), search, editing,
   deletion, reactions, meetings and their transcripts, and an inbound Teams channel in `orkeon-host`.
 - **Rights no tool uses.** `Edit`, `Delete`, `React` and `Meetings`, like the grants other than
   `ChannelMessages` and `ChannelMembers`, are read and ask for their permissions, but no tool uses them. Leave them out.

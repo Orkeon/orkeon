@@ -42,16 +42,19 @@ internal sealed class ChatScreeningOptions
 /// <summary>One account as declared in the settings.</summary>
 internal sealed class ChatAccountOptions
 {
-    /// <summary><c>Teams</c>. Mandatory.</summary>
+    /// <summary><c>Teams</c>, or <c>TeamsWebhook</c> to post into one place with no sign-in. Mandatory.</summary>
     public ChatProvider? Provider { get; set; }
 
     /// <summary>What an agent may do, e.g. <c>"Read, Send"</c>. Mandatory.</summary>
     public ChatRights Rights { get; set; }
 
-    /// <summary>How the account authenticates.</summary>
+    /// <summary>How the account authenticates. Not read for a <c>TeamsWebhook</c>.</summary>
     public ChatAuthOptions Auth { get; } = new();
 
-    /// <summary>The Microsoft cloud: <c>Global</c> (default), <c>UsGov</c> or <c>UsGovDoD</c>.</summary>
+    /// <summary>The webhook of a <c>TeamsWebhook</c> account.</summary>
+    public ChatWebhookOptions Webhook { get; } = new();
+
+    /// <summary>The Microsoft cloud: <c>Global</c> (default), <c>UsGov</c> or <c>UsGovDoD</c>. Not read for a <c>TeamsWebhook</c>.</summary>
     public ChatCloud? Cloud { get; set; }
 
     /// <summary>What an agent may read.</summary>
@@ -78,6 +81,13 @@ internal sealed class ChatAuthOptions
     /// <c>ChannelEdit</c>, <c>Meetings</c>, <c>ChannelMembers</c>. Each adds its scope to the next sign-in.
     /// </summary>
     public List<string> AdminGranted { get; } = [];
+}
+
+/// <summary>The webhook of an account. Its address is a secret, and is never written here.</summary>
+internal sealed class ChatWebhookOptions
+{
+    /// <summary>Name of the environment variable holding the address of the Workflows webhook, never the address itself.</summary>
+    public string? UrlEnvVar { get; set; }
 }
 
 /// <summary>What an agent may read.</summary>

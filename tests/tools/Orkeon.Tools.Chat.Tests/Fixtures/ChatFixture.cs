@@ -24,6 +24,7 @@ internal sealed class ChatFixture : IDisposable
 
     private readonly Dictionary<string, ToolBase> _tools = new(StringComparer.Ordinal);
     private readonly HttpClient _http;
+    private readonly HttpClient _hookHttp;
     private readonly ChatSessions _sessions;
 
     /// <summary>Creates the fixture.</summary>
@@ -34,19 +35,20 @@ internal sealed class ChatFixture : IDisposable
         Graph = new GraphStub(Handler);
         Graph.Get("me", Samples.Person(Samples.Self, "Me", "me@example.org"));
         _http = new HttpClient(Handler, disposeHandler: false);
+        _hookHttp = new HttpClient(Hook, disposeHandler: false);
         OAuth = new OAuth2Client(_http, Time, (wait, _) =>
         {
             Time.Advance(wait);
             return Task.CompletedTask;
         });
-        Credentials = new ChatCredentialProvider(Store, OAuth);
+        Credentials = new ChatCredentialProvider(Store, OAuth, new SecretEnvironment(Variables.GetValueOrDefault));
         var bound = Microsoft.Extensions.Options.Options.Create(Options);
         Registry = new ChatAccountRegistry(bound);
         Account = Registry.Resolve("work");
-        if (signedIn)
+        if (signedIn && !Account.IsWebhook)
             SignIn(Account.OAuth.Scopes);
 
-        _sessions = ChatSessions.Over(Credentials, () => _http, Time);
+        _sessions = ChatSessions.Over(Credentials, () => _http, Time, () => _hookHttp);
         Administration = new ChatAccountAdministration(Registry, Credentials, OAuth, _sessions);
         var access = new ChatAccess(Registry, _sessions);
         var screen = new ChatContentScreen(bound);
@@ -60,8 +62,14 @@ internal sealed class ChatFixture : IDisposable
     /// <summary>The configuration.</summary>
     public ChatToolsOptions Options { get; } = new();
 
+    /// <summary>The environment the accounts' variables are read in.</summary>
+    public Dictionary<string, string> Variables { get; } = new(StringComparer.Ordinal);
+
     /// <summary>What received the requests.</summary>
     public FakeHttpMessageHandler Handler { get; } = new();
+
+    /// <summary>What received the posts of a webhook.</summary>
+    public FakeHttpMessageHandler Hook { get; } = new();
 
     /// <summary>What answers them.</summary>
     public GraphStub Graph { get; }
@@ -144,6 +152,8 @@ internal sealed class ChatFixture : IDisposable
             tool.Dispose();
         _sessions.Dispose();
         _http.Dispose();
+        _hookHttp.Dispose();
+        Hook.Dispose();
         Handler.Dispose();
     }
 

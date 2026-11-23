@@ -65,6 +65,50 @@ public sealed class ChatCommandTests
     }
 
     [Fact]
+    public async Task AWebhook_IsListed_CheckedWithoutACall_AndHasNothingToSignIn()
+    {
+        const string variable = "ORKEON_TEST_CHAT_COMMAND_HOOK";
+        using var scratch = new ScriptScratch();
+        scratch.WriteFile("appsettings.json", $$"""
+            { "Orkeon": { "Tools": { "Chat": { "Accounts": {
+              "ops": { "Provider": "TeamsWebhook", "Rights": "Send", "Webhook": { "UrlEnvVar": "{{variable}}" } } } } } } }
+            """);
+        using var service = new FakeHttpMessageHandler();
+        using (var console = new TestConsole())
+        {
+            await ChatCommand.ExecuteAccountsAsync(console, new ChatAccountsCommandOptions { WorkingDirectoryOverride = scratch.Root });
+
+            Assert.Contains("TeamsWebhook", console.Stdout, StringComparison.Ordinal);
+            Assert.DoesNotContain("cloud", console.Stdout, StringComparison.Ordinal);
+            Assert.Contains(variable, console.Stdout, StringComparison.Ordinal);
+        }
+
+        using (var console = new TestConsole())
+        {
+            var exit = await ChatCommand.ExecuteCheckAsync(console, new ChatCheckCommandOptions
+            {
+                WorkingDirectoryOverride = scratch.Root, Account = "ops", ConfigureTestServices = Answering(service),
+            });
+
+            Assert.Contains("is a webhook, which was not called.", console.Stdout, StringComparison.Ordinal);
+            Assert.NotEqual(Program.ExitOk, exit);
+        }
+
+        using (var console = new TestConsole())
+        {
+            var exit = await ChatCommand.ExecuteLoginAsync(console, new ChatLoginCommandOptions
+            {
+                WorkingDirectoryOverride = scratch.Root, Account = "ops", ConfigureTestServices = Answering(service),
+            });
+
+            Assert.NotEqual(Program.ExitOk, exit);
+            Assert.Contains("nothing to sign in", console.Stdout + console.Stderr, StringComparison.Ordinal);
+        }
+
+        Assert.Empty(service.Requests);
+    }
+
+    [Fact]
     public async Task DeviceCodeLogin_StoresTheTokens_ThenCheckConnects_ThenLogoutDeletesThemAndSaysTheyAreNotRevoked()
     {
         using var scratch = new ScriptScratch();

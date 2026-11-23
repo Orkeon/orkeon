@@ -57,7 +57,7 @@ public sealed class ChatOptionsBinderTests
     [InlineData("Read:AllowedPlaces", "*", "Read:AllowedPlaces is a single value where a list is expected")]
     [InlineData("Auth:AdminGranted", "ChannelMessages", "Auth:AdminGranted is a single value where a list is expected")]
     [InlineData("Send", "*", "Send is a single value where a section is expected")]
-    [InlineData("Places", "x", "Places is not an account setting: an account carries Provider, Rights, Auth, Cloud, Read, Send")]
+    [InlineData("Places", "x", "Places is not an account setting: an account carries Provider, Rights, Auth, Webhook, Cloud, Read, Send")]
     public void Should_set_an_unreadable_account_aside_and_bind_the_others(string key, string value, string problem)
     {
         var options = Bind((Account + key, value), ("Accounts:other:Provider", "Teams"));

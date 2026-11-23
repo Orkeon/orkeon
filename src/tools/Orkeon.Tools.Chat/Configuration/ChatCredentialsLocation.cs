@@ -12,12 +12,12 @@ public static class ChatCredentialsLocation
     /// <summary>The virtual directory, under the host's credentials root, the chat tokens live in.</summary>
     public const string TokenSubdirectory = "chat";
 
-    /// <summary>Whether the <c>Orkeon:Tools:Chat</c> section declares an account.</summary>
+    /// <summary>Whether the <c>Orkeon:Tools:Chat</c> section declares an account that signs in, or one that cannot be read.</summary>
     /// <param name="chatSection">The <c>Orkeon:Tools:Chat</c> section.</param>
     public static bool NeedsTokenStore(IConfiguration chatSection)
     {
         ArgumentNullException.ThrowIfNull(chatSection);
-        return Bind(chatSection).Accounts.Count > 0;
+        return Bind(chatSection).Accounts.Values.Any(account => account.Provider != ChatProvider.TeamsWebhook);
     }
 
     /// <summary>The operator's <c>CredentialsDirectory</c>, or null to use the host's default.</summary>

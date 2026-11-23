@@ -15,16 +15,18 @@ internal sealed class ChatCredentialProvider
 {
     private readonly IChatTokenStore _store;
     private readonly OAuth2Client _oauth;
+    private readonly SecretEnvironment _environment;
     private readonly ConcurrentDictionary<string, SemaphoreSlim> _refreshGates = new(StringComparer.Ordinal);
     private readonly ConcurrentDictionary<string, ChatTokenSet> _fresh = new(StringComparer.Ordinal);
 
     /// <summary>Creates the provider.</summary>
-    public ChatCredentialProvider(IChatTokenStore store, OAuth2Client oauth)
+    public ChatCredentialProvider(IChatTokenStore store, OAuth2Client oauth, SecretEnvironment? environment = null)
     {
         ArgumentNullException.ThrowIfNull(store);
         ArgumentNullException.ThrowIfNull(oauth);
         _store = store;
         _oauth = oauth;
+        _environment = environment ?? SecretEnvironment.Machine;
     }
 
     /// <summary>
@@ -37,6 +39,12 @@ internal sealed class ChatCredentialProvider
         ArgumentNullException.ThrowIfNull(account);
         try
         {
+            if (account.IsWebhook)
+            {
+                _ = WebhookAddress(account);
+                return null;
+            }
+
             var tokens = await _store.ReadAsync(TokenKey(account), cancellationToken).ConfigureAwait(false);
             return tokens is not null && (_oauth.IsFresh(tokens.ExpiresAt) || tokens.RefreshToken is not null)
                 ? null
@@ -160,6 +168,27 @@ internal sealed class ChatCredentialProvider
         {
             gate.Release();
         }
+    }
+
+    /// <summary>The address of a webhook account, read again for each post. No refusal quotes it.</summary>
+    public Uri WebhookAddress(ResolvedChatAccount account)
+    {
+        ArgumentNullException.ThrowIfNull(account);
+        var name = account.WebhookUrlEnvVar ?? throw new ChatToolException(ChatErrorCode.NotSupportedByAccount, $"Chat account '{account.Name}' is not a webhook.");
+        var value = _environment.Read(name);
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            throw new ChatToolException(
+                ChatErrorCode.InvalidConfiguration,
+                $"The webhook address of chat account '{account.Name}' is read from the environment variable {name}, which {_environment.Unset}.");
+        }
+
+        return Uri.TryCreate(value.Trim(), UriKind.Absolute, out var address)
+            && address.Scheme == Uri.UriSchemeHttps && address.Host.Length > 0 && address.UserInfo.Length == 0
+            ? address
+            : throw new ChatToolException(
+                ChatErrorCode.InvalidConfiguration,
+                $"The environment variable {name}, which holds the webhook address of chat account '{account.Name}', is not an https address.");
     }
 
     private SemaphoreSlim Gate(string key) => _refreshGates.GetOrAdd(key, _ => new SemaphoreSlim(1, 1));

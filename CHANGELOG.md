@@ -16,6 +16,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `user:*@<domain>` entry matches a home address the directory establishes, and no one else. `AddOrkeonChatTools(configuration)` is inert until an account is
   declared. Tested offline, not run on a real tenant ([guide](docs/guides/chat.md),
   [ADR-021](docs/adr/ADR-021-chat-tool-family.md)).
+- A `TeamsWebhook` chat account posts into one place through a Workflows webhook, with no sign-in: `Webhook:UrlEnvVar`
+  names the variable of its address, `Rights` is `Send`, and `chat_send` takes no `place` there. Not tried on a real
+  workflow.
 - `orkeon chat accounts`, `login` (the browser, or `--device-code`), `logout` and `check`.
 - The shared OAuth client takes the flow at the sign-in, token revocation, a client assertion and
   `OAuthSettings.Prompt`; left null, `Prompt` keeps the Google parameters of before. E-mail and drive accounts sign in

@@ -3073,7 +3073,7 @@
         "UsGovDoD",
         "China"
       ],
-      "description": "The Microsoft cloud: `Global` (default), `UsGov` or `UsGovDoD`."
+      "description": "The Microsoft cloud: `Global` (default), `UsGov` or `UsGovDoD`. Not read for a `TeamsWebhook`."
     },
     {
       "path": "Orkeon:Tools:Chat:Accounts:<name>:Provider",
@@ -3083,7 +3083,7 @@
         "Teams",
         "TeamsWebhook"
       ],
-      "description": "`Teams`. Mandatory."
+      "description": "`Teams`, or `TeamsWebhook` to post into one place with no sign-in. Mandatory."
     },
     {
       "path": "Orkeon:Tools:Chat:Accounts:<name>:Read:AllowedPlaces",
@@ -3120,6 +3120,12 @@
       "section": "Orkeon:Tools:Chat",
       "type": "integer",
       "description": "The most posts the account attempts in an hour, in this process. Unset sets no cap."
+    },
+    {
+      "path": "Orkeon:Tools:Chat:Accounts:<name>:Webhook:UrlEnvVar",
+      "section": "Orkeon:Tools:Chat",
+      "type": "string",
+      "description": "Name of the environment variable holding the address of the Workflows webhook, never the address itself."
     },
     {
       "path": "Orkeon:Tools:Chat:CredentialsDirectory",

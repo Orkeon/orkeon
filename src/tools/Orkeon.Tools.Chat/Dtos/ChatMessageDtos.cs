@@ -216,10 +216,10 @@ internal sealed record ChatSendRequest
     [FieldSchema(Description = "Account name; omit for the default account", IsRequired = false)]
     public string? Account { get; init; }
 
-    /// <summary>Place: team:&lt;team&gt;/channel:&lt;channel&gt;, chat:&lt;id&gt; or user:&lt;address&gt;; a team or a channel by its name or its id. The one-to-one chat with a person is opened when there is none.</summary>
+    /// <summary>Place: team:&lt;team&gt;/channel:&lt;channel&gt;, chat:&lt;id&gt; or user:&lt;address&gt;; a team or a channel by its name or its id. The one-to-one chat with a person is opened when there is none. Required, except on a webhook account, which takes none.</summary>
     [JsonPropertyName("place")]
-    [FieldSchema(Description = "Place: team:<team>/channel:<channel>, chat:<id> or user:<address>; a team or a channel by its name or its id. The one-to-one chat with a person is opened when there is none", IsRequired = true, Example = "user:ada@example.org")]
-    public string Place { get; init; } = "";
+    [FieldSchema(Description = "Place: team:<team>/channel:<channel>, chat:<id> or user:<address>; a team or a channel by its name or its id. The one-to-one chat with a person is opened when there is none. Required, except on an account whose provider is TeamsWebhook, which takes none", IsRequired = false, Example = "user:ada@example.org")]
+    public string? Place { get; init; }
 
     /// <summary>The message.</summary>
     [JsonPropertyName("text")]
@@ -250,10 +250,10 @@ internal sealed record ChatSendResponse
     [ReturnSchema(Description = "Account used")]
     public string Account { get; init; } = "";
 
-    /// <summary>Where it was posted, by its ids.</summary>
+    /// <summary>Where it was posted, by its ids; absent for a webhook.</summary>
     [JsonPropertyName("place")]
-    [ReturnSchema(Description = "Where it was posted, by its ids")]
-    public string Place { get; init; } = "";
+    [ReturnSchema(Description = "Where it was posted, by its ids; absent for a webhook")]
+    public string? Place { get; init; }
 
     /// <summary>Id of the message posted.</summary>
     [JsonPropertyName("message_id")]

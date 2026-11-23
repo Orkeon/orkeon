@@ -6,7 +6,7 @@ internal enum ChatProvider
     /// <summary>Microsoft Teams, through Microsoft Graph, as the signed-in user.</summary>
     Teams,
 
-    /// <summary>A Microsoft Teams Workflows webhook. Refused: no provider serves it.</summary>
+    /// <summary>A Microsoft Teams Workflows webhook: posts into one place, with no sign-in.</summary>
     TeamsWebhook,
 }
 

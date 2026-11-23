@@ -49,8 +49,13 @@ public static class ChatToolsServiceCollectionExtensions
         // No redirect is followed: a token or a message never goes to a host that was not chosen here.
         services.AddHttpClient(ChatDefaults.HttpClientName)
             .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler { AllowAutoRedirect = false });
-        // A non-LLM client: the LLM exchange log does not capture its calls nor what they carry.
+        // The address of a webhook is its secret: the client logs no request either.
+        services.AddHttpClient(ChatDefaults.WebhookHttpClientName)
+            .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler { AllowAutoRedirect = false })
+            .RemoveAllLoggers();
+        // Non-LLM clients: the LLM exchange log does not capture their calls nor what they carry.
         services.AddSingleton(new LlmExchangeLogExclusion(ChatDefaults.HttpClientName));
+        services.AddSingleton(new LlmExchangeLogExclusion(ChatDefaults.WebhookHttpClientName));
         services.TryAddSingleton(TimeProvider.System);
 
         services.TryAddSingleton<IChatTokenStore>(_ => new UnavailableChatTokenStore());
@@ -64,7 +69,8 @@ public static class ChatToolsServiceCollectionExtensions
         services.TryAddSingleton(sp => ChatSessions.Over(
             sp.GetRequiredService<ChatCredentialProvider>(),
             () => sp.GetRequiredService<IHttpClientFactory>().CreateClient(ChatDefaults.HttpClientName),
-            sp.GetRequiredService<TimeProvider>()));
+            sp.GetRequiredService<TimeProvider>(),
+            () => sp.GetRequiredService<IHttpClientFactory>().CreateClient(ChatDefaults.WebhookHttpClientName)));
         services.TryAddSingleton(sp => new ChatAccess(sp.GetRequiredService<IChatAccountRegistry>(), sp.GetRequiredService<ChatSessions>()));
         services.TryAddSingleton(sp => new ChatContentScreen(sp.GetRequiredService<IOptions<ChatToolsOptions>>()));
         services.TryAddSingleton(sp => new SendQuota(sp.GetRequiredService<TimeProvider>()));

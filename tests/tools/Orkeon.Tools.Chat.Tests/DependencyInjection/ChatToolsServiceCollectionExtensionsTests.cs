@@ -26,6 +26,7 @@ public sealed class ChatToolsServiceCollectionExtensionsTests
         Assert.Equal(ToolNames, provider.GetServices<IBaseTool>().Select(tool => tool.Name).Order(StringComparer.Ordinal));
         Assert.NotNull(provider.GetRequiredService<ChatRightsCheck>());
         Assert.Contains(provider.GetServices<LlmExchangeLogExclusion>(), exclusion => exclusion.ClientName == "orkeon.chat");
+        Assert.Contains(provider.GetServices<LlmExchangeLogExclusion>(), exclusion => exclusion.ClientName == "orkeon.chat.webhook");
     }
 
     [Fact]
@@ -54,6 +55,20 @@ public sealed class ChatToolsServiceCollectionExtensionsTests
         });
 
         Assert.NotSame(provider.GetRequiredService<OAuth2Client>(), provider.GetRequiredService<ChatOAuth>().Client);
+    }
+
+    [Fact]
+    public void Should_follow_no_redirect_of_a_webhook()
+    {
+        using var provider = Build(services => services.AddOrkeonChatTools(EmptyConfiguration()));
+
+        HttpMessageHandler? handler = provider.GetRequiredService<IHttpMessageHandlerFactory>().CreateHandler("orkeon.chat.webhook");
+        var chain = new List<HttpMessageHandler>();
+        for (; handler is not null; handler = (handler as DelegatingHandler)?.InnerHandler)
+            chain.Add(handler);
+
+        Assert.False(Assert.IsType<SocketsHttpHandler>(chain[^1]).AllowAutoRedirect);
+        Assert.DoesNotContain(chain, link => link.GetType().Name.Contains("Logging", StringComparison.Ordinal));
     }
 
     [Fact]

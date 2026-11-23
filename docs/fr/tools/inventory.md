@@ -252,7 +252,7 @@ disent où, et une liste vide n'autorise aucun lieu. Un lieu est un canal
 | `chat_list` | `ChatListTool` | Read ; Send suffit pour les équipes et les canaux | Read | Lister les équipes, les canaux d'une équipe (`team`) ou les conversations (`kind`), avec `can_read` et `can_send` ; au plus `limit` éléments par page (20 par défaut, 50 au plus), `next_cursor` pour la suivante | `{ "kind": "channels", "team": "Engineering" }` |
 | `chat_read` | `ChatReadTool` | Read | Read | Lire les messages d'un canal ou d'une conversation, les plus récents d'abord, ou les réponses d'un message de canal (`message_id`) : l'avis de contenu non fiable d'abord, le verdict de filtrage de chaque message, `since` / `until`, `text_chars` (1000 par défaut). Un canal exige `AdminGranted: ["ChannelMessages"]` | `{ "place": "team:Engineering/channel:Releases", "since": "2026-11-01" }` |
 | `chat_members` | `ChatMembersTool` | Read ; Send suffit pour une personne | Read | Lister les membres d'un lieu, ou chercher une personne par nom, adresse ou id ; un canal exige `ChannelMember.Read.All` | `{ "person": "ana@example.com" }` |
-| `chat_send` | `ChatSendTool` | Send | Execute | Publier un message dans un lieu autorisé, en Markdown ou en texte simple, avec `mentions` par id d'annuaire et `reply_to` ; rien n'est chargé | `{ "place": "user:ana@example.com", "text": "The report is ready." }` |
+| `chat_send` | `ChatSendTool` | Send | Execute | Publier un message dans un lieu autorisé, en Markdown ou en texte simple, avec `mentions` par id d'annuaire et `reply_to` ; rien n'est chargé ; un compte `TeamsWebhook` ne prend pas de `place` | `{ "place": "user:ana@example.com", "text": "The report is ready." }` |
 
 ## Tools d'analyse de codebase (`Orkeon.Tools.Analysis`) — `AddRaggableTreeTools()`
 
@@ -359,7 +359,7 @@ d'`orkeon run --list-tools` et sert ses outils à un client MCP, `human_input` �
 | FileSystem (8), Data (22), Web cœur (6), `shell_command`, `list_mounts`, session (6) | ✅ | ✅ |
 | E-mail (13) — les tools de boîte aux lettres refusent tout appel tant qu'aucun compte n'est déclaré sous `Orkeon:Tools:Email` | ✅ (jetons OAuth sous la racine interne `/credentials`) | ✅ comptes à mot de passe seulement — le REPL ne tient aucun magasin de jetons, un compte OAuth y est refusé |
 | Drive (11) — chaque tool sauf `drive_accounts` refuse tout appel tant qu'un compte n'est pas déclaré sous `Orkeon:Tools:Drive` et connecté | ✅ (jetons OAuth sous la racine interne `/credentials`) | enregistrés, mais chaque compte y est refusé : tous se connectent en OAuth, et le REPL ne tient aucun magasin de jetons |
-| Chat (5) — chaque tool sauf `chat_accounts` refuse tout appel tant qu'un compte n'est pas déclaré sous `Orkeon:Tools:Chat` et connecté | ✅ (jetons OAuth sous la racine interne `/credentials`) | enregistrés, mais chaque compte y est refusé : tous se connectent en OAuth, et le REPL ne tient aucun magasin de jetons |
+| Chat (5) — chaque tool sauf `chat_accounts` refuse tout appel tant qu'un compte n'est pas déclaré sous `Orkeon:Tools:Chat` et connecté (un webhook ne se connecte pas) | ✅ (jetons OAuth sous la racine interne `/credentials`) | enregistrés, mais un compte qui se connecte y est refusé : le REPL ne tient aucun magasin de jetons ; un compte webhook marche |
 | EventHub (7) | ✅ | ❌ |
 | Analysis (29) | ✅ (sauf `RaggableTree:Enabled` = `false`) | ✅ |
 | `local_embed_text` | ✅ tant que RaggableTree est actif avec son provider d'embeddings local par défaut | ✅ |

@@ -24,6 +24,18 @@ internal static class TestChatAccounts
         return options;
     }
 
+    /// <summary>The variable that holds a webhook's address.</summary>
+    public const string WebhookVariable = "ORKEON_TEST_CHAT_HOOK";
+
+    /// <summary>A webhook account.</summary>
+    public static ChatAccountOptions Webhook(int? maxPerHour = null)
+    {
+        var options = new ChatAccountOptions { Provider = ChatProvider.TeamsWebhook, Rights = ChatRights.Send };
+        options.Webhook.UrlEnvVar = WebhookVariable;
+        options.Send.MaxPerHour = maxPerHour;
+        return options;
+    }
+
     /// <summary><paramref name="options"/> resolved.</summary>
     public static ResolvedChatAccount Resolve(ChatAccountOptions options, string name = "work")
     {

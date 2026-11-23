@@ -6,6 +6,9 @@ namespace Orkeon.Tools.Chat.Configuration;
 /// <summary>An account after presets and validation: everything a provider needs, nothing left to guess.</summary>
 internal sealed record ResolvedChatAccount
 {
+    private readonly Uri? _apiBase;
+    private readonly OAuthSettings? _oauth;
+
     /// <summary>The name agents address the account by.</summary>
     public required string Name { get; init; }
 
@@ -21,11 +24,25 @@ internal sealed record ResolvedChatAccount
     /// <summary>The Microsoft cloud.</summary>
     public required ChatCloud Cloud { get; init; }
 
-    /// <summary>The API base address of that cloud: the one host the account's token is sent to.</summary>
-    public required Uri ApiBase { get; init; }
+    /// <summary>The API base address of that cloud: the one host the account's token is sent to. A webhook has none.</summary>
+    public Uri ApiBase
+    {
+        get => _apiBase ?? throw NoGraph();
+        init => _apiBase = value;
+    }
 
-    /// <summary>OAuth settings, endpoints and scopes included.</summary>
-    public required OAuthSettings OAuth { get; init; }
+    /// <summary>OAuth settings, endpoints and scopes included. A webhook has none.</summary>
+    public OAuthSettings OAuth
+    {
+        get => _oauth ?? throw NoGraph();
+        init => _oauth = value;
+    }
+
+    /// <summary>The variable that holds a webhook's address; null for an account of Microsoft Graph.</summary>
+    public string? WebhookUrlEnvVar { get; init; }
+
+    /// <summary>Whether the account is a webhook: it posts into one place, and has no token.</summary>
+    public bool IsWebhook => Provider == ChatProvider.TeamsWebhook;
 
     /// <summary>The places an agent may read; empty for none.</summary>
     public required IReadOnlyList<PlaceReference> ReadPlaces { get; init; }
@@ -41,4 +58,9 @@ internal sealed record ResolvedChatAccount
 
     /// <summary>Whether the administrator has consented to <paramref name="grant"/>.</summary>
     public bool IsGranted(ChatAdminGrants grant) => (AdminGranted & grant) == grant;
+
+    /// <summary>The name alone: the generated text would read what a webhook does not have.</summary>
+    public override string ToString() => $"chat account '{Name}'";
+
+    private InvalidOperationException NoGraph() => new($"Chat account '{Name}' does not call Microsoft Graph.");
 }

@@ -65,7 +65,7 @@ public sealed class ChatAccountResolverTests
     public void Should_collect_every_problem_of_an_empty_account() => Assert.Equal(
         [
             "the account name may only hold letters, digits, '.', '_' and '-', starts with a letter or a digit, and has 64 characters at most",
-            "Provider is required: Teams",
+            "Provider is required: Teams or TeamsWebhook",
             "Rights is required and says what an agent may do, e.g. \"Rights\": \"Read, Send\"",
             "Auth:ClientId is required (the id of your Microsoft Entra application)",
         ],
@@ -88,7 +88,7 @@ public sealed class ChatAccountResolverTests
     }
 
     [Theory]
-    [InlineData("webhook", "Provider TeamsWebhook is not supported: write Teams")]
+    [InlineData("webhook", "Webhook:UrlEnvVar goes with Provider TeamsWebhook alone")]
     [InlineData("application", "Auth:Method ClientCredentials is not supported: write OAuth2, or leave it out")]
     [InlineData("grant", "Auth:AdminGranted holds an entry that is not one of ChannelMessages, ChannelEdit, Meetings, ChannelMembers")]
     [InlineData("grant-none", "Auth:AdminGranted holds an entry that is not one of ChannelMessages, ChannelEdit, Meetings, ChannelMembers")]
@@ -106,7 +106,7 @@ public sealed class ChatAccountResolverTests
         var options = TestChatAccounts.Teams();
         switch (wrong)
         {
-            case "webhook": options.Provider = ChatProvider.TeamsWebhook; break;
+            case "webhook": options.Webhook.UrlEnvVar = "HOOK"; break;
             case "application": options.Auth.Method = ChatAuthMethod.ClientCredentials; break;
             case "grant": options.Auth.AdminGranted.Add("Everything"); break;
             case "grant-none": options.Auth.AdminGranted.Add("None"); break;
@@ -119,6 +119,54 @@ public sealed class ChatAccountResolverTests
             case "read-place": options.Read.AllowedPlaces.Add("team:"); break;
             case "send-place": options.Send.AllowedPlaces.Add("user:nobody"); break;
             default: options.Send.MaxPerHour = 0; break;
+        }
+
+        var resolution = ChatAccountResolver.Resolve("work", options);
+
+        Assert.Equal([problem], resolution.Problems);
+        Assert.Null(resolution.Account);
+    }
+
+    [Fact]
+    public void Should_resolve_a_webhook_whose_sign_in_and_cloud_are_not_read()
+    {
+        var options = TestChatAccounts.Webhook();
+        options.Cloud = ChatCloud.China;
+        options.Auth.Method = ChatAuthMethod.ClientCredentials;
+        options.Auth.Tenant = "a b";
+        options.Send.MaxPerHour = 3;
+
+        var account = TestChatAccounts.Resolve(options);
+
+        Assert.True(account.IsWebhook);
+        Assert.Equal((ChatRights.Send, TestChatAccounts.WebhookVariable, 3), (account.Rights, account.WebhookUrlEnvVar, account.MaxPerHour));
+        Assert.Equal("chat account 'work'", account.ToString());
+        Assert.Throws<InvalidOperationException>(() => account.OAuth);
+        Assert.Throws<InvalidOperationException>(() => account.ApiBase);
+    }
+
+    [Theory]
+    [InlineData("read", "Rights must be Send, the one right a TeamsWebhook account has")]
+    [InlineData("both", "Rights must be Send, the one right a TeamsWebhook account has")]
+    [InlineData("missing", "Webhook:UrlEnvVar is required: the NAME of the environment variable holding the webhook's address, never the address itself")]
+    [InlineData("https://secret.example.org/hook", "Webhook:UrlEnvVar is the NAME of an environment variable (letters, digits and '_'), never its value nor a reference to it")]
+    [InlineData("${SECRET}", "Webhook:UrlEnvVar is the NAME of an environment variable (letters, digits and '_'), never its value nor a reference to it")]
+    [InlineData("1SECRET", "Webhook:UrlEnvVar is the NAME of an environment variable (letters, digits and '_'), never its value nor a reference to it")]
+    [InlineData("read-place", "AllowedPlaces is not read for a TeamsWebhook account, whose address fixes the one place: leave Read:AllowedPlaces and Send:AllowedPlaces out")]
+    [InlineData("send-place", "AllowedPlaces is not read for a TeamsWebhook account, whose address fixes the one place: leave Read:AllowedPlaces and Send:AllowedPlaces out")]
+    [InlineData("cap", "Send:MaxPerHour must be positive")]
+    public void Should_say_what_is_wrong_in_a_webhook(string wrong, string problem)
+    {
+        var options = TestChatAccounts.Webhook();
+        switch (wrong)
+        {
+            case "read": options.Rights = ChatRights.Read; break;
+            case "both": options.Rights = ChatRights.Read | ChatRights.Send; break;
+            case "missing": options.Webhook.UrlEnvVar = " "; break;
+            case "read-place": options.Read.AllowedPlaces.Add("*"); break;
+            case "send-place": options.Send.AllowedPlaces.Add("*"); break;
+            case "cap": options.Send.MaxPerHour = 0; break;
+            default: options.Webhook.UrlEnvVar = wrong; break;
         }
 
         var resolution = ChatAccountResolver.Resolve("work", options);

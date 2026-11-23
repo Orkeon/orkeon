@@ -19,7 +19,7 @@ public sealed record ChatAccountStatus
     [JsonPropertyName("name")]
     public required string Name { get; init; }
 
-    /// <summary>The chat service it opens (<c>Teams</c>), or <c>?</c> when the declaration cannot be read.</summary>
+    /// <summary>The chat service it opens (<c>Teams</c>, <c>TeamsWebhook</c>), or <c>?</c> when the declaration cannot be read.</summary>
     [JsonPropertyName("provider")]
     public required string Provider { get; init; }
 
@@ -27,7 +27,7 @@ public sealed record ChatAccountStatus
     [JsonPropertyName("rights")]
     public string? Rights { get; init; }
 
-    /// <summary>The Microsoft cloud it lives in.</summary>
+    /// <summary>The Microsoft cloud it lives in; null for a webhook.</summary>
     [JsonPropertyName("cloud")]
     public string? Cloud { get; init; }
 
@@ -51,7 +51,7 @@ public sealed record ChatAccountStatus
     [JsonPropertyName("credential_problem")]
     public string? CredentialProblem { get; init; }
 
-    /// <summary>The OAuth token endpoint, which names the tenant; null for an account set aside.</summary>
+    /// <summary>The OAuth token endpoint, which names the tenant; null for a webhook or an account set aside.</summary>
     [JsonPropertyName("token_endpoint")]
     public string? TokenEndpoint { get; init; }
 
@@ -94,6 +94,10 @@ public sealed record ChatCheckResult
     /// <summary>Each right of the account, in order.</summary>
     [JsonPropertyName("rights")]
     public required IReadOnlyList<ChatRightStatus> Rights { get; init; }
+
+    /// <summary>Whether the service was reached: a webhook is not, since only a post would tell. Read in-process; not part of the event contract.</summary>
+    [JsonIgnore]
+    public bool Contacted { get; init; } = true;
 
     /// <summary>Whether everything the account declares can be used.</summary>
     [JsonPropertyName("ready")]
@@ -162,14 +166,15 @@ public sealed class ChatAccountAdministration
                 Name = name,
                 Provider = account.Provider.ToString(),
                 Rights = account.Rights.ToString(),
-                Cloud = account.Cloud.ToString(),
+                Cloud = account.IsWebhook ? null : account.Cloud.ToString(),
                 ReadPlaces = account.ReadPlaces.Count,
-                SendPlaces = account.SendPlaces.Count,
+                // A webhook posts into the one place of its address.
+                SendPlaces = account.IsWebhook ? 1 : account.SendPlaces.Count,
                 IsDefault = isDefault,
                 Ready = problem is null,
                 Problem = problem,
                 CredentialProblem = problem,
-                TokenEndpoint = account.OAuth.TokenEndpoint.AbsoluteUri,
+                TokenEndpoint = account.IsWebhook ? null : account.OAuth.TokenEndpoint.AbsoluteUri,
             });
         }
 
@@ -184,6 +189,13 @@ public sealed class ChatAccountAdministration
     {
         ArgumentNullException.ThrowIfNull(interaction);
         var resolved = _accounts.Resolve(account);
+        if (resolved.IsWebhook)
+        {
+            throw new ChatToolException(
+                ChatErrorCode.NotSupportedByAccount,
+                $"Chat account '{resolved.Name}' is a webhook: there is nothing to sign in. Its address comes from the environment variable {resolved.WebhookUrlEnvVar}.");
+        }
+
         ChatTokenSet tokens;
         try
         {
@@ -221,6 +233,17 @@ public sealed class ChatAccountAdministration
             resolved = _accounts.Resolve(target);
 
         var name = resolved?.Name ?? target;
+        // A webhook has no token; those of earlier settings of the same name go all the same.
+        if (resolved?.IsWebhook == true)
+        {
+            return new ChatLogoutResult
+            {
+                Deleted = await _credentials.ForgetAsync(name, account: null, CancellationToken.None).ConfigureAwait(false),
+                Revoked = false,
+                Notice = "The account is a webhook: there is nothing to revoke. Whoever made the workflow deletes it, or makes a new address.",
+            };
+        }
+
         var revoked = false;
         string? notice = null;
         var stored = resolved is null ? null : await _credentials.StoredAsync(resolved, cancellationToken).ConfigureAwait(false);
@@ -253,6 +276,8 @@ public sealed class ChatAccountAdministration
     public async Task<ChatCheckResult> CheckAsync(string account, CancellationToken cancellationToken)
     {
         var resolved = _accounts.Resolve(account);
+        if (resolved.IsWebhook)
+            return await CheckWebhookAsync(resolved, cancellationToken).ConfigureAwait(false);
         var session = _sessions.Get(resolved);
         var user = await UserAsync(session, cancellationToken).ConfigureAwait(false);
         var tokens = await _credentials.StoredAsync(resolved, cancellationToken).ConfigureAwait(false);
@@ -280,6 +305,19 @@ public sealed class ChatAccountAdministration
         }
 
         return new ChatCheckResult { Account = resolved.Name, User = user, Rights = rights };
+    }
+
+    /// <summary>Sends nothing: what the workflow would answer can only be learnt by posting.</summary>
+    private async Task<ChatCheckResult> CheckWebhookAsync(ResolvedChatAccount account, CancellationToken cancellationToken)
+    {
+        var problem = await _credentials.DiagnoseAsync(account, cancellationToken).ConfigureAwait(false);
+        var send = new ChatRightStatus
+        {
+            Right = nameof(ChatRights.Send),
+            Ready = problem is null,
+            Missing = [problem ?? "nothing was sent: whether the workflow accepts a message is known at the first one"],
+        };
+        return new ChatCheckResult { Account = account.Name, Contacted = false, Rights = [send] };
     }
 
     /// <summary>The signed-in user, read only when a right of the account asks for the permission to.</summary>

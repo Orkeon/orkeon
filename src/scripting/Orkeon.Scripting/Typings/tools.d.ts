@@ -837,7 +837,8 @@ declare global {
     }
 
     interface ChatSendInput extends ChatAccountInput {
-        place: string;
+        /** Required, except on a `TeamsWebhook` account, which takes none. */
+        place?: string;
         text: string;
         /** `markdown` by default; HTML is shown as written, never rendered. */
         format?: "markdown" | "text";
@@ -849,8 +850,8 @@ declare global {
 
     interface ChatSendResult {
         readonly account: string;
-        /** Where it was posted, by its ids. */
-        readonly place: string;
+        /** Where it was posted, by its ids; absent for a webhook. */
+        readonly place?: string;
         readonly message_id?: string;
         /** ISO 8601 UTC. */
         readonly sent_at?: string;

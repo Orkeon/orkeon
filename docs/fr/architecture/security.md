@@ -388,6 +388,10 @@ des deux autres :
   un lien de pagination vers un autre hôte est refusé. Les jetons sont écrits par `orkeon chat login`
   dans le sous-répertoire `chat` de la racine interne `/credentials`
   ([conformité VFS](./vfs-compliance.md)).
+- **L'adresse d'un webhook est le secret.** Un compte `TeamsWebhook` nomme la variable qui la contient ;
+  elle doit être en `https`, elle est lue à chaque publication, et aucun journal, aucune erreur, aucun
+  événement ne la porte. Il publie dans le seul lieu de l'adresse, une fois par appel, sans suivre de
+  redirection ni lire la réponse.
 - **Les crews forgés ne touchent jamais un chat.** `orkeon forge` retire les cinq outils chat du
   catalogue : il n'y a pas de tenant d'essai.
 

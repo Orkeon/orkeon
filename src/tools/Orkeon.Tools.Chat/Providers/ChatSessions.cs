@@ -3,6 +3,7 @@ using Orkeon.Tools.Chat.Auth;
 using Orkeon.Tools.Chat.Configuration;
 using Orkeon.Tools.Chat.Places;
 using Orkeon.Tools.Chat.Providers.Teams;
+using Orkeon.Tools.Chat.Providers.TeamsWebhook;
 
 namespace Orkeon.Tools.Chat.Providers;
 
@@ -23,8 +24,10 @@ internal sealed class ChatSessions : IDisposable
     }
 
     /// <summary>Sessions over the provider each account declares.</summary>
-    public static ChatSessions Over(ChatCredentialProvider credentials, Func<HttpClient> http, TimeProvider time) =>
-        new(account => new TeamsProvider(new GraphClient(http, account, credentials, time)));
+    public static ChatSessions Over(ChatCredentialProvider credentials, Func<HttpClient> http, TimeProvider time, Func<HttpClient>? webhookHttp = null) =>
+        new(account => account.IsWebhook
+            ? new TeamsWebhookProvider(webhookHttp ?? http, account, credentials, time)
+            : new TeamsProvider(new GraphClient(http, account, credentials, time)));
 
     /// <summary>The session of <paramref name="account"/>.</summary>
     public ChatSession Get(ResolvedChatAccount account)

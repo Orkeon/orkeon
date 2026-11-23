@@ -79,7 +79,7 @@ public sealed class ChatToolContractTests
     [InlineData("chat_list", "")]
     [InlineData("chat_read", "place")]
     [InlineData("chat_members", "")]
-    [InlineData("chat_send", "place,text")]
+    [InlineData("chat_send", "text")]
     public void Should_require_only_what_the_tool_cannot_do_without(string name, string required)
     {
         using var fixture = new ChatFixture(TestChatAccounts.Teams());

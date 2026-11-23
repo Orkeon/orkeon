@@ -52,6 +52,16 @@ public sealed class RunnerHostChatCredentialsTests : IDisposable
     }
 
     [Fact]
+    public void A_webhook_alone_needs_no_credentials_root()
+    {
+        const string webhook = """{ "Accounts": { "ops": { "Provider": "TeamsWebhook", "Rights": "Send", "Webhook": { "UrlEnvVar": "HOOK" } } } }""";
+
+        using var host = RunnerHost.Build(WriteSettings(chat: webhook), new RunnerMountPlan());
+
+        Assert.DoesNotContain(Mounts(host), m => m.VirtualPath == RunnerVirtualRoots.Credentials);
+    }
+
+    [Fact]
     public void Both_families_share_one_credentials_directory_each_in_its_subdirectory()
     {
         var tokens = Path.Combine(_root, "tokens");

@@ -17,6 +17,7 @@ internal sealed record ChatAccountResolution(ResolvedChatAccount? Account, IRead
 internal static class ChatAccountResolver
 {
     private const int MaxNameLength = 64;
+    private const string CapProblem = "Send:MaxPerHour must be positive";
 
     private static readonly string[] GrantNames = Enum.GetNames<ChatAdminGrants>().Where(name => name != nameof(ChatAdminGrants.None)).ToArray();
 
@@ -31,9 +32,11 @@ internal static class ChatAccountResolver
             problems.Add("the account name may only hold letters, digits, '.', '_' and '-', starts with a letter or a digit, and has 64 characters at most");
 
         if (options.Provider is null)
-            problems.Add("Provider is required: Teams");
+            problems.Add("Provider is required: Teams or TeamsWebhook");
         else if (options.Provider == ChatProvider.TeamsWebhook)
-            problems.Add("Provider TeamsWebhook is not supported: write Teams");
+            return ResolveWebhook(name, options, problems);
+        if (!string.IsNullOrWhiteSpace(options.Webhook.UrlEnvVar))
+            problems.Add("Webhook:UrlEnvVar goes with Provider TeamsWebhook alone");
         if (options.Rights == ChatRights.None)
             problems.Add("Rights is required and says what an agent may do, e.g. \"Rights\": \"Read, Send\"");
         if (options.Auth.Method == ChatAuthMethod.ClientCredentials)
@@ -46,7 +49,7 @@ internal static class ChatAccountResolver
         var read = ResolvePlaces(options.Read.AllowedPlaces, "Read:AllowedPlaces", problems);
         var send = ResolvePlaces(options.Send.AllowedPlaces, "Send:AllowedPlaces", problems);
         if (options.Send.MaxPerHour is <= 0)
-            problems.Add("Send:MaxPerHour must be positive");
+            problems.Add(CapProblem);
 
         // The problems name no account: whoever shows them says which (the registry's message,
         // the account list).
@@ -67,6 +70,51 @@ internal static class ChatAccountResolver
             MaxPerHour = options.Send.MaxPerHour,
         };
         return new ChatAccountResolution(account, []);
+    }
+
+    /// <summary>A webhook: the address fixes the place, so nothing but its variable and the cap is read.</summary>
+    private static ChatAccountResolution ResolveWebhook(string name, ChatAccountOptions options, List<string> problems)
+    {
+        if (options.Rights != ChatRights.Send)
+            problems.Add("Rights must be Send, the one right a TeamsWebhook account has");
+        var variable = ResolveVariable(options.Webhook.UrlEnvVar, "Webhook:UrlEnvVar", problems);
+        if (string.IsNullOrWhiteSpace(options.Webhook.UrlEnvVar))
+            problems.Add("Webhook:UrlEnvVar is required: the NAME of the environment variable holding the webhook's address, never the address itself");
+        if (Declares(options.Read.AllowedPlaces) || Declares(options.Send.AllowedPlaces))
+            problems.Add("AllowedPlaces is not read for a TeamsWebhook account, whose address fixes the one place: leave Read:AllowedPlaces and Send:AllowedPlaces out");
+        if (options.Send.MaxPerHour is <= 0)
+            problems.Add(CapProblem);
+        if (problems.Count > 0)
+            return new ChatAccountResolution(null, problems);
+
+        return new ChatAccountResolution(
+            new ResolvedChatAccount
+            {
+                Name = name,
+                Provider = ChatProvider.TeamsWebhook,
+                Rights = ChatRights.Send,
+                AdminGranted = ChatAdminGrants.None,
+                Cloud = ChatCloud.Global,
+                WebhookUrlEnvVar = variable,
+                ReadPlaces = [],
+                SendPlaces = [],
+                MaxPerHour = options.Send.MaxPerHour,
+            },
+            []);
+    }
+
+    private static bool Declares(List<string> places) => places.Any(place => !string.IsNullOrWhiteSpace(place));
+
+    /// <summary>The variable a setting names; null when it names none. What is written there by mistake may be the secret: it is not repeated.</summary>
+    private static string? ResolveVariable(string? declared, string key, List<string> problems)
+    {
+        var name = declared?.Trim();
+        if (string.IsNullOrEmpty(name))
+            return null;
+        if ((char.IsAsciiLetter(name[0]) || name[0] == '_') && name.All(c => char.IsAsciiLetterOrDigit(c) || c == '_'))
+            return name;
+        problems.Add($"{key} is the NAME of an environment variable (letters, digits and '_'), never its value nor a reference to it");
+        return null;
     }
 
     /// <summary>Whether <paramref name="name"/> is usable as an account name (and a token file stem).</summary>

@@ -417,6 +417,8 @@ agents ne lancent jamais ces commandes — un outil qui ne trouve aucun jeton ut
   fermer l'entrée standard abandonne la connexion avec le code de sortie `130`.
 - **`logout`** supprime les jetons. Microsoft n'a pas de point de révocation pour eux : la commande dit
   où un administrateur du tenant retire l'accès de l'application.
+- Un compte **webhook** n'a rien à connecter (`login` le refuse), et `check` n'envoie rien : il dit si
+  la variable de son adresse en contient une.
 - **`check`** se connecte avec les jetons stockés et rend compte de chaque droit du compte (celui par
   défaut, ou le seul, quand aucun n'est nommé) : prêt, ou la permission qui manque, la liste de lieux
   vide, les entrées mises de côté. Avec **`--events jsonl`**, le verdict est une seule ligne

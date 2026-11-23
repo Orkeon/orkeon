@@ -12,6 +12,9 @@ internal static class ChatDefaults
     /// <summary>Named HTTP client used by the providers and the OAuth2 client; it follows no redirect.</summary>
     public const string HttpClientName = "orkeon.chat";
 
+    /// <summary>Named HTTP client of the webhooks, whose address is a secret: it follows no redirect and logs nothing.</summary>
+    public const string WebhookHttpClientName = "orkeon.chat.webhook";
+
     /// <summary>The guide every configuration problem points at.</summary>
     public const string GuidePath = "docs/guides/chat.md";
 
@@ -51,6 +54,9 @@ internal static class ChatDefaults
 
     /// <summary>The largest message sent, in bytes of HTML: Microsoft recommends 80 KB of the 100 KB Teams accepts.</summary>
     public const int MaxMessageBytes = 80 * 1024;
+
+    /// <summary>The largest payload a Workflows webhook takes.</summary>
+    public const int MaxWebhookBytes = 28 * 1024;
 
     /// <summary>The characters of each message's text one page shows when the call does not say.</summary>
     public const int DefaultTextChars = 1000;
