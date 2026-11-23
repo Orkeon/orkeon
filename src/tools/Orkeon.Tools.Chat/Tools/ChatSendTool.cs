@@ -62,19 +62,22 @@ internal sealed partial class ChatSendTool : ToolBase<ChatSendRequest, ChatSendR
         var target = await session.Gate.AdmitAsync(place, PlaceUse.Send, cancellationToken).ConfigureAwait(false);
         var mentions = await MessageBody.MentionsAsync(session.Provider, request.Mentions, cancellationToken).ConfigureAwait(false);
 
+        var outgoing = new ChatOutgoing(html, mentions, request.ReplyTo);
+        ChatSent sent;
         if (target.Person is { } person)
         {
-            target = await _turns.TakeAsync(
+            (target, sent) = await _turns.RunAsync(
                 session,
                 async () => new ChatTarget { ChatId = await session.Provider.OpenDirectChatAsync(person.Id, cancellationToken).ConfigureAwait(false) },
+                async chat => (chat, await session.Provider.SendAsync(chat, outgoing, cancellationToken).ConfigureAwait(false)),
                 cancellationToken).ConfigureAwait(false);
         }
         else
         {
-            await _turns.TakeAsync(session, target, cancellationToken).ConfigureAwait(false);
+            var named = target;
+            sent = await _turns.RunAsync(session, named, () => session.Provider.SendAsync(named, outgoing, cancellationToken), cancellationToken).ConfigureAwait(false);
         }
 
-        var sent = await session.Provider.SendAsync(target, new ChatOutgoing(html, mentions, request.ReplyTo), cancellationToken).ConfigureAwait(false);
         LogSent(_log, session.Account.Name, target.Place, sent.Id ?? string.Empty);
         return new ChatSendResponse
         {
@@ -100,8 +103,15 @@ internal sealed partial class ChatSendTool : ToolBase<ChatSendRequest, ChatSendR
         var payload = TeamsWebhookProvider.Payload(request.Text, MessageBody.IsMarkdown(request.Format));
         var slot = $"webhook:{account.Name}";
         webhook.RequireAddress();
-        await _turns.TakeAsync(account, slot, cancellationToken).ConfigureAwait(false);
-        await webhook.PostAsync(payload, cancellationToken).ConfigureAwait(false);
+        await _turns.RunAsync(
+            account,
+            slot,
+            async () =>
+            {
+                await webhook.PostAsync(payload, cancellationToken).ConfigureAwait(false);
+                return true;
+            },
+            cancellationToken).ConfigureAwait(false);
         LogSent(_log, account.Name, slot, string.Empty);
         return new ChatSendResponse
         {

@@ -315,7 +315,7 @@ start. A name that matches nothing, or more than one place, sets its entry aside
 - **Posting is paced.** One post per second and per place, and `Send:MaxPerHour` counts attempts, in
   this process only. An edit, a deletion and a reaction count in both, like a post: each shows in the
   place or notifies someone, and one cap bounds them all. A post that would wait more than 30 seconds for its turn answers `Throttled` and
-  counts for nothing. A post is never repeated once it may have been done: the error says to read
+  counts for nothing, and neither does a write the service refused with a 429. A post is never repeated once it may have been done: the error says to read
   the place first.
 - **The token stays with Graph.** It is sent to the account's Graph host only
   (`graph.microsoft.com`, or that of its government cloud), over HTTPS; no redirect is followed, and

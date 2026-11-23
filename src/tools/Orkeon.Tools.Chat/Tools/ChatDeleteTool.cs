@@ -45,8 +45,11 @@ internal sealed partial class ChatDeleteTool : ToolBase<ChatDeleteRequest, ChatM
         var place = MessageAddress.Place(session.Account, request.Place, request.Thread);
         var target = await MessageWrites.AdmitAsync(session, place, cancellationToken).ConfigureAwait(false);
         await MessageWrites.OwnAsync(session, target, request.Thread, request.MessageId, cancellationToken).ConfigureAwait(false);
-        await _turns.TakeAsync(session, target, cancellationToken).ConfigureAwait(false);
-        await session.Provider.DeleteAsync(target, request.Thread, request.MessageId, cancellationToken).ConfigureAwait(false);
+        await _turns.RunAsync(
+            session,
+            target,
+            () => session.Provider.DeleteAsync(target, request.Thread, request.MessageId, cancellationToken),
+            cancellationToken).ConfigureAwait(false);
         LogDeleted(_log, session.Account.Name, request.MessageId, target.Place);
         return new ChatMessageWriteResponse { Account = session.Account.Name, Place = target.Place, MessageId = request.MessageId };
     }

@@ -202,6 +202,18 @@ public sealed class TeamsWebhookTests
     }
 
     [Fact]
+    public async Task Should_count_no_post_the_workflow_throttled()
+    {
+        using var fixture = Create(maxPerHour: 1);
+        fixture.Hook.Enqueue(new FakeHttpResponse(HttpStatusCode.TooManyRequests, ""));
+        fixture.Hook.Enqueue(new FakeHttpResponse(HttpStatusCode.Accepted, ""));
+
+        Assert.Contains("limits the rate", await fixture.ErrorAsync("chat_send", ("text", "x")), StringComparison.Ordinal);
+        fixture.Time.Advance(TimeSpan.FromSeconds(2));
+        await fixture.ResultAsync("chat_send", ("text", "x"));
+    }
+
+    [Fact]
     public async Task Should_count_nothing_while_the_variable_holds_no_address()
     {
         using var fixture = Create(maxPerHour: 1);

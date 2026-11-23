@@ -3137,7 +3137,7 @@
       "path": "Orkeon:Tools:Chat:Accounts:<name>:Send:MaxPerHour",
       "section": "Orkeon:Tools:Chat",
       "type": "integer",
-      "description": "The most posts the account attempts in an hour, in this process. Unset sets no cap."
+      "description": "The most posts, edits, deletions and reactions, together, the account attempts in an hour, in this process. Unset sets no cap."
     },
     {
       "path": "Orkeon:Tools:Chat:Accounts:<name>:Webhook:UrlEnvVar",

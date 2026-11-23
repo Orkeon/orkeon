@@ -208,6 +208,19 @@ public sealed class GraphClientTests : IDisposable
     }
 
     [Fact]
+    public async Task Should_doubt_a_post_whose_answer_is_too_large()
+    {
+        _fixture.Graph.On(HttpMethod.Post, "chats/x/messages", _ => throw new HttpRequestException(HttpRequestError.ConfigurationLimitExceeded, "too large"));
+
+        var error = await Assert.ThrowsAsync<ChatToolException>(() =>
+            _fixture.Session.Provider.SendAsync(new ChatTarget { ChatId = "x" }, new ChatOutgoing("x", [], ReplyTo: null), Token));
+
+        Assert.Equal(ChatErrorCode.ServerError, error.Code);
+        Assert.Contains("may have been posted", error.Message, StringComparison.Ordinal);
+        Assert.Contains("read the place", error.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public async Task Should_assume_ten_seconds_without_Retry_After()
     {
         _fixture.Graph.On(HttpMethod.Get, "me/chats", _ => GraphStub.Error(HttpStatusCode.TooManyRequests, "TooManyRequests"));

@@ -376,7 +376,7 @@
     "Orkeon:Tools:Chat:Accounts:<name>:Read:AllowedPlaces": "Les lieux qu'un agent peut lire. Vide signifie aucun.",
     "Orkeon:Tools:Chat:Accounts:<name>:Rights": "Ce qu'un agent peut faire, p. ex. `\"Read, Send\"`. Obligatoire.",
     "Orkeon:Tools:Chat:Accounts:<name>:Send:AllowedPlaces": "Les lieux où un agent peut publier. Vide signifie aucun.",
-    "Orkeon:Tools:Chat:Accounts:<name>:Send:MaxPerHour": "Le plus grand nombre de publications que le compte tente en une heure, dans ce processus. Non renseigné : aucun plafond.",
+    "Orkeon:Tools:Chat:Accounts:<name>:Send:MaxPerHour": "Le plus grand nombre de publications, modifications, suppressions et réactions, ensemble, que le compte tente en une heure, dans ce processus. Non renseigné : aucun plafond.",
     "Orkeon:Tools:Chat:Accounts:<name>:Webhook:UrlEnvVar": "Nom de la variable d'environnement qui contient l'adresse du webhook Workflows, jamais l'adresse elle-même.",
     "Orkeon:Tools:Chat:CredentialsDirectory": "Répertoire physique qui contient les jetons OAuth, pour un hôte dont le répertoire de réglages de l'utilisateur ne convient pas (un compte de service). Lu par l'hôte, pas par les outils.",
     "Orkeon:Tools:Chat:DefaultAccount": "Le compte qu'utilise un appel quand il n'en nomme aucun. Facultatif avec un seul compte.",

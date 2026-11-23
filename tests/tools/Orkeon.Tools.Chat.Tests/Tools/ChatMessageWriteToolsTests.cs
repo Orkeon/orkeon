@@ -229,6 +229,42 @@ public sealed class ChatMessageWriteToolsTests
         Assert.Single(fixture.Graph.Writes);
     }
 
+    [Theory]
+    [InlineData(ChatRights.Edit, "chat_edit")]
+    [InlineData(ChatRights.Delete, "chat_delete")]
+    public async Task Should_tell_whose_chat_an_id_is_without_the_Read_right(object right, string tool)
+    {
+        const string path = "chats/" + Samples.Direct + "/messages/1";
+        using var fixture = new ChatFixture(TestChatAccounts.Teams((ChatRights)right, send: ["user:*@example.org"]));
+        fixture.Graph.Directory().On(HttpMethod.Patch, path, Done).On(HttpMethod.Post, $"users/{Samples.Self}/{path}/softDelete", Done);
+        Own(fixture, path);
+
+        await fixture.ResultAsync(tool, Arguments(tool, "chat:" + Samples.Direct));
+
+        Assert.Single(fixture.Graph.Writes);
+        Assert.Contains("not a place", await fixture.ErrorAsync(tool, Arguments(tool, "chat:" + Samples.GuestDirect)), StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("chat_edit", "PATCH", GroupMessage)]
+    [InlineData("chat_delete", "POST", GroupDelete)]
+    [InlineData("chat_react", "POST", GroupMessage + "/setReaction")]
+    public async Task Should_count_no_change_the_service_throttled(string tool, string method, string path)
+    {
+        var options = TestChatAccounts.Teams(ChatRights.Edit | ChatRights.Delete | ChatRights.React, send: [GroupPlace]);
+        options.Send.MaxPerHour = 1;
+        using var fixture = new ChatFixture(options);
+        fixture.Graph.Directory()
+            .On(new HttpMethod(method), path, _ => GraphStub.Error(HttpStatusCode.TooManyRequests, "x", retryAfter: TimeSpan.FromSeconds(30)))
+            .On(new HttpMethod(method), path, Done);
+        Own(fixture, GroupMessage);
+
+        Assert.Contains("retry in 30 s", await fixture.ErrorAsync(tool, Arguments(tool, GroupPlace)), StringComparison.Ordinal);
+        fixture.Time.Advance(TimeSpan.FromSeconds(31));
+        await fixture.ResultAsync(tool, Arguments(tool, GroupPlace));
+        Assert.Contains("Send:MaxPerHour", await fixture.ErrorAsync(tool, Arguments(tool, GroupPlace)), StringComparison.Ordinal);
+    }
+
     [Fact]
     public async Task Should_count_every_change_in_the_hourly_cap()
     {

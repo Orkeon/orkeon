@@ -331,7 +331,7 @@ dans un réglage qui doit durer.
   la taille que Microsoft recommande (Graph en accepte environ 100).
 - **La publication est cadencée.** Une publication par seconde et par lieu, et `Send:MaxPerHour`
   compte les tentatives, dans ce processus seulement. Une modification, une suppression et une réaction comptent dans les deux, comme une publication : chacune se voit dans le lieu ou prévient quelqu'un, et un seul plafond les borne toutes. Une publication qui attendrait son tour plus de
-  30 secondes répond `Throttled` et ne compte pas. Une publication n'est jamais répétée dès lors
+  30 secondes répond `Throttled` et ne compte pas, pas plus qu'une écriture que le service a refusée par un 429. Une publication n'est jamais répétée dès lors
   qu'elle a pu avoir lieu : l'erreur dit de lire d'abord le lieu.
 - **Le jeton reste auprès de Graph.** Il n'est envoyé qu'à l'hôte Graph du compte
   (`graph.microsoft.com`, ou celui de son cloud gouvernemental), en HTTPS ; aucune redirection n'est

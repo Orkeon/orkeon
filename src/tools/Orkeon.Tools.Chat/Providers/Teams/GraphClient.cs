@@ -218,7 +218,9 @@ internal sealed class GraphClient
         }
         catch (HttpRequestException ex) when (ex.HttpRequestError == HttpRequestError.ConfigurationLimitExceeded)
         {
-            throw new ChatToolException(ChatErrorCode.NotSupportedByAccount, "The text is too long to be read.", ex);
+            throw isWrite
+                ? new ChatToolException(ChatErrorCode.ServerError, $"{ApiName} answered more than can be read.{doubt}", ex)
+                : new ChatToolException(ChatErrorCode.NotSupportedByAccount, "The text is too long to be read.", ex);
         }
         catch (HttpRequestException ex)
         {

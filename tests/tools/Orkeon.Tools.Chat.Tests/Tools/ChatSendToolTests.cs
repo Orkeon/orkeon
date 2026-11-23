@@ -270,6 +270,40 @@ public sealed class ChatSendToolTests
         await Task.WhenAll(queued);
     }
 
+    [Theory]
+    [InlineData(GroupPlace)]
+    [InlineData("user:ada@example.org")]
+    public async Task Should_count_no_message_the_service_throttled(string place)
+    {
+        using var fixture = Sending(1, GroupPlace, "chat:" + Samples.Direct, "user:*@example.org");
+        fixture.Graph.Post("chats", Samples.DirectChat);
+        foreach (var path in new[] { GroupMessages, DirectMessages })
+        {
+            fixture.Graph.On(HttpMethod.Post, path, _ => GraphStub.Error(HttpStatusCode.TooManyRequests, "x", retryAfter: TimeSpan.FromSeconds(30)))
+                .Post(path, Posted);
+        }
+
+        Assert.Contains("retry in 30 s", await fixture.ErrorAsync("chat_send", ("place", place), ("text", "x")), StringComparison.Ordinal);
+        fixture.Time.Advance(TimeSpan.FromSeconds(2));
+        // Refused by the pause, with no request: nothing done either.
+        Assert.Contains("limits the rate", await fixture.ErrorAsync("chat_send", ("place", place), ("text", "x")), StringComparison.Ordinal);
+        fixture.Time.Advance(TimeSpan.FromSeconds(31));
+        await fixture.ResultAsync("chat_send", ("place", place), ("text", "x"));
+        Assert.Contains("Send:MaxPerHour", await fixture.ErrorAsync("chat_send", ("place", place), ("text", "x")), StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData(HttpStatusCode.RequestTimeout)]
+    [InlineData(HttpStatusCode.ServiceUnavailable)]
+    public async Task Should_count_a_message_in_doubt(HttpStatusCode status)
+    {
+        using var fixture = Sending(1, GroupPlace);
+        fixture.Graph.On(HttpMethod.Post, GroupMessages, _ => GraphStub.Error(status, "x"));
+
+        Assert.Contains("may have been posted", await fixture.ErrorAsync("chat_send", ("place", GroupPlace), ("text", "x")), StringComparison.Ordinal);
+        Assert.Contains("Send:MaxPerHour", await fixture.ErrorAsync("chat_send", ("place", GroupPlace), ("text", "x")), StringComparison.Ordinal);
+    }
+
     [Fact]
     public async Task Should_keep_the_turn_of_a_place_for_who_fits_in_the_cap()
     {

@@ -23,23 +23,45 @@ internal sealed class WriteTurns
         _pacer = pacer;
     }
 
-    /// <summary>Takes a unit of the account's cap and the place's next turn, then waits for it. A refusal takes neither.</summary>
-    public Task TakeAsync(ChatSession session, ChatTarget target, CancellationToken cancellationToken)
+    /// <summary>
+    /// Takes a unit of the account's cap and the place's next turn, waits for it, then does
+    /// <paramref name="write"/>. A refusal takes neither, and a write the service refused for its
+    /// rate, surely not done, gives its unit back.
+    /// </summary>
+    public Task RunAsync(ChatSession session, ChatTarget target, Func<Task> write, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(write);
+        return RunAsync(
+            session,
+            target,
+            async () =>
+            {
+                await write().ConfigureAwait(false);
+                return true;
+            },
+            cancellationToken);
+    }
+
+    /// <summary>The same for a write that answers something.</summary>
+    public Task<T> RunAsync<T>(ChatSession session, ChatTarget target, Func<Task<T>> write, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(session);
         ArgumentNullException.ThrowIfNull(target);
-        return TakeAsync(session.Account, target.Place, cancellationToken);
+        ArgumentNullException.ThrowIfNull(write);
+        return RunAsync(session.Account, target.Place, write, cancellationToken);
     }
 
     /// <summary>The same for a <paramref name="place"/> no target names: a webhook's.</summary>
-    public async Task TakeAsync(ResolvedChatAccount account, string place, CancellationToken cancellationToken)
+    public async Task<T> RunAsync<T>(ResolvedChatAccount account, string place, Func<Task<T>> write, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(account);
         ArgumentNullException.ThrowIfNull(place);
+        ArgumentNullException.ThrowIfNull(write);
         var slot = _pacer.Reserve(place);
+        DateTimeOffset recorded;
         try
         {
-            Consume(account);
+            recorded = Consume(account);
         }
         catch (ChatToolException)
         {
@@ -48,32 +70,41 @@ internal sealed class WriteTurns
         }
 
         await _pacer.WaitAsync(slot, cancellationToken).ConfigureAwait(false);
+        return await AttemptAsync(account, recorded, write).ConfigureAwait(false);
     }
 
-    /// <summary>
-    /// The same for a chat <paramref name="open"/> finds or opens, which counts in the cap too: the
-    /// place is not known before. A refusal for the rate, of either, takes no unit.
-    /// </summary>
-    public async Task<ChatTarget> TakeAsync(ChatSession session, Func<Task<ChatTarget>> open, CancellationToken cancellationToken)
+    /// <summary>The same for a chat <paramref name="open"/> finds or opens, which counts in the cap too: the place is not known before.</summary>
+    public async Task<T> RunAsync<T>(ChatSession session, Func<Task<ChatTarget>> open, Func<ChatTarget, Task<T>> write, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(session);
         ArgumentNullException.ThrowIfNull(open);
+        ArgumentNullException.ThrowIfNull(write);
         var recorded = Consume(session.Account);
-        ChatTarget target;
-        PostSlot slot;
+        var (target, slot) = await AttemptAsync(
+            session.Account,
+            recorded,
+            async () =>
+            {
+                var opened = await open().ConfigureAwait(false);
+                return (opened, _pacer.Reserve(opened.Place));
+            }).ConfigureAwait(false);
+
+        await _pacer.WaitAsync(slot, cancellationToken).ConfigureAwait(false);
+        return await AttemptAsync(session.Account, recorded, () => write(target)).ConfigureAwait(false);
+    }
+
+    /// <summary>Throttled is a 429, or the pause one asked for: nothing was done, unlike after any other failure.</summary>
+    private async Task<T> AttemptAsync<T>(ResolvedChatAccount account, DateTimeOffset recorded, Func<Task<T>> attempt)
+    {
         try
         {
-            target = await open().ConfigureAwait(false);
-            slot = _pacer.Reserve(target.Place);
+            return await attempt().ConfigureAwait(false);
         }
         catch (ChatToolException ex) when (ex.Code == ChatErrorCode.Throttled)
         {
-            _quota.Refund(session.Account.Name, recorded);
+            _quota.Refund(account.Name, recorded);
             throw;
         }
-
-        await _pacer.WaitAsync(slot, cancellationToken).ConfigureAwait(false);
-        return target;
     }
 
     private DateTimeOffset Consume(ResolvedChatAccount account)

@@ -112,6 +112,6 @@ internal sealed class ChatSendOptions
     /// <summary>The places an agent may post in. Empty means none.</summary>
     public List<string> AllowedPlaces { get; } = [];
 
-    /// <summary>The most posts the account attempts in an hour, in this process. Unset sets no cap.</summary>
+    /// <summary>The most posts, edits, deletions and reactions, together, the account attempts in an hour, in this process. Unset sets no cap.</summary>
     public int? MaxPerHour { get; set; }
 }

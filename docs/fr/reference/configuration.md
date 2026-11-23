@@ -1815,7 +1815,7 @@ outils : [Outils chat](../guides/chat.md).
 | `Accounts:<nom>:Read:AllowedPlaces` | liste de chaînes | `[]` |  | Les lieux qu'un agent peut lire. Vide signifie aucun. |
 | `Accounts:<nom>:Rights` | énumération | `"None"` | `None`, `Read`, `Send`, `Edit`, `Delete`, `React`, `Meetings` | Ce qu'un agent peut faire, p. ex. `"Read, Send"`. Obligatoire. |
 | `Accounts:<nom>:Send:AllowedPlaces` | liste de chaînes | `[]` |  | Les lieux où un agent peut publier. Vide signifie aucun. |
-| `Accounts:<nom>:Send:MaxPerHour` | entier | — |  | Le plus grand nombre de publications que le compte tente en une heure, dans ce processus. Non renseigné : aucun plafond. |
+| `Accounts:<nom>:Send:MaxPerHour` | entier | — |  | Le plus grand nombre de publications, modifications, suppressions et réactions, ensemble, que le compte tente en une heure, dans ce processus. Non renseigné : aucun plafond. |
 | `Accounts:<nom>:Webhook:UrlEnvVar` | chaîne | — |  | Nom de la variable d'environnement qui contient l'adresse du webhook Workflows, jamais l'adresse elle-même. |
 | `CredentialsDirectory` | chaîne | — |  | Répertoire physique qui contient les jetons OAuth, pour un hôte dont le répertoire de réglages de l'utilisateur ne convient pas (un compte de service). Lu par l'hôte, pas par les outils. |
 | `DefaultAccount` | chaîne | — |  | Le compte qu'utilise un appel quand il n'en nomme aucun. Facultatif avec un seul compte. |

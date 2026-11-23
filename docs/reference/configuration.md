@@ -1750,7 +1750,7 @@ its variable. Walkthroughs and the tools:
 | `Accounts:<name>:Read:AllowedPlaces` | list of string | `[]` |  | The places an agent may read. Empty means none. |
 | `Accounts:<name>:Rights` | enum | `"None"` | `None`, `Read`, `Send`, `Edit`, `Delete`, `React`, `Meetings` | What an agent may do, e.g. `"Read, Send"`. Mandatory. |
 | `Accounts:<name>:Send:AllowedPlaces` | list of string | `[]` |  | The places an agent may post in. Empty means none. |
-| `Accounts:<name>:Send:MaxPerHour` | integer | — |  | The most posts the account attempts in an hour, in this process. Unset sets no cap. |
+| `Accounts:<name>:Send:MaxPerHour` | integer | — |  | The most posts, edits, deletions and reactions, together, the account attempts in an hour, in this process. Unset sets no cap. |
 | `Accounts:<name>:Webhook:UrlEnvVar` | string | — |  | Name of the environment variable holding the address of the Workflows webhook, never the address itself. |
 | `CredentialsDirectory` | string | — |  | Physical directory holding the OAuth tokens, for a host whose per-user settings directory is not the right one (a service account). Read by the host, not by the tools. |
 | `DefaultAccount` | string | — |  | The account a call uses when it names none. Optional with a single account. |
