@@ -39,11 +39,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   workflow.
 - A Teams chat account can be an application that only reads: `Auth:Method` `ClientCredentials` with exactly one of
   `Auth:CertificatePathEnvVar`, `Auth:FederatedTokenFileEnvVar` and `Auth:ClientSecretEnvVar`, a named tenant, named
-  places (`*`, `user:` and a team by its name are refused) and a token kept in memory alone. Not tried on a real tenant.
+  places (`*`, `user:` and a team by its name are refused) and a token kept in memory alone. `chat_meetings` reads there
+  by `place` alone, under the organizer the chat tells. Not tried on a real tenant.
 - `orkeon chat accounts`, `login` (the browser, or `--device-code`), `logout` and `check`.
 - The shared OAuth client takes the flow at the sign-in, token revocation, a client assertion and
   `OAuthSettings.Prompt`; left null, `Prompt` keeps the Google parameters of before. E-mail and drive accounts sign in
   as they did.
+- Teams as a chat channel of `orkeon-host`: `Orkeon:Host:Teams` (off by default) listens for a Teams bot's messages, beside Discord or alone: a thread is a run, the
+  room picks the crew, `AllowedUserIds` (Entra object ids) gates messages and the `/status` and `/stop` text commands, and
+  replies go in the thread. Every activity's bearer token is validated before its body is read (signature, issuer, audience,
+  lifetime, `serviceurl`, channel endorsement, tenant), and the bot's token goes to the validated service only.
+- `ORKEON_TEAMS_APP_SECRET` (`EnvironmentVariableNames.TeamsAppSecret`) is the variable the client secret is read from,
+  unless `Orkeon:Host:Teams:SecretEnvironmentVariable` names another.
 
 ## [1.4.0] - 2026-11-23
 

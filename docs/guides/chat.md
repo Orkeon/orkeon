@@ -460,8 +460,9 @@ no token store: a chat account that signs in says so there.
 ## Limits
 
 - **Not run on a real tenant.** Neither the sign-in nor the tools were tried on one, in any cloud.
-- **Teams only, as a signed-in user, as an application that reads, or by a webhook that posts.** Not
-  shipped: an inbound Teams channel in `orkeon-host`.
+- **Teams only, as a signed-in user, as an application that reads, or by a webhook that posts.** A
+  Teams user who talks to a crew goes through the bot channel of `orkeon-host`, apart from these
+  accounts ([service host](../architecture/service-host.md)).
 - **Channel reactions, and edits in the government clouds.** `chat_react` refuses a channel and
   `chat_edit` the government clouds, until tried on a real tenant. The search window is bounded, see
   [Using the tools](#using-the-tools).

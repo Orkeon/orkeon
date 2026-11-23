@@ -234,10 +234,10 @@ qu'elle accepte quand leur liste est fermée, et son sens.
 | [Outils](#outils) | [`BRAVE_API_KEY`](#brave_api_key), [`MCP`](#mcp), [`MCP:Server`](#mcpserver), [`Orkeon:Bridge`](#orkeonbridge), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Tools:Bridge`](#orkeontoolsbridge), [`Orkeon:Tools:Chat`](#orkeontoolschat), [`Orkeon:Tools:Drive`](#orkeontoolsdrive), [`Orkeon:Tools:Email`](#orkeontoolsemail), [`Orkeon:Tools:Firefox`](#orkeontoolsfirefox), [`Orkeon:Tools:GitHub`](#orkeontoolsgithub), [`Orkeon:Tools:ResultLimits`](#orkeontoolsresultlimits), [`Orkeon:Tools:Shell`](#orkeontoolsshell), [`Plugins`](#plugins), [`RaggableTree`](#raggabletree) | 148 |
 | [Orchestration et persistance](#orchestration-et-persistance) | [`Orkeon:Checkpointing`](#orkeoncheckpointing), [`Orkeon:Compaction`](#orkeoncompaction), [`Orkeon:Compaction:Prune`](#orkeoncompactionprune), [`Orkeon:Consensus`](#orkeonconsensus), [`Orkeon:CrewFactory`](#orkeoncrewfactory), [`Orkeon:ExecutionState:Persistence`](#orkeonexecutionstatepersistence), [`Orkeon:HumanInput`](#orkeonhumaninput), [`Orkeon:RunHistory`](#orkeonrunhistory), [`Orkeon:Skills`](#orkeonskills) | 39 |
 | [Scripts et console](#scripts-et-console) | [`Orkeon:Cli:ConsoleStreaming`](#orkeoncliconsolestreaming), [`Orkeon:Cli:Memory`](#orkeonclimemory), [`Orkeon:Cli:ScriptCommands`](#orkeoncliscriptcommands), [`Orkeon:Cli:ScriptHost`](#orkeoncliscripthost), [`Orkeon:Cli:Session`](#orkeonclisession), [`Orkeon:Cli:Tui`](#orkeonclitui), [`Orkeon:Scripting:AgentInstances`](#orkeonscriptingagentinstances), [`Orkeon:Scripting:AgentMemory`](#orkeonscriptingagentmemory), [`Orkeon:Scripting:Limits`](#orkeonscriptinglimits), [`Orkeon:Scripting:Toolchain`](#orkeonscriptingtoolchain) | 35 |
-| [Hôte de service et A2A](#hôte-de-service-et-a2a) | [`A2A`](#a2a), [`A2A:Security`](#a2asecurity), [`A2A:Security:AzureAD`](#a2asecurityazuread), [`A2A:Security:Oidc`](#a2asecurityoidc), [`Orkeon:Host`](#orkeonhost), [`Orkeon:Host:Discord`](#orkeonhostdiscord) | 59 |
+| [Hôte de service et A2A](#hôte-de-service-et-a2a) | [`A2A`](#a2a), [`A2A:Security`](#a2asecurity), [`A2A:Security:AzureAD`](#a2asecurityazuread), [`A2A:Security:Oidc`](#a2asecurityoidc), [`Orkeon:Host`](#orkeonhost), [`Orkeon:Host:Discord`](#orkeonhostdiscord), [`Orkeon:Host:Teams`](#orkeonhostteams) | 70 |
 | [Observabilité](#observabilité) | [`Logging`](#logging), [`Orkeon:Monitoring`](#orkeonmonitoring), [`Telemetry`](#telemetry) | 8 |
 
-89 sections, 591 clés. Lues par aucun binaire livré, seulement par un hôte écrit en C# (6) : [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting), [`Orkeon:VectorSearch`](#orkeonvectorsearch), [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Monitoring`](#orkeonmonitoring).
+90 sections, 602 clés. Lues par aucun binaire livré, seulement par un hôte écrit en C# (6) : [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting), [`Orkeon:VectorSearch`](#orkeonvectorsearch), [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Monitoring`](#orkeonmonitoring).
 <!-- /settings-index -->
 
 Lire un tableau :
@@ -497,7 +497,7 @@ n'est pas celle qui est lue : elle n'est pas jugée. Les réglages jugés, tiré
 | Réglages | Correction énoncée |
 |---|---|
 | `Llm:ApiKey`, `Llm:Profiles:<nom>:ApiKey`, `Orkeon:Embeddings:ApiKey` | écrire `"ApiKeyEnvVar": "<NOM>"` à la place |
-| `Llm:ApiKeyEnvVar`, `Llm:Profiles:<nom>:ApiKeyEnvVar`, `Orkeon:Rag:WebFallback:ApiKeyEnvVar`, `Orkeon:Embeddings:ApiKeyEnvVar`, `Orkeon:Host:Discord:TokenEnvironmentVariable`, `Orkeon:Tools:Bridge:TokenEnvVar`, `Orkeon:Bridge:TokenEnvVar`, `A2A:Security:ApiKeySecretNames:<i>`, `Orkeon:Encryption:SecretName`, `Orkeon:Tools:GitHub:TokenVariable` | écrire le nom seul, sans `${` ni `}` |
+| `Llm:ApiKeyEnvVar`, `Llm:Profiles:<nom>:ApiKeyEnvVar`, `Orkeon:Rag:WebFallback:ApiKeyEnvVar`, `Orkeon:Embeddings:ApiKeyEnvVar`, `Orkeon:Host:Discord:TokenEnvironmentVariable`, `Orkeon:Host:Teams:SecretEnvironmentVariable`, `Orkeon:Tools:Bridge:TokenEnvVar`, `Orkeon:Bridge:TokenEnvVar`, `A2A:Security:ApiKeySecretNames:<i>`, `Orkeon:Encryption:SecretName`, `Orkeon:Tools:GitHub:TokenVariable` | écrire le nom seul, sans `${` ni `}` |
 | `MCP:Servers:<id>:Command`, `:Args:<i>`, `:Url` ; `Llm:AgentCli:Command` ; `Orkeon:Redis:ConnectionString`, `Orkeon:Sqlite:ConnectionString` ; `RaggableTree:Embedding:ApiKey`, `Orkeon:Pinecone:ApiKey`, `Orkeon:LanceDb:ApiKey` ; `Llm:BaseUrl`, `Llm:Profiles:<nom>:BaseUrl`, `RaggableTree:Embedding:BaseUrl`, `Orkeon:ChromaDb:BaseUrl`, `Orkeon:Pinecone:Host`, `Orkeon:LanceDb:Endpoint`, `Orkeon:Embeddings:Endpoint`, `Orkeon:Rag:WebFallback:Endpoint`, `Telemetry:OtlpEndpoint` ; `Security:Vault:AzureKeyVaultUri`, `A2A:Security:AzureAD:Authority`, `A2A:Security:Oidc:Authority` ; `Orkeon:Tools:GitHub:Token` | écrire la valeur, ou la garder hors du fichier par la couche d'environnement `ORKEON_<chemin avec __>` |
 | `MCP:Servers:<id>:Env:<nom>` | retirer l'entrée : le serveur hérite de l'environnement où tourne Orkeon, y poser la variable |
 | `Secrets:<nom>` | retirer l'entrée et poser `ORKEON_<nom>`, que la chaîne des secrets lit en premier |
@@ -2579,6 +2579,31 @@ route qui n'est pas un identifiant de salon ou un `DefaultCrew` inconnu refusent
 | `TokenEnvironmentVariable` | chaîne | `"ORKEON_DISCORD_TOKEN"` | Nom de la variable d'environnement qui contient le jeton du bot. |
 <!-- /settings -->
 
+### `Orkeon:Host:Teams`
+
+Le canal Microsoft Teams ([ce qu'il faut préparer](../architecture/service-host.md#le-canal-microsoft-teams)). `Routes` est
+une liste de `{ "Channel", "Crew" }`, puisqu'un identifiant de canal Teams contient `:` ; `DefaultCrew` est la crew
+qu'atteint un canal sans route. Un `AllowedUserIds` vide, un identifiant qui n'est pas un GUID, un secret non défini, un
+préfixe qui ne peut pas être pris ou une route qui ne peut pas être tenue refusent le démarrage.
+
+<!-- settings:Orkeon:Host:Teams -->
+**Lue par** : `orkeon-host`.
+
+| Clé | Type | Défaut | Sens |
+|---|---|---|---|
+| `AllowedUserIds` | liste de chaînes | `[]` | Identifiants d'objet Entra des personnes autorisées à parler au bot. **Vide refuse tout le monde**, et un canal allumé refuse le démarrage. |
+| `AppId` | chaîne | `""` | L'identifiant d'application (client) du bot : l'audience que chaque jeton entrant doit porter. |
+| `DefaultCrew` | chaîne | — | La crew qu'atteint un salon sans route. Absente, c'est la première crew déclarée sous `Orkeon:Host:Crews` ; présente, elle doit nommer l'une d'elles. |
+| `Enabled` | booléen | `false` | Si le canal est allumé. Éteint tant qu'un déploiement ne dit pas le contraire. |
+| `Prefix` | chaîne | `"http://localhost:3978/"` | Le préfixe de l'écouteur : schéma, hôte, port et barre finale. Le canal y répond à `POST /api/messages` ; Microsoft doit l'atteindre en HTTPS, par un reverse proxy qui termine TLS devant lui. |
+| `ProgressInterval` | durée | `"00:00:05"` | L'espacement des mises à jour de progression. Teams limite ce qu'un bot poste dans une conversation. |
+| `Routes:<i>:Channel` | chaîne | `""` | L'identifiant du canal (ou de la conversation) Teams, tel que Teams l'écrit : `19:…@thread.tacv2`. |
+| `Routes:<i>:Crew` | chaîne | `""` | La crew hébergée que démarre un fil ouvert dans ce canal. |
+| `SecretEnvironmentVariable` | chaîne | `"ORKEON_TEAMS_APP_SECRET"` | Nom de la variable d'environnement qui contient le secret client de l'application. |
+| `ServiceHosts` | liste de chaînes | `[]` | Hôtes du service Bot Connector où les réponses peuvent aller, en plus de ceux que Microsoft publie pour Teams (`smba.trafficmanager.net`, `smba.infra.gcc.teams.microsoft.com`). Une activité qui nomme un autre hôte est refusée, quoi que dise son jeton. |
+| `TenantId` | chaîne | `""` | Le tenant Entra où le bot est inscrit (mono-tenant). Une activité d'un autre tenant est refusée. |
+<!-- /settings -->
+
 ### `A2A`
 
 Serveur et client A2A ; `EnableServer` enregistre aussi le service hébergé qui démarre le serveur
@@ -2746,6 +2771,7 @@ la variable lui-même. La liste est celle que porte le code — un test y tient 
 | `ORKEON_LLM_API_KEY` | `orkeon` | une clé d'API | La variable où `orkeon llm probe` et `orkeon llm models` lisent la clé quand `--api-key-env` n'en nomme pas d'autre. |
 | `BRAVE_API_KEY` | `orkeon`, `orkeon-host` | une clé d'API Brave Search | Inscrit l'outil `brave_search`. Elle est lue d'abord comme une clé de configuration : le fichier de réglages et `ORKEON_BRAVE_API_KEY` la donnent aussi. |
 | `ORKEON_DISCORD_TOKEN` | `orkeon-host` | un jeton de bot Discord | Le jeton du canal Discord : le défaut de `Orkeon:Host:Discord:TokenEnvironmentVariable`, qui peut nommer une autre variable. |
+| `ORKEON_TEAMS_APP_SECRET` | `orkeon-host` | un secret client | Le secret client de l'application du bot du canal Teams : le défaut de `Orkeon:Host:Teams:SecretEnvironmentVariable`, qui peut nommer une autre variable. |
 | `OLLAMA_BASE_URL` | `orkeon`, `orkeon-host`, `orkeon-repl` | l'adresse d'un serveur Ollama | L'adresse que prend le fournisseur Ollama quand on ne lui en donne aucune : `Llm:BaseUrl` l'emporte, et `http://localhost:11434` est ce qui reste sans l'une ni l'autre. |
 | `TUI_DRIVER` | `orkeon-repl` | `windows`, `dotnet` ou `ansi` | Le pilote Terminal.Gui des interfaces texte, pour le diagnostic. Absente : `windows` sous Windows, `dotnet` ailleurs — `ansi` ne dessine rien sous WSL ni dans bien des terminaux de conteneur. |
 | `TUI_DIAG` | `orkeon-repl` | `1` | La console à deux volets écrit des lignes `[tui-diag]` sur stderr pendant son démarrage : le terminal, le pilote choisi. |
@@ -2800,6 +2826,7 @@ une valeur : le secret reste hors du fichier. `orkeon settings <clé>` décrit c
 | `Orkeon:Embeddings:ApiKeyEnvVar` | La clé d'API du provider d'embeddings `mistral`, `azure-openai` ou `gemini`, lue quand `Orkeon:Embeddings:ApiKey` n'est pas réglée. | L'environnement du processus. |
 | `Orkeon:Rag:WebFallback:ApiKeyEnvVar` | La clé de la recherche web sur laquelle le RAG correctif se replie ; vide, aucune clé n'est envoyée. | L'environnement du processus. |
 | `Orkeon:Host:Discord:TokenEnvironmentVariable` | Le jeton de bot du canal Discord ; la clé nomme `ORKEON_DISCORD_TOKEN` quand rien ne la règle. | L'environnement du processus. |
+| `Orkeon:Host:Teams:SecretEnvironmentVariable` | Le secret client de l'application du bot du canal Teams ; la clé nomme `ORKEON_TEAMS_APP_SECRET` quand rien ne la règle. | L'environnement du processus. |
 | `Orkeon:Tools:Bridge:TokenEnvVar` | Le jeton que l'exécution envoie au pont d'outils ; la clé nomme `ORKEON_BRIDGE_TOKEN` quand rien ne la règle. | L'environnement du processus. |
 | `Orkeon:Bridge:TokenEnvVar` | Le jeton que le serveur du pont d'outils attend de ses appelants ; la clé nomme `ORKEON_BRIDGE_TOKEN` quand rien ne la règle. | L'environnement du processus. |
 

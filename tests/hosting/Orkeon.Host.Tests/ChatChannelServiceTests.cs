@@ -2,6 +2,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Orkeon.Host.Gateway;
 using Orkeon.Host.Tests.Doubles;
+using Orkeon.Tests.Shared.Network;
 
 namespace Orkeon.Host.Tests;
 
@@ -23,11 +24,15 @@ public sealed class ChatChannelServiceTests
         }
     }
 
-    private static ChatChannelService Build(DiscordChannelOptions discord, params HostedCrewOptions[] crews)
+    private static ChatChannelService Build(DiscordChannelOptions discord, params HostedCrewOptions[] crews) =>
+        Build(discord, new TeamsChannelOptions(), crews);
+
+    private static ChatChannelService Build(DiscordChannelOptions discord, TeamsChannelOptions teams, params HostedCrewOptions[] crews)
     {
         var registry = new CrewHostRegistry(Options.Create(new OrkeonHostOptions { Crews = crews }));
         return new ChatChannelService(
             Options.Create(discord),
+            Options.Create(teams),
             new ScriptedRunner(),
             registry,
             NullLoggerFactory.Instance,
@@ -128,6 +133,103 @@ public sealed class ChatChannelServiceTests
         {
             Environment.SetEnvironmentVariable(options.TokenEnvironmentVariable, null);
         }
+    }
+
+    // ---- Teams, alone or beside Discord (#446) ------------------------------------------
+
+    private static async Task<string> RefusalAsync(TeamsChannelOptions teams, DiscordChannelOptions? discord = null)
+    {
+        using var service = Build(discord ?? new DiscordChannelOptions(), teams, Crew());
+        var ex = await Assert.ThrowsAsync<HostConfigurationException>(() => service.StartAsync(TestContext.Current.CancellationToken));
+        return ex.Message;
+    }
+
+    [Fact]
+    public async Task An_enabled_teams_channel_with_no_crew_refuses_the_start()
+    {
+        using var microsoft = new FakeBotConnector();
+        using var service = Build(new DiscordChannelOptions(), microsoft.Options(), crews: []);
+
+        await Assert.ThrowsAsync<HostConfigurationException>(() => service.StartAsync(TestContext.Current.CancellationToken));
+    }
+
+    [Fact]
+    public async Task Each_teams_setting_that_cannot_work_refuses_the_start_and_names_its_key()
+    {
+        using var microsoft = new FakeBotConnector();
+        var good = microsoft.Options();
+        (TeamsChannelOptions Options, string Key)[] refused =
+        [
+            (good with { AllowedUserIds = [] }, "AllowedUserIds"),
+            (good with { AllowedUserIds = ["ada@example.org"] }, "ada@example.org"),
+            (good with { AppId = "" }, "AppId"),
+            (good with { TenantId = "common" }, "TenantId"),
+            (good with { SecretEnvironmentVariable = "ORKEON_TEST_UNSET_SECRET" }, "ORKEON_TEST_UNSET_SECRET"),
+            (good with { ProgressInterval = TimeSpan.Zero }, "ProgressInterval"),
+            (good with { ServiceHosts = ["https://smba.example.org/"] }, "ServiceHosts"),
+            (good with { Prefix = "http://localhost:3978" }, "Prefix"),
+            (good with { Prefix = "http://localhost:3978/api/" }, "Prefix"),
+            (good with { Prefix = "ftp://localhost/" }, "Prefix"),
+            (good with { DefaultCrew = "refunds" }, "Teams:DefaultCrew"),
+            (good with { Routes = [new() { Channel = "general", Crew = "support" }] }, "general"),
+            (good with { Routes = [new() { Channel = Activities.Room, Crew = "refunds" }] }, "Teams:Routes"),
+            (good with { Routes = [new() { Channel = Activities.Room, Crew = "support" }, new() { Channel = Activities.Room, Crew = "support" }] }, "twice"),
+        ];
+
+        foreach (var (options, key) in refused)
+            Assert.Contains(key, await RefusalAsync(options), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void A_prefix_any_host_name_reaches_is_accepted_and_known_to_be_in_clear()
+    {
+        using var microsoft = new FakeBotConnector();
+        microsoft.Options("http://+:3978/").Validate();
+
+        Assert.True(microsoft.Options("http://+:3978/").ListensInClearBeyondLoopback);
+        Assert.True(microsoft.Options("http://bot.example.org/").ListensInClearBeyondLoopback);
+        Assert.False(microsoft.Options().ListensInClearBeyondLoopback);
+    }
+
+    [Fact]
+    public async Task With_both_channels_enabled_either_ones_refusal_refuses_the_start()
+    {
+        using var microsoft = new FakeBotConnector();
+        var discord = Enabled();
+        Assert.Contains("ORKEON_TEST_TOKEN_", await RefusalAsync(microsoft.Options(), discord), StringComparison.Ordinal);
+
+        Environment.SetEnvironmentVariable(discord.TokenEnvironmentVariable, "a-token");
+        try
+        {
+            Assert.Contains("Teams:AllowedUserIds", await RefusalAsync(microsoft.Options() with { AllowedUserIds = [] }, discord), StringComparison.Ordinal);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable(discord.TokenEnvironmentVariable, null);
+        }
+    }
+
+    [Fact]
+    public async Task Teams_alone_listens_and_answers_until_the_service_stops()
+    {
+        using var microsoft = new FakeBotConnector();
+        var (service, port) = await LoopbackPorts.StartAsync(
+            p => Build(new DiscordChannelOptions(), microsoft.Options(LoopbackPorts.BaseAddress(p).AbsoluteUri), Crew()),
+            (s, ct) => s.StartAsync(ct),
+            TestContext.Current.CancellationToken);
+        using var running = service;
+        using var client = new HttpClient();
+        var address = new Uri(LoopbackPorts.BaseAddress(port), "api/messages");
+
+        using var response = await client.PostAsync(address, null, TestContext.Current.CancellationToken);
+        Assert.Equal(System.Net.HttpStatusCode.Unauthorized, response.StatusCode);
+
+        // The port is taken before the start ends: a second host on it refuses to start.
+        using var second = Build(new DiscordChannelOptions(), microsoft.Options(new Uri(address, "/").AbsoluteUri), Crew());
+        await Assert.ThrowsAsync<HostConfigurationException>(() => second.StartAsync(TestContext.Current.CancellationToken));
+
+        await service.StopAsync(TestContext.Current.CancellationToken);
+        Assert.True(service.ExecuteTask?.IsCompletedSuccessfully);
     }
 
     // ---- One registered command, end to end (the wiring the channel invokes) ------------

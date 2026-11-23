@@ -482,7 +482,8 @@ des outils du VFS, **pas** d'un `shell_command` qui tourne sous le même utilisa
 - **Pas joué sur un vrai tenant.** Ni la connexion ni les outils n'y ont été essayés, dans aucun
   cloud.
 - **Teams seulement, en utilisateur connecté, en application qui lit, ou par un webhook qui publie.**
-  Pas livré : un canal Teams entrant dans `orkeon-host`.
+  Un utilisateur de Teams qui parle à une crew passe par le canal bot d'`orkeon-host`, distinct de ces
+  comptes ([hôte de service](../architecture/service-host.md)).
 - **Réactions de canal, et modification dans les clouds gouvernementaux.** `chat_react` refuse un
   canal et `chat_edit` les clouds gouvernementaux, tant qu'ils n'ont pas été essayés sur un vrai
   tenant. La fenêtre de recherche est bornée, voir [Utiliser les outils](#utiliser-les-outils).
