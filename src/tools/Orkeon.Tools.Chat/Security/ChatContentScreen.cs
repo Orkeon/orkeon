@@ -1,3 +1,5 @@
+using System.Globalization;
+using System.Text;
 using Microsoft.Extensions.Options;
 using Orkeon.Rag.Validation;
 using Orkeon.Tools.Chat.Constants;
@@ -35,12 +37,20 @@ internal sealed class ChatContentScreen
         _withholdRejected = options.Value.Screening.WithholdRejected;
     }
 
-    /// <summary>Screens texts together, as an agent reads them.</summary>
+    /// <summary>
+    /// Screens texts together, as an agent reads them and without the characters that do not show
+    /// (zero-width, tags), which would cut a phrase or hide in one: the worst verdict counts.
+    /// </summary>
     public ChatScreeningResult Screen(params IEnumerable<string?> texts)
     {
         var text = string.Join('\n', texts.Where(part => !string.IsNullOrEmpty(part)));
         if (text.Length == 0)
             return new ChatScreeningResult("clean", [], Withhold: false);
+        return Forms(text).Select(Analyze).Aggregate(Worst);
+    }
+
+    private ChatScreeningResult Analyze(string text)
+    {
         var analysis = _detector.Analyze(text);
         var verdict = analysis.Verdict switch
         {
@@ -51,6 +61,39 @@ internal sealed class ChatContentScreen
         return new ChatScreeningResult(verdict, analysis.Reasons, _withholdRejected && analysis.Verdict == PromptInjectionVerdict.Rejected);
     }
 
+    private static ChatScreeningResult Worst(ChatScreeningResult left, ChatScreeningResult right) =>
+        right.Verdict == "rejected" || left.Verdict == "clean" ? right : left;
+
+    /// <summary>The text as written and, when it holds characters that do not show, without them, with each as a space, and with the tags as the letters they stand for.</summary>
+    private static IEnumerable<string> Forms(string text)
+    {
+        yield return text;
+        if (!text.EnumerateRunes().Any(IsHidden))
+            yield break;
+
+        yield return Without(text, static _ => string.Empty);
+        yield return Without(text, static _ => " ");
+        if (text.EnumerateRunes().Any(IsTag))
+            yield return Without(text, static rune => IsTag(rune) ? ((char)(rune.Value - 0xE0000)).ToString() : string.Empty);
+    }
+
+    private static string Without(string text, Func<Rune, string> instead)
+    {
+        var kept = new StringBuilder(text.Length);
+        foreach (var rune in text.EnumerateRunes())
+            kept.Append(IsHidden(rune) ? instead(rune) : rune.ToString());
+
+        return kept.ToString();
+    }
+
+    private static bool IsTag(Rune rune) => rune.Value is >= 0xE0020 and <= 0xE007E;
+
+    // Unicode's default-ignorable characters: not all of them are of the Format category.
+    private static bool IsHidden(Rune rune) =>
+        Rune.GetUnicodeCategory(rune) == UnicodeCategory.Format
+        || rune.Value is 0x034F or 0x115F or 0x1160 or 0x17B4 or 0x17B5 or (>= 0x180B and <= 0x180F) or (>= 0x2060 and <= 0x206F)
+            or 0x3164 or (>= 0xFE00 and <= 0xFE0F) or 0xFFA0 or (>= 0xE0000 and <= 0xE0FFF);
+
     /// <summary>
     /// Screens long texts by overlapping parts, for the worst verdict of them: what the detector adds
     /// up over hours of speech would reject an honest meeting, and its cost grows faster than the text.
@@ -58,7 +101,8 @@ internal sealed class ChatContentScreen
     public ChatScreeningResult ScreenLong(params IEnumerable<string> texts)
     {
         var worst = Screen();
-        foreach (var text in texts)
+        // A long run of hidden characters would push a phrase across the parts: each form is cut up.
+        foreach (var text in texts.SelectMany(Forms))
         {
             for (var at = 0; at < text.Length; at += ChatDefaults.ScreeningPart - ChatDefaults.ScreeningOverlap)
             {

@@ -82,6 +82,38 @@ public sealed class ChatSecurityTests
     public void Should_put_a_name_on_one_line_as_it_reads(string name, string expected) =>
         Assert.Equal(expected, Screen(withhold: false).Label(name));
 
+    [Theory]
+    [InlineData("\u200B")]
+    [InlineData("\u2060")]
+    [InlineData("\u00AD")]
+    [InlineData("\U000E0041")]
+    [InlineData("\uFE0F")]
+    [InlineData("\u034F")]
+    [InlineData("\u3164")]
+    public void Should_screen_what_hidden_characters_cut(string hidden)
+    {
+        var cut = string.Concat(Hostile.Text.Select(letter => $"{letter}{hidden}"));
+        var far = string.Concat(Hostile.Text.Select(letter => letter + string.Concat(Enumerable.Repeat(hidden, 2_000))));
+        var screen = Screen(withhold: true);
+
+        Assert.Equal("rejected", screen.Screen(cut).Verdict);
+        Assert.True(screen.Screen("a", cut).Withhold);
+        Assert.Equal("rejected", screen.ScreenLong(cut).Verdict);
+        Assert.Equal("rejected", screen.ScreenLong(far).Verdict);
+        Assert.Equal(ChatContentScreen.WithheldName, screen.Label(cut));
+    }
+
+    [Theory]
+    [InlineData("\u200B")]
+    [InlineData("\u2060")]
+    [InlineData("\U000E0041")]
+    public void Should_screen_what_hidden_characters_separate(string hidden) =>
+        Assert.Equal("rejected", Screen(withhold: false).Screen(Hostile.Text.Replace(" ", hidden, StringComparison.Ordinal)).Verdict);
+
+    [Fact]
+    public void Should_screen_what_is_written_in_tags() =>
+        Assert.Equal("rejected", Screen(withhold: false).Screen("hi" + string.Concat(Hostile.Text.Select(letter => char.ConvertFromUtf32(0xE0000 + letter)))).Verdict);
+
     [Fact]
     public void Should_give_back_the_unit_of_its_own_write()
     {
