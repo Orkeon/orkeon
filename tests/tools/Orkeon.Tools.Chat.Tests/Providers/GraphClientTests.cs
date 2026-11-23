@@ -4,6 +4,8 @@ using System.Text.Json.Nodes;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Orkeon.Tools.Chat.DependencyInjection;
+using Orkeon.Tools.Chat.Places;
+using Orkeon.Tools.Chat.Providers;
 using Orkeon.Tools.Chat.Providers.Teams;
 using Orkeon.Tools.Chat.Tests.Fixtures;
 
@@ -173,7 +175,7 @@ public sealed class GraphClientTests : IDisposable
         var second = await Assert.ThrowsAsync<ChatToolException>(() => _graph.GetAsync("me/chats", "x", Token));
 
         Assert.Equal((ChatErrorCode.Throttled, ChatErrorCode.Throttled), (first.Code, second.Code));
-        Assert.Contains("retry in 30 s. Nothing was done.", first.Message, StringComparison.Ordinal);
+        Assert.Contains("retry in 30 s. This request was refused before it was carried out.", first.Message, StringComparison.Ordinal);
         Assert.Contains("retry in 20 s", second.Message, StringComparison.Ordinal);
         Assert.Single(_fixture.Handler.Requests);
         _fixture.Time.Advance(TimeSpan.FromSeconds(20));
@@ -192,6 +194,17 @@ public sealed class GraphClientTests : IDisposable
 
         Assert.Equal(ChatErrorCode.Throttled, error.Code);
         Assert.Equal(sent, _fixture.Handler.Requests.Count);
+    }
+
+    [Fact]
+    public async Task Should_doubt_a_post_the_service_timed_out_on()
+    {
+        _fixture.Graph.On(HttpMethod.Post, "chats/x/messages", _ => GraphStub.Error(HttpStatusCode.RequestTimeout, "timeout"));
+
+        var error = await Assert.ThrowsAsync<ChatToolException>(() =>
+            _fixture.Session.Provider.SendAsync(new ChatTarget { ChatId = "x" }, new ChatOutgoing("x", [], ReplyTo: null), Token));
+
+        Assert.Contains("may have been posted", error.Message, StringComparison.Ordinal);
     }
 
     [Fact]

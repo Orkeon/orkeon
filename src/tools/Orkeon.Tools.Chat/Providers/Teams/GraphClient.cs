@@ -189,7 +189,7 @@ internal sealed class GraphClient
 
     private static ChatToolException Throttled(TimeSpan pause) => new(
         ChatErrorCode.Throttled,
-        string.Create(CultureInfo.InvariantCulture, $"{ApiName} limits the rate of requests here: retry in {Math.Ceiling(pause.TotalSeconds)} s. Nothing was done."));
+        string.Create(CultureInfo.InvariantCulture, $"{ApiName} limits the rate of requests here: retry in {Math.Ceiling(pause.TotalSeconds)} s. This request was refused before it was carried out."));
 
     private TimeSpan RetryAfter(HttpResponseMessage response)
     {
@@ -315,7 +315,7 @@ internal sealed class GraphClient
                 ChatErrorCode.InvalidRequest, $"{ApiName} refused the request as malformed ({detail})."),
             _ => new ChatToolException(
                 ChatErrorCode.ServerError,
-                string.Create(CultureInfo.InvariantCulture, $"{ApiName} answered HTTP {status} ({detail}).{(status >= 500 ? doubt : string.Empty)}")),
+                string.Create(CultureInfo.InvariantCulture, $"{ApiName} answered HTTP {status} ({detail}).{(status >= 500 || response.StatusCode == HttpStatusCode.RequestTimeout ? doubt : string.Empty)}")),
         };
     }
 
