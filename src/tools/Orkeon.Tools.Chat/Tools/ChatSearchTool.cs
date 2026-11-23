@@ -26,6 +26,7 @@ namespace Orkeon.Tools.Chat.Tools;
 internal sealed class ChatSearchTool : ToolBase<ChatSearchRequest, ChatSearchResponse>
 {
     private const string UnreadReason = "the service did not return it: it is gone, or a reply whose thread the search does not tell";
+    private const string FailedReason = "the service failed to return it";
     private const string ChannelsLeftOut = "Channels are left out: reading them needs ChannelMessages under Auth:AdminGranted, after a tenant administrator's consent.";
 
     private readonly ChatAccess _access;
@@ -175,6 +176,10 @@ internal sealed class ChatSearchTool : ToolBase<ChatSearchRequest, ChatSearchRes
         catch (ChatToolException ex) when (ex.Code is ChatErrorCode.NotFound or ChatErrorCode.ConsentMissing)
         {
             return place with { Message = new ChatMessageDto { Id = hit.MessageId, Withheld = true, Reason = UnreadReason } };
+        }
+        catch (ChatToolException ex) when (ex.Code is ChatErrorCode.InvalidRequest or ChatErrorCode.ServerError)
+        {
+            return place with { Message = new ChatMessageDto { Id = hit.MessageId, Withheld = true, Reason = FailedReason } };
         }
 
         if (!message.IsMessage || (author is not null && !string.Equals(message.Author?.Id, author.Id, StringComparison.OrdinalIgnoreCase)))

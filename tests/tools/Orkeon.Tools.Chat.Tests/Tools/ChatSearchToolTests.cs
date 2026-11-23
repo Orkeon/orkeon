@@ -57,6 +57,35 @@ public sealed class ChatSearchToolTests
         Assert.Single(fixture.Graph.To(HttpMethod.Get, "chats/" + Unreached));
     }
 
+    [Theory]
+    [InlineData(HttpStatusCode.BadRequest)]
+    [InlineData(HttpStatusCode.InternalServerError)]
+    public async Task Should_withhold_the_one_hit_the_service_fails_to_return(HttpStatusCode status)
+    {
+        using var fixture = Searching(GroupPlace);
+        Finds(fixture, ChatHit("1", Samples.Group), ChatHit("2", Samples.Group));
+        fixture.Graph.On(HttpMethod.Get, GroupMessages + "/1", _ => GraphStub.Error(status, "x")).Get(GroupMessages + "/2", Samples.Message("2", "found"));
+
+        var hits = ToolResults.Objects(await fixture.ResultAsync("chat_search", ("text", "x")), "hits").Select(hit => ToolResults.Object(hit, "message")).ToList();
+
+        Assert.Equal(2, hits.Count);
+        Assert.Equal((true, "the service failed to return it"), (hits[0]["withheld"], hits[0]["reason"]));
+        Assert.Equal("found", hits[1]["text"]);
+    }
+
+    [Theory]
+    [InlineData(HttpStatusCode.TooManyRequests, "limits the rate")]
+    [InlineData(HttpStatusCode.Unauthorized, "orkeon chat login work")]
+    public async Task Should_fail_once_every_hit_would(HttpStatusCode status, string error)
+    {
+        using var fixture = Searching(GroupPlace);
+        Finds(fixture, ChatHit("1", Samples.Group), ChatHit("2", Samples.Group));
+        fixture.Graph.Identity("token", """{"error":"invalid_grant","error_description":"AADSTS70008: The refresh token has expired"}""");
+        fixture.Graph.On(HttpMethod.Get, GroupMessages + "/1", _ => GraphStub.Error(status, "x", retryAfter: TimeSpan.FromSeconds(30)));
+
+        Assert.Contains(error, await fixture.ErrorAsync("chat_search", ("text", "x")), StringComparison.Ordinal);
+    }
+
     [Fact]
     public async Task Should_find_an_allowed_chat_after_many_hidden_ones()
     {

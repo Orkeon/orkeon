@@ -390,7 +390,8 @@ const found = await tools.chatSearch({ text: "release blocker", mentions_me: tru
 - **La fenêtre est bornée** : 5 requêtes de 25 résultats, et 40 lieux consultés. Ce qui est au-delà
   n'est pas trouvé, et aucun compte des résultats laissés de côté n'est donné : resserrez les mots.
 - **Les canaux sont écartés** sans `ChannelMessages` dans `AdminGranted` ; `limits` le dit.
-- **Une réponse dont le résultat ne dit pas le fil est retenue**, avec une raison.
+- **Une réponse dont le résultat ne dit pas le fil est retenue**, avec une raison ; de même le seul
+  résultat que le service échoue à rendre. Une limite de débit ou une connexion perdue fait échouer la recherche.
 
 **Réunions.** `chat_meetings` liste les transcriptions d'une réunion, puis lit le texte de l'une d'elles.
 

@@ -373,7 +373,8 @@ const found = await tools.chatSearch({ text: "release blocker", mentions_me: tru
 - **The window is bounded**: 5 requests of 25 hits, and 40 places looked up. What is past it is not
   found, and no count of left-out hits is given: narrow the words.
 - **Channels are left out** without `ChannelMessages` in `AdminGranted`; `limits` says so.
-- **A reply whose thread the hit does not tell is withheld**, with a reason.
+- **A reply whose thread the hit does not tell is withheld**, with a reason; so is the one hit the
+  service fails to return. A rate limit or a lost sign-in fails the search.
 
 **Meetings.** `chat_meetings` lists the transcripts of a meeting, then reads the text of one.
 
