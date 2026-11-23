@@ -14,12 +14,12 @@ namespace Orkeon.Tools.Chat.Tests.DependencyInjection;
 public sealed class ChatToolsServiceCollectionExtensionsTests
 {
     private static readonly string[] ToolNames =
-    ["chat_accounts", "chat_list", "chat_members", "chat_read", "chat_send"];
+    ["chat_accounts", "chat_delete", "chat_edit", "chat_list", "chat_members", "chat_react", "chat_read", "chat_search", "chat_send"];
 
     private static CancellationToken Token => TestContext.Current.CancellationToken;
 
     [Fact]
-    public void Should_register_the_five_tools_with_no_chat_configuration_at_all()
+    public void Should_register_the_tools_with_no_chat_configuration_at_all()
     {
         using var provider = Build(services => services.AddOrkeonChatTools(EmptyConfiguration()));
 
@@ -38,7 +38,7 @@ public sealed class ChatToolsServiceCollectionExtensionsTests
 
         using var provider = Build(services => services.AddOrkeonChatTools(configuration).AddOrkeonChatTools(configuration));
 
-        Assert.Equal(5, provider.GetServices<IBaseTool>().Count());
+        Assert.Equal(ToolNames.Length, provider.GetServices<IBaseTool>().Count());
         var options = provider.GetRequiredService<Microsoft.Extensions.Options.IOptions<ChatToolsOptions>>().Value;
         Assert.Equal(["user:ada@example.org"], options.Accounts["work"].Send.AllowedPlaces);
     }

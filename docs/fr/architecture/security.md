@@ -369,7 +369,7 @@ des deux autres :
   d'outil, et l'application est un client public, sans aucun secret.
 - **Les droits sont déclarés par compte, et obligatoires**, et la connexion demande les permissions
   qu'ils exigent ; une permission d'administrateur n'est demandée que quand `AdminGranted` la nomme.
-  `chat_send` est Execute, les quatre autres outils Read.
+  `chat_send`, `chat_edit`, `chat_delete` et `chat_react` sont Execute, les cinq autres outils Read.
 - **Les lieux sont fermés par défaut, dans les deux sens.** Une liste `Read:AllowedPlaces` vide ne lit
   nulle part, une liste `Send:AllowedPlaces` vide ne publie nulle part. Les noms sont résolus en ids
   une fois et seuls les ids sont comparés : un lieu renommé plus tard ne prend la place d'aucun autre ;
@@ -377,18 +377,24 @@ des deux autres :
   à l'adresse e-mail du profil d'un invité.
 - **Le contenu reçu n'est pas fiable.** Chaque résultat s'ouvre sur un avis disant que c'est une
   donnée, et chaque message porte le verdict du même `PromptInjectionDocumentValidator` ; les noms
-  sont filtrés aussi, et `chat_list`, `chat_members` et `chat_read` contournent donc le filtrage des
-  résultats. `Screening:WithholdRejected` retient un message rejeté ; un message supprimé et
+  sont filtrés aussi, et `chat_list`, `chat_members`, `chat_read` et `chat_search` contournent donc le filtrage des
+  résultats ; `chat_edit`, `chat_delete` et `chat_react` ne rendent aucun texte d'autrui et ne sont pas de confiance. `Screening:WithholdRejected` retient un message rejeté ; un message supprimé et
   un message que Teams marque comme violation d'une politique sont toujours retenus.
 - **Une publication est bornée.** Le HTML brut est encodé, seuls les liens `http` et `https` sont
   gardés, les mentions prennent des ids d'annuaire vérifiés, les publications sont cadencées et
-  `Send:MaxPerHour` plafonne les tentatives du processus. Une publication qui a pu avoir lieu n'est
-  jamais répétée.
+  `Send:MaxPerHour` plafonne les tentatives du processus. Une modification, une suppression et une
+  réaction comptent dans ce plafond et dans la cadence d'un lieu, puisque chacune se voit dans le lieu
+  ou prévient quelqu'un. Une publication, une modification, une suppression ou une réaction qui a pu
+  avoir lieu n'est jamais répétée. Modifier et supprimer ne touchent que des messages que le compte a
+  lui-même envoyés.
 - **Le jeton ne quitte jamais l'hôte Graph** du cloud du compte, en HTTPS, sans suivre de redirection ;
   un lien de pagination vers un autre hôte est refusé. Les jetons sont écrits par `orkeon chat login`
   dans le sous-répertoire `chat` de la racine interne `/credentials`
   ([conformité VFS](./vfs-compliance.md)).
-- **Les crews forgés ne touchent jamais un chat.** `orkeon forge` retire les cinq outils chat du
+- **Une recherche ne montre que ce qui peut être lu.** `chat_search` ne regarde que les lieux où la
+  lecture est autorisée : le lieu de chaque résultat est vérifié par ses ids avant d'en montrer quoi
+  que ce soit, et le texte est relu dans ce lieu, jamais dans le résumé de la recherche.
+- **Les crews forgés ne touchent jamais un chat.** `orkeon forge` retire les neuf outils chat du
   catalogue : il n'y a pas de tenant d'essai.
 
 **Limites honnêtes.** La famille n'a pas été jouée sur un vrai tenant. Le filtre signale, et une

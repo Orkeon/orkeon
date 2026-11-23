@@ -14,7 +14,7 @@ chats, reads messages, looks people up and posts, within what the operator allow
 
 - **The operator declares the accounts** under `Orkeon:Tools:Chat`. An agent names an account (or
   uses the default one), never a client id, a tenant or a token.
-- **`Rights` is mandatory** for each account. `Read` and `Send` are the rights the tools use.
+- **`Rights` is mandatory** for each account. `Read`, `Send`, `Edit`, `Delete` and `React` are the rights the tools use.
 - **Places are closed by default, for reading as for posting**: an empty `Read:AllowedPlaces` lets
   an account read nowhere, an empty `Send:AllowedPlaces` lets it post nowhere.
 - **The scopes follow the rights**: a sign-in asks Microsoft for what the account's `Rights` need,
@@ -27,7 +27,7 @@ chats, reads messages, looks people up and posts, within what the operator allow
 > **Test coverage.** The family is tested offline, against a scripted Microsoft Graph. It has not
 > been run on a real Microsoft 365 tenant. Report what differs.
 
-## The five tools
+## The nine tools
 
 | Tool | Right needed | What it does |
 |---|---|---|
@@ -36,6 +36,10 @@ chats, reads messages, looks people up and posts, within what the operator allow
 | `chat_read` | Read | The messages of a channel or a chat, newest first, or the replies of one channel message, screened |
 | `chat_members` | Read; to look a person up, Send is enough | The members of a place, or the directory entry of one person |
 | `chat_send` | Send | Posts a message, or a reply, in an allowed place |
+| `chat_search` | Read | Finds messages by words, by author or that mention the signed-in user, in the places allowed for reading, screened |
+| `chat_edit` | Edit | Rewrites a message the account itself sent, in an allowed place |
+| `chat_delete` | Delete | Deletes a message the account itself sent, in an allowed place |
+| `chat_react` | React | Sets or removes a reaction on a message of an allowed chat |
 
 Ids are Microsoft's own and opaque: pass them back exactly as `chat_list` or `chat_read` gave them.
 
@@ -128,15 +132,15 @@ the application, **Permissions**).
 | `CredentialsDirectory` | Where the tokens are kept (its `chat` subdirectory); default: `credentials` next to the user settings |
 | `Screening:WithholdRejected` | Withhold the text of a message the prompt-injection screen rejects (default `false`: flag only) |
 | `Accounts:<name>:Provider` | `Teams`, mandatory |
-| `Accounts:<name>:Rights` | `Read`, `Send` or both, mandatory. The other names the key takes open no tool, see [Limits](#limits) |
+| `Accounts:<name>:Rights` | Any of `Read`, `Send`, `Edit`, `Delete` and `React`, mandatory. `Meetings` opens no tool, see [Limits](#limits) |
 | `Accounts:<name>:Auth:ClientId` | The Microsoft Entra application, mandatory |
 | `Accounts:<name>:Auth:Tenant` | `organizations` (default), a tenant id or a tenant domain; `consumers` is refused |
 | `Accounts:<name>:Auth:Method` | `OAuth2` (default), the only method accepted |
-| `Accounts:<name>:Auth:AdminGranted` | The administrator permissions the tenant granted. `ChannelMessages` opens the reading of channel messages |
+| `Accounts:<name>:Auth:AdminGranted` | The administrator permissions the tenant granted. `ChannelMessages` opens the reading of channel messages; `ChannelEdit` with it opens editing and deleting in a channel |
 | `Accounts:<name>:Cloud` | `Global` (default), `UsGov` or `UsGovDoD`; the China cloud is refused |
 | `Accounts:<name>:Read:AllowedPlaces` | Where the account may read; empty: nowhere |
-| `Accounts:<name>:Send:AllowedPlaces` | Where the account may post; empty: nowhere |
-| `Accounts:<name>:Send:MaxPerHour` | Most posts attempted in a sliding hour, for this process; unset: no cap |
+| `Accounts:<name>:Send:AllowedPlaces` | Where the account may post, edit, delete and react; empty: nowhere |
+| `Accounts:<name>:Send:MaxPerHour` | Most posts, edits, deletions and reactions attempted in a sliding hour, for this process; unset: no cap |
 
 The section is validated lazily: a broken account is reported, every problem at once, when a call or
 `orkeon chat` uses it, and never breaks a crew that opens no chat. An unknown key in an account, a
@@ -152,13 +156,17 @@ is fixed.
 
 | Right | Delegated permissions asked | Tools |
 |---|---|---|
-| `Read` | `Team.ReadBasic.All`, `Channel.ReadBasic.All`, `Chat.Read`, `User.ReadBasic.All` | `chat_list`, `chat_read`, `chat_members` |
-| `Read` with `AdminGranted: ["ChannelMessages"]` | the same, plus `ChannelMessage.Read.All` (administrator) | `chat_read` on a channel |
+| `Read` | `Team.ReadBasic.All`, `Channel.ReadBasic.All`, `Chat.Read`, `User.ReadBasic.All` | `chat_list`, `chat_read`, `chat_members`, `chat_search` |
+| `Read` with `AdminGranted: ["ChannelMessages"]` | the same, plus `ChannelMessage.Read.All` (administrator) | `chat_read` and `chat_search` on a channel |
 | `Send` | `ChannelMessage.Send`, `ChatMessage.Send`, `Chat.Create`, `Team.ReadBasic.All`, `Channel.ReadBasic.All`, `User.ReadBasic.All` | `chat_send`, and `chat_list` for teams and channels, `chat_members` for a person |
+| `Edit`, `Delete` | `Chat.ReadWrite`, `Team.ReadBasic.All`, `Channel.ReadBasic.All`, `User.ReadBasic.All`; with `ChannelMessages`, `ChannelMessage.Read.All`; with `ChannelEdit`, `ChannelMessage.ReadWrite` (administrator) | `chat_edit`, `chat_delete` |
+| `React` | `ChatMessage.Send`, `User.ReadBasic.All` | `chat_react` |
 
 - **Reading a channel needs an administrator.** Without `ChannelMessages` in `AdminGranted`,
   `chat_read` on a channel answers `ConsentMissing` before any request. Chats need no
   administrator's permission.
+- **Editing or deleting in a channel needs both `ChannelEdit` and `ChannelMessages`** in
+  `AdminGranted`: the author of the message is read first. A chat needs neither.
 - **The members of a channel** need `ChannelMember.Read.All`, an administrator's permission that no
   right asks for: without it, `chat_members` on a channel answers `ConsentMissing`.
 - **A crew whose chat tools need a right no ready account grants is refused at start**, before any
@@ -206,7 +214,8 @@ start. A name that matches nothing, or more than one place, sets its entry aside
   link of a `drive_upload`. A rendered message is at most 80 KB, the size Microsoft recommends (Graph
   takes about 100 KB).
 - **Posting is paced.** One post per second and per place, and `Send:MaxPerHour` counts attempts, in
-  this process only. A post that would wait more than 30 seconds for its turn answers `Throttled` and
+  this process only. An edit, a deletion and a reaction count in both, like a post: each shows in the
+  place or notifies someone, and one cap bounds them all. A post that would wait more than 30 seconds for its turn answers `Throttled` and
   counts for nothing. A post is never repeated once it may have been done: the error says to read
   the place first.
 - **The token stays with Graph.** It is sent to the account's Graph host only
@@ -249,6 +258,41 @@ await tools.chatSend({ place: page.place, text: "**Summary**\n\nNothing is block
 - **`reply_to`** answers in the thread of a channel message; in a chat, it quotes the message.
   `format` is `markdown` (default) or `text`.
 - `chat_send` opens the one-to-one chat with a person when there is none.
+
+**Search.** `chat_search` takes `text`, `author` (an address, or an id from `chat_members`) and
+`mentions_me`, at least one of them, plus `text_chars`, `limit` (10 by default, 25 at most) and `cursor`.
+
+```ts
+const found = await tools.chatSearch({ text: "release blocker", mentions_me: true });
+```
+
+- **It reaches only the places allowed for reading.** Each hit's place is checked by ids before
+  anything of it is shown, and the text is read from that place, never from the search summary.
+  Results are screened like `chat_read`'s.
+- **Words are literal**: all of them, with no operator and no wildcard.
+- **The window is bounded**: 5 requests of 25 hits, and 40 places looked up. What is past it is not
+  found, and no count of left-out hits is given: narrow the words.
+- **Channels are left out** without `ChannelMessages` in `AdminGranted`; `limits` says so.
+- **A reply whose thread the hit does not tell is withheld**, with a reason.
+
+**Edit, delete, react.** They work in a place of `Send:AllowedPlaces` and return no text of others.
+
+```ts
+await tools.chatEdit({ place: "chat:19:abc@thread.v2", message_id: "1700000000000", text: "Final." });
+await tools.chatReact({ place: "chat:19:abc@thread.v2", message_id: "1700000000000", reaction: "👍" });
+await tools.chatDelete({ place: "chat:19:abc@thread.v2", message_id: "1700000000000" });
+```
+
+- `chat_edit` and `chat_delete` act only on a message the account itself sent. The rights are
+  `Edit` and `Delete`. In a channel, pass `thread` for a reply. A `user:` place uses the existing
+  one-to-one chat and never opens one.
+- **`chat_edit` replaces the whole text and its mentions.** It works in the worldwide cloud only and
+  refuses a message with attachments or a quote, which a rewrite would drop.
+- **`chat_delete` is a soft delete**: the service keeps the message recoverable.
+- **`chat_react`** works in chats only (`chat:<id>` or `user:<address>`): a channel answers
+  `NotSupportedByAccount` until it is tried on a real tenant. It needs `React` and takes one emoji
+  character; `remove: true` takes it back.
+- **None of them is repeated after an ambiguous failure**: the error says to read the place first.
 
 ## Commands
 
@@ -297,10 +341,12 @@ no token store: a chat tool called there says so.
 
 - **Not run on a real tenant.** Neither the sign-in nor the tools were tried on one, in any cloud.
 - **Teams only, as a signed-in user.** Not shipped: a send-only webhook account (`TeamsWebhook` is
-  refused), a read-only application account (`ClientCredentials` is refused), search, editing,
-  deletion, reactions, meetings and their transcripts, and an inbound Teams channel in `orkeon-host`.
-- **Rights no tool uses.** `Edit`, `Delete`, `React` and `Meetings`, like the grants other than
-  `ChannelMessages`, are read and ask for their permissions, but no tool uses them. Leave them out.
+  refused), a read-only application account (`ClientCredentials` is refused), meetings and their transcripts, and an inbound Teams channel in `orkeon-host`.
+- **A right no tool uses.** `Meetings`, like the grants other than `ChannelMessages` and
+  `ChannelEdit`, is read and asks for its permissions, but no tool uses it. Leave it out.
+- **Channel reactions, and edits in the government clouds.** `chat_react` refuses a channel and
+  `chat_edit` the government clouds, until tried on a real tenant. The search window is bounded, see
+  [Using the tools](#using-the-tools).
 - **Shared channels.** The teams come from Graph's `joinedTeams`, which leaves out the host teams of
   shared channels.
 - **The China cloud is refused**: Microsoft's official pages disagree on its hosts. The government

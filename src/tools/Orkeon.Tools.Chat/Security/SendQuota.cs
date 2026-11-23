@@ -3,7 +3,7 @@ using System.Collections.Concurrent;
 namespace Orkeon.Tools.Chat.Security;
 
 /// <summary>
-/// The per-account hourly cap on posts (<c>Send:MaxPerHour</c>), counted in this process over a
+/// The per-account hourly cap on writes (<c>Send:MaxPerHour</c>), counted in this process over a
 /// sliding hour. An attempt counts, whatever became of it.
 /// </summary>
 internal sealed class SendQuota
@@ -21,7 +21,7 @@ internal sealed class SendQuota
     }
 
     /// <summary>
-    /// Records one post for <paramref name="account"/> when it fits under <paramref name="maxPerHour"/>;
+    /// Records one write for <paramref name="account"/> when it fits under <paramref name="maxPerHour"/>;
     /// returns false, recording nothing, when the hour is full. A null cap always fits.
     /// </summary>
     public bool TryConsume(string account, int? maxPerHour)

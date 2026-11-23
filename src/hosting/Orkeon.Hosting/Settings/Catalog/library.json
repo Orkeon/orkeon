@@ -2573,8 +2573,8 @@
       "path": "Security:ToolResults:TrustedTools",
       "section": "Security:ToolResults",
       "type": "list of string",
-      "default": ["email_accounts", "email_create_folder", "email_delete", "email_draft", "email_folders", "email_mark", "email_move", "email_parser", "email_read", "email_rename_folder", "email_save_attachment", "email_search", "email_send", "drive_read", "chat_list", "chat_members", "chat_read"],
-      "description": "Tools whose results bypass sanitization. Defaults to the `email_*` tools, which screen what they read with `PromptInjectionDocumentValidator` and mark it untrusted themselves (ADR-012), and to `drive_read`, which does the same with a file's text (ADR-013), and to `chat_list`, `chat_members` and `chat_read`, which screen the names and messages they return (ADR-021) — tagging them again would stack two envelopes. The other `drive_*` tools return names and metadata they do not screen, and stay sanitized. Entries from configuration are added to these."
+      "default": ["email_accounts", "email_create_folder", "email_delete", "email_draft", "email_folders", "email_mark", "email_move", "email_parser", "email_read", "email_rename_folder", "email_save_attachment", "email_search", "email_send", "drive_read", "chat_list", "chat_members", "chat_read", "chat_search"],
+      "description": "Tools whose results bypass sanitization. Defaults to the `email_*` tools, which screen what they read with `PromptInjectionDocumentValidator` and mark it untrusted themselves (ADR-012), and to `drive_read`, which does the same with a file's text (ADR-013), and to `chat_list`, `chat_members`, `chat_read` and `chat_search`, which screen the names and messages they return (ADR-021) — tagging them again would stack two envelopes. The other `drive_*` tools return names and metadata they do not screen, and stay sanitized. Entries from configuration are added to these."
     },
     {
       "path": "Security:Url:AllowedDomains",

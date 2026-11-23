@@ -91,6 +91,14 @@ declare global {
         chatMembers(input: ChatMembersInput, ctx?: ExecutionContext): Promise<ChatMembersResult>;
         /** Posts a message, only in places the account's `Send:AllowedPlaces` lists (none listed: refused). Needs Send. */
         chatSend(input: ChatSendInput, ctx?: ExecutionContext): Promise<ChatSendResult>;
+        /** Finds messages in the places the account may read, screened: one of `text`, `author` and `mentions_me` at least. Needs Read. */
+        chatSearch(input: ChatSearchInput, ctx?: ExecutionContext): Promise<ChatSearchResult>;
+        /** Rewrites a message the account sent, in a place it may post in. Needs Edit. */
+        chatEdit(input: ChatEditInput, ctx?: ExecutionContext): Promise<ChatMessageWriteResult>;
+        /** Deletes a message the account sent, recoverably, in a place it may post in. Needs Delete. */
+        chatDelete(input: ChatDeleteInput, ctx?: ExecutionContext): Promise<ChatMessageWriteResult>;
+        /** Sets or removes the account's reaction on a message of a chat it may post in; a channel is refused. Needs React. */
+        chatReact(input: ChatReactInput, ctx?: ExecutionContext): Promise<ChatReactResult>;
 
         /** A plugin or MCP tool, by name: its input is not known here. */
         [name: string]: (input: never, ctx?: ExecutionContext) => Promise<unknown>;
@@ -856,6 +864,78 @@ declare global {
         readonly sent_at?: string;
         /** What to know though the message was posted. */
         readonly warning?: string;
+    }
+
+    interface ChatSearchInput extends ChatAccountInput {
+        /** Words the message holds, all of them, each taken literally. */
+        text?: string;
+        /** An address, or an id from `chatMembers`. */
+        author?: string;
+        mentions_me?: boolean;
+        /** The most characters of each message's text: 1000 by default. */
+        text_chars?: number;
+        /** 1..25, 10 by default; a page is also cut to what fits a tool result. */
+        limit?: number;
+        /** The previous page's `next_cursor`, with the same arguments. */
+        cursor?: string;
+    }
+
+    interface ChatSearchHit {
+        /** Where it is, by its ids. */
+        readonly place: string;
+        /** In a channel, the message it replies to: `thread` of `chatEdit` and `chatDelete`. */
+        readonly thread?: string;
+        readonly message: ChatMessage;
+    }
+
+    interface ChatSearchResult {
+        readonly account: string;
+        readonly notice: string;
+        /** What the search left out. */
+        readonly limits?: string;
+        readonly count: number;
+        readonly next_cursor?: string;
+        /** As the service ranks them. */
+        readonly hits: readonly ChatSearchHit[];
+    }
+
+    /** A message to change. */
+    interface ChatDeleteInput extends ChatAccountInput {
+        place: string;
+        message_id: string;
+        /** For a reply in a channel: the message it replies to. */
+        thread?: string;
+    }
+
+    interface ChatEditInput extends ChatDeleteInput {
+        /** The whole text that replaces it. */
+        text: string;
+        /** `markdown` by default; HTML is shown as written, never rendered. */
+        format?: "markdown" | "text";
+        /** Ids from `chatMembers`; the previous text's mentions are dropped. */
+        mentions?: readonly string[];
+    }
+
+    interface ChatMessageWriteResult {
+        readonly account: string;
+        /** Where the message is, by its ids. */
+        readonly place: string;
+        readonly message_id: string;
+    }
+
+    interface ChatReactInput extends ChatAccountInput {
+        /** `chat:<id>` or `user:<address>`. */
+        place: string;
+        message_id: string;
+        /** One emoji character. */
+        reaction: string;
+        /** Removes the reaction instead of setting it. */
+        remove?: boolean;
+    }
+
+    interface ChatReactResult extends ChatMessageWriteResult {
+        readonly reaction: string;
+        readonly removed?: boolean;
     }
 }
 

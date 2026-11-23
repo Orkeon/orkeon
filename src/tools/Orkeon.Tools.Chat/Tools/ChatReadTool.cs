@@ -20,10 +20,6 @@ namespace Orkeon.Tools.Chat.Tools;
 internal sealed class ChatReadTool : ToolBase<ChatReadRequest, ChatReadResponse>
 {
     private const int RoomForOneMessage = 1000;
-    private const int MaxListed = 10;
-    private const string RejectedReason = "the prompt-injection screen rejected it; an operator can lift Orkeon:Tools:Chat:Screening:WithholdRejected";
-    private const string PolicyReason = "the service marks it as a policy violation";
-    private const string DeletedReason = "it was deleted";
 
     private readonly ChatAccess _access;
     private readonly ChatContentScreen _screen;
@@ -85,7 +81,7 @@ internal sealed class ChatReadTool : ToolBase<ChatReadRequest, ChatReadResponse>
     {
         var budget = ChatToolHelpers.ResultBudget(Name);
         var textChars = Math.Min(request.TextChars ?? ChatDefaults.DefaultTextChars, Math.Max(ChatDefaults.MaxTextChars, budget - RoomForOneMessage));
-        var authors = new AuthorLookup(session.Provider);
+        var describer = new ChatMessageDescriber(_screen, session.Provider);
         var messages = new List<ChatMessageDto>();
         var envelope = new ChatReadResponse
         {
@@ -109,7 +105,7 @@ internal sealed class ChatReadTool : ToolBase<ChatReadRequest, ChatReadResponse>
                 if (!message.IsMessage || message.Id.Length == 0 || message.Created < since || message.Created >= until)
                     continue;
 
-                var dto = await DescribeAsync(message, textChars, authors, cancellationToken).ConfigureAwait(false);
+                var dto = await describer.DescribeAsync(message, textChars, cancellationToken).ConfigureAwait(false);
                 var here = next with { Offset = i };
                 length += ChatToolHelpers.RenderedLength(dto) + 1;
                 // The cursor is in the result too.
@@ -134,95 +130,4 @@ internal sealed class ChatReadTool : ToolBase<ChatReadRequest, ChatReadResponse>
         NextCursor = next?.Encode(),
         Messages = messages,
     };
-
-    private async Task<ChatMessageDto> DescribeAsync(ChatMessage message, int textChars, AuthorLookup authors, CancellationToken cancellationToken)
-    {
-        var person = await PersonAsync(message.Author, authors, cancellationToken).ConfigureAwait(false);
-        var screening = _screen.Screen(
-            [message.Text, message.Author?.Name, person?.Address, .. message.Mentions.Select(mention => mention.Name), .. message.Attachments, .. message.Reactions.Keys]);
-        var withheld = message switch
-        {
-            { IsDeleted: true } => DeletedReason,
-            { ViolatesPolicy: true } => PolicyReason,
-            _ => screening.Withhold ? RejectedReason : null,
-        };
-        var dto = new ChatMessageDto
-        {
-            Id = message.Id,
-            Author = Author(message.Author, person),
-            Time = ChatToolHelpers.Iso(message.Created),
-            Replies = message.Replies,
-            MoreReplies = message.MoreReplies ? true : null,
-        };
-        if (withheld is not null)
-        {
-            // Nothing of the text shows, its verdict included: the author alone is still there to read.
-            return dto with
-            {
-                Withheld = true,
-                Reason = withheld,
-                Screening = withheld == RejectedReason ? null : _screen.Flag(message.Author?.Name, person?.Address),
-            };
-        }
-
-        return dto with
-        {
-            Edited = ChatToolHelpers.Iso(message.Edited),
-            Text = ChatToolHelpers.Head(message.Text, textChars),
-            TextTruncated = message.Text.Length > textChars ? true : null,
-            Screening = screening.Verdict == "clean" ? null : screening.Verdict,
-            HiddenText = message.HadHiddenText ? true : null,
-            Mentions = message.Mentions.Count == 0 ? null : message.Mentions.Take(MaxListed)
-                .Select(mention => new ChatMentionDto { Id = mention.Id, Name = _screen.Label(mention.Name) }).ToList(),
-            Reactions = message.Reactions.Count == 0 ? null : message.Reactions.Take(MaxListed)
-                .GroupBy(reaction => _screen.Label(reaction.Key) ?? "?", StringComparer.Ordinal)
-                .ToDictionary(group => group.Key, group => group.Sum(reaction => reaction.Value), StringComparer.Ordinal),
-            Attachments = message.Attachments.Count == 0 ? null : message.Attachments.Take(MaxListed).Select(name => _screen.Label(name)).OfType<string>().ToList(),
-        };
-    }
-
-    private static async Task<ChatPerson?> PersonAsync(ChatAuthor? author, AuthorLookup authors, CancellationToken cancellationToken) =>
-        author is null or { IsApplication: true } or { IsExternal: true } ? null : await authors.FindAsync(author.Id, cancellationToken).ConfigureAwait(false);
-
-    private ChatAuthorDto? Author(ChatAuthor? author, ChatPerson? person)
-    {
-        if (author is null)
-            return null;
-        return new ChatAuthorDto
-        {
-            Id = author.Id,
-            Name = _screen.Label(author.Name),
-            Address = _screen.Label(person?.Address),
-            Guest = author.IsExternal || person?.IsGuest == true ? true : null,
-            Application = author.IsApplication ? true : null,
-        };
-    }
-
-    /// <summary>The directory's record of the authors of one call, a bounded number of them.</summary>
-    private sealed class AuthorLookup(IChatProvider provider)
-    {
-        private readonly Dictionary<string, ChatPerson?> _known = new(StringComparer.OrdinalIgnoreCase);
-
-        public async Task<ChatPerson?> FindAsync(string? id, CancellationToken cancellationToken)
-        {
-            if (id is null || !ChatIds.IsDirectoryId(id))
-                return null;
-            if (_known.TryGetValue(id, out var known))
-                return known;
-            if (_known.Count >= ChatDefaults.MaxAuthorLookups)
-                return null;
-            ChatPerson? person = null;
-            try
-            {
-                person = await provider.GetPersonAsync(id, cancellationToken).ConfigureAwait(false);
-            }
-            catch (ChatToolException)
-            {
-                // The message is worth returning without its author's address.
-            }
-
-            _known[id] = person;
-            return person;
-        }
-    }
 }

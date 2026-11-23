@@ -9,6 +9,8 @@ public sealed class ChatScopesTests
     private const string Reading = "Team.ReadBasic.All Channel.ReadBasic.All Chat.Read User.ReadBasic.All";
     private const string Sending = "ChannelMessage.Send ChatMessage.Send Chat.Create Team.ReadBasic.All Channel.ReadBasic.All User.ReadBasic.All";
 
+    private const string Changing = "Team.ReadBasic.All Channel.ReadBasic.All User.ReadBasic.All Chat.ReadWrite";
+
     [Theory]
     [InlineData("Read", "", Reading)]
     [InlineData("Read", "ChannelMessages", Reading + " ChannelMessage.Read.All")]
@@ -16,11 +18,11 @@ public sealed class ChatScopesTests
     [InlineData("Send", "", Sending)]
     [InlineData("Send", "ChannelMessages,ChannelEdit,Meetings", Sending)]
     [InlineData("Read, Send", "", "Team.ReadBasic.All Channel.ReadBasic.All Chat.Read User.ReadBasic.All ChannelMessage.Send ChatMessage.Send Chat.Create")]
-    [InlineData("Edit", "", "Chat.ReadWrite")]
-    [InlineData("Edit", "ChannelEdit", "Chat.ReadWrite ChannelMessage.ReadWrite")]
-    [InlineData("Delete", "", "Chat.ReadWrite")]
-    [InlineData("Delete", "ChannelEdit,ChannelMessages", "Chat.ReadWrite ChannelMessage.ReadWrite")]
-    [InlineData("React", "", "ChatMessage.Send ChannelMessage.Send")]
+    [InlineData("Edit", "", Changing)]
+    [InlineData("Edit", "ChannelEdit", Changing + " ChannelMessage.ReadWrite")]
+    [InlineData("Delete", "", Changing)]
+    [InlineData("Delete", "ChannelEdit,ChannelMessages", Changing + " ChannelMessage.Read.All ChannelMessage.ReadWrite")]
+    [InlineData("React", "", "ChatMessage.Send User.ReadBasic.All")]
     [InlineData("Meetings", "", "OnlineMeetings.Read")]
     [InlineData("Meetings", "Meetings", "OnlineMeetings.Read OnlineMeetingTranscript.Read.All")]
     [InlineData("Meetings", "ChannelMessages", "OnlineMeetings.Read")]

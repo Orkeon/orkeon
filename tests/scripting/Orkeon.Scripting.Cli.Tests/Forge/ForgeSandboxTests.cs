@@ -21,7 +21,7 @@ public sealed class ForgeSandboxTests
     private static readonly string[] Others = ["file_read", "shell_command", "code_interpreter"];
     private static readonly string[] Denied =
     [
-        "chat_accounts", "chat_list", "chat_members", "chat_read", "chat_send",
+        "chat_accounts", "chat_delete", "chat_edit", "chat_list", "chat_members", "chat_react", "chat_read", "chat_search", "chat_send",
         "code_interpreter",
         "drive_accounts", "drive_create_folder", "drive_delete", "drive_download", "drive_info", "drive_list",
         "drive_move", "drive_read", "drive_search", "drive_share", "drive_upload",

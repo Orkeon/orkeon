@@ -58,6 +58,13 @@ internal sealed class GraphClient
     public Task<JsonElement> GetAsync(string path, string permission, CancellationToken cancellationToken, bool eventual = false) =>
         SendAsync(HttpMethod.Get, path, body: null, permission, eventual, cancellationToken);
 
+    /// <summary>POSTs a question, such as a search: nothing is written, and an answer that is not JSON is a failure.</summary>
+    public Task<JsonElement> QueryAsync(string path, JsonNode body, string permission, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(body);
+        return SendAsync(HttpMethod.Post, path, body.ToJsonString(), permission, eventual: false, cancellationToken, isWrite: false);
+    }
+
     /// <summary>
     /// POSTs a JSON body. An answer that cannot be read as JSON is an empty object: the request was
     /// accepted, and reporting a failure would invite a second one.
@@ -68,6 +75,10 @@ internal sealed class GraphClient
         ArgumentNullException.ThrowIfNull(body);
         return SendAsync(HttpMethod.Post, path, body.ToJsonString(), permission, eventual: false, cancellationToken, doubt);
     }
+
+    /// <summary>A write whose answer holds nothing. <paramref name="doubt"/> is what a failure says when it may have been done.</summary>
+    public Task WriteAsync(HttpMethod method, string path, JsonNode? body, string permission, string doubt, CancellationToken cancellationToken) =>
+        SendAsync(method, path, body?.ToJsonString(), permission, eventual: false, cancellationToken, doubt);
 
     /// <summary>
     /// The paging parameters of a page's next link, percent-encoded as a query fragment, or null on
@@ -109,8 +120,9 @@ internal sealed class GraphClient
         && string.Equals(address.Host, _account.ApiBase.Host, StringComparison.OrdinalIgnoreCase);
 
     private async Task<JsonElement> SendAsync(
-        HttpMethod method, string path, string? body, string permission, bool eventual, CancellationToken cancellationToken, string doubt = "")
+        HttpMethod method, string path, string? body, string permission, bool eventual, CancellationToken cancellationToken, string doubt = "", bool? isWrite = null)
     {
+        var writes = isWrite ?? method != HttpMethod.Get;
         var address = new Uri(_account.ApiBase, path);
         if (!IsApiAddress(address) || !address.AbsolutePath.StartsWith(_account.ApiBase.AbsolutePath, StringComparison.Ordinal))
             throw new ChatToolException(ChatErrorCode.InvalidRequest, $"Refusing to send the account's token to an address outside {ApiName}.");
@@ -122,9 +134,9 @@ internal sealed class GraphClient
         while (true)
         {
             var token = await _credentials.GetAccessTokenAsync(_account, cancellationToken, refused).ConfigureAwait(false);
-            using var response = await SendOnceAsync(method, address, body, token, eventual, doubt, cancellationToken).ConfigureAwait(false);
+            using var response = await SendOnceAsync(method, address, body, token, eventual, writes, doubt, cancellationToken).ConfigureAwait(false);
             if (response.IsSuccessStatusCode)
-                return await ReadAsync(response, isWrite: body is not null, cancellationToken).ConfigureAwait(false);
+                return await ReadAsync(response, writes, cancellationToken).ConfigureAwait(false);
 
             // The refused token may have been revoked, or replaced in the store by a new sign-in.
             if (response.StatusCode == HttpStatusCode.Unauthorized && refused is null)
@@ -174,7 +186,7 @@ internal sealed class GraphClient
     }
 
     private async Task<HttpResponseMessage> SendOnceAsync(
-        HttpMethod method, Uri address, string? body, string token, bool eventual, string doubt, CancellationToken cancellationToken)
+        HttpMethod method, Uri address, string? body, string token, bool eventual, bool isWrite, string doubt, CancellationToken cancellationToken)
     {
         using var request = new HttpRequestMessage(method, address);
         if (body is not null)
@@ -200,7 +212,7 @@ internal sealed class GraphClient
         {
             throw new ChatToolException(
                 ChatErrorCode.ServerError,
-                body is null ? $"{ApiName} did not answer in time; retry later." : $"{ApiName} did not answer in time.{doubt}",
+                !isWrite ? $"{ApiName} did not answer in time; retry later." : $"{ApiName} did not answer in time.{doubt}",
                 ex);
         }
     }

@@ -15,6 +15,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   when `Auth:AdminGranted` names `ChannelMessages`. `AddOrkeonChatTools(configuration)` is inert until an account is
   declared. Tested offline, not run on a real tenant ([guide](docs/guides/chat.md),
   [ADR-021](docs/adr/ADR-021-chat-tool-family.md)).
+- `chat_search` (Read), `chat_edit`, `chat_delete` and `chat_react` (Execute), bringing the family to nine tools and the
+  built-in tool classes to 133. Search reaches only the places allowed for reading, checks each hit's place by ids and
+  reads the text from that place; its window is bounded (5 requests of 25 hits, 40 places). Edit and delete act on
+  messages the account itself sent, in `Send:AllowedPlaces`; in a channel they need `ChannelEdit` and `ChannelMessages`
+  in `Auth:AdminGranted`; delete is a soft delete; edit works in the worldwide cloud only and refuses a message with
+  attachments or a quote. `chat_react` works in chats only. Edits, deletions and reactions count in `Send:MaxPerHour`
+  and in the pace of a place. Sign-in: `Edit` and `Delete` also ask `Team.ReadBasic.All`, `Channel.ReadBasic.All` and
+  `User.ReadBasic.All` (and `ChannelMessage.Read.All` with `ChannelMessages`); `React` asks `ChatMessage.Send` and
+  `User.ReadBasic.All`, no longer `ChannelMessage.Send`. `chat_search` is in `TrustedTools`. Not run on a real tenant.
 - `orkeon chat accounts`, `login` (the browser, or `--device-code`), `logout` and `check`.
 - The shared OAuth client takes the flow at the sign-in, token revocation, a client assertion and
   `OAuthSettings.Prompt`; left null, `Prompt` keeps the Google parameters of before. E-mail and drive accounts sign in

@@ -365,7 +365,7 @@ ask for more, **the functional surface does not grow**:
   is the third, decided by the owner on 2026-10-17, for the same reason
   ([ADR-013](docs/adr/ADR-013-drive-tool-family.md)). The `firefox` tool is
   the fourth. The chat family (`Orkeon.Tools.Chat`, Microsoft Teams first,
-  five tools) is the fifth, decided by the owner on 2026-11-23
+  nine tools) is the fifth, decided by the owner on 2026-11-23
   ([ADR-021](docs/adr/ADR-021-chat-tool-family.md)). The tool bridge
   (`orkeon bridge serve`, [ADR-019](docs/adr/ADR-019-tool-bridge.md)) adds no
   tool: it runs the built-in tools that exist on another machine, and a tool

@@ -22,7 +22,7 @@ public class ToolResultSecurityOptions
     /// Tools whose results bypass sanitization. Defaults to the <c>email_*</c> tools, which
     /// screen what they read with <c>PromptInjectionDocumentValidator</c> and mark it untrusted
     /// themselves (ADR-012), and to <c>drive_read</c>, which does the same with a file's text
-    /// (ADR-013), and to <c>chat_list</c>, <c>chat_members</c> and <c>chat_read</c>, which screen the
+    /// (ADR-013), and to <c>chat_list</c>, <c>chat_members</c>, <c>chat_read</c> and <c>chat_search</c>, which screen the
     /// names and messages they return (ADR-021) — tagging them again would stack two envelopes. The other <c>drive_*</c> tools
     /// return names and metadata they do not screen, and stay sanitized. Entries from
     /// configuration are added to these.
@@ -33,6 +33,6 @@ public class ToolResultSecurityOptions
         "email_mark", "email_move", "email_parser", "email_read", "email_rename_folder",
         "email_save_attachment", "email_search", "email_send",
         "drive_read",
-        "chat_list", "chat_members", "chat_read",
+        "chat_list", "chat_members", "chat_read", "chat_search",
     };
 }

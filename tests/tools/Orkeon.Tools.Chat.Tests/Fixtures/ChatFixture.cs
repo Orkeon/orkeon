@@ -14,7 +14,7 @@ using Orkeon.Tools.Chat.Tools;
 namespace Orkeon.Tools.Chat.Tests.Fixtures;
 
 /// <summary>
-/// The five tools over the real provider and client of one account named <c>work</c>, with Graph
+/// The tools over the real provider and client of one account named <c>work</c>, with Graph
 /// replayed, a manual clock and a fresh token stored.
 /// </summary>
 internal sealed class ChatFixture : IDisposable
@@ -54,7 +54,12 @@ internal sealed class ChatFixture : IDisposable
         Add(new ChatListTool(access, screen));
         Add(new ChatReadTool(access, screen));
         Add(new ChatMembersTool(access, screen));
-        Add(new ChatSendTool(access, new SendQuota(Time), new PostPacer(Time)));
+        var turns = new WriteTurns(new SendQuota(Time), new PostPacer(Time));
+        Add(new ChatSearchTool(access, screen));
+        Add(new ChatSendTool(access, turns));
+        Add(new ChatEditTool(access, turns));
+        Add(new ChatDeleteTool(access, turns));
+        Add(new ChatReactTool(access, turns));
     }
 
     /// <summary>The configuration.</summary>

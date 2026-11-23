@@ -1466,7 +1466,7 @@ defaults. The length bound is not configured here but under `Orkeon:Tools:Result
 | Key | Type | Default | Values | Meaning |
 |---|---|---|---|---|
 | `Policy` | enum | `"Warn"` | `None`, `Warn`, `Block` | The policy applied to a successful tool result. Default `Warn`: the result reaches the model tagged as data and any injection pattern is logged and audited. `Block` withholds a result carrying a High or Critical pattern (the model is told so); `None` passes results untouched and untagged. |
-| `TrustedTools` | list of string | `["email_accounts", "email_create_folder", "email_delete", "email_draft", "email_folders", "email_mark", "email_move", "email_parser", "email_read", "email_rename_folder", "email_save_attachment", "email_search", "email_send", "drive_read", "chat_list", "chat_members", "chat_read"]` |  | Tools whose results bypass sanitization. Defaults to the `email_*` tools, which screen what they read with `PromptInjectionDocumentValidator` and mark it untrusted themselves (ADR-012), and to `drive_read`, which does the same with a file's text (ADR-013), and to `chat_list`, `chat_members` and `chat_read`, which screen the names and messages they return (ADR-021) — tagging them again would stack two envelopes. The other `drive_*` tools return names and metadata they do not screen, and stay sanitized. Entries from configuration are added to these. |
+| `TrustedTools` | list of string | `["email_accounts", "email_create_folder", "email_delete", "email_draft", "email_folders", "email_mark", "email_move", "email_parser", "email_read", "email_rename_folder", "email_save_attachment", "email_search", "email_send", "drive_read", "chat_list", "chat_members", "chat_read", "chat_search"]` |  | Tools whose results bypass sanitization. Defaults to the `email_*` tools, which screen what they read with `PromptInjectionDocumentValidator` and mark it untrusted themselves (ADR-012), and to `drive_read`, which does the same with a file's text (ADR-013), and to `chat_list`, `chat_members`, `chat_read` and `chat_search`, which screen the names and messages they return (ADR-021) — tagging them again would stack two envelopes. The other `drive_*` tools return names and metadata they do not screen, and stay sanitized. Entries from configuration are added to these. |
 <!-- /settings -->
 
 ### `Security:Url`
@@ -1723,9 +1723,11 @@ holds a secret: the application is a public client. Walkthroughs and the tools:
 - **`Screening:WithholdRejected`** — withhold the text of a message the prompt-injection screen
   rejects (default `false`: flag only).
 - **`Accounts:<name>`** — one account. `Provider` (`Teams`), `Rights` and `Auth:ClientId` are
-  **mandatory**; the rights the tools use are `Read` and `Send`. An empty `Read:AllowedPlaces` reads
-  nowhere, an empty `Send:AllowedPlaces` posts nowhere, and `Auth:AdminGranted: ["ChannelMessages"]`
-  opens the reading of channels.
+  **mandatory**; the rights the tools use are `Read`, `Send`, `Edit`, `Delete` and `React`. An empty
+  `Read:AllowedPlaces` reads nowhere, an empty `Send:AllowedPlaces` posts, edits, deletes and reacts
+  nowhere, and `Auth:AdminGranted: ["ChannelMessages"]` opens the reading of channels (`ChannelEdit`
+  with it, editing and deleting in them). `Send:MaxPerHour` counts posts, edits, deletions and
+  reactions together. `chat_search` is in `TrustedTools`: it screens what it returns, like `chat_read`.
 
 <!-- settings:Orkeon:Tools:Chat -->
 **Read by**: `orkeon`, `orkeon-host`, `orkeon-repl`.

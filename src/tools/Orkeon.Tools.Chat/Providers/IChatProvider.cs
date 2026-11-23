@@ -45,4 +45,25 @@ internal interface IChatProvider
 
     /// <summary>Posts a message. A write: the place is checked first.</summary>
     Task<ChatSent> SendAsync(ChatTarget target, ChatOutgoing message, CancellationToken cancellationToken);
+
+    /// <summary>One message of a place: <paramref name="thread"/> is the message it replies to, for a reply in a channel.</summary>
+    Task<ChatMessage> GetMessageAsync(ChatTarget target, string? thread, string messageId, CancellationToken cancellationToken) => throw Unsupported("read one message");
+
+    /// <summary>
+    /// A window of what the service's search finds, as ids alone: the places they are in are
+    /// not checked, and nothing of a hit may be shown before its place is.
+    /// </summary>
+    Task<ChatSearchPage> SearchAsync(ChatSearchQuery query, CancellationToken cancellationToken) => throw Unsupported("search messages");
+
+    /// <summary>Rewrites a message. A write: the place and the author are checked first.</summary>
+    Task EditAsync(ChatTarget target, string? thread, string messageId, ChatOutgoing message, CancellationToken cancellationToken) => throw Unsupported("edit a message");
+
+    /// <summary>Deletes a message, recoverably. A write: the place and the author are checked first.</summary>
+    Task DeleteAsync(ChatTarget target, string? thread, string messageId, CancellationToken cancellationToken) => throw Unsupported("delete a message");
+
+    /// <summary>Sets or removes the account's reaction on a message of a chat. A write: the place is checked first.</summary>
+    Task ReactAsync(ChatTarget target, string messageId, string reaction, bool remove, CancellationToken cancellationToken) => throw Unsupported("react to a message");
+
+    private static ChatToolException Unsupported(string what) =>
+        new(ChatErrorCode.NotSupportedByAccount, $"This chat account cannot {what}.");
 }

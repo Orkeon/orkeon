@@ -202,6 +202,76 @@ internal sealed class TeamsProvider : IChatProvider
         return new ChatSent(GraphJson.Text(json, "id"), GraphJson.Date(json, "createdDateTime"));
     }
 
+    /// <inheritdoc />
+    public async Task<ChatMessage> GetMessageAsync(ChatTarget target, string? thread, string messageId, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(target);
+        var permission = target.IsChannel ? ChatScopes.ChannelMessageRead : ChatScopes.ChatRead;
+        var json = await _graph.GetAsync(MessagePath(target, thread, messageId), permission, cancellationToken).ConfigureAwait(false);
+        var message = GraphMessages.Read(json, target.IsChannel);
+        return message.Id == messageId ? message : throw Unexpected("the message asked for");
+    }
+
+    /// <inheritdoc />
+    public async Task<ChatSearchPage> SearchAsync(ChatSearchQuery query, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(query);
+        var request = new JsonObject
+        {
+            ["entityTypes"] = new JsonArray(JsonValue.Create("chatMessage")),
+            ["query"] = new JsonObject { ["queryString"] = GraphSearch.QueryString(query) },
+            ["from"] = query.Skip,
+            ["size"] = query.Top,
+        };
+        var json = await _graph.QueryAsync("search/query", new JsonObject { ["requests"] = new JsonArray(request) }, ChatScopes.ChatRead, cancellationToken).ConfigureAwait(false);
+        return GraphSearch.Read(json);
+    }
+
+    /// <inheritdoc />
+    public Task EditAsync(ChatTarget target, string? thread, string messageId, ChatOutgoing message, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(target);
+        ArgumentNullException.ThrowIfNull(message);
+        return _graph.WriteAsync(
+            HttpMethod.Patch, MessagePath(target, thread, messageId), GraphMessages.Write(message), WritePermission(target),
+            " The message may have been rewritten all the same: read it before trying again.", cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public async Task DeleteAsync(ChatTarget target, string? thread, string messageId, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(target);
+        // A chat's message is deleted under its user, the one form Graph documents.
+        var owner = target.IsChannel ? string.Empty : $"users/{GraphClient.Segment((await GetSelfAsync(cancellationToken).ConfigureAwait(false)).Id)}/";
+        await _graph.WriteAsync(
+            HttpMethod.Post, $"{owner}{MessagePath(target, thread, messageId)}/softDelete", body: null, WritePermission(target),
+            " The message may have been deleted all the same: read the place before trying again.", cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <inheritdoc />
+    public Task ReactAsync(ChatTarget target, string messageId, string reaction, bool remove, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(target);
+        return _graph.WriteAsync(
+            HttpMethod.Post,
+            $"{MessagePath(target, thread: null, messageId)}/{(remove ? "unsetReaction" : "setReaction")}",
+            new JsonObject { ["reactionType"] = reaction },
+            ChatScopes.ChatMessageSend,
+            " The reaction may have changed all the same: read the message before trying again.",
+            cancellationToken);
+    }
+
+    private static string MessagePath(ChatTarget target, string? thread, string messageId)
+    {
+        if (!target.IsChannel)
+            return $"{ChatPath(target)}/messages/{GraphClient.Segment(messageId)}";
+        return thread is null
+            ? $"{ChannelPath(target)}/messages/{GraphClient.Segment(messageId)}"
+            : $"{ChannelPath(target)}/messages/{GraphClient.Segment(thread)}/replies/{GraphClient.Segment(messageId)}";
+    }
+
+    private static string WritePermission(ChatTarget target) => target.IsChannel ? ChatScopes.ChannelMessageReadWrite : ChatScopes.ChatReadWrite;
+
     private static string ChannelPath(ChatTarget target) =>
         $"teams/{GraphClient.Segment(target.TeamId ?? string.Empty)}/channels/{GraphClient.Segment(target.ChannelId ?? string.Empty)}";
 
