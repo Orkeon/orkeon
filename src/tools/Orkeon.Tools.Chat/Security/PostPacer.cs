@@ -3,6 +3,9 @@ using Orkeon.Tools.Chat.Constants;
 
 namespace Orkeon.Tools.Chat.Security;
 
+/// <summary>The turn of one post: the place it is in and when it comes.</summary>
+internal sealed record PostSlot(string Place, DateTimeOffset At);
+
 /// <summary>Spaces the posts in one place: Graph takes one a second per channel and per chat.</summary>
 internal sealed class PostPacer
 {
@@ -17,38 +20,42 @@ internal sealed class PostPacer
         _time = time;
     }
 
-    /// <summary>Throws when a post in <paramref name="place"/> would wait too long; takes no slot.</summary>
-    public void RefuseWhenBusy(string place)
-    {
-        ArgumentNullException.ThrowIfNull(place);
-        lock (_gate)
-        {
-            if (_next.TryGetValue(place, out var slot) && slot - _time.GetUtcNow() > ChatDefaults.MaxPostWait)
-                throw Busy(place);
-        }
-    }
-
     /// <summary>
-    /// Takes the next slot of <paramref name="place"/> and waits for it. A wait that would be too long
-    /// is refused and takes none; a cancelled one gives its slot back when nobody queued behind it.
+    /// Takes the next slot of <paramref name="place"/>. A wait that would be too long is refused and
+    /// takes none. The slot is waited for with <see cref="WaitAsync(PostSlot, CancellationToken)"/> or given back.
     /// </summary>
-    public async Task WaitAsync(string place, CancellationToken cancellationToken)
+    public PostSlot Reserve(string place)
     {
         ArgumentNullException.ThrowIfNull(place);
-        TimeSpan wait;
-        DateTimeOffset slot;
         lock (_gate)
         {
             var now = _time.GetUtcNow();
             foreach (var expired in _next.Where(entry => entry.Value <= now).Select(entry => entry.Key).ToList())
                 _next.Remove(expired);
-            slot = _next.TryGetValue(place, out var next) ? next : now;
-            wait = slot - now;
-            if (wait > ChatDefaults.MaxPostWait)
+            var at = _next.TryGetValue(place, out var next) ? next : now;
+            if (at - now > ChatDefaults.MaxPostWait)
                 throw Busy(place);
-            _next[place] = slot + ChatDefaults.PostInterval;
+            _next[place] = at + ChatDefaults.PostInterval;
+            return new PostSlot(place, at);
         }
+    }
 
+    /// <summary>Gives <paramref name="slot"/> back when nobody queued behind it.</summary>
+    public void GiveBack(PostSlot slot)
+    {
+        ArgumentNullException.ThrowIfNull(slot);
+        lock (_gate)
+        {
+            if (_next.TryGetValue(slot.Place, out var next) && next == slot.At + ChatDefaults.PostInterval)
+                _next[slot.Place] = slot.At;
+        }
+    }
+
+    /// <summary>Waits for <paramref name="slot"/>; a cancelled wait gives it back.</summary>
+    public async Task WaitAsync(PostSlot slot, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(slot);
+        var wait = slot.At - _time.GetUtcNow();
         if (wait <= TimeSpan.Zero)
             return;
 
@@ -58,15 +65,14 @@ internal sealed class PostPacer
         }
         catch (OperationCanceledException)
         {
-            lock (_gate)
-            {
-                if (_next.TryGetValue(place, out var next) && next == slot + ChatDefaults.PostInterval)
-                    _next[place] = slot;
-            }
-
+            GiveBack(slot);
             throw;
         }
     }
+
+    /// <summary>Takes the next slot of <paramref name="place"/> and waits for it.</summary>
+    public async Task WaitAsync(string place, CancellationToken cancellationToken) =>
+        await WaitAsync(Reserve(place), cancellationToken).ConfigureAwait(false);
 
     private static ChatToolException Busy(string place) => new(
         ChatErrorCode.Throttled,

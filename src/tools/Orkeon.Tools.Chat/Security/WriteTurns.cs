@@ -23,35 +23,66 @@ internal sealed class WriteTurns
         _pacer = pacer;
     }
 
-    /// <summary>Takes one unit of the account's cap; refuses, taking none, when the place is too busy.</summary>
-    public void Take(ChatSession session, ChatTarget target)
+    /// <summary>Takes a unit of the account's cap and the place's next turn, then waits for it. A refusal takes neither.</summary>
+    public Task TakeAsync(ChatSession session, ChatTarget target, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(session);
         ArgumentNullException.ThrowIfNull(target);
-        Take(session.Account, target.Place);
+        return TakeAsync(session.Account, target.Place, cancellationToken);
     }
 
-    /// <summary>The same for a <paramref name="slot"/> no target names: a webhook's.</summary>
-    public void Take(ResolvedChatAccount account, string slot)
+    /// <summary>The same for a <paramref name="place"/> no target names: a webhook's.</summary>
+    public async Task TakeAsync(ResolvedChatAccount account, string place, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(account);
-        ArgumentNullException.ThrowIfNull(slot);
-        _pacer.RefuseWhenBusy(slot);
-        if (_quota.TryConsume(account.Name, account.MaxPerHour))
-            return;
+        ArgumentNullException.ThrowIfNull(place);
+        var slot = _pacer.Reserve(place);
+        try
+        {
+            Consume(account);
+        }
+        catch (ChatToolException)
+        {
+            _pacer.GiveBack(slot);
+            throw;
+        }
+
+        await _pacer.WaitAsync(slot, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// The same for a chat <paramref name="open"/> finds or opens, which counts in the cap too: the
+    /// place is not known before. A refusal for the rate, of either, takes no unit.
+    /// </summary>
+    public async Task<ChatTarget> TakeAsync(ChatSession session, Func<Task<ChatTarget>> open, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(session);
+        ArgumentNullException.ThrowIfNull(open);
+        var recorded = Consume(session.Account);
+        ChatTarget target;
+        PostSlot slot;
+        try
+        {
+            target = await open().ConfigureAwait(false);
+            slot = _pacer.Reserve(target.Place);
+        }
+        catch (ChatToolException ex) when (ex.Code == ChatErrorCode.Throttled)
+        {
+            _quota.Refund(session.Account.Name, recorded);
+            throw;
+        }
+
+        await _pacer.WaitAsync(slot, cancellationToken).ConfigureAwait(false);
+        return target;
+    }
+
+    private DateTimeOffset Consume(ResolvedChatAccount account)
+    {
+        if (_quota.TryConsume(account.Name, account.MaxPerHour, out var recorded))
+            return recorded;
         throw new ChatToolException(
             ChatErrorCode.Throttled,
             string.Create(CultureInfo.InvariantCulture,
                 $"Chat account '{account.Name}' already attempted {account.MaxPerHour} messages in the last hour (Send:MaxPerHour); nothing was posted. Edits, deletions and reactions count in the cap too, and nothing was changed."));
     }
-
-    /// <summary>Waits for the place's turn.</summary>
-    public Task WaitAsync(ChatTarget target, CancellationToken cancellationToken)
-    {
-        ArgumentNullException.ThrowIfNull(target);
-        return WaitAsync(target.Place, cancellationToken);
-    }
-
-    /// <summary>Waits for the turn of <paramref name="slot"/>.</summary>
-    public Task WaitAsync(string slot, CancellationToken cancellationToken) => _pacer.WaitAsync(slot, cancellationToken);
 }

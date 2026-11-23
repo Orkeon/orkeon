@@ -65,8 +65,7 @@ internal sealed partial class ChatEditTool : ToolBase<ChatEditRequest, ChatMessa
         }
 
         var mentions = await MessageBody.MentionsAsync(session.Provider, request.Mentions, cancellationToken).ConfigureAwait(false);
-        _turns.Take(session, target);
-        await _turns.WaitAsync(target, cancellationToken).ConfigureAwait(false);
+        await _turns.TakeAsync(session, target, cancellationToken).ConfigureAwait(false);
         await session.Provider.EditAsync(target, request.Thread, request.MessageId, new ChatOutgoing(html, mentions, ReplyTo: null), cancellationToken).ConfigureAwait(false);
         LogEdited(_log, session.Account.Name, request.MessageId, target.Place);
         return new ChatMessageWriteResponse { Account = session.Account.Name, Place = target.Place, MessageId = request.MessageId };

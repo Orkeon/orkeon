@@ -1,6 +1,8 @@
 using System.Net;
 using System.Text.Json.Nodes;
+using Orkeon.Tests.Shared.Timing;
 using Orkeon.Tools.Chat.Configuration;
+using Orkeon.Tools.Chat.Security;
 using Orkeon.Tools.Chat.Tests.Fixtures;
 
 namespace Orkeon.Tools.Chat.Tests.Tools;
@@ -246,6 +248,45 @@ public sealed class ChatSendToolTests
         fixture.Time.Advance(TimeSpan.FromSeconds(31));
         await Task.WhenAll(queued);
         await fixture.ResultAsync("chat_send", ("place", GroupPlace), ("text", "x"));
+    }
+
+    [Fact]
+    public async Task Should_take_no_unit_of_the_cap_for_a_person_whose_chat_is_too_busy()
+    {
+        using var fixture = Sending(32, GroupPlace, "chat:" + Samples.Direct, "user:*@example.org");
+        fixture.Graph.Post("chats", Samples.DirectChat).Post(DirectMessages, Posted).Post(GroupMessages, Posted);
+        var queued = Enumerable.Range(0, 31).Select(_ => fixture.ResultAsync("chat_send", ("place", "user:ada@example.org"), ("text", "x"))).ToList();
+        while (fixture.Time.PendingTimers < 30)
+        {
+            TestContext.Current.CancellationToken.ThrowIfCancellationRequested();
+            await Task.Yield();
+        }
+
+        Assert.Contains("nothing was posted", await fixture.ErrorAsync("chat_send", ("place", "user:ada@example.org"), ("text", "x")), StringComparison.Ordinal);
+        await fixture.ResultAsync("chat_send", ("place", GroupPlace), ("text", "x"));
+        Assert.Contains("Send:MaxPerHour", await fixture.ErrorAsync("chat_send", ("place", GroupPlace), ("text", "x")), StringComparison.Ordinal);
+
+        fixture.Time.Advance(TimeSpan.FromSeconds(31));
+        await Task.WhenAll(queued);
+    }
+
+    [Fact]
+    public async Task Should_keep_the_turn_of_a_place_for_who_fits_in_the_cap()
+    {
+        using var fixture = Sending(1, GroupPlace);
+        fixture.Graph.Post(GroupMessages, Posted);
+        await fixture.ResultAsync("chat_send", ("place", GroupPlace), ("text", "x"));
+        for (var refused = 0; refused < 40; refused++)
+            Assert.Contains("Send:MaxPerHour", await fixture.ErrorAsync("chat_send", ("place", GroupPlace), ("text", "x")), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Should_pace_a_channel_whatever_the_case_of_its_team_id()
+    {
+        var pacer = new PostPacer(new ManualTimeProvider());
+        await pacer.WaitAsync("team:ABCDEF/channel:19:x", TestContext.Current.CancellationToken);
+
+        Assert.False(pacer.WaitAsync("team:abcdef/channel:19:x", TestContext.Current.CancellationToken).IsCompleted);
     }
 
     [Fact]

@@ -60,8 +60,7 @@ internal sealed partial class ChatReactTool : ToolBase<ChatReactRequest, ChatRea
         }
 
         var target = await MessageWrites.AdmitAsync(session, place, cancellationToken).ConfigureAwait(false);
-        _turns.Take(session, target);
-        await _turns.WaitAsync(target, cancellationToken).ConfigureAwait(false);
+        await _turns.TakeAsync(session, target, cancellationToken).ConfigureAwait(false);
         var reaction = request.Reaction.Trim();
         await session.Provider.ReactAsync(target, request.MessageId, reaction, request.Remove == true, cancellationToken).ConfigureAwait(false);
         LogReacted(_log, session.Account.Name, request.Remove == true ? "removed" : "set", request.MessageId, target.Place);

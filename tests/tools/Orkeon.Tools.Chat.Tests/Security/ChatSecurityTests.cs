@@ -83,6 +83,21 @@ public sealed class ChatSecurityTests
         Assert.Equal(expected, Screen(withhold: false).Label(name));
 
     [Fact]
+    public void Should_give_back_the_unit_of_its_own_write()
+    {
+        var time = new ManualTimeProvider();
+        var quota = new SendQuota(time);
+        Assert.True(quota.TryConsume("work", 2, out var first));
+        time.Advance(TimeSpan.FromMinutes(30));
+        Assert.True(quota.TryConsume("work", 2));
+        quota.Refund("work", first);
+        Assert.True(quota.TryConsume("work", 2));
+        time.Advance(TimeSpan.FromMinutes(31));
+
+        Assert.False(quota.TryConsume("work", 2));
+    }
+
+    [Fact]
     public async Task Should_give_each_post_of_a_place_its_own_second()
     {
         var cancellation = TestContext.Current.CancellationToken;
