@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [1.4.0] - 2026-11-22
+## [1.4.0] - 2026-11-23
 
 A minor release: it adds public members (`PublicAPI.Shipped.txt` grows), so it is not a patch. It also carries
 eleven changes marked **[breaking]** below, made on purpose as exceptions to the 1.x commitment of
