@@ -55,7 +55,7 @@ public sealed class ChatAccountResolverTests
     {
         var account = TestChatAccounts.Resolve(TestChatAccounts.Teams(
             ChatRights.Read | ChatRights.Send | ChatRights.Edit | ChatRights.Delete | ChatRights.React | ChatRights.Meetings,
-            granted: ["channelmessages", " ChannelEdit ", "Meetings"]));
+            granted: ["channelmessages", " ChannelEdit ", "Meetings", "CHANNELMEMBERS"]));
 
         Assert.All(Enum.GetValues<ChatRights>(), right => Assert.True(account.Grants(right)));
         Assert.All(Enum.GetValues<ChatAdminGrants>(), grant => Assert.True(account.IsGranted(grant)));
@@ -90,8 +90,8 @@ public sealed class ChatAccountResolverTests
     [Theory]
     [InlineData("webhook", "Provider TeamsWebhook is not supported: write Teams")]
     [InlineData("application", "Auth:Method ClientCredentials is not supported: write OAuth2, or leave it out")]
-    [InlineData("grant", "Auth:AdminGranted holds an entry that is not one of ChannelMessages, ChannelEdit, Meetings")]
-    [InlineData("grant-none", "Auth:AdminGranted holds an entry that is not one of ChannelMessages, ChannelEdit, Meetings")]
+    [InlineData("grant", "Auth:AdminGranted holds an entry that is not one of ChannelMessages, ChannelEdit, Meetings, ChannelMembers")]
+    [InlineData("grant-none", "Auth:AdminGranted holds an entry that is not one of ChannelMessages, ChannelEdit, Meetings, ChannelMembers")]
     [InlineData("china", "Cloud China is not supported: Microsoft's pages give two different sign-in hosts for it")]
     [InlineData("client-variable", "Auth:ClientId or Auth:Tenant holds a variable reference, and Orkeon expands no variable here: write the id itself, it is not a secret")]
     [InlineData("tenant-variable", "Auth:ClientId or Auth:Tenant holds a variable reference, and Orkeon expands no variable here: write the id itself, it is not a secret")]

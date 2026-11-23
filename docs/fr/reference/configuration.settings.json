@@ -364,7 +364,7 @@
     "Orkeon:Tools:Bridge:MaxFileBytes": "Le plus gros total, en octets, des fichiers d'un appel : ceux qu'un appel envoie au pont, et ceux qu'il en rapporte.",
     "Orkeon:Tools:Bridge:MaxResponseBytes": "La plus grosse réponse, en octets, que cet appelant lit du pont ; une réponse plus grosse fait échouer l'appel avec sa raison. La valeur par défaut laisse la place de `MaxFileBytes` de fichiers en base64 à côté du résultat.",
     "Orkeon:Tools:Bridge:TokenEnvVar": "La variable d'environnement qui tient le jeton ; jamais le jeton lui-même.",
-    "Orkeon:Tools:Chat:Accounts:<name>:Auth:AdminGranted": "Ce à quoi l'administrateur du tenant a consenti pour l'application : `ChannelMessages`, `ChannelEdit`, `Meetings`. Chaque valeur ajoute sa portée à la connexion suivante.",
+    "Orkeon:Tools:Chat:Accounts:<name>:Auth:AdminGranted": "Ce à quoi l'administrateur du tenant a consenti pour l'application : `ChannelMessages`, `ChannelEdit`, `Meetings`, `ChannelMembers`. Chaque valeur ajoute sa portée à la connexion suivante.",
     "Orkeon:Tools:Chat:Accounts:<name>:Auth:ClientId": "L'identifiant de votre application Microsoft Entra.",
     "Orkeon:Tools:Chat:Accounts:<name>:Auth:Method": "`OAuth2` (défaut) : un utilisateur se connecte.",
     "Orkeon:Tools:Chat:Accounts:<name>:Auth:Tenant": "L'identifiant ou le domaine du tenant ; `organizations` s'il n'est pas renseigné.",

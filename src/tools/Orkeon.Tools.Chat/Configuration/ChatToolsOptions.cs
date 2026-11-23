@@ -75,7 +75,7 @@ internal sealed class ChatAuthOptions
 
     /// <summary>
     /// What the tenant administrator has consented to for the application: <c>ChannelMessages</c>,
-    /// <c>ChannelEdit</c>, <c>Meetings</c>. Each adds its scope to the next sign-in.
+    /// <c>ChannelEdit</c>, <c>Meetings</c>, <c>ChannelMembers</c>. Each adds its scope to the next sign-in.
     /// </summary>
     public List<string> AdminGranted { get; } = [];
 }

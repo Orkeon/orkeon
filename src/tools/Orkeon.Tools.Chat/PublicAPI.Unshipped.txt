@@ -45,7 +45,7 @@ Orkeon.Tools.Chat.Administration.ChatCheckResult.Equals(Orkeon.Tools.Chat.Admini
 Orkeon.Tools.Chat.Administration.ChatCheckResult.Ready.get -> bool
 Orkeon.Tools.Chat.Administration.ChatCheckResult.Rights.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Tools.Chat.Administration.ChatRightStatus!>!
 Orkeon.Tools.Chat.Administration.ChatCheckResult.Rights.init -> void
-Orkeon.Tools.Chat.Administration.ChatCheckResult.User.get -> string!
+Orkeon.Tools.Chat.Administration.ChatCheckResult.User.get -> string?
 Orkeon.Tools.Chat.Administration.ChatCheckResult.User.init -> void
 Orkeon.Tools.Chat.Administration.ChatLogoutResult
 Orkeon.Tools.Chat.Administration.ChatLogoutResult.<Clone>$() -> Orkeon.Tools.Chat.Administration.ChatLogoutResult!

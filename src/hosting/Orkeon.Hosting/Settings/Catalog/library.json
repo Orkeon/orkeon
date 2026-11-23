@@ -3039,7 +3039,7 @@
       "section": "Orkeon:Tools:Chat",
       "type": "list of string",
       "default": [],
-      "description": "What the tenant administrator has consented to for the application: `ChannelMessages`, `ChannelEdit`, `Meetings`. Each adds its scope to the next sign-in."
+      "description": "What the tenant administrator has consented to for the application: `ChannelMessages`, `ChannelEdit`, `Meetings`, `ChannelMembers`. Each adds its scope to the next sign-in."
     },
     {
       "path": "Orkeon:Tools:Chat:Accounts:<name>:Auth:ClientId",

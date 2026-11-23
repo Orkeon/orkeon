@@ -413,7 +413,7 @@ these — a tool that finds no usable token answers with the `orkeon chat login 
 - **`check`** connects with the stored tokens and reports each right of the account (the default or
   only one when none is named): ready, or the permission that is missing, the list of places that is
   empty, the entries set aside. With **`--events jsonl`** the verdict is one event line:
-  `chat.check.completed` (`account`, `user`, `ready`, `rights`, and `summary`, the text printed
+  `chat.check.completed` (`account`, `user` — null when no right lets it be read —, `ready`, `rights`, and `summary`, the text printed
   without the option), or `error` with its `code` (`SignInRequired`, …).
 
 Exit codes: `0` done; `1` what the operator fixes (configuration, unknown account, sign-in, consent, a

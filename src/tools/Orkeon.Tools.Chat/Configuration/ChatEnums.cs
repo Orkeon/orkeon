@@ -77,4 +77,7 @@ internal enum ChatAdminGrants
 
     /// <summary>Reading meeting transcripts.</summary>
     Meetings = 4,
+
+    /// <summary>Listing the members of a channel.</summary>
+    ChannelMembers = 8,
 }

@@ -79,8 +79,8 @@ Les ids sont ceux de Microsoft, et opaques : repassez-les exactement tels que `c
 
 **Consentement d'administrateur.** Ces autorisations déléguées demandent un administrateur du
 tenant : `ChannelMessage.Read.All`, `ChannelMember.Read.All`, `TeamMember.Read.All` et
-`ChatMember.Read`. La famille ne demande que la première, et seulement quand `AdminGranted` nomme
-`ChannelMessages`. Un tenant peut aussi exiger le consentement d'un administrateur pour toute
+`ChatMember.Read`. La famille ne demande que les deux premières, chacune quand `AdminGranted` la
+nomme : `ChannelMessages` pour la première, `ChannelMembers` pour la seconde. Un tenant peut aussi exiger le consentement d'un administrateur pour toute
 application : sa politique décide.
 
 ## Déclarer le compte et se connecter
@@ -141,7 +141,7 @@ Entra (**Applications d'entreprise**, l'application, **Autorisations**).
 | `Accounts:<nom>:Auth:ClientId` | L'application Microsoft Entra, obligatoire |
 | `Accounts:<nom>:Auth:Tenant` | `organizations` (défaut), un id de tenant ou un domaine de tenant ; `consumers` est refusé |
 | `Accounts:<nom>:Auth:Method` | `OAuth2` (défaut), la seule méthode acceptée |
-| `Accounts:<nom>:Auth:AdminGranted` | Les permissions d'administrateur accordées par le tenant. `ChannelMessages` ouvre la lecture des messages de canal |
+| `Accounts:<nom>:Auth:AdminGranted` | Les permissions d'administrateur accordées par le tenant. `ChannelMessages` ouvre la lecture des messages de canal, `ChannelMembers` la liste des membres d'un canal |
 | `Accounts:<nom>:Cloud` | `Global` (défaut), `UsGov` ou `UsGovDoD` ; le cloud de Chine est refusé |
 | `Accounts:<nom>:Read:AllowedPlaces` | Où le compte peut lire ; vide : nulle part |
 | `Accounts:<nom>:Send:AllowedPlaces` | Où le compte peut publier ; vide : nulle part |
@@ -163,13 +163,15 @@ valeur seule là où une liste est attendue. Un `Screening:WithholdRejected` ill
 |---|---|---|
 | `Read` | `Team.ReadBasic.All`, `Channel.ReadBasic.All`, `Chat.Read`, `User.ReadBasic.All` | `chat_list`, `chat_read`, `chat_members` |
 | `Read` avec `AdminGranted: ["ChannelMessages"]` | les mêmes, plus `ChannelMessage.Read.All` (administrateur) | `chat_read` sur un canal |
+| `Read` avec `AdminGranted: ["ChannelMembers"]` | les mêmes, plus `ChannelMember.Read.All` (administrateur) | `chat_members` sur un canal |
 | `Send` | `ChannelMessage.Send`, `ChatMessage.Send`, `Chat.Create`, `Team.ReadBasic.All`, `Channel.ReadBasic.All`, `User.ReadBasic.All` | `chat_send`, et `chat_list` pour les équipes et les canaux, `chat_members` pour une personne |
 
 - **Lire un canal demande un administrateur.** Sans `ChannelMessages` dans `AdminGranted`,
   `chat_read` sur un canal répond `ConsentMissing` avant toute requête. Les conversations ne
   demandent aucune permission d'administrateur.
-- **Les membres d'un canal** demandent `ChannelMember.Read.All`, une permission d'administrateur
-  qu'aucun droit ne demande : sans elle, `chat_members` sur un canal répond `ConsentMissing`.
+- **Les membres d'un canal** demandent aussi un administrateur (`ChannelMember.Read.All`). Sans
+  `ChannelMembers` dans `AdminGranted`, `chat_members` sur un canal répond `ConsentMissing`, qui
+  nomme la permission, avant toute requête.
 - **Un crew dont les outils chat exigent un droit qu'aucun compte prêt n'accorde est refusé au
   départ**, avant tout appel au modèle, avec une ligne par outil, comme pour les outils mail et
   drive.
@@ -197,8 +199,11 @@ dans un réglage qui doit durer.
   qui ne fait que publier n'a pas de portée pour voir qui s'y trouve : écrivez `user:<adresse>`.
 - Un domaine est comparé à l'adresse du tenant d'origine de la personne, telle que l'annuaire la
   tient. Un invité est comparé sur la partie de son nom de connexion qui précède `#EXT#`, jamais sur
-  l'adresse e-mail de son profil ; une personne que l'annuaire ne connaît pas ne correspond à aucun
-  domaine.
+  l'adresse e-mail de son profil. Sans cette marque, le nom de connexion ne compte que si l'annuaire
+  dit que la personne est un `Member` qui n'a pas été invité (`userType`, `creationType`). Qui n'a pas
+  d'adresse d'origine établie ne correspond à aucun domaine : un invité sans la marque, une personne
+  que l'annuaire ne connaît pas, ou tout le monde si Graph ne rend pas `userType` (pas vérifié sur un
+  tenant). Nommez une telle personne par `user:<adresse ou id>`.
 - L'adresse du compte lui-même est refusée : il n'y a pas ici de conversation avec soi-même.
 
 ## Ce qui atteint l'agent, et ce qui ne sort jamais
@@ -280,7 +285,8 @@ Chaque verbe prend `--settings <fichier>` ; `login` et `check` prennent `--event
 `accounts --json` écrit un objet par compte : `name`, `provider`, `rights`, `cloud`, `default`,
 `ready`, `problem`, `configuration_problems`, `credential_problem`, `token_endpoint`. `check` rend
 compte de chaque droit : une permission manquante, une liste `AllowedPlaces` vide, une entrée mise de
-côté, un droit dont aucun outil ne se sert ([référence CLI](../reference/cli.md#orkeon-chat)).
+côté, un droit dont aucun outil ne se sert. Il ne nomme l'utilisateur connecté que quand un droit
+demande la permission de le lire (`Read`, `Send`) ([référence CLI](../reference/cli.md#orkeon-chat)).
 
 `logout` supprime aussi les jetons des réglages antérieurs du compte (droits plus larges, autre
 tenant), et marche pour un compte déclaré qui ne se résout plus ; un nouveau `login` les supprime
@@ -319,7 +325,7 @@ des outils du VFS, **pas** d'un `shell_command` qui tourne sous le même utilisa
   refusé), la recherche, la modification, la suppression, les réactions, les réunions et leurs
   transcriptions, et un canal Teams entrant dans `orkeon-host`.
 - **Des droits dont aucun outil ne se sert.** `Edit`, `Delete`, `React` et `Meetings`, comme les
-  permissions accordées autres que `ChannelMessages`, sont lus et demandent leurs autorisations, mais
+  permissions accordées autres que `ChannelMessages` et `ChannelMembers`, sont lus et demandent leurs autorisations, mais
   aucun outil ne s'en sert. Ne les mettez pas.
 - **Canaux partagés.** Les équipes viennent de `joinedTeams` de Graph, qui laisse de côté les équipes
   hôtes des canaux partagés.

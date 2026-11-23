@@ -24,7 +24,7 @@ public sealed class TeamsProviderTests : IDisposable
         Assert.Equal(Samples.Self, (await Provider.GetSelfAsync(Token)).Id);
         await Provider.GetSelfAsync(Token);
 
-        Assert.Equal("/v1.0/me?$select=id,displayName,userPrincipalName,mail", Sent());
+        Assert.Equal("/v1.0/me?$select=id,displayName,userPrincipalName,mail,userType,creationType", Sent());
     }
 
     [Fact]
@@ -79,7 +79,7 @@ public sealed class TeamsProviderTests : IDisposable
         Assert.Equal(Samples.Ada, Assert.Single(await Provider.FindByAddressAsync("ada@example.org", Token)).Id);
         Assert.Equal(Samples.Guest, Assert.Single(await Provider.FindByAddressAsync("gus@partner.test", Token)).Id);
         Assert.Equal(
-            "/v1.0/users?$filter=mail eq 'gus@partner.test'&$select=id,displayName,userPrincipalName,mail&$top=5",
+            "/v1.0/users?$filter=mail eq 'gus@partner.test'&$select=id,displayName,userPrincipalName,mail,userType,creationType&$top=5",
             Address(_fixture.Handler.Requests[^1]));
     }
 

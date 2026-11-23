@@ -236,6 +236,42 @@ public sealed class PlaceGateTests
         Assert.Equal(ChatErrorCode.PlaceNotAllowed, (await fixture.RefusedAsync("user:" + Samples.Guest)).Code);
     }
 
+    [Theory]
+    // A guest whose sign-in name carries no marker: nothing of it says where the home is.
+    [InlineData("gus@example.org", "Guest", null)]
+    [InlineData("gus@example.org", "Guest", "Invitation")]
+    [InlineData("gus@example.org", "Member", "Invitation")]
+    [InlineData("gus@example.org", "Member", "SelfServiceSignUp")]
+    // A directory that does not say.
+    [InlineData("gus@example.org", null, null)]
+    [InlineData("gus@example.org", "", null)]
+    public async Task Should_refuse_a_person_whose_home_address_is_not_established(string upn, string? type, string? creation)
+    {
+        using var fixture = new ChatFixture(TestChatAccounts.Teams(send: ["user:*@example.org", "user:gus@example.org"]));
+        fixture.Graph.Get($"users/{Samples.Ada}", Samples.Person(Samples.Ada, "Gus", upn, upn, type, creation));
+
+        Assert.Equal(ChatErrorCode.PlaceNotAllowed, (await fixture.RefusedAsync("user:" + Samples.Ada)).Code);
+    }
+
+    [Theory]
+    [InlineData("ada@example.org", "Member", null, "example.org", true)]
+    [InlineData("ada@example.org", "member", "LocalAccount", "example.org", true)]
+    // A guest turned member keeps the home address before the marker.
+    [InlineData("gus_partner.test#EXT#@example.org", "Member", "Invitation", "partner.test", true)]
+    [InlineData("gus_partner.test#EXT#@example.org", "Member", null, "example.org", false)]
+    [InlineData("gus_partner.test#EXT#@example.org", null, null, "partner.test", true)]
+    public async Task Should_match_a_domain_on_the_home_address(string upn, string? type, string? creation, string domain, bool allowed)
+    {
+        using var fixture = new ChatFixture(TestChatAccounts.Teams(send: [$"user:*@{domain}"]));
+        fixture.Graph.Get($"users/{Samples.Ada}", Samples.Person(Samples.Ada, "Ada", upn, null, type, creation));
+
+        if (allowed)
+            Assert.Equal(Samples.Ada, (await fixture.AdmitAsync("user:" + Samples.Ada)).Person?.Id);
+        else
+            Assert.Equal(ChatErrorCode.PlaceNotAllowed, (await fixture.RefusedAsync("user:" + Samples.Ada)).Code);
+        Assert.Contains("userType,creationType", Uri.UnescapeDataString(fixture.Graph.To(HttpMethod.Get, $"users/{Samples.Ada}")[0].Uri.Query), StringComparison.Ordinal);
+    }
+
     [Fact]
     public async Task Should_not_take_someone_by_a_mail_that_is_not_theirs()
     {

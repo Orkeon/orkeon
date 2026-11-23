@@ -420,7 +420,7 @@ agents ne lancent jamais ces commandes — un outil qui ne trouve aucun jeton ut
 - **`check`** se connecte avec les jetons stockés et rend compte de chaque droit du compte (celui par
   défaut, ou le seul, quand aucun n'est nommé) : prêt, ou la permission qui manque, la liste de lieux
   vide, les entrées mises de côté. Avec **`--events jsonl`**, le verdict est une seule ligne
-  d'événement : `chat.check.completed` (`account`, `user`, `ready`, `rights`, et `summary`, le texte
+  d'événement : `chat.check.completed` (`account`, `user` — nul quand aucun droit ne permet de le lire —, `ready`, `rights`, et `summary`, le texte
   affiché sans l'option), ou `error` avec son `code` (`SignInRequired`, …).
 
 Codes de sortie : `0` fait ; `1` ce que l'opérateur corrige (configuration, compte inconnu, connexion,

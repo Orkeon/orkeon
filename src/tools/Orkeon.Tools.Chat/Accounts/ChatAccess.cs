@@ -45,14 +45,21 @@ internal sealed class ChatAccess
         : throw new ChatToolException(ChatErrorCode.InvalidRequest, $"`place` is not a place: {PlaceReference.Syntax}");
 
     /// <summary>Refuses to read a channel's messages the administrator has not opened, before any request.</summary>
-    public static void DemandChannelMessages(ResolvedChatAccount account)
+    public static void DemandChannelMessages(ResolvedChatAccount account) =>
+        Demand(account, ChatAdminGrants.ChannelMessages, "Reading the messages of a channel", ChatScopes.ChannelMessageRead);
+
+    /// <summary>Refuses to list a channel's members the administrator has not opened, before any request.</summary>
+    public static void DemandChannelMembers(ResolvedChatAccount account) =>
+        Demand(account, ChatAdminGrants.ChannelMembers, "Listing the members of a channel", ChatScopes.ChannelMemberRead);
+
+    private static void Demand(ResolvedChatAccount account, ChatAdminGrants grant, string what, string permission)
     {
         ArgumentNullException.ThrowIfNull(account);
-        if (account.IsGranted(ChatAdminGrants.ChannelMessages))
+        if (account.IsGranted(grant))
             return;
         throw new ChatToolException(
             ChatErrorCode.ConsentMissing,
-            $"Reading the messages of a channel needs {ChatScopes.ChannelMessageRead}, which a tenant administrator grants to the application. Once granted, an operator adds " +
-            $"ChannelMessages under {ChatDefaults.SectionName}:Accounts:{account.Name}:Auth:AdminGranted and runs `orkeon chat login {account.Name}` again. Chats need no administrator.");
+            $"{what} needs {permission}, which a tenant administrator grants to the application. Once granted, an operator adds " +
+            $"{grant} under {ChatDefaults.SectionName}:Accounts:{account.Name}:Auth:AdminGranted and runs `orkeon chat login {account.Name}` again. Chats need no administrator.");
     }
 }

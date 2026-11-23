@@ -33,12 +33,12 @@ internal static class Samples
         return page.ToJsonString();
     }
 
-    public static string Person(string id, string name, string? upn, string? mail = null) =>
-        new JsonObject { ["id"] = id, ["displayName"] = name, ["userPrincipalName"] = upn, ["mail"] = mail }.ToJsonString();
+    public static string Person(string id, string name, string? upn, string? mail = null, string? type = "Member", string? creation = null) =>
+        new JsonObject { ["id"] = id, ["displayName"] = name, ["userPrincipalName"] = upn, ["mail"] = mail, ["userType"] = type, ["creationType"] = creation }.ToJsonString();
 
     public static string AdaPerson => Person(Ada, "Ada", "ada@example.org", "ada@example.org");
 
-    public static string GuestPerson(string upn = "gus_partner.test#EXT#@example.org", string? mail = "gus@partner.test") => Person(Guest, "Gus", upn, mail);
+    public static string GuestPerson(string upn = "gus_partner.test#EXT#@example.org", string? mail = "gus@partner.test") => Person(Guest, "Gus", upn, mail, "Guest", "Invitation");
 
     public static string Named(string id, string name) => new JsonObject { ["id"] = id, ["displayName"] = name }.ToJsonString();
 

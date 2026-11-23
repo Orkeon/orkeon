@@ -49,7 +49,10 @@ internal sealed class ChatMembersTool : ToolBase<ChatMembersRequest, ChatMembers
         if (string.IsNullOrWhiteSpace(request.Person))
         {
             session = _access.Authorize(request.Account, ChatRights.Read);
-            var target = await session.Gate.AdmitAsync(ChatAccess.Place(request.Place), PlaceUse.Read, cancellationToken).ConfigureAwait(false);
+            var asked = ChatAccess.Place(request.Place);
+            if (asked.Form == PlaceForm.Channel)
+                ChatAccess.DemandChannelMembers(session.Account);
+            var target = await session.Gate.AdmitAsync(asked, PlaceUse.Read, cancellationToken).ConfigureAwait(false);
             scope = place = target.Place;
             all = target.Person is { } person
                 ? [Member(person)]

@@ -10,7 +10,7 @@ namespace Orkeon.Tools.Chat.Providers.Teams;
 /// <summary>Microsoft Teams through Microsoft Graph v1.0, as the signed-in user.</summary>
 internal sealed class TeamsProvider : IChatProvider
 {
-    private const string PersonFields = "$select=id,displayName,userPrincipalName,mail";
+    private const string PersonFields = "$select=id,displayName,userPrincipalName,mail,userType,creationType";
 
     private readonly GraphClient _graph;
     private readonly ConcurrentDictionary<string, ChatPerson> _people = new(StringComparer.OrdinalIgnoreCase);
@@ -240,7 +240,13 @@ internal sealed class TeamsProvider : IChatProvider
     };
 
     private static ChatPerson? ReadPerson(JsonElement json) => GraphJson.Text(json, "id") is { Length: > 0 } id
-        ? new ChatPerson(id, GraphJson.Text(json, "displayName") ?? string.Empty, GraphJson.Text(json, "userPrincipalName"), GraphJson.Text(json, "mail"))
+        ? new ChatPerson(
+            id,
+            GraphJson.Text(json, "displayName") ?? string.Empty,
+            GraphJson.Text(json, "userPrincipalName"),
+            GraphJson.Text(json, "mail"),
+            GraphJson.Text(json, "userType"),
+            GraphJson.Text(json, "creationType"))
         : null;
 
     private static ChatConversation ReadChat(JsonElement json) => new(

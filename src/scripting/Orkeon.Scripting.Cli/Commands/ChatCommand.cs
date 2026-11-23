@@ -244,12 +244,15 @@ internal static class ChatCommand
         return $"Signed out: the tokens of chat account '{account}' are deleted{revoked}.{notice}";
     }
 
-    /// <summary>The text of a check that connected: the signed-in user, then each right.</summary>
+    /// <summary>The text of a check that connected: the signed-in user when it may be read, then each right.</summary>
     internal static string RenderCheck(ChatCheckResult result)
     {
         ArgumentNullException.ThrowIfNull(result);
         var text = new StringBuilder();
-        text.Append("Chat account '").Append(result.Account).Append("' is reachable as ").Append(result.User).Append('.');
+        text.Append("Chat account '").Append(result.Account).Append("' is reachable");
+        if (result.User is { } user)
+            text.Append(" as ").Append(user);
+        text.Append('.');
         foreach (var right in result.Rights)
         {
             text.AppendLine().Append("  ").Append(right.Right).Append(": ").Append(right.Ready ? "ready" : "NOT READY");

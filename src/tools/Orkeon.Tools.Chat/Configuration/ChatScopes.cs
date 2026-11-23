@@ -16,7 +16,6 @@ internal static class ChatScopes
     public const string OnlineMeetingsRead = "OnlineMeetings.Read";
     public const string TranscriptRead = "OnlineMeetingTranscript.Read.All";
 
-    /// <summary>The members of a channel: an administrator's permission that no right asks for.</summary>
     public const string ChannelMemberRead = "ChannelMember.Read.All";
 
     /// <summary>
@@ -31,6 +30,7 @@ internal static class ChatScopes
         (ChatRights.Read, ChatRead, ChatAdminGrants.None),
         (ChatRights.Read, UserRead, ChatAdminGrants.None),
         (ChatRights.Read, ChannelMessageRead, ChatAdminGrants.ChannelMessages),
+        (ChatRights.Read, ChannelMemberRead, ChatAdminGrants.ChannelMembers),
         (ChatRights.Send, ChannelMessageSend, ChatAdminGrants.None),
         (ChatRights.Send, ChatMessageSend, ChatAdminGrants.None),
         (ChatRights.Send, ChatCreate, ChatAdminGrants.None),
@@ -56,5 +56,5 @@ internal static class ChatScopes
 
     /// <summary>Whether a tenant administrator has to consent to <paramref name="permission"/>.</summary>
     public static bool NeedsAdministrator(string permission) =>
-        permission == ChannelMemberRead || Table.Any(row => row.Permission == permission && row.Needs != ChatAdminGrants.None);
+        Table.Any(row => row.Permission == permission && row.Needs != ChatAdminGrants.None);
 }

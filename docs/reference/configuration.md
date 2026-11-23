@@ -1724,15 +1724,15 @@ holds a secret: the application is a public client. Walkthroughs and the tools:
   rejects (default `false`: flag only).
 - **`Accounts:<name>`** — one account. `Provider` (`Teams`), `Rights` and `Auth:ClientId` are
   **mandatory**; the rights the tools use are `Read` and `Send`. An empty `Read:AllowedPlaces` reads
-  nowhere, an empty `Send:AllowedPlaces` posts nowhere, and `Auth:AdminGranted: ["ChannelMessages"]`
-  opens the reading of channels.
+  nowhere, an empty `Send:AllowedPlaces` posts nowhere, and `Auth:AdminGranted` opens the
+  reading of channels (`ChannelMessages`) and their members (`ChannelMembers`).
 
 <!-- settings:Orkeon:Tools:Chat -->
 **Read by**: `orkeon`, `orkeon-host`, `orkeon-repl`.
 
 | Key | Type | Default | Values | Meaning |
 |---|---|---|---|---|
-| `Accounts:<name>:Auth:AdminGranted` | list of string | `[]` |  | What the tenant administrator has consented to for the application: `ChannelMessages`, `ChannelEdit`, `Meetings`. Each adds its scope to the next sign-in. |
+| `Accounts:<name>:Auth:AdminGranted` | list of string | `[]` |  | What the tenant administrator has consented to for the application: `ChannelMessages`, `ChannelEdit`, `Meetings`, `ChannelMembers`. Each adds its scope to the next sign-in. |
 | `Accounts:<name>:Auth:ClientId` | string | — |  | The id of your Microsoft Entra application. |
 | `Accounts:<name>:Auth:Method` | enum | — | `OAuth2`, `ClientCredentials` | `OAuth2` (default): a user signs in. |
 | `Accounts:<name>:Auth:Tenant` | string | — |  | The tenant id or domain; `organizations` when unset. |

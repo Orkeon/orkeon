@@ -46,6 +46,14 @@ internal sealed class GraphStub
         return this;
     }
 
+    /// <summary>Answers a GET of Graph with a 403, whatever answered it before.</summary>
+    public GraphStub Refuse(string path)
+    {
+        lock (_gate)
+            _routes.Remove($"GET /v1.0/{path}");
+        return On(HttpMethod.Get, path, _ => Error(HttpStatusCode.Forbidden, "Forbidden"));
+    }
+
     /// <summary>Answers an endpoint of the identity provider (<c>token</c>, <c>devicecode</c>).</summary>
     public GraphStub Identity(string endpoint, string json, Action? meanwhile = null)
     {

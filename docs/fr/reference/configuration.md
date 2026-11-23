@@ -1789,14 +1789,15 @@ outils : [Outils chat](../guides/chat.md).
 - **`Accounts:<nom>`** — un compte. `Provider` (`Teams`), `Rights` et `Auth:ClientId` sont
   **obligatoires** ; les droits dont les outils se servent sont `Read` et `Send`. Une liste
   `Read:AllowedPlaces` vide ne lit nulle part, une liste `Send:AllowedPlaces` vide ne publie nulle
-  part, et `Auth:AdminGranted: ["ChannelMessages"]` ouvre la lecture des canaux.
+  part, et `Auth:AdminGranted` ouvre la lecture des canaux (`ChannelMessages`) et de leurs membres
+  (`ChannelMembers`).
 
 <!-- settings:Orkeon:Tools:Chat -->
 **Lue par** : `orkeon`, `orkeon-host`, `orkeon-repl`.
 
 | Clé | Type | Défaut | Valeurs | Sens |
 |---|---|---|---|---|
-| `Accounts:<nom>:Auth:AdminGranted` | liste de chaînes | `[]` |  | Ce à quoi l'administrateur du tenant a consenti pour l'application : `ChannelMessages`, `ChannelEdit`, `Meetings`. Chaque valeur ajoute sa portée à la connexion suivante. |
+| `Accounts:<nom>:Auth:AdminGranted` | liste de chaînes | `[]` |  | Ce à quoi l'administrateur du tenant a consenti pour l'application : `ChannelMessages`, `ChannelEdit`, `Meetings`, `ChannelMembers`. Chaque valeur ajoute sa portée à la connexion suivante. |
 | `Accounts:<nom>:Auth:ClientId` | chaîne | — |  | L'identifiant de votre application Microsoft Entra. |
 | `Accounts:<nom>:Auth:Method` | énumération | — | `OAuth2`, `ClientCredentials` | `OAuth2` (défaut) : un utilisateur se connecte. |
 | `Accounts:<nom>:Auth:Tenant` | chaîne | — |  | L'identifiant ou le domaine du tenant ; `organizations` s'il n'est pas renseigné. |

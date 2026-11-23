@@ -87,9 +87,9 @@ public sealed record ChatCheckResult
     [JsonPropertyName("account")]
     public required string Account { get; init; }
 
-    /// <summary>The signed-in user.</summary>
+    /// <summary>The signed-in user; null when no right of the account lets it be read.</summary>
     [JsonPropertyName("user")]
-    public required string User { get; init; }
+    public string? User { get; init; }
 
     /// <summary>Each right of the account, in order.</summary>
     [JsonPropertyName("rights")]
@@ -254,7 +254,7 @@ public sealed class ChatAccountAdministration
     {
         var resolved = _accounts.Resolve(account);
         var session = _sessions.Get(resolved);
-        var self = await session.Provider.GetSelfAsync(cancellationToken).ConfigureAwait(false);
+        var user = await UserAsync(session, cancellationToken).ConfigureAwait(false);
         var tokens = await _credentials.StoredAsync(resolved, cancellationToken).ConfigureAwait(false);
         var granted = (tokens?.Scopes ?? []).Select(scope => scope[(scope.LastIndexOf('/') + 1)..]).ToHashSet(StringComparer.OrdinalIgnoreCase);
 
@@ -266,7 +266,7 @@ public sealed class ChatAccountAdministration
             foreach (var row in ChatScopes.Table.Where(row => row.Right == right))
             {
                 if (!resolved.IsGranted(row.Needs))
-                    notes.Add($"{Served(right)} needs {row.Permission}: a tenant administrator grants it, then {row.Needs} goes into Auth:AdminGranted and the account signs in again");
+                    notes.Add($"{Served(row.Needs)} needs {row.Permission}: a tenant administrator grants it, then {row.Needs} goes into Auth:AdminGranted and the account signs in again");
                 else if (!granted.Contains(row.Permission))
                     blocking.Add($"{row.Permission} was not granted at the sign-in: run `orkeon chat login {resolved.Name}`");
             }
@@ -279,7 +279,29 @@ public sealed class ChatAccountAdministration
             rights.Add(new ChatRightStatus { Right = right.ToString(), Ready = blocking.Count == 0, Missing = [.. blocking, .. notes] });
         }
 
-        return new ChatCheckResult { Account = resolved.Name, User = self.Address ?? self.Name, Rights = rights };
+        return new ChatCheckResult { Account = resolved.Name, User = user, Rights = rights };
+    }
+
+    /// <summary>The signed-in user, read only when a right of the account asks for the permission to.</summary>
+    private async Task<string?> UserAsync(ChatSession session, CancellationToken cancellationToken)
+    {
+        if (session.Account.OAuth.Scopes.Contains(ChatScopes.UserRead, StringComparer.Ordinal))
+        {
+            try
+            {
+                var self = await session.Provider.GetSelfAsync(cancellationToken).ConfigureAwait(false);
+                return self.Address ?? self.Name;
+            }
+            catch (ChatToolException ex) when (ex.Code == ChatErrorCode.ConsentMissing)
+            {
+                // The rights are checked one by one all the same, and say what is missing.
+                return null;
+            }
+        }
+
+        // Nothing else to ask: the sign-in itself is what can be checked.
+        _ = await _credentials.GetAccessTokenAsync(session.Account, cancellationToken).ConfigureAwait(false);
+        return null;
     }
 
     private static async Task CheckPlacesAsync(ChatSession session, ChatRights right, List<string> blocking, CancellationToken cancellationToken)
@@ -305,10 +327,11 @@ public sealed class ChatAccountAdministration
         }
     }
 
-    private static string Served(ChatRights right) => right switch
+    private static string Served(ChatAdminGrants grant) => grant switch
     {
-        ChatRights.Read => "reading a channel's messages",
-        ChatRights.Meetings => "reading a transcript",
+        ChatAdminGrants.ChannelMessages => "reading a channel's messages",
+        ChatAdminGrants.ChannelMembers => "listing a channel's members",
+        ChatAdminGrants.Meetings => "reading a transcript",
         _ => "acting in a channel",
     };
 }

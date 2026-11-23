@@ -12,6 +12,8 @@ public sealed class ChatScopesTests
     [Theory]
     [InlineData("Read", "", Reading)]
     [InlineData("Read", "ChannelMessages", Reading + " ChannelMessage.Read.All")]
+    [InlineData("Read", "ChannelMembers", Reading + " ChannelMember.Read.All")]
+    [InlineData("Send", "ChannelMembers", Sending)]
     [InlineData("Read", "ChannelEdit,Meetings", Reading)]
     [InlineData("Send", "", Sending)]
     [InlineData("Send", "ChannelMessages,ChannelEdit,Meetings", Sending)]

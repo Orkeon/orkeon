@@ -221,7 +221,8 @@ public sealed class ChatAccountAdministrationTests
         Assert.Equal(["Read", "Send", "React"], result.Rights.Select(right => right.Right));
         Assert.Contains(result.Rights[0].Missing, line => line.StartsWith("Read:AllowedPlaces entry 'team:Gone' is set aside", StringComparison.Ordinal));
         Assert.Contains(result.Rights[0].Missing, line => line.Contains("ChannelMessage.Read.All: a tenant administrator grants it, then ChannelMessages goes into Auth:AdminGranted", StringComparison.Ordinal));
-        Assert.Equal((false, 2), (result.Rights[0].Ready, result.Rights[0].Missing.Count));
+        Assert.Contains(result.Rights[0].Missing, line => line.Contains("listing a channel's members needs ChannelMember.Read.All", StringComparison.Ordinal));
+        Assert.Equal((false, 3), (result.Rights[0].Ready, result.Rights[0].Missing.Count));
         Assert.Equal(["Send:AllowedPlaces is empty, which allows no place"], result.Rights[1].Missing);
         Assert.Equal((true, "no tool uses this right"), (result.Rights[2].Ready, Assert.Single(result.Rights[2].Missing)));
         Assert.Empty(fixture.Graph.Writes);
@@ -237,6 +238,46 @@ public sealed class ChatAccountAdministrationTests
 
         Assert.False(right.Ready);
         Assert.Equal(["ChannelMessage.Send was not granted at the sign-in: run `orkeon chat login work`"], right.Missing);
+    }
+
+    [Theory]
+    [InlineData("Edit")]
+    [InlineData("Delete")]
+    [InlineData("React")]
+    [InlineData("Meetings")]
+    public async Task Should_check_an_account_whose_scopes_do_not_open_its_user(string right)
+    {
+        using var fixture = new ChatFixture(TestChatAccounts.Teams(Enum.Parse<ChatRights>(right)));
+
+        var result = await fixture.Administration.CheckAsync("work", Token);
+
+        Assert.Null(result.User);
+        Assert.True(result.Ready);
+        Assert.Equal(right, Assert.Single(result.Rights).Right);
+        Assert.Empty(fixture.Handler.Requests);
+    }
+
+    [Fact]
+    public async Task Should_say_the_sign_in_is_missing_When_nothing_else_can_be_checked()
+    {
+        using var fixture = new ChatFixture(TestChatAccounts.Teams(ChatRights.Edit), signedIn: false);
+
+        var refusal = await Assert.ThrowsAsync<ChatToolException>(() => fixture.Administration.CheckAsync("work", Token));
+
+        Assert.Equal(ChatErrorCode.SignInRequired, refusal.Code);
+    }
+
+    [Fact]
+    public async Task Should_check_the_rights_one_by_one_When_the_user_may_not_be_read()
+    {
+        using var fixture = new ChatFixture(TestChatAccounts.Teams(ChatRights.Send, send: ["*"]));
+        fixture.SignIn(["Team.ReadBasic.All"]);
+        fixture.Graph.Refuse("me");
+
+        var result = await fixture.Administration.CheckAsync("work", Token);
+
+        Assert.Equal((null, false), (result.User, result.Ready));
+        Assert.Contains(result.Rights[0].Missing, line => line.StartsWith("User.ReadBasic.All was not granted", StringComparison.Ordinal));
     }
 
     [Fact]

@@ -5,18 +5,38 @@ namespace Orkeon.Tools.Chat.Providers;
 /// <param name="Name">Display name, written by a person: untrusted text.</param>
 /// <param name="UserPrincipalName">The sign-in name in the account's tenant.</param>
 /// <param name="Mail">The mail address the directory holds.</param>
-internal sealed record ChatPerson(string Id, string Name, string? UserPrincipalName, string? Mail)
+/// <param name="UserType"><c>Member</c> or <c>Guest</c>; null when the directory does not say.</param>
+/// <param name="CreationType">How the person came into the directory (<c>Invitation</c>…); null for an account of the tenant.</param>
+internal sealed record ChatPerson(string Id, string Name, string? UserPrincipalName, string? Mail, string? UserType = null, string? CreationType = null)
 {
     private const string GuestMarker = "#EXT#";
+    private const string Member = "Member";
+    private const string Guest = "Guest";
 
-    /// <summary>Whether the person's home is another tenant.</summary>
-    public bool IsGuest => UserPrincipalName?.Contains(GuestMarker, StringComparison.OrdinalIgnoreCase) == true;
+    /// <summary>How the directory says it created a person who signs in elsewhere.</summary>
+    private static readonly string[] ExternalCreations = ["Invitation", "SelfServiceSignUp"];
+
+    /// <summary>Whether the directory says the person is a guest, or that the home is another tenant.</summary>
+    public bool IsGuest => HasMarker || string.Equals(UserType, Guest, StringComparison.OrdinalIgnoreCase);
+
+    private bool HasMarker => UserPrincipalName?.Contains(GuestMarker, StringComparison.OrdinalIgnoreCase) == true;
+
+    /// <summary>
+    /// Whether the directory says the account is the tenant's own. A guest's sign-in name may carry no
+    /// marker, so its absence proves nothing: what the directory does not say is not assumed.
+    /// </summary>
+    private bool IsOwnMember =>
+        !HasMarker
+        && string.Equals(UserType, Member, StringComparison.OrdinalIgnoreCase)
+        && !ExternalCreations.Contains(CreationType, StringComparer.OrdinalIgnoreCase);
 
     /// <summary>
     /// The address of the person's home tenant. A guest's sign-in name is
     /// <c>name_home.org#EXT#@inviting.tenant</c>: the home address is before the marker, with its
     /// last underscore for the at sign. What follows the marker is the inviting tenant's domain, and
-    /// a guest's <see cref="Mail"/> proves nothing about their home: neither is ever used.
+    /// a guest's <see cref="Mail"/> proves nothing about their home: neither is ever used. Without the
+    /// marker the sign-in name is the home address of the tenant's own members only; null when the home
+    /// cannot be established.
     /// </summary>
     public string? HomeAddress
     {
@@ -26,25 +46,25 @@ internal sealed record ChatPerson(string Id, string Name, string? UserPrincipalN
                 return null;
             var marker = name.IndexOf(GuestMarker, StringComparison.OrdinalIgnoreCase);
             if (marker < 0)
-                return name;
+                return IsOwnMember ? name : null;
             var encoded = name[..marker];
             var at = encoded.LastIndexOf('_');
             return at <= 0 || at == encoded.Length - 1 ? null : $"{encoded[..at]}@{encoded[(at + 1)..]}";
         }
     }
 
-    /// <summary>The address to show: the home one, else the directory's.</summary>
-    public string? Address => HomeAddress ?? Mail;
+    /// <summary>The address to show: the home one, else the sign-in name without the marker, else the directory's.</summary>
+    public string? Address => HomeAddress ?? (HasMarker ? null : UserPrincipalName) ?? Mail;
 
-    /// <summary>Whether <paramref name="address"/> is the person's: the home address, and for a member of the tenant the mail too.</summary>
+    /// <summary>Whether <paramref name="address"/> is the person's: the home address, the sign-in name, and for the tenant's own member the mail too.</summary>
     public bool HasAddress(string address) =>
         string.Equals(HomeAddress, address, StringComparison.OrdinalIgnoreCase)
         || string.Equals(UserPrincipalName, address, StringComparison.OrdinalIgnoreCase)
-        || (!IsGuest && UserPrincipalName is not null && string.Equals(Mail, address, StringComparison.OrdinalIgnoreCase));
+        || (IsOwnMember && UserPrincipalName is not null && string.Equals(Mail, address, StringComparison.OrdinalIgnoreCase));
 
     /// <summary>Whether the person's home is <paramref name="domain"/>.</summary>
     public bool IsOfDomain(string domain) =>
-        EndsWithDomain(HomeAddress, domain) || (!IsGuest && UserPrincipalName is not null && EndsWithDomain(Mail, domain));
+        EndsWithDomain(HomeAddress, domain) || (IsOwnMember && UserPrincipalName is not null && EndsWithDomain(Mail, domain));
 
     private static bool EndsWithDomain(string? address, string domain) =>
         address is not null

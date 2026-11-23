@@ -140,6 +140,30 @@ public sealed class ChatListingToolsTests
         Assert.Contains(":Read:AllowedPlaces", await fixture.ErrorAsync("chat_members", ("place", "chat:" + Samples.Direct)), StringComparison.Ordinal);
     }
 
+    [Fact]
+    public async Task Should_not_list_the_members_of_a_channel_without_the_administrator()
+    {
+        using var fixture = Listing([Samples.BuildsPlace], []);
+
+        var error = await fixture.ErrorAsync("chat_members", ("place", Samples.BuildsPlace));
+
+        Assert.Contains("ChannelMember.Read.All", error, StringComparison.Ordinal);
+        Assert.Contains("ChannelMembers under", error, StringComparison.Ordinal);
+        Assert.Empty(fixture.Handler.Requests);
+    }
+
+    [Fact]
+    public async Task Should_list_the_members_of_a_channel_the_administrator_opened()
+    {
+        using var fixture = new ChatFixture(TestChatAccounts.Teams(read: [Samples.BuildsPlace], granted: "ChannelMembers"));
+        fixture.Graph.Directory().Get($"teams/{Samples.Platform}/channels/{Samples.Builds}/members", Samples.List(Samples.Member(Samples.Ada, "Ada")));
+
+        var member = Assert.Single(ToolResults.Objects(await fixture.ResultAsync("chat_members", ("place", Samples.BuildsPlace)), "members"));
+
+        Assert.Equal(Samples.Ada, member["id"]);
+        Assert.Contains("ChannelMember.Read.All", fixture.Account.OAuth.Scopes);
+    }
+
     [Theory]
     [InlineData(Samples.Ada)]
     [InlineData("ada@example.org")]

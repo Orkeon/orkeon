@@ -73,8 +73,8 @@ Ids are Microsoft's own and opaque: pass them back exactly as `chat_list` or `ch
 
 **Administrator consent.** These delegated permissions need an administrator of the tenant:
 `ChannelMessage.Read.All`, `ChannelMember.Read.All`, `TeamMember.Read.All` and `ChatMember.Read`.
-The family asks for the first one only, and only when `AdminGranted` names `ChannelMessages`. A
-tenant may also require an administrator's consent for any application: its policy decides.
+The family asks for the first two only, each when `AdminGranted` names it: `ChannelMessages` for the
+first, `ChannelMembers` for the second. A tenant may also require an administrator's consent for any application: its policy decides.
 
 ## Declare the account and sign in
 
@@ -132,7 +132,7 @@ the application, **Permissions**).
 | `Accounts:<name>:Auth:ClientId` | The Microsoft Entra application, mandatory |
 | `Accounts:<name>:Auth:Tenant` | `organizations` (default), a tenant id or a tenant domain; `consumers` is refused |
 | `Accounts:<name>:Auth:Method` | `OAuth2` (default), the only method accepted |
-| `Accounts:<name>:Auth:AdminGranted` | The administrator permissions the tenant granted. `ChannelMessages` opens the reading of channel messages |
+| `Accounts:<name>:Auth:AdminGranted` | The administrator permissions the tenant granted. `ChannelMessages` opens the reading of channel messages, `ChannelMembers` the list of a channel's members |
 | `Accounts:<name>:Cloud` | `Global` (default), `UsGov` or `UsGovDoD`; the China cloud is refused |
 | `Accounts:<name>:Read:AllowedPlaces` | Where the account may read; empty: nowhere |
 | `Accounts:<name>:Send:AllowedPlaces` | Where the account may post; empty: nowhere |
@@ -154,13 +154,15 @@ is fixed.
 |---|---|---|
 | `Read` | `Team.ReadBasic.All`, `Channel.ReadBasic.All`, `Chat.Read`, `User.ReadBasic.All` | `chat_list`, `chat_read`, `chat_members` |
 | `Read` with `AdminGranted: ["ChannelMessages"]` | the same, plus `ChannelMessage.Read.All` (administrator) | `chat_read` on a channel |
+| `Read` with `AdminGranted: ["ChannelMembers"]` | the same, plus `ChannelMember.Read.All` (administrator) | `chat_members` on a channel |
 | `Send` | `ChannelMessage.Send`, `ChatMessage.Send`, `Chat.Create`, `Team.ReadBasic.All`, `Channel.ReadBasic.All`, `User.ReadBasic.All` | `chat_send`, and `chat_list` for teams and channels, `chat_members` for a person |
 
 - **Reading a channel needs an administrator.** Without `ChannelMessages` in `AdminGranted`,
   `chat_read` on a channel answers `ConsentMissing` before any request. Chats need no
   administrator's permission.
-- **The members of a channel** need `ChannelMember.Read.All`, an administrator's permission that no
-  right asks for: without it, `chat_members` on a channel answers `ConsentMissing`.
+- **The members of a channel** need an administrator too (`ChannelMember.Read.All`). Without
+  `ChannelMembers` in `AdminGranted`, `chat_members` on a channel answers `ConsentMissing`, which
+  names the permission, before any request.
 - **A crew whose chat tools need a right no ready account grants is refused at start**, before any
   model call, with one line per tool, as for the mail and drive tools.
 
@@ -186,7 +188,11 @@ start. A name that matches nothing, or more than one place, sets its entry aside
   only sends has no scope to see who is in it: write `user:<address>`.
 - A domain is matched on the address of the person's home tenant, as the directory holds it. A
   guest is matched on the part of the sign-in name before `#EXT#`, never on the e-mail address of
-  the profile; a person the directory does not know matches no domain.
+  the profile. Without that marker, the sign-in name counts only when the directory says the person
+  is a `Member` who was not invited (`userType`, `creationType`). Whoever's home address cannot be
+  established matches no domain: a guest without the marker, someone the directory does not know, or
+  anyone if Graph withholds `userType` (not verified on a tenant). Name such a person by
+  `user:<address or id>`.
 - The account's own address is refused: there is no chat with oneself here.
 
 ## What reaches the agent, and what never leaves
@@ -263,7 +269,8 @@ Every verb takes `--settings <file>`; `login` and `check` take `--events jsonl`.
 
 `accounts --json` writes one object per account: `name`, `provider`, `rights`, `cloud`, `default`,
 `ready`, `problem`, `configuration_problems`, `credential_problem`, `token_endpoint`. `check` reports
-each right: a missing permission, an empty `AllowedPlaces`, an entry set aside, a right no tool uses
+each right: a missing permission, an empty `AllowedPlaces`, an entry set aside, a right no tool uses.
+It names the signed-in user only when a right asks for the permission to read it (`Read`, `Send`)
 ([CLI reference](../reference/cli.md#orkeon-chat)).
 
 `logout` also deletes the tokens of the account's earlier settings (wider rights, another tenant),
@@ -300,7 +307,7 @@ no token store: a chat tool called there says so.
   refused), a read-only application account (`ClientCredentials` is refused), search, editing,
   deletion, reactions, meetings and their transcripts, and an inbound Teams channel in `orkeon-host`.
 - **Rights no tool uses.** `Edit`, `Delete`, `React` and `Meetings`, like the grants other than
-  `ChannelMessages`, are read and ask for their permissions, but no tool uses them. Leave them out.
+  `ChannelMessages` and `ChannelMembers`, are read and ask for their permissions, but no tool uses them. Leave them out.
 - **Shared channels.** The teams come from Graph's `joinedTeams`, which leaves out the host teams of
   shared channels.
 - **The China cloud is refused**: Microsoft's official pages disagree on its hosts. The government
