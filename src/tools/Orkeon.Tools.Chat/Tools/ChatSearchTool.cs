@@ -56,7 +56,7 @@ internal sealed class ChatSearchTool : ToolBase<ChatSearchRequest, ChatSearchRes
             return "`text` holds no word to search for";
         if (author.Length > 0 && (!PlaceReference.TryParse($"user:{author}", out var person) || person.Form != PlaceForm.User))
             return "`author` must be an address, or the id of a person from chat_members";
-        return request!.TextChars is <= 0 ? "`text_chars` must be positive" : null;
+        return request?.TextChars is <= 0 ? "`text_chars` must be positive" : null;
     }
 
     /// <inheritdoc />

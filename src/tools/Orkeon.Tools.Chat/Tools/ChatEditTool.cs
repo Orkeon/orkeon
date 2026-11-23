@@ -40,7 +40,7 @@ internal sealed partial class ChatEditTool : ToolBase<ChatEditRequest, ChatMessa
     {
         if (MessageAddress.Refuse(request?.Place, request?.MessageId, request?.Thread) is { } refusal)
             return refusal;
-        if (string.IsNullOrWhiteSpace(request!.Text))
+        if (string.IsNullOrWhiteSpace(request?.Text))
             return "`text` is required";
         return MessageBody.IsFormat(request.Format) ? MessageBody.RefuseMentions(request.Mentions) : MessageBody.FormatRefusal;
     }

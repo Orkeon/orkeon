@@ -43,7 +43,7 @@ internal sealed partial class ChatReactTool : ToolBase<ChatReactRequest, ChatRea
     {
         if (MessageAddress.Refuse(request?.Place, request?.MessageId, thread: null) is { } refusal)
             return refusal;
-        return IsEmoji(request!.Reaction) ? null : "`reaction` must be one emoji character, not a name";
+        return IsEmoji(request?.Reaction) ? null : "`reaction` must be one emoji character, not a name";
     }
 
     /// <inheritdoc />

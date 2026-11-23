@@ -48,7 +48,7 @@ internal sealed class ChatMeetingsTool : ToolBase<ChatMeetingsRequest, ChatMeeti
     {
         if (string.IsNullOrWhiteSpace(request?.Place) == string.IsNullOrWhiteSpace(request?.JoinLink))
             return "exactly one of `place` and `join_link` is required";
-        return request!.TranscriptId is null || IsTranscriptId(request.TranscriptId) ? null : "`transcript_id` must be an id this tool listed";
+        return request?.TranscriptId is not { } transcript || IsTranscriptId(transcript) ? null : "`transcript_id` must be an id this tool listed";
     }
 
     /// <inheritdoc />
