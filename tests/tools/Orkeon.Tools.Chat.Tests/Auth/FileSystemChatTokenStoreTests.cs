@@ -54,12 +54,14 @@ public sealed class FileSystemChatTokenStoreTests
         foreach (var key in (string[])["work-0123456789ab", "Work-abcdef012345", .. others])
             await store.WriteAsync(key, Tokens, Token);
         files.AddFile("/credentials/chat/work-ba9876543210.json.tmp", "interrupted");
+        files.AddFile("/credentials/chat/work-ba9876543210.json.0f8fad5bd9cb469fa16570867728950e.tmp", "interrupted");
 
         Assert.True(await store.DeleteAccountAsync("work", keptKey: null, Token));
 
         Assert.Null(await store.ReadAsync("work-0123456789ab", Token));
         Assert.Null(await store.ReadAsync("Work-abcdef012345", Token));
         Assert.False(await files.ExistsAsync("/credentials/chat/work-ba9876543210.json.tmp", Token));
+        Assert.False(await files.ExistsAsync("/credentials/chat/work-ba9876543210.json.0f8fad5bd9cb469fa16570867728950e.tmp", Token));
         foreach (var key in others)
             Assert.NotNull(await store.ReadAsync(key, Token));
         Assert.False(await store.DeleteAccountAsync("work", keptKey: null, Token));
@@ -86,8 +88,26 @@ public sealed class FileSystemChatTokenStoreTests
 
         await store.WriteAsync("work-0123456789ab", Tokens, Token);
 
-        Assert.False(await files.ExistsAsync("/credentials/chat/work-0123456789ab.json.tmp", Token));
+        var left = new List<string>();
+        await foreach (var entry in files.EnumerateFilesAsync("/credentials/chat", new VirtualEnumerationOptions(Recursive: false), Token))
+        {
+            if (entry.Kind == VirtualEntryKind.File)
+                left.Add(entry.VirtualPath);
+        }
+
+        Assert.Equal(["/credentials/chat/work-0123456789ab.json"], left);
         Assert.NotNull(await store.ReadAsync("work-0123456789ab", Token));
+    }
+
+    [Fact]
+    public async Task Should_not_touch_what_another_process_is_writing()
+    {
+        var files = new FakeFileSystemService().AddMount("/credentials", FileAccessRights.ReadWrite);
+        files.AddFile("/credentials/chat/work-0123456789ab.json.tmp", "half");
+
+        await new FileSystemChatTokenStore(files, "/credentials/chat").WriteAsync("work-0123456789ab", Tokens, Token);
+
+        Assert.Equal("half", await files.TryReadAllTextAsync("/credentials/chat/work-0123456789ab.json.tmp", Token));
     }
 
     [Fact]

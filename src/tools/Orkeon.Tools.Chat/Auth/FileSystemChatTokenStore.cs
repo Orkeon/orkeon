@@ -14,7 +14,7 @@ public sealed class FileSystemChatTokenStore : IChatTokenStore
     private static readonly JsonSerializerOptions SerializerOptions = new() { WriteIndented = true };
 
     private const string Suffix = ".json";
-    private const string PartialSuffix = Suffix + ".tmp";
+    private const string PartialSuffix = ".tmp";
     private const int DigestLength = 12;
 
     private static readonly System.Buffers.SearchValues<char> Digits = System.Buffers.SearchValues.Create("0123456789abcdef");
@@ -60,10 +60,19 @@ public sealed class FileSystemChatTokenStore : IChatTokenStore
         var json = JsonSerializer.Serialize(tokens, SerializerOptions);
 
         await _fileSystem.CreateDirectoryAsync(_directory, cancellationToken).ConfigureAwait(false);
-        // Written aside then renamed: a process stopped halfway never costs the tokens already there.
-        var partial = $"{_directory}/{key}{PartialSuffix}";
-        await _fileSystem.WriteAllTextAsync(partial, json, cancellationToken).ConfigureAwait(false);
-        await _fileSystem.MoveAsync(partial, path, cancellationToken).ConfigureAwait(false);
+        // Written aside under a name of its own, then renamed: a process stopped halfway, or another one
+        // writing the same key, never leaves half a file. The last rename wins.
+        var partial = $"{path}.{Guid.NewGuid():N}{PartialSuffix}";
+        try
+        {
+            await _fileSystem.WriteAllTextAsync(partial, json, cancellationToken).ConfigureAwait(false);
+            await _fileSystem.MoveAsync(partial, path, cancellationToken).ConfigureAwait(false);
+        }
+        catch
+        {
+            await DeletePartialAsync(partial).ConfigureAwait(false);
+            throw;
+        }
     }
 
     /// <inheritdoc />
@@ -95,11 +104,24 @@ public sealed class FileSystemChatTokenStore : IChatTokenStore
         return deleted;
     }
 
+    private async Task DeletePartialAsync(string partial)
+    {
+        try
+        {
+            if (await _fileSystem.ExistsAsync(partial, CancellationToken.None).ConfigureAwait(false))
+                await _fileSystem.DeleteAsync(partial, recursive: false, CancellationToken.None).ConfigureAwait(false);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException)
+        {
+            // The failure of the write is the one to report; a sign-out removes what stays.
+        }
+    }
+
     private static string? KeyOf(string path)
     {
         var name = path[(path.LastIndexOf('/') + 1)..];
         if (name.EndsWith(PartialSuffix, StringComparison.Ordinal))
-            return name[..^PartialSuffix.Length];
+            return name.LastIndexOf(Suffix + ".", StringComparison.Ordinal) is var cut and > 0 ? name[..cut] : null;
         return name.EndsWith(Suffix, StringComparison.Ordinal) ? name[..^Suffix.Length] : null;
     }
 
