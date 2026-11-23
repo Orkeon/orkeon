@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — chat tools: Microsoft Teams (#446)
+
+- The `chat_*` family (`Orkeon.Tools.Chat`, packed in `Orkeon.Tools`): `chat_accounts`, `chat_list`, `chat_read`,
+  `chat_members` and `chat_send`, over Microsoft Graph in plain HTTP. Accounts, rights and places live under
+  `Orkeon:Tools:Chat`; `Read:AllowedPlaces` and `Send:AllowedPlaces` are closed when empty, and a channel is read only
+  when `Auth:AdminGranted` names `ChannelMessages`. `AddOrkeonChatTools(configuration)` is inert until an account is
+  declared. Tested offline, not run on a real tenant ([guide](docs/guides/chat.md),
+  [ADR-021](docs/adr/ADR-021-chat-tool-family.md)).
+- `orkeon chat accounts`, `login` (the browser, or `--device-code`), `logout` and `check`.
+- The shared OAuth client takes the flow at the sign-in, token revocation, a client assertion and
+  `OAuthSettings.Prompt`; left null, `Prompt` keeps the Google parameters of before. E-mail and drive accounts sign in
+  as they did.
+
 ## [1.4.0] - 2026-11-23
 
 A minor release: it adds public members (`PublicAPI.Shipped.txt` grows), so it is not a patch. It also carries

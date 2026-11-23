@@ -22,6 +22,7 @@ using Orkeon.Application.DependencyInjection;
 using Orkeon.Infrastructure.DependencyInjection;
 using Orkeon.Infrastructure.FileSystem;
 using Orkeon.Rag.Onnx.DependencyInjection;
+using Orkeon.Tools.Chat.DependencyInjection;
 using Orkeon.Tools.Drive.DependencyInjection;
 using Orkeon.Tools.Email.DependencyInjection;
 using Orkeon.Tools.Abstractions.DependencyInjection;
@@ -343,6 +344,8 @@ static class Program
         // Drive tools (DRIVE): every drive account signs in with OAuth, whose tokens only the
         // `orkeon` runners keep; called from the REPL, a drive tool says so.
         services.AddOrkeonDriveTools(context.Configuration);
+        // Chat tools (Microsoft Teams): the same, every chat account signs in with OAuth.
+        services.AddOrkeonChatTools(context.Configuration);
         // Session buffer + session_store/session_snip/token_budget tools. The
         // configuration is passed so the session metadata carries `Llm:AvailableModels` —
         // what a scripted /model can offer as a choice.

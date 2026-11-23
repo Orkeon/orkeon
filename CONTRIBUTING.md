@@ -102,7 +102,7 @@ dotnet test Orkeon.sln --no-build --filter "Category!=Integration&Category!=Slow
 
 ## Project Structure
 
-The solution has **51 src projects across 14 zones** and **35 test projects**. Thirty-three
+The solution has **52 src projects across 14 zones** and **36 test projects**. Thirty-four
 src projects are mirrored one-for-one by a test project; `tests/e2e` and `tests/shared` make
 up the other two test projects. Eighteen src projects carry no test mirror by design: the five
 `Orkeon.Constants.*` satellites and `Orkeon.Rag.Onnx.Model` hold constants and embedded
@@ -112,7 +112,7 @@ resources only, `Orkeon.Analysis.Abstractions` is exercised through `Orkeon.Anal
 ```
 src/
 ├── core/        # Orkeon.Domain, Orkeon.Application, Orkeon.Infrastructure (Clean Architecture core)
-├── tools/       # 11 tool packs: Abstractions, Analysis (RaggableTree), Code, Data, Drive,
+├── tools/       # 12 tool packs: Abstractions, Analysis (RaggableTree), Chat, Code, Data, Drive,
 │                #   Email, Embeddings.Local, EventHub, FileSystem, Rag, Web
 ├── rag/         # RAG subsystem: Rag.Abstractions, Rag, Rag.Onnx, Rag.Onnx.Model
 ├── analysis/    # RaggableTree engine: Analysis.Abstractions, Analysis
@@ -363,7 +363,10 @@ ask for more, **the functional surface does not grow**:
   was asked ([ADR-012](docs/adr/ADR-012-email-tool-family.md)). The drive
   family (`Orkeon.Tools.Drive`, eleven tools for Google Drive and OneDrive)
   is the third, decided by the owner on 2026-10-17, for the same reason
-  ([ADR-013](docs/adr/ADR-013-drive-tool-family.md)). The tool bridge
+  ([ADR-013](docs/adr/ADR-013-drive-tool-family.md)). The `firefox` tool is
+  the fourth. The chat family (`Orkeon.Tools.Chat`, Microsoft Teams first,
+  five tools) is the fifth, decided by the owner on 2026-11-23
+  ([ADR-021](docs/adr/ADR-021-chat-tool-family.md)). The tool bridge
   (`orkeon bridge serve`, [ADR-019](docs/adr/ADR-019-tool-bridge.md)) adds no
   tool: it runs the built-in tools that exist on another machine, and a tool
   is not built in because the bridge could carry it. The rule stands for

@@ -145,8 +145,8 @@ refusals on the same file, one `runner-settings` row each. What is refused:
   number); an enumeration written as a number (`Orkeon:Guardian:Llm:FailMode: "1"`, which the binder
   would take as `Open`), in a value, a list or a dictionary, or written as a comma list where it takes one
   name — the refusal names its members, never the value. Every enumeration is written by its name, in
-  any case; a `[Flags]` one (an e-mail or drive account's `Rights`) as a comma list of names. On an e-mail
-  or drive account, a number, or a comma list where the enumeration takes one name (`Incoming:Security`,
+  any case; a `[Flags]` one (an e-mail, drive or chat account's `Rights`) as a comma list of names. On an e-mail,
+  drive or chat account, a number, or a comma list where the enumeration takes one name (`Incoming:Security`,
   `Provider`), makes the account misconfigured, and its problem names the key and the members, never the
   value (`Rights holds a number where EmailRights takes names: write one or more of …`), every name the key
   takes listed, `None` of a `[Flags]` enumeration included. No refusal of a closed list repeats the value,
@@ -216,13 +216,13 @@ closed list, and what it means.
 | [RAG](#rag) | [`Orkeon:Rag`](#orkeonrag), [`Orkeon:Rag:Ingestion`](#orkeonragingestion), [`Orkeon:Rag:QueryRouting`](#orkeonragqueryrouting), [`Orkeon:Rag:Retrieval:Hybrid`](#orkeonragretrievalhybrid), [`Orkeon:Rag:WebFallback`](#orkeonragwebfallback) | 34 |
 | [Files and sandbox](#files-and-sandbox) | [`Orkeon:CodeSandbox`](#orkeoncodesandbox), [`Orkeon:CodeSandbox:Docker`](#orkeoncodesandboxdocker), [`Orkeon:FileSystem`](#orkeonfilesystem), [`Orkeon:Sandbox`](#orkeonsandbox), [`PathSecurity`](#pathsecurity) | 33 |
 | [Security](#security) | [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:Guardian`](#orkeonguardian), [`Orkeon:Security:PermissionGate`](#orkeonsecuritypermissiongate), [`Secrets`](#secrets), [`Security:Audit`](#securityaudit), [`Security:Prompt`](#securityprompt), [`Security:ToolResults`](#securitytoolresults), [`Security:Url`](#securityurl), [`Security:Vault`](#securityvault) | 40 |
-| [Tools](#tools) | [`BRAVE_API_KEY`](#brave_api_key), [`MCP`](#mcp), [`MCP:Server`](#mcpserver), [`Orkeon:Bridge`](#orkeonbridge), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Tools:Bridge`](#orkeontoolsbridge), [`Orkeon:Tools:Drive`](#orkeontoolsdrive), [`Orkeon:Tools:Email`](#orkeontoolsemail), [`Orkeon:Tools:Firefox`](#orkeontoolsfirefox), [`Orkeon:Tools:GitHub`](#orkeontoolsgithub), [`Orkeon:Tools:ResultLimits`](#orkeontoolsresultlimits), [`Orkeon:Tools:Shell`](#orkeontoolsshell), [`Plugins`](#plugins), [`RaggableTree`](#raggabletree) | 131 |
+| [Tools](#tools) | [`BRAVE_API_KEY`](#brave_api_key), [`MCP`](#mcp), [`MCP:Server`](#mcpserver), [`Orkeon:Bridge`](#orkeonbridge), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Tools:Bridge`](#orkeontoolsbridge), [`Orkeon:Tools:Chat`](#orkeontoolschat), [`Orkeon:Tools:Drive`](#orkeontoolsdrive), [`Orkeon:Tools:Email`](#orkeontoolsemail), [`Orkeon:Tools:Firefox`](#orkeontoolsfirefox), [`Orkeon:Tools:GitHub`](#orkeontoolsgithub), [`Orkeon:Tools:ResultLimits`](#orkeontoolsresultlimits), [`Orkeon:Tools:Shell`](#orkeontoolsshell), [`Plugins`](#plugins), [`RaggableTree`](#raggabletree) | 144 |
 | [Orchestration and persistence](#orchestration-and-persistence) | [`Orkeon:Checkpointing`](#orkeoncheckpointing), [`Orkeon:Compaction`](#orkeoncompaction), [`Orkeon:Compaction:Prune`](#orkeoncompactionprune), [`Orkeon:Consensus`](#orkeonconsensus), [`Orkeon:CrewFactory`](#orkeoncrewfactory), [`Orkeon:ExecutionState:Persistence`](#orkeonexecutionstatepersistence), [`Orkeon:HumanInput`](#orkeonhumaninput), [`Orkeon:RunHistory`](#orkeonrunhistory), [`Orkeon:Skills`](#orkeonskills) | 39 |
 | [Scripts and console](#scripts-and-console) | [`Orkeon:Cli:ConsoleStreaming`](#orkeoncliconsolestreaming), [`Orkeon:Cli:Memory`](#orkeonclimemory), [`Orkeon:Cli:ScriptCommands`](#orkeoncliscriptcommands), [`Orkeon:Cli:ScriptHost`](#orkeoncliscripthost), [`Orkeon:Cli:Session`](#orkeonclisession), [`Orkeon:Cli:Tui`](#orkeonclitui), [`Orkeon:Scripting:AgentInstances`](#orkeonscriptingagentinstances), [`Orkeon:Scripting:AgentMemory`](#orkeonscriptingagentmemory), [`Orkeon:Scripting:Limits`](#orkeonscriptinglimits), [`Orkeon:Scripting:Toolchain`](#orkeonscriptingtoolchain) | 35 |
 | [Service host and A2A](#service-host-and-a2a) | [`A2A`](#a2a), [`A2A:Security`](#a2asecurity), [`A2A:Security:AzureAD`](#a2asecurityazuread), [`A2A:Security:Oidc`](#a2asecurityoidc), [`Orkeon:Host`](#orkeonhost), [`Orkeon:Host:Discord`](#orkeonhostdiscord) | 59 |
 | [Observability](#observability) | [`Logging`](#logging), [`Orkeon:Monitoring`](#orkeonmonitoring), [`Telemetry`](#telemetry) | 8 |
 
-88 sections, 574 keys. Read by no shipped binary, only by a host written in C# (6): [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting), [`Orkeon:VectorSearch`](#orkeonvectorsearch), [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Monitoring`](#orkeonmonitoring).
+89 sections, 587 keys. Read by no shipped binary, only by a host written in C# (6): [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting), [`Orkeon:VectorSearch`](#orkeonvectorsearch), [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Monitoring`](#orkeonmonitoring).
 <!-- /settings-index -->
 
 How to read a table:
@@ -477,9 +477,10 @@ covers is not the one read, so it is not judged. The settings judged, from
 | `BRAVE_API_KEY` | remove the entry, Orkeon reads the variable |
 
 An e-mail account holding a reference in `Incoming:Host`, `Outgoing:Host`, `Auth:PasswordEnvVar` or
-`Auth:ClientSecretEnvVar`, or a drive account holding one in `Auth:ClientSecretEnvVar`, is not a
+`Auth:ClientSecretEnvVar`, or a drive account holding one in `Auth:ClientSecretEnvVar`, or a chat account holding one in
+`Auth:ClientId` or `Auth:Tenant`, is not a
 start refusal: the account is set aside, with its problem ([e-mail guide](../guides/email.md),
-[drive guide](../guides/drive.md)).
+[drive guide](../guides/drive.md), [chat guide](../guides/chat.md)).
 
 ### Named profiles (`Llm:Profiles`)
 
@@ -1465,7 +1466,7 @@ defaults. The length bound is not configured here but under `Orkeon:Tools:Result
 | Key | Type | Default | Values | Meaning |
 |---|---|---|---|---|
 | `Policy` | enum | `"Warn"` | `None`, `Warn`, `Block` | The policy applied to a successful tool result. Default `Warn`: the result reaches the model tagged as data and any injection pattern is logged and audited. `Block` withholds a result carrying a High or Critical pattern (the model is told so); `None` passes results untouched and untagged. |
-| `TrustedTools` | list of string | `["email_accounts", "email_create_folder", "email_delete", "email_draft", "email_folders", "email_mark", "email_move", "email_parser", "email_read", "email_rename_folder", "email_save_attachment", "email_search", "email_send", "drive_read"]` |  | Tools whose results bypass sanitization. Defaults to the `email_*` tools, which screen what they read with `PromptInjectionDocumentValidator` and mark it untrusted themselves (ADR-012), and to `drive_read`, which does the same with a file's text (ADR-013) — tagging them again would stack two envelopes. The other `drive_*` tools return names and metadata they do not screen, and stay sanitized. Entries from configuration are added to these. |
+| `TrustedTools` | list of string | `["email_accounts", "email_create_folder", "email_delete", "email_draft", "email_folders", "email_mark", "email_move", "email_parser", "email_read", "email_rename_folder", "email_save_attachment", "email_search", "email_send", "drive_read", "chat_list", "chat_members", "chat_read"]` |  | Tools whose results bypass sanitization. Defaults to the `email_*` tools, which screen what they read with `PromptInjectionDocumentValidator` and mark it untrusted themselves (ADR-012), and to `drive_read`, which does the same with a file's text (ADR-013), and to `chat_list`, `chat_members` and `chat_read`, which screen the names and messages they return (ADR-021) — tagging them again would stack two envelopes. The other `drive_*` tools return names and metadata they do not screen, and stay sanitized. Entries from configuration are added to these. |
 <!-- /settings -->
 
 ### `Security:Url`
@@ -1575,8 +1576,8 @@ A result past its bound is cut and ends with a notice, `N chars omitted. …`, n
 dropped. `shell_command`, its stream cap and `job_tail` read the same bound, and so does the cut
 `ctx.llm.act` falls back on when no pipeline applies one. A tool that has already cut its own output
 (`shell_command` with its notice) flags the result as already bounded, and the pipeline does not cut
-it a second time. The `ResultBudget` of the Drive and
-Email tools is a separate bound, out of this setting.
+it a second time. The `ResultBudget` of the Drive,
+Email and Chat tools is a separate bound, out of this setting.
 
 <!-- settings:Orkeon:Tools:ResultLimits -->
 **Read by**: `orkeon`, `orkeon-host`, `orkeon-repl`.
@@ -1704,6 +1705,46 @@ never copied into the process; the process environment alone on Linux and macOS.
 | `CredentialsDirectory` | string | — |  | Physical directory holding the OAuth tokens, for a host whose per-user settings directory is not the right one (a service account). Read by the host, not by the tools. |
 | `DefaultAccount` | string | — |  | The account a call uses when it names none. Optional with a single account. |
 | `Screening:WithholdRejected` | boolean | `false` |  | When true, a message the prompt-injection detector rejects has its body withheld. Off by default: the detector was tuned on web pages, and newsletters trip it. |
+<!-- /settings -->
+
+### `Orkeon:Tools:Chat`
+
+Bound by `AddOrkeonChatTools(configuration)` and validated lazily, as the drive section is: an account
+is validated the first time a tool or an `orkeon chat` command uses it, every problem reported at
+once, and a value that cannot be read sets that one account aside instead of failing the host. No key
+holds a secret: the application is a public client. Walkthroughs and the tools:
+[Chat tools](../guides/chat.md).
+
+- **`DefaultAccount`** — the account a call that names none uses (optional with a single account).
+- **`CredentialsDirectory`** — the physical directory whose `chat` subdirectory holds the OAuth
+  tokens; default: `credentials` next to the per-user settings file. The runner keeps one credentials
+  directory: when `Orkeon:Tools:Email` or `Orkeon:Tools:Drive` names another one, the e-mail one wins,
+  then the drive one, and the runner says so at start.
+- **`Screening:WithholdRejected`** — withhold the text of a message the prompt-injection screen
+  rejects (default `false`: flag only).
+- **`Accounts:<name>`** — one account. `Provider` (`Teams`), `Rights` and `Auth:ClientId` are
+  **mandatory**; the rights the tools use are `Read` and `Send`. An empty `Read:AllowedPlaces` reads
+  nowhere, an empty `Send:AllowedPlaces` posts nowhere, and `Auth:AdminGranted: ["ChannelMessages"]`
+  opens the reading of channels.
+
+<!-- settings:Orkeon:Tools:Chat -->
+**Read by**: `orkeon`, `orkeon-host`, `orkeon-repl`.
+
+| Key | Type | Default | Values | Meaning |
+|---|---|---|---|---|
+| `Accounts:<name>:Auth:AdminGranted` | list of string | `[]` |  | What the tenant administrator has consented to for the application: `ChannelMessages`, `ChannelEdit`, `Meetings`. Each adds its scope to the next sign-in. |
+| `Accounts:<name>:Auth:ClientId` | string | — |  | The id of your Microsoft Entra application. |
+| `Accounts:<name>:Auth:Method` | enum | — | `OAuth2`, `ClientCredentials` | `OAuth2` (default): a user signs in. |
+| `Accounts:<name>:Auth:Tenant` | string | — |  | The tenant id or domain; `organizations` when unset. |
+| `Accounts:<name>:Cloud` | enum | — | `Global`, `UsGov`, `UsGovDoD`, `China` | The Microsoft cloud: `Global` (default), `UsGov` or `UsGovDoD`. |
+| `Accounts:<name>:Provider` | enum | — | `Teams`, `TeamsWebhook` | `Teams`. Mandatory. |
+| `Accounts:<name>:Read:AllowedPlaces` | list of string | `[]` |  | The places an agent may read. Empty means none. |
+| `Accounts:<name>:Rights` | enum | `"None"` | `None`, `Read`, `Send`, `Edit`, `Delete`, `React`, `Meetings` | What an agent may do, e.g. `"Read, Send"`. Mandatory. |
+| `Accounts:<name>:Send:AllowedPlaces` | list of string | `[]` |  | The places an agent may post in. Empty means none. |
+| `Accounts:<name>:Send:MaxPerHour` | integer | — |  | The most posts the account attempts in an hour, in this process. Unset sets no cap. |
+| `CredentialsDirectory` | string | — |  | Physical directory holding the OAuth tokens, for a host whose per-user settings directory is not the right one (a service account). Read by the host, not by the tools. |
+| `DefaultAccount` | string | — |  | The account a call uses when it names none. Optional with a single account. |
+| `Screening:WithholdRejected` | boolean | `false` |  | When true, a message the prompt-injection detector rejects has its text withheld. Off by default, as for e-mail: the detector flags; rights and places bound an agent. |
 <!-- /settings -->
 
 ### `Orkeon:Tools:Drive`

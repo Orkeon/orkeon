@@ -43,6 +43,14 @@ Giving agents a mailbox is one of the most requested features: the tutorial gets
 | [`orkeon drive` commands](./reference/cli.md#orkeon-drive) | `accounts`, `check` (find the root folder and list it), `login` / `logout` — options and exit codes |
 | [ADR-013 — the drive tool family](./adr/ADR-013-drive-tool-family.md) | Why a tool family rather than a VFS mount, and the OAuth layer the two cloud families share |
 
+### Chat
+
+| File | Description |
+|------|-------------|
+| [Chat tools](./guides/chat.md) | Give agents Microsoft Teams: registering the Entra application, `orkeon chat login` in the browser or with `--device-code`, rights and scopes, places closed by default, administrator consent, what a message may and may not do to an agent |
+| [`orkeon chat` commands](./reference/cli.md#orkeon-chat) | `accounts`, `check` (what the account can do, right by right), `login` / `logout` — options and exit codes |
+| [ADR-021 — the chat tool family](./adr/ADR-021-chat-tool-family.md) | Why tools named after the function, and why places are closed by default |
+
 ### Architecture
 
 | File | Description |
@@ -88,7 +96,7 @@ Giving agents a mailbox is one of the most requested features: the tutorial gets
 
 | File | Description |
 |------|-------------|
-| [Tool inventory](./tools/inventory.md) | 124 tools by category with their call parameters, YAML resolution (strict/lenient), DI registration, availability per host, identified gaps |
+| [Tool inventory](./tools/inventory.md) | 129 tools by category with their call parameters, YAML resolution (strict/lenient), DI registration, availability per host, identified gaps |
 | [Creating a new tool](./tools/new-tool-pattern.md) | Typed pipeline, FieldSchema/ReturnSchema attributes, composition pattern, registration |
 
 ### Guides
@@ -115,7 +123,7 @@ Giving agents a mailbox is one of the most requested features: the tutorial gets
 |------|-------------|
 | [Scripting DSL reference](./reference/scripting-dsl.md) | Every `.ork.ts` builder and method, with the column that exists nowhere else: which of the two shapes honours it. Plus the known gaps between the typings and the runtime |
 | [Examples catalog](./reference/examples-catalog.md) | Editorial map of `examples/` (9 business categories + RAG/RaggableTree/scripting showcases); the generated `examples/INDEX.md` is the authoritative inventory |
-| [`orkeon` CLI reference](./reference/cli.md) | Every command (`run`, `init`, `llm`, `rag`, `forge`, `usecases`, `email`, `drive`, `doctor`, `settings`, `typings`, `mcp`, `quickstart`, `eval`, `runs`) with options and examples, plus `orkeon-repl` |
+| [`orkeon` CLI reference](./reference/cli.md) | Every command (`run`, `init`, `llm`, `rag`, `forge`, `usecases`, `email`, `drive`, `chat`, `doctor`, `settings`, `typings`, `mcp`, `quickstart`, `eval`, `runs`) with options and examples, plus `orkeon-repl` |
 | [Configuration reference](./reference/configuration.md) | The single map of the settings (`Llm`, `Orkeon:*`, `MCP`…): sources and precedence, then every key by category — one line per key, with its type, its default and the hosts that read it |
 | [Limits and constraints](./reference/limitations.md) | Known constraints of the current version, including what ships but is not wired yet |
 | [A2A conformance matrix](./reference/a2a-conformance.md) | Honest position vs the A2A v1.0 spec: operations, data model, bindings, security — what interoperates and what does not |

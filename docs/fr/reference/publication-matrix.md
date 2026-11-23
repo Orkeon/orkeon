@@ -22,7 +22,7 @@ un amont en pré-release).
 | PackageId | Pourquoi |
 |---|---|
 | `Orkeon` | Le paquet ombrelle — les treize assemblies de la fermeture du cœur (`Orkeon.Domain`, `Orkeon.Application`, `Orkeon.Infrastructure`, `Orkeon.Constants.{Llm,FileSystem,Configuration,Protocol}`, `Orkeon.Tools.Abstractions`, `Orkeon.Analysis.Abstractions`, `Orkeon.Rag.Abstractions`, `Orkeon.Analysis`, `Orkeon.Rag`, `Orkeon.Plugins`) embarquées dans un seul nupkg. Une installation = le framework complet : agents, crews, six modes d'orchestration, 16 fournisseurs LLM, 6 stores mémoire, RAG, RaggableTree. Le découpage Clean Architecture reste une discipline d'arborescence source, pas un contrat de distribution. |
-| `Orkeon.Tools` | Les neuf familles d'outils intégrés (`Analysis`, `Code`, `Data`, `Drive`, `Email`, `EventHub`, `FileSystem`, `Rag`, `Web`) dans un seul nupkg. Séparé d'`Orkeon` **uniquement pour le poids des dépendances** : les outils Data tirent des drivers de bases de données, des bibliothèques PDF et tableur, les outils e-mail MailKit et MimeKit — des dépendances dont un consommateur qui ne s'en sert jamais ne devrait pas hériter. Dépend d'`Orkeon`. |
+| `Orkeon.Tools` | Les dix familles d'outils intégrés (`Analysis`, `Chat`, `Code`, `Data`, `Drive`, `Email`, `EventHub`, `FileSystem`, `Rag`, `Web`) dans un seul nupkg. Séparé d'`Orkeon` **uniquement pour le poids des dépendances** : les outils Data tirent des drivers de bases de données, des bibliothèques PDF et tableur, les outils e-mail MailKit et MimeKit — des dépendances dont un consommateur qui ne s'en sert jamais ne devrait pas hériter. Dépend d'`Orkeon`. |
 | `Orkeon.Rag.Onnx`, `Orkeon.Rag.Onnx.Model` | Paire opt-in du reranker cross-encoder ONNX (runtime + poids int8 embarqués) — poussés ensemble ; charge native onnxruntime. `Orkeon.Rag.Onnx` dépend d'`Orkeon` ; `Orkeon.Rag.Onnx.Model` n'a aucune dépendance (ressources embarquées seulement) et se référence à côté de lui. |
 | `Orkeon.Tools.Embeddings.Local` | Embeddings locaux sur la machine (BGE-micro-v2 ONNX). Reste **hors de l'ombrelle** parce qu'il porte une dépendance SmartComponents en pré-release, d'un amont archivé — l'inclure dans `Orkeon` imposerait cette pré-release à chaque consommateur. Dépend d'`Orkeon`. |
 | `Orkeon.Constants.Cli` | Le vocabulaire CLI partagé : les noms d'options qu'acceptent les runners (`RunOptionNames`), leurs codes de sortie (`RunExitCodes`) et les clés d'état de session (`SessionStateKeys`), pour un outil qui pilote `orkeon run`. Un satellite sans dépendance (ADR-009), packé directement depuis son projet ; `Orkeon.Scripting` en dépend au lieu de l'embarquer. |
@@ -80,7 +80,7 @@ un amont en pré-release).
 Les projets suivants ne sont **pas packés sous leur propre id** (`IsPackable=false`) : `Orkeon.Domain`,
 `Orkeon.Application`, `Orkeon.Infrastructure`, les satellites `Orkeon.Constants.{Llm,FileSystem,Configuration,Protocol}`,
 `Orkeon.Analysis`, `Orkeon.Analysis.Abstractions`, `Orkeon.Rag`, `Orkeon.Rag.Abstractions`,
-`Orkeon.Tools.Abstractions` et les neuf projets `Orkeon.Tools.<famille>`, `Orkeon.Cli`,
+`Orkeon.Tools.Abstractions` et les dix projets `Orkeon.Tools.<famille>`, `Orkeon.Cli`,
 `Orkeon.Cli.Commands.Scripting`, `Orkeon.Hosting`, `Orkeon.Plugins`. Ceux qu'embarquent les ombrelles
 `Orkeon` et `Orkeon.Tools` sont toujours livrés — dans le nupkg de l'ombrelle, pas sous leur
 propre identifiant (`Orkeon.Plugins` est la treizième assembly d'`Orkeon`) ; `Orkeon.Hosting` est livré dans le paquet `Orkeon.Scripting`, l'opt-in qui porte la couche

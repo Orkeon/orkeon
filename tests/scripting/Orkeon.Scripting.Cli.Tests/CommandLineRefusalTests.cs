@@ -40,6 +40,7 @@ public sealed class CommandLineRefusalTests
         "run", "quickstart", "init", "doctor", "llm probe", "llm models", "rag ingest", "rag search", "eval rag", "eval run", "eval bench", "eval compare",
         "email accounts", "email login", "email logout", "email check",
         "drive accounts", "drive login", "drive logout", "drive check",
+        "chat accounts", "chat login", "chat logout", "chat check",
         "usecases list", "usecases show", "usecases export", "mcp serve", "bridge serve", "runs list", "runs show",
     ];
 
@@ -94,6 +95,10 @@ public sealed class CommandLineRefusalTests
             "drive login" => ["drive", "login", "pro", "-s", settings, Extra],
             "drive logout" => ["drive", "logout", "pro", "-s", settings, Extra],
             "drive check" => ["drive", "check", "pro", "-s", settings, Extra],
+            "chat accounts" => ["chat", "accounts", "-s", settings, Extra],
+            "chat login" => ["chat", "login", "pro", "-s", settings, Extra],
+            "chat logout" => ["chat", "logout", "pro", "-s", settings, Extra],
+            "chat check" => ["chat", "check", "pro", "-s", settings, Extra],
             "usecases list" => ["usecases", "list", Extra],
             "usecases show" => ["usecases", "show", "03-email-pipeline", Extra],
             "usecases export" => ["usecases", "export", "01-research-assistant", "--to", target, Extra],

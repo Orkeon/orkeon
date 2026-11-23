@@ -302,7 +302,7 @@ Un runner monte pour lui-même quelques racines en montages **internes**
 (`Orkeon:FileSystem:InternalMounts`, `MountVisibility.Internal`) : `/llm-logs` (les fichiers
 d'échanges de `--llm-log`), `/sandbox` (où les sandboxes de code déposent ce qu'elles exécutent),
 `/state` (le magasin de checkpoints), `/runs` (l'historique des runs), `/llm-mock` et
-`/llm-cassette` (`--llm-mock`, `--llm-record`/`--llm-replay`) et `/credentials` (les jetons OAuth des comptes e-mail et drive — montée seulement quand un compte OAuth
+`/llm-cassette` (`--llm-mock`, `--llm-record`/`--llm-replay`) et `/credentials` (les jetons OAuth des comptes e-mail, drive et chat — montée seulement quand un compte OAuth
 de l'une des deux familles est déclaré). Le registre refuse un montage interne à tout appelant ordinaire et le signale comme
 un chemin inexistant : aucun outil destiné aux agents ne peut l'atteindre ni même le nommer
 ([ADR-008](../adr/ADR-008-virtual-paths-are-the-only-currency.md)). Les quelques composants qui

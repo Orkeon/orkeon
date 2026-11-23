@@ -330,6 +330,43 @@ grant the fewest rights, set a `Root`, and do not give an untrusted crew both dr
 outbound channel (`http_api`, the web tools, `drive_share`). The token files are plain JSON:
 shielded from the VFS tools, **not** from a shell or code tool running as the same user.
 
+### Chat tools
+
+The chat family (`Orkeon.Tools.Chat` — [guide](../guides/chat.md)) reads and posts in Microsoft
+Teams as the signed-in user, where colleagues and guests write. Its defense follows the two others:
+
+- **The model only picks an account name.** The client, the tenant, the rights and the places are the
+  operator's configuration (`Orkeon:Tools:Chat`); no credential is ever a tool argument, and the
+  application is a public client, with no secret at all.
+- **Rights are declared per account, and mandatory**, and the sign-in asks for the permissions they
+  need; an administrator's permission is asked only when `AdminGranted` names it. `chat_send` is
+  Execute, the four other tools Read.
+- **Places fail closed, in both directions.** An empty `Read:AllowedPlaces` reads nowhere, an empty
+  `Send:AllowedPlaces` posts nowhere. Names are resolved to ids once and ids alone are compared, so a
+  place renamed later takes nothing over; an ambiguous name sets its entry aside. A domain is matched
+  on the home tenant's address, never on the e-mail address of a guest's profile.
+- **Received content is untrusted.** Every result opens with a notice that it is data, and each
+  message carries the verdict of the same `PromptInjectionDocumentValidator`; names are screened too.
+  `chat_list`, `chat_members` and `chat_read` therefore bypass the result
+  sanitizer. `Screening:WithholdRejected` withholds a rejected message; a deleted message and one Teams marks as
+  a policy violation are always withheld.
+- **A post is bounded.** Raw HTML is encoded, only `http` and `https` links are kept, mentions take
+  directory ids that were looked up, posts are paced and `Send:MaxPerHour` caps the attempts of the
+  process. A post that may have been done is never repeated.
+- **The token never leaves the Graph host** of the account's cloud, over HTTPS, with no redirect
+  followed; a paging link to another host is refused. Tokens are written by `orkeon chat login` into
+  the `chat` subdirectory of the internal root `/credentials`
+  ([VFS compliance](./vfs-compliance.md)).
+- **Forged crews never touch a chat.** `orkeon forge` removes the five chat tools from the catalogue:
+  there is no trial tenant.
+
+**Honest limits.** The family has not been run on a real tenant. The screen flags, and a paraphrased
+injection passes it; the boundary is the rights and the two closed lists. Every account is visible to
+every crew and script that resolves the same settings file — declare accounts in the crew's own
+settings, grant the fewest rights, and do not give an untrusted crew both chat `Read` and an outbound
+channel. The token files are plain JSON: shielded from the VFS tools, **not** from a shell or code
+tool running as the same user.
+
 ### Tool bridge
 
 The tool bridge ([guide](../guides/tool-bridge.md), [ADR-019](../adr/ADR-019-tool-bridge.md)) runs some built-in

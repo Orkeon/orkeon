@@ -1,1 +1,11 @@
 #nullable enable
+Orkeon.Constants.Protocol.ChatEventKinds
+const Orkeon.Constants.Protocol.ChatEventKinds.CheckCompleted = "chat.check.completed" -> string!
+const Orkeon.Constants.Protocol.ChatEventKinds.Error = "error" -> string!
+const Orkeon.Constants.Protocol.ChatEventKinds.LoginAuthorizationUrl = "chat.login.authorization_url" -> string!
+const Orkeon.Constants.Protocol.ChatEventKinds.LoginCompleted = "chat.login.completed" -> string!
+const Orkeon.Constants.Protocol.ChatEventKinds.LoginDeviceCode = "chat.login.device_code" -> string!
+const Orkeon.Constants.Protocol.ChatEventKinds.LoginRedirectRejected = "chat.login.redirect_rejected" -> string!
+static Orkeon.Constants.Protocol.ChatEventKinds.All.get -> System.Collections.Generic.IReadOnlyList<string!>!
+static Orkeon.Constants.Protocol.ChatEventKinds.Check.get -> System.Collections.Generic.IReadOnlyList<string!>!
+static Orkeon.Constants.Protocol.ChatEventKinds.Login.get -> System.Collections.Generic.IReadOnlyList<string!>!

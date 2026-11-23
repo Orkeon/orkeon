@@ -5,7 +5,7 @@
 # ADR-021 — The chat tool family, Microsoft Teams first: a fifth motivated exception to the scope freeze
 
 **Status**: Accepted · **Date**: 2026-11-23
-· **Scope**: a future `Orkeon.Tools.Chat` family, `Orkeon.Tools.Abstractions/Auth` (the OAuth client it shares with the e-mail and drive families), `Orkeon.Hosting` (the `chat` subdirectory of `/credentials`), `orkeon chat` (`Orkeon.Scripting.Cli`), `Orkeon.Host` (the inbound Teams channel), the `Orkeon.Tools` umbrella
+· **Scope**: the `Orkeon.Tools.Chat` family, `Orkeon.Tools.Abstractions/Auth` (the OAuth client it shares with the e-mail and drive families), `Orkeon.Hosting` (the `chat` subdirectory of `/credentials`), `orkeon chat` (`Orkeon.Scripting.Cli`), `Orkeon.Host` (the inbound Teams channel), the `Orkeon.Tools` umbrella
 
 This ADR records the decision and the design. It ships no tool: the tools arrive with the lots that follow it, and those lots amend the counts, the inventory, the limitations page and CONTRIBUTING.
 

@@ -36,6 +36,12 @@
       href: guides/tool-bridge.md
     - name: orkeon drive commands
       href: reference/cli.md#orkeon-drive
+- name: Chat
+  items:
+    - name: Chat tools — Microsoft Teams
+      href: guides/chat.md
+    - name: orkeon chat commands
+      href: reference/cli.md#orkeon-chat
 - name: Architecture
   items:
     - name: LLM providers
@@ -196,6 +202,8 @@
       href: adr/ADR-019-tool-bridge.md
     - name: ADR-020 — An experimental agent-cli provider
       href: adr/ADR-020-agent-cli-provider.md
+    - name: ADR-021 — The chat tool family
+      href: adr/ADR-021-chat-tool-family.md
     - name: ADR — RaggableTree semantic graph
       href: architecture/raggable-tree-adr.md
 - name: Templates

@@ -47,7 +47,7 @@ flowchart LR
     you --> code["Orkeon Code<br/>un assistant de codage<br/>sur votre dépôt"]
     you --> cli["CLI orkeon<br/>YAML · TypeScript (.ork.ts)"]
     you --> app["Votre propre application .NET<br/>builders C#, NuGet"]
-    studio & workshop & code & cli & app --> runtime["Le runtime Orkeon<br/>système de fichiers virtuel · budgets · bac à sable<br/>124 outils · 16 fournisseurs LLM"]
+    studio & workshop & code & cli & app --> runtime["Le runtime Orkeon<br/>système de fichiers virtuel · budgets · bac à sable<br/>129 outils · 16 fournisseurs LLM"]
     runtime --> world(["Vos fichiers, boîtes aux lettres, drives, API<br/>— seulement ceux que vous avez montés, avec les droits que vous avez donnés"])
 ```
 
@@ -117,7 +117,7 @@ Refusé avant qu'un octet n'atteigne le disque. La CI exécute les deux blocs à
 | **Orkeon Studio** | Une application de bureau pour Windows 10 et 11 uniquement : créez une équipe sans code ni terminal, en quatre étapes — *Describe → Compose → Try → Adopt*. Elle pilote le CLI `orkeon`, à installer au préalable — [Orkeon/orkeon-studio](https://github.com/Orkeon/orkeon-studio). |
 | **Orkeon Workshop** | Claude Code, harnaché. Une image de conteneur — le CLI Orkeon, des modèles locaux sur votre GPU, Claude Code installé au premier démarrage — et une méthode : besoin → tests → équipe → exécutions → acceptée, chaque tentative et chaque décision gardées sur disque, une exécution payante qui attend votre accord. Les équipes en sortent prêtes pour le CLI `orkeon` ; le même harnais travaille sur Orkeon lui-même — [Orkeon/orkeon-workshop](https://github.com/Orkeon/orkeon-workshop). |
 | **Orkeon Code** | Un assistant de codage sur le runtime Orkeon. Travaillez en binôme dans le terminal sous le mode de permission de votre choix, ou laissez-le mener une tâche jusqu'au bout ; `/review`, `/commit`, `/security-review`, `/analyze` ; un seul projet monté, un shell en liste blanche — [Orkeon/orkeon-code](https://github.com/Orkeon/orkeon-code). |
-| **Le CLI `orkeon`** | `orkeon run` exécute une équipe écrite en YAML ou en TypeScript (`.ork.ts`) ; `orkeon forge "…"` en rédige une à partir d'une phrase, la teste en bac à sable et la promeut ; `orkeon quickstart` écrit l'équipe « deux minutes » ci-dessus ; `init`, `doctor`, `email login` et `drive login` font la plomberie — [référence du CLI](docs/fr/reference/cli.md). |
+| **Le CLI `orkeon`** | `orkeon run` exécute une équipe écrite en YAML ou en TypeScript (`.ork.ts`) ; `orkeon forge "…"` en rédige une à partir d'une phrase, la teste en bac à sable et la promeut ; `orkeon quickstart` écrit l'équipe « deux minutes » ci-dessus ; `init`, `doctor`, `email login`, `drive login` et `chat login` font la plomberie — [référence du CLI](docs/fr/reference/cli.md). |
 | **La bibliothèque** | `dotnet add package Orkeon` — le même moteur dans votre produit : builders C#, Clean Architecture, typé de bout en bout — [Amorçage et exécution](docs/fr/getting-started/bootstrap.md). |
 
 L'équipe que vous forgez à partir d'une phrase est le YAML que le CLI exécute, et l'équipe que votre propre code .NET charge. Un seul runtime, les mêmes règles, quelle que soit la porte.
@@ -147,7 +147,7 @@ L'équipe que vous forgez à partir d'une phrase est le YAML que le CLI exécute
 
 ## Ce qu'il y a dans la boîte
 
-124 outils intégrés (mail en IMAP, SMTP et Microsoft Graph ; Google Drive et OneDrive ; web, HTTP, bases de données, Office et PDF, exécution de code sécurisée, analyse sémantique de code) · 16 fournisseurs LLM (14 éditeurs, 2 agrégateurs), modèles locaux compris (Ollama, Docker Model Runner, llama.cpp embarqué) · 6 fournisseurs de mémoire · 6 stratégies d'orchestration, de la simple séquence au graphe ou à l'équipe autonome sous budget · un pipeline RAG par étapes · points de reprise · plugins dans des contextes de chargement isolés · 104 exemples exécutables. Chaque nombre de cette page est recalculé par la CI à chaque changement — un README qui s'en écarte fait échouer le build.
+129 outils intégrés (mail en IMAP, SMTP et Microsoft Graph ; Google Drive et OneDrive ; Microsoft Teams ; web, HTTP, bases de données, Office et PDF, exécution de code sécurisée, analyse sémantique de code) · 16 fournisseurs LLM (14 éditeurs, 2 agrégateurs), modèles locaux compris (Ollama, Docker Model Runner, llama.cpp embarqué) · 6 fournisseurs de mémoire · 6 stratégies d'orchestration, de la simple séquence au graphe ou à l'équipe autonome sous budget · un pipeline RAG par étapes · points de reprise · plugins dans des contextes de chargement isolés · 104 exemples exécutables. Chaque nombre de cette page est recalculé par la CI à chaque changement — un README qui s'en écarte fait échouer le build.
 
 ## Installer
 

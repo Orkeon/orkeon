@@ -119,7 +119,7 @@ var task = new CrewTaskBuilder()
 
 A Tool is a concrete capability made available to an agent. The `IBaseTool` interface exposes a `Name`, a `Description`, a `Schema` (JSON schema of the parameters), and two execution methods: `CallAsync` (structured protocol via `ToolCallRequest`/`ToolCallResponse`) and `ExecuteAsync` (legacy string mode).
 
-Tools are organized into families — `Orkeon.Tools.FileSystem`, `.Data`, `.Web`, `.Code`, `.Email`, `.Drive`, `.EventHub`, `.Rag`, `.Analysis` — shipped together in the `Orkeon.Tools` NuGet package; each family has its own registration extension — `AddOrkeonFileSystemTools()`, …, `AddOrkeonDriveTools(configuration)`, …, `AddRaggableTreeTools()` (see [Bootstrap](./bootstrap.md)) and the full list is the [tool inventory](../tools/inventory.md). To give agents a mailbox (the `.Email` family: Gmail, Outlook.com, your own IMAP/POP3/SMTP server), start with [Give your agents a mailbox](./give-your-agents-a-mailbox.md).
+Tools are organized into families — `Orkeon.Tools.FileSystem`, `.Data`, `.Web`, `.Code`, `.Email`, `.Drive`, `.Chat`, `.EventHub`, `.Rag`, `.Analysis` — shipped together in the `Orkeon.Tools` NuGet package; each family has its own registration extension — `AddOrkeonFileSystemTools()`, …, `AddOrkeonDriveTools(configuration)`, …, `AddRaggableTreeTools()` (see [Bootstrap](./bootstrap.md)) and the full list is the [tool inventory](../tools/inventory.md). To give agents a mailbox (the `.Email` family: Gmail, Outlook.com, your own IMAP/POP3/SMTP server), start with [Give your agents a mailbox](./give-your-agents-a-mailbox.md).
 
 ### Crew (`Orkeon.Domain.Crew.Crew`)
 
@@ -274,7 +274,7 @@ Agents collaborate through delegation: the `AskQuestionTool` and `DelegateWorkTo
 
 ```
 Orkeon.sln
-├── src/                            # 51 projects, 14 zones
+├── src/                            # 52 projects, 14 zones
 │   ├── core/
 │   │   ├── Orkeon.Domain/          # Entities, value objects, interfaces, events
 │   │   ├── Orkeon.Application/     # CQRS, services, orchestration, ports
@@ -282,6 +282,7 @@ Orkeon.sln
 │   ├── tools/                      # 11 tool packs
 │   │   ├── Orkeon.Tools.Abstractions/     # Tool base classes
 │   │   ├── Orkeon.Tools.Analysis/         # RaggableTree agent tools (29)
+│   │   ├── Orkeon.Tools.Chat/             # Chat tools (Microsoft Teams)
 │   │   ├── Orkeon.Tools.Code/             # Code tools (ShellCommand)
 │   │   ├── Orkeon.Tools.Data/             # Data tools (CSV, PDF, JSON, SQL, MongoDB…)
 │   │   ├── Orkeon.Tools.Drive/            # Google Drive and OneDrive tools
@@ -304,7 +305,7 @@ Orkeon.sln
 │   ├── packaging/                  # NuGet packaging projects (Orkeon, Orkeon.Tools, 7 opt-in wrappers and Orkeon.Templates)
 │   └── apps/
 │       └── Orkeon.ConsoleApp/      # Interactive REPL (`orkeon-repl`)
-├── tests/                          # 35 projects (src mirrors + e2e, shared)
+├── tests/                          # 36 projects (src mirrors + e2e, shared)
 ├── examples/                       # 104 numbered examples in 9 categories, plus showcases
 └── docs/                           # Documentation (EN + docs/fr mirror)
 ```

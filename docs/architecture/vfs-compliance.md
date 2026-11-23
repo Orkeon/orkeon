@@ -287,7 +287,7 @@ both shapes).
 A runner mounts a few roots for itself as **internal** mounts (`Orkeon:FileSystem:InternalMounts`,
 `MountVisibility.Internal`): `/llm-logs` (the `--llm-log` exchange files), `/sandbox` (where the
 code sandboxes stage what they run), `/state` (the checkpoint store), `/runs` (the run history),
-`/llm-mock` and `/llm-cassette` (`--llm-mock`, `--llm-record`/`--llm-replay`) and `/credentials` (the OAuth tokens of the e-mail and drive accounts —
+`/llm-mock` and `/llm-cassette` (`--llm-mock`, `--llm-record`/`--llm-replay`) and `/credentials` (the OAuth tokens of the e-mail, drive and chat accounts —
 mounted only when an OAuth account of either family is declared). The registry refuses an internal mount to every
 ordinary caller and reports it like a path that does not exist, so no agent-facing tool can reach
 or even name one ([ADR-008](../adr/ADR-008-virtual-paths-are-the-only-currency.md)). The few

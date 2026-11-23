@@ -31,7 +31,7 @@ Embedded in the `Orkeon` umbrella — `dotnet add package Orkeon` installs all o
 
 Opt-in packages of their own:
 
-- **`Orkeon.Tools.{Analysis,Code,Data,Drive,Email,EventHub,FileSystem,Rag,Web}`** — the built-in
+- **`Orkeon.Tools.{Analysis,Chat,Code,Data,Drive,Email,EventHub,FileSystem,Rag,Web}`** — the built-in
   agent tool families, packed together as `Orkeon.Tools`.
 - **`Orkeon.Rag.Onnx`, `Orkeon.Rag.Onnx.Model`** — the opt-in ONNX cross-encoder reranker and its
   embedded weights.

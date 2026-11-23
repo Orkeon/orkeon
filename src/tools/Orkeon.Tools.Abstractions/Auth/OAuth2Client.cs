@@ -220,9 +220,17 @@ internal sealed class OAuth2Client
             new("code_challenge", session.Challenge),
             new("code_challenge_method", "S256"),
             new("state", session.State),
-            new("access_type", "offline"),
-            new("prompt", "consent"),
         };
+        if (settings.Prompt is { } prompt)
+        {
+            query.Add(new("prompt", prompt));
+        }
+        else
+        {
+            query.Add(new("access_type", "offline"));
+            query.Add(new("prompt", "consent"));
+        }
+
         if (!string.IsNullOrWhiteSpace(loginHint))
             query.Add(new("login_hint", loginHint));
 

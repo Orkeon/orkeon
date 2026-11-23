@@ -77,6 +77,7 @@ services.AddOrkeonA2A(options => options.EnableServer = true);
 | EventHub core + agent tools | `AddOrkeonInMemoryEventHub()` · `AddOrkeonEventHubTools()` — both wired by `RunnerHost` (hence `orkeon run` and `orkeon-host`) | Infrastructure / Tools.EventHub | `IEventHub` (in-process), the seven EventHub tools — see [EventHub](../architecture/event-hub-and-crew-lifecycle.md) | Stable |
 | E-mail tools | `AddOrkeonEmailTools(configuration)` (`Orkeon:Tools:Email`, inert until an account is declared) · `AddOrkeonEmailTokenStore(fileSystem, virtualDirectory)` (OAuth token store) — both wired by `RunnerHost`; the REPL wires the tools only | Tools.Email | the 13 `email_*` tools — see [E-mail tools](../guides/email.md) | Stable |
 | Drive tools | `AddOrkeonDriveTools(configuration)` (`Orkeon:Tools:Drive`, inert until an account is declared) · `AddOrkeonDriveTokenStore(fileSystem, virtualDirectory)` (OAuth token store) — both wired by `RunnerHost`; the REPL wires the tools only | Tools.Drive | the 11 `drive_*` tools — see [Drive tools](../guides/drive.md) | Stable |
+| Chat tools | `AddOrkeonChatTools(configuration)` (`Orkeon:Tools:Chat`, inert until an account is declared) · `AddOrkeonChatTokenStore(fileSystem, virtualDirectory)` (OAuth token store) — both wired by `RunnerHost`; the REPL wires the tools only | Tools.Chat | the 5 `chat_*` tools — see [Chat tools](../guides/chat.md) | Stable |
 | Microsoft Agent Framework bridge | `AddOrkeonAgentFramework()` | Interop.AgentFramework | `ICrewAgentFactory` (a crew as an `AIAgent`, loaded and run in a scope of its own every turn) — see [ADR-010](../adr/ADR-010-agent-framework-interop.md) | Stable |
 | `agent-cli` LLM provider | `AddOrkeonAgentCli()` — wired by `orkeon`, `orkeon-repl` and `orkeon-host`; inert until a section says `"Provider": "agent-cli"` | Interop.AgentCli | `ILlmProviderModule` `agent-cli` (an agent CLI on its own subscription, Orkeon's tools through an MCP bridge, `Llm:AgentCli` settings) — see [ADR-020](../adr/ADR-020-agent-cli-provider.md) | Experimental (`ORKEXP010`) |
 
@@ -95,7 +96,7 @@ services.AddOrkeonA2A(options => options.EnableServer = true);
 > `AddOrkeonWebSearchTool`, `AddOrkeonBraveSearchTool`, `AddOrkeonCacheSearchTool`,
 > `AddOrkeonSlackTool`, `AddOrkeonSlackReadTool`), `AddOrkeonDataTools` (plus
 > `AddRelationalDatabaseTools`, `AddMongoDbTools`, `AddGraphDatabaseTools`),
-> `AddOrkeonCodeTools`, `AddOrkeonDriveTools`, `AddOrkeonAbstractionTools`, `AddRaggableTreeTools` — see the
+> `AddOrkeonCodeTools`, `AddOrkeonDriveTools`, `AddOrkeonChatTools`, `AddOrkeonAbstractionTools`, `AddRaggableTreeTools` — see the
 > [tool inventory](../tools/inventory.md).
 
 ## Building blocks registered by `AddOrkeonInfrastructure()`

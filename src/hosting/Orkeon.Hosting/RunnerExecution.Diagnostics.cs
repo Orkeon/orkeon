@@ -519,7 +519,7 @@ public static partial class RunnerExecution
     }
 
     /// <summary>
-    /// Refuses a crew whose mail or drive tools no ready account grants, before any model call:
+    /// Refuses a crew whose mail, drive or chat tools no ready account grants, before any model call:
     /// one read of each family's account statuses, none when the crew names none of its tools.
     /// </summary>
     private static async Task RefuseUngrantedAccountToolsAsync(
@@ -527,7 +527,8 @@ public static partial class RunnerExecution
     {
         var mail = host.Services.GetService<Orkeon.Tools.Email.Accounts.EmailRightsCheck>();
         var drive = host.Services.GetService<Orkeon.Tools.Drive.Accounts.DriveRightsCheck>();
-        if (mail is null && drive is null)
+        var chat = host.Services.GetService<Orkeon.Tools.Chat.Accounts.ChatRightsCheck>();
+        if (mail is null && drive is null && chat is null)
             return;
 
         var agents = scopeServices.GetService<Domain.Agent.IAgentRepository>() is { } agentRepository
@@ -547,6 +548,8 @@ public static partial class RunnerExecution
             lines.AddRange(await mail.CheckAsync(toolNames, ct).ConfigureAwait(false));
         if (drive is not null)
             lines.AddRange(await drive.CheckAsync(toolNames, ct).ConfigureAwait(false));
+        if (chat is not null)
+            lines.AddRange(await chat.CheckAsync(toolNames, ct).ConfigureAwait(false));
         if (lines.Count > 0)
             throw new InvalidOperationException(string.Join('\n', lines));
     }

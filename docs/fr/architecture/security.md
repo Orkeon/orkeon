@@ -358,6 +358,47 @@ les comptes dans les propres réglages du crew, accordez le moins de droits poss
 (`http_api`, les outils web, `drive_share`). Les fichiers de jetons sont du JSON en clair : à
 l'abri des outils du VFS, **pas** d'un outil shell ou de code qui tourne sous le même utilisateur.
 
+### Outils chat
+
+La famille chat (`Orkeon.Tools.Chat` — [guide](../guides/chat.md)) lit et publie dans Microsoft Teams
+au nom de l'utilisateur connecté, là où écrivent des collègues et des invités. Sa défense suit celle
+des deux autres :
+
+- **Le modèle ne choisit qu'un nom de compte.** Le client, le tenant, les droits et les lieux sont la
+  configuration de l'opérateur (`Orkeon:Tools:Chat`) ; aucun identifiant n'est jamais un argument
+  d'outil, et l'application est un client public, sans aucun secret.
+- **Les droits sont déclarés par compte, et obligatoires**, et la connexion demande les permissions
+  qu'ils exigent ; une permission d'administrateur n'est demandée que quand `AdminGranted` la nomme.
+  `chat_send` est Execute, les quatre autres outils Read.
+- **Les lieux sont fermés par défaut, dans les deux sens.** Une liste `Read:AllowedPlaces` vide ne lit
+  nulle part, une liste `Send:AllowedPlaces` vide ne publie nulle part. Les noms sont résolus en ids
+  une fois et seuls les ids sont comparés : un lieu renommé plus tard ne prend la place d'aucun autre ;
+  un nom ambigu met son entrée de côté. Un domaine est comparé à l'adresse du tenant d'origine, jamais
+  à l'adresse e-mail du profil d'un invité.
+- **Le contenu reçu n'est pas fiable.** Chaque résultat s'ouvre sur un avis disant que c'est une
+  donnée, et chaque message porte le verdict du même `PromptInjectionDocumentValidator` ; les noms
+  sont filtrés aussi, et `chat_list`, `chat_members` et `chat_read` contournent donc le filtrage des
+  résultats. `Screening:WithholdRejected` retient un message rejeté ; un message supprimé et
+  un message que Teams marque comme violation d'une politique sont toujours retenus.
+- **Une publication est bornée.** Le HTML brut est encodé, seuls les liens `http` et `https` sont
+  gardés, les mentions prennent des ids d'annuaire vérifiés, les publications sont cadencées et
+  `Send:MaxPerHour` plafonne les tentatives du processus. Une publication qui a pu avoir lieu n'est
+  jamais répétée.
+- **Le jeton ne quitte jamais l'hôte Graph** du cloud du compte, en HTTPS, sans suivre de redirection ;
+  un lien de pagination vers un autre hôte est refusé. Les jetons sont écrits par `orkeon chat login`
+  dans le sous-répertoire `chat` de la racine interne `/credentials`
+  ([conformité VFS](./vfs-compliance.md)).
+- **Les crews forgés ne touchent jamais un chat.** `orkeon forge` retire les cinq outils chat du
+  catalogue : il n'y a pas de tenant d'essai.
+
+**Limites honnêtes.** La famille n'a pas été jouée sur un vrai tenant. Le filtre signale, et une
+injection paraphrasée passe ; la frontière, ce sont les droits et les deux listes fermées. Chaque
+compte est visible de chaque crew et de chaque script qui résout le même fichier de réglages —
+déclarez les comptes dans les propres réglages du crew, accordez le moins de droits possible, et ne
+donnez pas à un crew non fiable à la fois le `Read` chat et un canal sortant. Les fichiers de jetons
+sont du JSON en clair : à l'abri des outils du VFS, **pas** d'un outil shell ou de code qui tourne
+sous le même utilisateur.
+
 ### Pont d'outils
 
 Le pont d'outils ([guide](../guides/tool-bridge.md), [ADR-019](../adr/ADR-019-tool-bridge.md)) exécute certains

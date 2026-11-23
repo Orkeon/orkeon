@@ -137,7 +137,7 @@ A virtual path is always a name starting with `/` — never a disk path
 declaration — names the roots the shipped runners take for themselves: `/crew` (the crew
 definition's directory), `/script` (a scripting entry point's directory), `/llm-logs`, `/llm-mock` and `/llm-cassette`
 (the `--llm-mock` file and the recorded or replayed cassette), `/sandbox` (where the code sandboxes stage what they run) and `/credentials` (the OAuth tokens
-of the e-mail and drive accounts, refused to a user mount by every command). `RunnerVirtualRoots.All` is the set a
+of the e-mail, drive and chat accounts, refused to a user mount by every command). `RunnerVirtualRoots.All` is the set a
 caller refuses a user `--mount` against; asking for the set rather than comparing the roots one by
 one is deliberate, because the omission of `/sandbox` survived a pairwise check for as long as it
 was green. A caller that enables exchange logging mounts its log directory internally and passes
@@ -156,7 +156,7 @@ It composes `Host.CreateDefaultBuilder()` with:
   `appsettings.{Environment}.json` of the content root — the current directory — nor user secrets
   Then an in-memory layer carrying the mount
   decisions: the `--mount` values placed by virtual root, the internal mounts, the
-  `/credentials` mount of the e-mail and drive OAuth tokens, and the `PathSecurity:AdditionalAllowedDirectories`
+  `/credentials` mount of the e-mail, drive and chat OAuth tokens, and the `PathSecurity:AdditionalAllowedDirectories`
   entries that let the path validator reach those mounts' folders (a `--mount` outside the working
   directory only with `AllowExternalMounts`).
 - **Services** — `ConfigureRunnerServices` (below).
@@ -208,7 +208,8 @@ The registration order is deliberate:
    OAuth e-mail account is declared, their token store over the internal `/credentials` root —
    mounted by the configuration step, reached through `PrivilegedFileSystemAccess`; then the drive tools
    (`AddOrkeonDriveTools(configuration)`, inert until an account is declared) and, when the internal
-   `/credentials` root is mounted, their token store in a subdirectory of their own; then the RAG
+   `/credentials` root is mounted, their token store in a subdirectory of their own; then the chat
+   tools the same way (`AddOrkeonChatTools(configuration)`, tokens in the `chat` subdirectory); then the RAG
    subsystem and its three tools (`AddOrkeonRag`, `AddOrkeonRagTools`).
 7. **VFS mounts** — `AddOrkeonFileSystem` when `Orkeon:FileSystem:Mounts` **or**
    `Orkeon:FileSystem:InternalMounts` exists **and holds at least one entry** (two empty arrays

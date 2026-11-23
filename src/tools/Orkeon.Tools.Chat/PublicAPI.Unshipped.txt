@@ -1,0 +1,144 @@
+#nullable enable
+Orkeon.Tools.Chat.Accounts.ChatRightsCheck
+Orkeon.Tools.Chat.Accounts.ChatRightsCheck.ChatRightsCheck(Orkeon.Tools.Chat.Administration.ChatAccountAdministration! administration) -> void
+Orkeon.Tools.Chat.Accounts.ChatRightsCheck.Check(System.Collections.Generic.IReadOnlyCollection<string!>! crewTools, System.Collections.Generic.IReadOnlyList<Orkeon.Tools.Chat.Administration.ChatAccountStatus!>! accounts) -> System.Collections.Generic.IReadOnlyList<string!>!
+Orkeon.Tools.Chat.Accounts.ChatRightsCheck.CheckAsync(System.Collections.Generic.IReadOnlyCollection<string!>! crewTools, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<string!>!>!
+Orkeon.Tools.Chat.Administration.ChatAccountAdministration
+Orkeon.Tools.Chat.Administration.ChatAccountAdministration.CheckAsync(string! account, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Orkeon.Tools.Chat.Administration.ChatCheckResult!>!
+Orkeon.Tools.Chat.Administration.ChatAccountAdministration.ListAsync(System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Orkeon.Tools.Chat.Administration.ChatAccountStatus!>!>!
+Orkeon.Tools.Chat.Administration.ChatAccountAdministration.LoginAsync(string! account, bool deviceCode, Orkeon.Tools.Abstractions.Auth.IOAuthLoginInteraction! interaction, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task!
+Orkeon.Tools.Chat.Administration.ChatAccountAdministration.LogoutAsync(string! account, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Orkeon.Tools.Chat.Administration.ChatLogoutResult!>!
+Orkeon.Tools.Chat.Administration.ChatAccountStatus
+Orkeon.Tools.Chat.Administration.ChatAccountStatus.<Clone>$() -> Orkeon.Tools.Chat.Administration.ChatAccountStatus!
+Orkeon.Tools.Chat.Administration.ChatAccountStatus.ChatAccountStatus() -> void
+Orkeon.Tools.Chat.Administration.ChatAccountStatus.Cloud.get -> string?
+Orkeon.Tools.Chat.Administration.ChatAccountStatus.Cloud.init -> void
+Orkeon.Tools.Chat.Administration.ChatAccountStatus.ConfigurationProblems.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Orkeon.Tools.Chat.Administration.ChatAccountStatus.ConfigurationProblems.init -> void
+Orkeon.Tools.Chat.Administration.ChatAccountStatus.CredentialProblem.get -> string?
+Orkeon.Tools.Chat.Administration.ChatAccountStatus.CredentialProblem.init -> void
+Orkeon.Tools.Chat.Administration.ChatAccountStatus.Equals(Orkeon.Tools.Chat.Administration.ChatAccountStatus? other) -> bool
+Orkeon.Tools.Chat.Administration.ChatAccountStatus.IsDefault.get -> bool
+Orkeon.Tools.Chat.Administration.ChatAccountStatus.IsDefault.init -> void
+Orkeon.Tools.Chat.Administration.ChatAccountStatus.Name.get -> string!
+Orkeon.Tools.Chat.Administration.ChatAccountStatus.Name.init -> void
+Orkeon.Tools.Chat.Administration.ChatAccountStatus.Problem.get -> string?
+Orkeon.Tools.Chat.Administration.ChatAccountStatus.Problem.init -> void
+Orkeon.Tools.Chat.Administration.ChatAccountStatus.Provider.get -> string!
+Orkeon.Tools.Chat.Administration.ChatAccountStatus.Provider.init -> void
+Orkeon.Tools.Chat.Administration.ChatAccountStatus.ReadPlaces.get -> int
+Orkeon.Tools.Chat.Administration.ChatAccountStatus.ReadPlaces.init -> void
+Orkeon.Tools.Chat.Administration.ChatAccountStatus.Ready.get -> bool
+Orkeon.Tools.Chat.Administration.ChatAccountStatus.Ready.init -> void
+Orkeon.Tools.Chat.Administration.ChatAccountStatus.Rights.get -> string?
+Orkeon.Tools.Chat.Administration.ChatAccountStatus.Rights.init -> void
+Orkeon.Tools.Chat.Administration.ChatAccountStatus.SendPlaces.get -> int
+Orkeon.Tools.Chat.Administration.ChatAccountStatus.SendPlaces.init -> void
+Orkeon.Tools.Chat.Administration.ChatAccountStatus.TokenEndpoint.get -> string?
+Orkeon.Tools.Chat.Administration.ChatAccountStatus.TokenEndpoint.init -> void
+Orkeon.Tools.Chat.Administration.ChatCheckResult
+Orkeon.Tools.Chat.Administration.ChatCheckResult.<Clone>$() -> Orkeon.Tools.Chat.Administration.ChatCheckResult!
+Orkeon.Tools.Chat.Administration.ChatCheckResult.Account.get -> string!
+Orkeon.Tools.Chat.Administration.ChatCheckResult.Account.init -> void
+Orkeon.Tools.Chat.Administration.ChatCheckResult.ChatCheckResult() -> void
+Orkeon.Tools.Chat.Administration.ChatCheckResult.Equals(Orkeon.Tools.Chat.Administration.ChatCheckResult? other) -> bool
+Orkeon.Tools.Chat.Administration.ChatCheckResult.Ready.get -> bool
+Orkeon.Tools.Chat.Administration.ChatCheckResult.Rights.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Tools.Chat.Administration.ChatRightStatus!>!
+Orkeon.Tools.Chat.Administration.ChatCheckResult.Rights.init -> void
+Orkeon.Tools.Chat.Administration.ChatCheckResult.User.get -> string!
+Orkeon.Tools.Chat.Administration.ChatCheckResult.User.init -> void
+Orkeon.Tools.Chat.Administration.ChatLogoutResult
+Orkeon.Tools.Chat.Administration.ChatLogoutResult.<Clone>$() -> Orkeon.Tools.Chat.Administration.ChatLogoutResult!
+Orkeon.Tools.Chat.Administration.ChatLogoutResult.ChatLogoutResult() -> void
+Orkeon.Tools.Chat.Administration.ChatLogoutResult.Deleted.get -> bool
+Orkeon.Tools.Chat.Administration.ChatLogoutResult.Deleted.init -> void
+Orkeon.Tools.Chat.Administration.ChatLogoutResult.Equals(Orkeon.Tools.Chat.Administration.ChatLogoutResult? other) -> bool
+Orkeon.Tools.Chat.Administration.ChatLogoutResult.Notice.get -> string?
+Orkeon.Tools.Chat.Administration.ChatLogoutResult.Notice.init -> void
+Orkeon.Tools.Chat.Administration.ChatLogoutResult.Revoked.get -> bool
+Orkeon.Tools.Chat.Administration.ChatLogoutResult.Revoked.init -> void
+Orkeon.Tools.Chat.Administration.ChatRightStatus
+Orkeon.Tools.Chat.Administration.ChatRightStatus.<Clone>$() -> Orkeon.Tools.Chat.Administration.ChatRightStatus!
+Orkeon.Tools.Chat.Administration.ChatRightStatus.ChatRightStatus() -> void
+Orkeon.Tools.Chat.Administration.ChatRightStatus.Equals(Orkeon.Tools.Chat.Administration.ChatRightStatus? other) -> bool
+Orkeon.Tools.Chat.Administration.ChatRightStatus.Missing.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Orkeon.Tools.Chat.Administration.ChatRightStatus.Missing.init -> void
+Orkeon.Tools.Chat.Administration.ChatRightStatus.Ready.get -> bool
+Orkeon.Tools.Chat.Administration.ChatRightStatus.Ready.init -> void
+Orkeon.Tools.Chat.Administration.ChatRightStatus.Right.get -> string!
+Orkeon.Tools.Chat.Administration.ChatRightStatus.Right.init -> void
+Orkeon.Tools.Chat.Auth.ChatTokenSet
+Orkeon.Tools.Chat.Auth.ChatTokenSet.<Clone>$() -> Orkeon.Tools.Chat.Auth.ChatTokenSet!
+Orkeon.Tools.Chat.Auth.ChatTokenSet.AccessToken.get -> string!
+Orkeon.Tools.Chat.Auth.ChatTokenSet.AccessToken.init -> void
+Orkeon.Tools.Chat.Auth.ChatTokenSet.ChatTokenSet() -> void
+Orkeon.Tools.Chat.Auth.ChatTokenSet.Equals(Orkeon.Tools.Chat.Auth.ChatTokenSet? other) -> bool
+Orkeon.Tools.Chat.Auth.ChatTokenSet.ExpiresAt.get -> System.DateTimeOffset
+Orkeon.Tools.Chat.Auth.ChatTokenSet.ExpiresAt.init -> void
+Orkeon.Tools.Chat.Auth.ChatTokenSet.RefreshToken.get -> string?
+Orkeon.Tools.Chat.Auth.ChatTokenSet.RefreshToken.init -> void
+Orkeon.Tools.Chat.Auth.ChatTokenSet.Scopes.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Orkeon.Tools.Chat.Auth.ChatTokenSet.Scopes.init -> void
+Orkeon.Tools.Chat.Auth.FileSystemChatTokenStore
+Orkeon.Tools.Chat.Auth.FileSystemChatTokenStore.DeleteAccountAsync(string! account, string? keptKey, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<bool>!
+Orkeon.Tools.Chat.Auth.FileSystemChatTokenStore.DeleteAsync(string! key, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<bool>!
+Orkeon.Tools.Chat.Auth.FileSystemChatTokenStore.FileSystemChatTokenStore(Orkeon.Domain.FileSystem.IFileSystemService! fileSystem, string! virtualDirectory) -> void
+Orkeon.Tools.Chat.Auth.FileSystemChatTokenStore.ReadAsync(string! key, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Orkeon.Tools.Chat.Auth.ChatTokenSet?>!
+Orkeon.Tools.Chat.Auth.FileSystemChatTokenStore.WriteAsync(string! key, Orkeon.Tools.Chat.Auth.ChatTokenSet! tokens, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task!
+Orkeon.Tools.Chat.Auth.IChatTokenStore
+Orkeon.Tools.Chat.Auth.IChatTokenStore.DeleteAccountAsync(string! account, string? keptKey, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<bool>!
+Orkeon.Tools.Chat.Auth.IChatTokenStore.DeleteAsync(string! key, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<bool>!
+Orkeon.Tools.Chat.Auth.IChatTokenStore.ReadAsync(string! key, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Orkeon.Tools.Chat.Auth.ChatTokenSet?>!
+Orkeon.Tools.Chat.Auth.IChatTokenStore.WriteAsync(string! key, Orkeon.Tools.Chat.Auth.ChatTokenSet! tokens, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task!
+Orkeon.Tools.Chat.ChatErrorCode
+Orkeon.Tools.Chat.ChatErrorCode.ConsentMissing = 5 -> Orkeon.Tools.Chat.ChatErrorCode
+Orkeon.Tools.Chat.ChatErrorCode.InvalidConfiguration = 2 -> Orkeon.Tools.Chat.ChatErrorCode
+Orkeon.Tools.Chat.ChatErrorCode.InvalidRequest = 10 -> Orkeon.Tools.Chat.ChatErrorCode
+Orkeon.Tools.Chat.ChatErrorCode.NotConfigured = 0 -> Orkeon.Tools.Chat.ChatErrorCode
+Orkeon.Tools.Chat.ChatErrorCode.NotFound = 8 -> Orkeon.Tools.Chat.ChatErrorCode
+Orkeon.Tools.Chat.ChatErrorCode.NotSupportedByAccount = 9 -> Orkeon.Tools.Chat.ChatErrorCode
+Orkeon.Tools.Chat.ChatErrorCode.PlaceNotAllowed = 4 -> Orkeon.Tools.Chat.ChatErrorCode
+Orkeon.Tools.Chat.ChatErrorCode.RightMissing = 3 -> Orkeon.Tools.Chat.ChatErrorCode
+Orkeon.Tools.Chat.ChatErrorCode.ServerError = 11 -> Orkeon.Tools.Chat.ChatErrorCode
+Orkeon.Tools.Chat.ChatErrorCode.SignInRequired = 6 -> Orkeon.Tools.Chat.ChatErrorCode
+Orkeon.Tools.Chat.ChatErrorCode.Throttled = 7 -> Orkeon.Tools.Chat.ChatErrorCode
+Orkeon.Tools.Chat.ChatErrorCode.UnknownAccount = 1 -> Orkeon.Tools.Chat.ChatErrorCode
+Orkeon.Tools.Chat.ChatToolException
+Orkeon.Tools.Chat.ChatToolException.ChatToolException() -> void
+Orkeon.Tools.Chat.ChatToolException.ChatToolException(Orkeon.Tools.Chat.ChatErrorCode code, string! message) -> void
+Orkeon.Tools.Chat.ChatToolException.ChatToolException(Orkeon.Tools.Chat.ChatErrorCode code, string! message, System.Exception! innerException) -> void
+Orkeon.Tools.Chat.ChatToolException.ChatToolException(string! message) -> void
+Orkeon.Tools.Chat.ChatToolException.ChatToolException(string! message, System.Exception! innerException) -> void
+Orkeon.Tools.Chat.ChatToolException.Code.get -> Orkeon.Tools.Chat.ChatErrorCode
+Orkeon.Tools.Chat.Configuration.ChatCredentialsLocation
+Orkeon.Tools.Chat.DependencyInjection.ChatToolsServiceCollectionExtensions
+const Orkeon.Tools.Chat.Configuration.ChatCredentialsLocation.TokenSubdirectory = "chat" -> string!
+override Orkeon.Tools.Chat.Administration.ChatAccountStatus.Equals(object? obj) -> bool
+override Orkeon.Tools.Chat.Administration.ChatAccountStatus.GetHashCode() -> int
+override Orkeon.Tools.Chat.Administration.ChatAccountStatus.ToString() -> string!
+override Orkeon.Tools.Chat.Administration.ChatCheckResult.Equals(object? obj) -> bool
+override Orkeon.Tools.Chat.Administration.ChatCheckResult.GetHashCode() -> int
+override Orkeon.Tools.Chat.Administration.ChatCheckResult.ToString() -> string!
+override Orkeon.Tools.Chat.Administration.ChatLogoutResult.Equals(object? obj) -> bool
+override Orkeon.Tools.Chat.Administration.ChatLogoutResult.GetHashCode() -> int
+override Orkeon.Tools.Chat.Administration.ChatLogoutResult.ToString() -> string!
+override Orkeon.Tools.Chat.Administration.ChatRightStatus.Equals(object? obj) -> bool
+override Orkeon.Tools.Chat.Administration.ChatRightStatus.GetHashCode() -> int
+override Orkeon.Tools.Chat.Administration.ChatRightStatus.ToString() -> string!
+override Orkeon.Tools.Chat.Auth.ChatTokenSet.Equals(object? obj) -> bool
+override Orkeon.Tools.Chat.Auth.ChatTokenSet.GetHashCode() -> int
+override Orkeon.Tools.Chat.Auth.ChatTokenSet.ToString() -> string!
+static Orkeon.Tools.Chat.Administration.ChatAccountStatus.operator !=(Orkeon.Tools.Chat.Administration.ChatAccountStatus? left, Orkeon.Tools.Chat.Administration.ChatAccountStatus? right) -> bool
+static Orkeon.Tools.Chat.Administration.ChatAccountStatus.operator ==(Orkeon.Tools.Chat.Administration.ChatAccountStatus? left, Orkeon.Tools.Chat.Administration.ChatAccountStatus? right) -> bool
+static Orkeon.Tools.Chat.Administration.ChatCheckResult.operator !=(Orkeon.Tools.Chat.Administration.ChatCheckResult? left, Orkeon.Tools.Chat.Administration.ChatCheckResult? right) -> bool
+static Orkeon.Tools.Chat.Administration.ChatCheckResult.operator ==(Orkeon.Tools.Chat.Administration.ChatCheckResult? left, Orkeon.Tools.Chat.Administration.ChatCheckResult? right) -> bool
+static Orkeon.Tools.Chat.Administration.ChatLogoutResult.operator !=(Orkeon.Tools.Chat.Administration.ChatLogoutResult? left, Orkeon.Tools.Chat.Administration.ChatLogoutResult? right) -> bool
+static Orkeon.Tools.Chat.Administration.ChatLogoutResult.operator ==(Orkeon.Tools.Chat.Administration.ChatLogoutResult? left, Orkeon.Tools.Chat.Administration.ChatLogoutResult? right) -> bool
+static Orkeon.Tools.Chat.Administration.ChatRightStatus.operator !=(Orkeon.Tools.Chat.Administration.ChatRightStatus? left, Orkeon.Tools.Chat.Administration.ChatRightStatus? right) -> bool
+static Orkeon.Tools.Chat.Administration.ChatRightStatus.operator ==(Orkeon.Tools.Chat.Administration.ChatRightStatus? left, Orkeon.Tools.Chat.Administration.ChatRightStatus? right) -> bool
+static Orkeon.Tools.Chat.Auth.ChatTokenSet.operator !=(Orkeon.Tools.Chat.Auth.ChatTokenSet? left, Orkeon.Tools.Chat.Auth.ChatTokenSet? right) -> bool
+static Orkeon.Tools.Chat.Auth.ChatTokenSet.operator ==(Orkeon.Tools.Chat.Auth.ChatTokenSet? left, Orkeon.Tools.Chat.Auth.ChatTokenSet? right) -> bool
+static Orkeon.Tools.Chat.Configuration.ChatCredentialsLocation.ConfiguredDirectory(Microsoft.Extensions.Configuration.IConfiguration! chatSection) -> string?
+static Orkeon.Tools.Chat.Configuration.ChatCredentialsLocation.NeedsTokenStore(Microsoft.Extensions.Configuration.IConfiguration! chatSection) -> bool
+static Orkeon.Tools.Chat.DependencyInjection.ChatToolsServiceCollectionExtensions.AddOrkeonChatTokenStore(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, System.Func<System.IServiceProvider!, Orkeon.Domain.FileSystem.IFileSystemService!>! fileSystem, string! virtualDirectory) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
+static Orkeon.Tools.Chat.DependencyInjection.ChatToolsServiceCollectionExtensions.AddOrkeonChatTools(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, Microsoft.Extensions.Configuration.IConfiguration! configuration) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!

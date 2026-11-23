@@ -143,7 +143,7 @@ lisent une seule déclaration — nomme les racines que les runners livrés se r
 (le dossier de définition du crew), `/script` (le dossier d'un point d'entrée scripté),
 `/llm-logs`, `/llm-mock` et `/llm-cassette` (le fichier de `--llm-mock` et la cassette enregistrée ou
 rejouée), `/sandbox` (où les bacs à sable de code déposent ce qu'ils exécutent) et
-`/credentials` (les jetons OAuth des comptes e-mail et drive, refusée à un montage utilisateur par toutes
+`/credentials` (les jetons OAuth des comptes e-mail, drive et chat, refusée à un montage utilisateur par toutes
 les commandes).
 `RunnerVirtualRoots.All` est l'ensemble contre lequel un appelant refuse un `--mount` utilisateur ;
 demander l'ensemble plutôt que comparer les racines une à une est délibéré, car l'oubli de
@@ -164,7 +164,7 @@ Il compose `Host.CreateDefaultBuilder()` avec :
   l'`appsettings.json` et l'`appsettings.{Environment}.json` de la racine de contenu — le
   répertoire courant —, ni les secrets utilisateur. Puis une couche en mémoire qui
   porte les décisions de montage : les valeurs `--mount` placées par racine virtuelle, les
-  montages internes, le montage `/credentials` des jetons OAuth e-mail et drive, et les entrées
+  montages internes, le montage `/credentials` des jetons OAuth e-mail, drive et chat, et les entrées
   `PathSecurity:AdditionalAllowedDirectories` qui laissent le validateur de chemins atteindre les
   dossiers de ces montages (un `--mount` hors du dossier de travail seulement avec
   `AllowExternalMounts`).
@@ -219,7 +219,8 @@ L'ordre d'enregistrement est délibéré :
    interne `/credentials` — montée par l'étape de configuration, atteinte par
    `PrivilegedFileSystemAccess` ; puis les outils drive (`AddOrkeonDriveTools(configuration)`, inertes tant
    qu'aucun compte n'est déclaré) et, quand la racine interne `/credentials` est montée, leur magasin de jetons
-   dans un sous-répertoire à part ; puis le sous-système RAG et ses trois outils (`AddOrkeonRag`, `AddOrkeonRagTools`).
+   dans un sous-répertoire à part ; puis les outils chat, de la même façon (`AddOrkeonChatTools(configuration)`, jetons
+   dans le sous-répertoire `chat`) ; puis le sous-système RAG et ses trois outils (`AddOrkeonRag`, `AddOrkeonRagTools`).
 7. **Montages VFS** — `AddOrkeonFileSystem` quand `Orkeon:FileSystem:Mounts` **ou**
    `Orkeon:FileSystem:InternalMounts` existe **et contient au moins une entrée** (deux tableaux
    vides n'enregistrent rien). L'une ou l'autre liste suffit à rendre le VFS réel : `--list-tools`

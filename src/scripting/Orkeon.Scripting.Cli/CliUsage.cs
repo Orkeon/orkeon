@@ -60,6 +60,7 @@ internal static class CliUsage
         new("usecases", "Search, list, show and export the example use cases — offline, in five languages."),
         new("email", "List the e-mail accounts, sign an OAuth account in or out, check a connection."),
         new("drive", "List the drive accounts (Google Drive, OneDrive), sign one in or out, check a connection."),
+        new("chat", "List the chat accounts (Microsoft Teams), sign one in or out, check what one can do."),
         new("typings", "Write the TypeScript typings for .ork.ts and .cmd.ts scripts into ./.orkeon/."),
         new("mcp", "Serve the host's tools to an MCP client (Claude Desktop, an editor) over stdio."),
         new("bridge", "Run selected tools for an Orkeon on another machine (a container): the browser on the desktop."),

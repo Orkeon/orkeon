@@ -1,6 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
-  <!-- PUB-25: the `Orkeon.Tools` umbrella package — the nine built-in tool families
+  <!-- PUB-25: the `Orkeon.Tools` umbrella package — the ten built-in tool families
        in one nupkg, kept separate from `Orkeon` only because of dependency weight
        (the Data tools pull database drivers, PDF and spreadsheet libraries that a
        consumer who never uses them should not inherit).
@@ -13,7 +13,7 @@
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <PackageId>Orkeon.Tools</PackageId>
-    <Description>The built-in tool families for Orkeon agents in one package: file system, web and HTTP, structured data (CSV, PDF, XLSX, XML, databases), code execution, e-mail (IMAP, POP3, SMTP, Gmail, Outlook.com), cloud drives (Google Drive, OneDrive), EventHub messaging, RAG search and ingestion, and RaggableTree codebase analysis.</Description>
+    <Description>The built-in tool families for Orkeon agents in one package: file system, web and HTTP, structured data (CSV, PDF, XLSX, XML, databases), code execution, e-mail (IMAP, POP3, SMTP, Gmail, Outlook.com), cloud drives (Google Drive, OneDrive), chat (Microsoft Teams), EventHub messaging, RAG search and ingestion, and RaggableTree codebase analysis.</Description>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <OrkeonIconFamily>tools</OrkeonIconFamily>
     <OrkeonFreezePublicApi>false</OrkeonFreezePublicApi>
@@ -34,6 +34,7 @@
   <!-- Embedded tool families (IsPackable=false individually). -->
   <ItemGroup>
     <ProjectReference Include="..\..\tools\Orkeon.Tools.Analysis\Orkeon.Tools.Analysis.csproj" PrivateAssets="all" />
+    <ProjectReference Include="..\..\tools\Orkeon.Tools.Chat\Orkeon.Tools.Chat.csproj" PrivateAssets="all" />
     <ProjectReference Include="..\..\tools\Orkeon.Tools.Code\Orkeon.Tools.Code.csproj" PrivateAssets="all" />
     <ProjectReference Include="..\..\tools\Orkeon.Tools.Data\Orkeon.Tools.Data.csproj" PrivateAssets="all" />
     <ProjectReference Include="..\..\tools\Orkeon.Tools.Drive\Orkeon.Tools.Drive.csproj" PrivateAssets="all" />
@@ -64,12 +65,13 @@
 
   <Target Name="OrkeonEmbedToolAssemblies" DependsOnTargets="BuildOnlySettings;ResolveReferences">
     <ItemGroup>
-      <!-- Whitelist: only the nine tool assemblies. Their transitive project outputs
+      <!-- Whitelist: only the ten tool assemblies. Their transitive project outputs
            (Orkeon.Domain, Orkeon.Application, …) ship inside the `Orkeon` package. -->
       <_OrkeonToolEmbedded Include="@(ReferenceCopyLocalPaths)"
                            Condition="'%(ReferenceCopyLocalPaths.ReferenceSourceTarget)' == 'ProjectReference'
                                       And ('%(ReferenceCopyLocalPaths.Extension)' == '.dll' Or '%(ReferenceCopyLocalPaths.Extension)' == '.xml')
                                       And ('%(ReferenceCopyLocalPaths.Filename)' == 'Orkeon.Tools.Analysis'
+                                        Or '%(ReferenceCopyLocalPaths.Filename)' == 'Orkeon.Tools.Chat'
                                         Or '%(ReferenceCopyLocalPaths.Filename)' == 'Orkeon.Tools.Code'
                                         Or '%(ReferenceCopyLocalPaths.Filename)' == 'Orkeon.Tools.Data'
                                         Or '%(ReferenceCopyLocalPaths.Filename)' == 'Orkeon.Tools.Drive'

@@ -6,7 +6,7 @@ using Orkeon.Tests.Shared.Produced;
 namespace Orkeon.Scripting.Cli.Tests;
 
 /// <summary>
-/// #472: the hosts of <c>email</c>, <c>drive</c>, <c>runs</c>, <c>rag</c> and <c>forge rephrase</c>, like every host the tool composes, register the
+/// #472: the hosts of <c>email</c>, <c>drive</c>, <c>chat</c>, <c>runs</c>, <c>rag</c> and <c>forge rephrase</c>, like every host the tool composes, register the
 /// provider modules the tool ships, so a settings file <c>orkeon run</c> accepts — one that names the
 /// <c>agent-cli</c> provider, or carries its <c>Llm:AgentCli</c> section — is accepted by each of them.
 /// </summary>
@@ -54,6 +54,23 @@ public sealed class CliHostProviderModulesTests
 
         var exit = await DriveCommand.ExecuteAccountsAsync(
             console, new DriveAccountsCommandOptions { WorkingDirectoryOverride = scratch.Root, Json = true });
+
+        Assert.Equal(Program.ExitOk, exit);
+        Assert.Contains($"Using settings: {path}", console.Stderr, StringComparison.Ordinal);
+        Assert.Equal(JsonValueKind.Array, JsonElement.Parse(console.Stdout).ValueKind);
+    }
+
+    [Theory]
+    [MemberData(nameof(Settings))]
+    [Trait("BR", "CH-472")]
+    public async Task ChatAccounts_ShouldAcceptTheSettings_WhenTheyNameTheAgentCliModule(string settings)
+    {
+        using var scratch = new ScriptScratch();
+        var path = scratch.WriteFile("appsettings.json", settings);
+        using var console = new TestConsole();
+
+        var exit = await ChatCommand.ExecuteAccountsAsync(
+            console, new ChatAccountsCommandOptions { WorkingDirectoryOverride = scratch.Root, Json = true });
 
         Assert.Equal(Program.ExitOk, exit);
         Assert.Contains($"Using settings: {path}", console.Stderr, StringComparison.Ordinal);

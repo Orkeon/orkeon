@@ -47,7 +47,7 @@ flowchart LR
     you --> code["Orkeon Code<br/>a coding assistant<br/>on your repository"]
     you --> cli["orkeon CLI<br/>YAML · TypeScript (.ork.ts)"]
     you --> app["Your own .NET app<br/>C# builders, NuGet"]
-    studio & workshop & code & cli & app --> runtime["The Orkeon runtime<br/>virtual file system · budgets · sandbox<br/>124 tools · 16 LLM providers"]
+    studio & workshop & code & cli & app --> runtime["The Orkeon runtime<br/>virtual file system · budgets · sandbox<br/>129 tools · 16 LLM providers"]
     runtime --> world(["Your files, mailboxes, drives, APIs<br/>— only the ones you mounted, with the rights you gave"])
 ```
 
@@ -117,7 +117,7 @@ Refused before any byte lands. CI runs both blocks on every change, against a pi
 | **Orkeon Studio** | A desktop application for Windows 10 and 11 only: build a team with no code and no terminal, in four steps — *Describe → Compose → Try → Adopt*. It drives the `orkeon` CLI, which you install first — [Orkeon/orkeon-studio](https://github.com/Orkeon/orkeon-studio). |
 | **Orkeon Workshop** | Claude Code, harnessed. A container image — the Orkeon CLI, local models on your GPU, Claude Code installed at the first start — and a method: need → tests → team → runs → accepted, every attempt and decision kept on disk, a paid run waiting for your approval. Teams come out ready for the `orkeon` CLI; the same harness works on Orkeon itself — [Orkeon/orkeon-workshop](https://github.com/Orkeon/orkeon-workshop). |
 | **Orkeon Code** | A coding assistant on the Orkeon runtime. Pair with it in the terminal under the permission mode you choose, or let it run a task to the end; `/review`, `/commit`, `/security-review`, `/analyze`; one mounted project, an allow-listed shell — [Orkeon/orkeon-code](https://github.com/Orkeon/orkeon-code). |
-| **`orkeon` CLI** | `orkeon run` executes a team written in YAML or TypeScript (`.ork.ts`); `orkeon forge "…"` drafts, sandbox-tests and promotes one from a sentence; `orkeon quickstart` writes the two-minute crew above; `init`, `doctor`, `email login` and `drive login` do the plumbing — [CLI reference](docs/reference/cli.md). |
+| **`orkeon` CLI** | `orkeon run` executes a team written in YAML or TypeScript (`.ork.ts`); `orkeon forge "…"` drafts, sandbox-tests and promotes one from a sentence; `orkeon quickstart` writes the two-minute crew above; `init`, `doctor`, `email login`, `drive login` and `chat login` do the plumbing — [CLI reference](docs/reference/cli.md). |
 | **The library** | `dotnet add package Orkeon` — the same engine inside your product: C# builders, Clean Architecture, typed end to end — [Bootstrap and execution](docs/getting-started/bootstrap.md). |
 
 The team you forge from a sentence is the YAML the CLI runs, and the crew your own .NET code loads. One runtime, same rules, whichever door you take.
@@ -147,7 +147,7 @@ The team you forge from a sentence is the YAML the CLI runs, and the crew your o
 
 ## What's in the box
 
-124 built-in tools (mail over IMAP, SMTP and Microsoft Graph; Google Drive and OneDrive; web, HTTP, databases, Office and PDF, secure code execution, semantic code analysis) · 16 LLM providers (14 vendors, 2 aggregators), local models included (Ollama, Docker Model Runner, embedded llama.cpp) · 6 memory providers · 6 orchestration strategies, from a plain sequence to a graph or an autonomous team under budget · a staged RAG pipeline · checkpoint and resume · plugins in isolated load contexts · 104 runnable examples. Every number here is recomputed by CI on each change — a README that disagrees fails the build.
+129 built-in tools (mail over IMAP, SMTP and Microsoft Graph; Google Drive and OneDrive; Microsoft Teams; web, HTTP, databases, Office and PDF, secure code execution, semantic code analysis) · 16 LLM providers (14 vendors, 2 aggregators), local models included (Ollama, Docker Model Runner, embedded llama.cpp) · 6 memory providers · 6 orchestration strategies, from a plain sequence to a graph or an autonomous team under budget · a staged RAG pipeline · checkpoint and resume · plugins in isolated load contexts · 104 runnable examples. Every number here is recomputed by CI on each change — a README that disagrees fails the build.
 
 ## Install
 

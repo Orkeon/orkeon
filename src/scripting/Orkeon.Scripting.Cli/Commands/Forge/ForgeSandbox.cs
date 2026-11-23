@@ -18,11 +18,13 @@ internal static class ForgeSandbox
     /// the interpreter. FORGE-10: the mailbox tools are offered — a try runs them on a trial
     /// mailbox, never on the operator's actual mail. DRIVE: the drive tools have no trial drive
     /// yet, and would read and change the operator's actual Google Drive or OneDrive: denied.
+    /// #446: the chat tools have no trial tenant, and would read and post as the operator: denied.
     /// </summary>
     public static readonly IReadOnlySet<string> DeniedTools =
         new HashSet<string>(StringComparer.Ordinal)
         {
             "shell_command", "code_interpreter",
+            "chat_accounts", "chat_list", "chat_members", "chat_read", "chat_send",
             "drive_accounts", "drive_create_folder", "drive_delete", "drive_download", "drive_info", "drive_list",
             "drive_move", "drive_read", "drive_search", "drive_share", "drive_upload",
         };

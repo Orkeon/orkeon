@@ -5,7 +5,7 @@
 # ADR-021 — La famille d'outils chat, Microsoft Teams d'abord : cinquième exception motivée au gel du périmètre
 
 **Statut** : Accepté · **Date** : 2026-11-23
-· **Portée** : une future famille `Orkeon.Tools.Chat`, `Orkeon.Tools.Abstractions/Auth` (le client OAuth qu'elle partage avec les familles e-mail et drive), `Orkeon.Hosting` (le sous-répertoire `chat` de `/credentials`), `orkeon chat` (`Orkeon.Scripting.Cli`), `Orkeon.Host` (le canal entrant Teams), le paquet ombrelle `Orkeon.Tools`
+· **Portée** : la famille `Orkeon.Tools.Chat`, `Orkeon.Tools.Abstractions/Auth` (le client OAuth qu'elle partage avec les familles e-mail et drive), `Orkeon.Hosting` (le sous-répertoire `chat` de `/credentials`), `orkeon chat` (`Orkeon.Scripting.Cli`), `Orkeon.Host` (le canal entrant Teams), le paquet ombrelle `Orkeon.Tools`
 
 Cet ADR consigne la décision et la conception. Il ne livre aucun outil : les outils arrivent avec les lots qui le suivent, et ces lots corrigent les décomptes, l'inventaire, la page des limites et CONTRIBUTING.
 

@@ -22,7 +22,7 @@ runtimes, a pre-release upstream).
 | PackageId | Why |
 |---|---|
 | `Orkeon` | The umbrella package — the thirteen assemblies of the core closure (`Orkeon.Domain`, `Orkeon.Application`, `Orkeon.Infrastructure`, `Orkeon.Constants.{Llm,FileSystem,Configuration,Protocol}`, `Orkeon.Tools.Abstractions`, `Orkeon.Analysis.Abstractions`, `Orkeon.Rag.Abstractions`, `Orkeon.Analysis`, `Orkeon.Rag`, `Orkeon.Plugins`) embedded in one nupkg. One install = the complete framework: agents, crews, six orchestration modes, 16 LLM providers, 6 memory stores, RAG, RaggableTree. The Clean Architecture split stays a source-layout discipline, not a distribution contract. |
-| `Orkeon.Tools` | The nine built-in tool families (`Analysis`, `Code`, `Data`, `Drive`, `Email`, `EventHub`, `FileSystem`, `Rag`, `Web`) in one nupkg. Separate from `Orkeon` **only for dependency weight**: the Data tools pull database drivers, PDF and spreadsheet libraries, the e-mail tools MailKit and MimeKit — dependencies a consumer who never uses them should not inherit. Depends on `Orkeon`. |
+| `Orkeon.Tools` | The ten built-in tool families (`Analysis`, `Chat`, `Code`, `Data`, `Drive`, `Email`, `EventHub`, `FileSystem`, `Rag`, `Web`) in one nupkg. Separate from `Orkeon` **only for dependency weight**: the Data tools pull database drivers, PDF and spreadsheet libraries, the e-mail tools MailKit and MimeKit — dependencies a consumer who never uses them should not inherit. Depends on `Orkeon`. |
 | `Orkeon.Rag.Onnx`, `Orkeon.Rag.Onnx.Model` | Opt-in ONNX cross-encoder reranker pair (runtime + embedded int8 weights) — pushed together; native onnxruntime payload. `Orkeon.Rag.Onnx` depends on `Orkeon`; `Orkeon.Rag.Onnx.Model` is dependency-free (embedded resources only) and is referenced alongside it. |
 | `Orkeon.Tools.Embeddings.Local` | Local on-device embeddings (BGE-micro-v2 ONNX). Stays **outside the umbrella** because it carries a pre-release SmartComponents dependency from an archived upstream — putting it in `Orkeon` would force that pre-release on every consumer. Depends on `Orkeon`. |
 | `Orkeon.Constants.Cli` | The shared CLI vocabulary: the option names the runners accept (`RunOptionNames`), their exit codes (`RunExitCodes`) and the session-state keys (`SessionStateKeys`), for a tool that drives `orkeon run`. A zero-dependency satellite (ADR-009), packed straight from its project; `Orkeon.Scripting` depends on it rather than embedding it. |
@@ -77,7 +77,7 @@ runtimes, a pre-release upstream).
 The following projects are **not packed under their own id** (`IsPackable=false`): `Orkeon.Domain`,
 `Orkeon.Application`, `Orkeon.Infrastructure`, the `Orkeon.Constants.{Llm,FileSystem,Configuration,Protocol}` satellites,
 `Orkeon.Analysis`, `Orkeon.Analysis.Abstractions`, `Orkeon.Rag`, `Orkeon.Rag.Abstractions`,
-`Orkeon.Tools.Abstractions` and the nine `Orkeon.Tools.<family>` projects, `Orkeon.Cli`,
+`Orkeon.Tools.Abstractions` and the ten `Orkeon.Tools.<family>` projects, `Orkeon.Cli`,
 `Orkeon.Cli.Commands.Scripting`, `Orkeon.Hosting`, `Orkeon.Plugins`. Those that the `Orkeon` and
 `Orkeon.Tools` umbrellas embed still ship — inside the umbrella's nupkg, not under their own id (`Orkeon.Plugins` is the thirteenth assembly of `Orkeon`);
 `Orkeon.Hosting` ships inside the `Orkeon.Scripting` package, the opt-in that carries the scripting layer.

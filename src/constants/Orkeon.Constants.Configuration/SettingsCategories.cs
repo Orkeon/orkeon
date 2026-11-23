@@ -138,6 +138,7 @@ public static class SettingsCategories
             ["Orkeon:Tools:Shell"] = Tools,
             ["Orkeon:Tools:Email"] = Tools,
             ["Orkeon:Tools:ResultLimits"] = Tools,
+            ["Orkeon:Tools:Chat"] = Tools,
             ["Orkeon:Tools:Drive"] = Tools,
             ["Orkeon:Tools:GitHub"] = Tools,
             ["Orkeon:Tools:Firefox"] = Tools,

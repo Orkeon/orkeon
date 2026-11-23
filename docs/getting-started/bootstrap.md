@@ -9,7 +9,7 @@
 Before any of the code below compiles, add the two NuGet packages it uses. The framework
 itself ships as a single package, `Orkeon`; the built-in tool suites wired below
 (`AddOrkeonFileSystemTools`, `AddOrkeonDataTools`, `AddOrkeonWebTools`,
-`AddOrkeonCodeTools`, `AddOrkeonEmailTools`; the package carries other suites too, such as `AddOrkeonDriveTools`) live in a second one, `Orkeon.Tools`:
+`AddOrkeonCodeTools`, `AddOrkeonEmailTools`; the package carries other suites too, such as `AddOrkeonDriveTools` and `AddOrkeonChatTools`) live in a second one, `Orkeon.Tools`:
 
 ```bash
 dotnet add package Orkeon

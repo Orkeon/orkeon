@@ -43,6 +43,14 @@ Donner une boîte aux lettres aux agents est l'une des fonctionnalités les plus
 | [Commandes `orkeon drive`](./reference/cli.md#orkeon-drive) | `accounts`, `check` (trouver le dossier racine et le lister), `login` / `logout` — options et codes de sortie |
 | [ADR-013 — la famille d'outils drive](./adr/ADR-013-drive-tool-family.md) | Pourquoi une famille d'outils plutôt qu'un montage VFS, et la couche OAuth que partagent les deux familles cloud |
 
+### Chat
+
+| Fichier | Description |
+|---------|-------------|
+| [Outils chat](./guides/chat.md) | Donner aux agents Microsoft Teams : enregistrer l'application Entra, `orkeon chat login` par le navigateur ou avec `--device-code`, droits et portées, lieux fermés par défaut, consentement d'administrateur, ce qu'un message peut et ne peut pas faire à un agent |
+| [Commandes `orkeon chat`](./reference/cli.md#orkeon-chat) | `accounts`, `check` (ce que le compte peut faire, droit par droit), `login` / `logout` — options et codes de sortie |
+| [ADR-021 — la famille d'outils chat](./adr/ADR-021-chat-tool-family.md) | Pourquoi des outils nommés d'après la fonction, et pourquoi les lieux sont fermés par défaut |
+
 ### Architecture
 
 | Fichier | Description |
@@ -88,7 +96,7 @@ Donner une boîte aux lettres aux agents est l'une des fonctionnalités les plus
 
 | Fichier | Description |
 |---------|-------------|
-| [Inventaire des outils](./tools/inventory.md) | 124 outils par catégorie avec leurs paramètres d'appel, résolution YAML (stricte/tolérante), enregistrement DI, disponibilité par hôte, gaps identifiés |
+| [Inventaire des outils](./tools/inventory.md) | 129 outils par catégorie avec leurs paramètres d'appel, résolution YAML (stricte/tolérante), enregistrement DI, disponibilité par hôte, gaps identifiés |
 | [Créer un nouvel outil](./tools/new-tool-pattern.md) | Pipeline typé, attributs FieldSchema/ReturnSchema, pattern composition, enregistrement |
 
 ### Guides
@@ -115,7 +123,7 @@ Donner une boîte aux lettres aux agents est l'une des fonctionnalités les plus
 |---------|-------------|
 | [Référence du DSL de scripting](./reference/scripting-dsl.md) | Chaque builder et chaque méthode `.ork.ts`, avec la colonne qui n'existe nulle part ailleurs : laquelle des deux formes l'honore. Plus les écarts connus entre les typings et le runtime |
 | [Catalogue des exemples](./reference/examples-catalog.md) | Carte éditoriale d'`examples/` (9 catégories métier + vitrines RAG/RaggableTree/scripting) ; l'`examples/INDEX.md` généré est l'inventaire faisant foi |
-| [Référence CLI `orkeon`](./reference/cli.md) | Chaque commande (`run`, `init`, `llm`, `rag`, `forge`, `usecases`, `email`, `drive`, `doctor`, `settings`, `typings`, `mcp`, `quickstart`, `eval`, `runs`) avec options et exemples, plus `orkeon-repl` |
+| [Référence CLI `orkeon`](./reference/cli.md) | Chaque commande (`run`, `init`, `llm`, `rag`, `forge`, `usecases`, `email`, `drive`, `chat`, `doctor`, `settings`, `typings`, `mcp`, `quickstart`, `eval`, `runs`) avec options et exemples, plus `orkeon-repl` |
 | [Référence de configuration](./reference/configuration.md) | La carte unique des réglages (`Llm`, `Orkeon:*`, `MCP`…) : sources et précédence, puis chaque clé par catégorie — une ligne par clé, avec son type, son défaut et les hôtes qui la lisent |
 | [Limites et contraintes](./reference/limitations.md) | Contraintes connues de la version courante, dont ce qui est livré mais pas encore câblé |
 | [Matrice de conformité A2A](./reference/a2a-conformance.md) | Position honnête face à la spec A2A v1.0 : opérations, modèle de données, bindings, sécurité — ce qui interopère et ce qui n'interopère pas |
