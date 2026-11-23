@@ -100,6 +100,9 @@ internal sealed class ChatMeetingsTool : ToolBase<ChatMeetingsRequest, ChatMeeti
             : throw new ChatToolException(ChatErrorCode.PlaceNotAllowed, $"The service finds a meeting of another chat for '{chat.Place}'; nothing is read.");
     }
 
+    private static ChatToolException Unestablished() =>
+        new ChatToolException(ChatErrorCode.PlaceNotAllowed, "The service does not tell the chat of this meeting, so whether it may be read cannot be established; nothing is read.");
+
     private static async Task<(ChatMeeting Meeting, ChatTarget Chat)> OfLinkAsync(ChatSession session, string text, CancellationToken cancellationToken)
     {
         if (MeetingLink.Parse(text, session.Account.Cloud) is not { } joinLink)
@@ -118,10 +121,12 @@ internal sealed class ChatMeetingsTool : ToolBase<ChatMeetingsRequest, ChatMeeti
 
         var meeting = await FindAsync(session, joinLink, organizer: null, cancellationToken).ConfigureAwait(false);
         // Nothing but the service's own word ties a link to a chat: the text of the link is the model's.
-        if (meeting.ChatId is not { } chatId || !ChatIds.IsConversationId(chatId) || !PlaceReference.TryParse($"chat:{chatId}", out var place) || place.Form != PlaceForm.Chat)
-            throw new ChatToolException(ChatErrorCode.PlaceNotAllowed, "The service does not tell the chat of this meeting, so whether it may be read cannot be established; nothing is read.");
+        if (meeting.ChatId is not { } chatId || !ChatIds.IsConversationId(chatId))
+            throw Unestablished();
         if (!chatId.EndsWith(MeetingChatMarker, StringComparison.OrdinalIgnoreCase))
             throw new ChatToolException(ChatErrorCode.NotSupportedByAccount, "This meeting is not held in a chat: the transcripts of a channel's meetings are not read.");
+        if (!PlaceReference.TryParse($"chat:{chatId}", out var place) || place.Form != PlaceForm.Chat)
+            throw Unestablished();
         try
         {
             return (meeting, await session.Gate.AdmitAsync(place, PlaceUse.Read, cancellationToken).ConfigureAwait(false));

@@ -72,7 +72,7 @@ internal sealed record PlaceReference
         else if (written.StartsWith(TeamPrefix, StringComparison.OrdinalIgnoreCase))
             place = ParseTeam(written);
         else if (written.StartsWith(ChatPrefix, StringComparison.OrdinalIgnoreCase))
-            place = Of(written, PlaceForm.Chat, written[ChatPrefix.Length..].Trim(), ChatIds.IsConversationId);
+            place = Of(written, PlaceForm.Chat, written[ChatPrefix.Length..].Trim(), ChatIds.IsChatId);
         else if (written.StartsWith(UserPrefix, StringComparison.OrdinalIgnoreCase))
             place = ParseUser(written);
         return place is not null;

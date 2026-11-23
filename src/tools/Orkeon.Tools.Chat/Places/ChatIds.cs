@@ -7,6 +7,7 @@ namespace Orkeon.Tools.Chat.Places;
 internal static class ChatIds
 {
     private const int MaxLength = 400;
+    private const string ChannelMarker = "@thread.tacv2";
 
     /// <summary>Whether <paramref name="value"/> is the id of a directory object (a user, a team).</summary>
     public static bool IsDirectoryId(string value) => Guid.TryParseExact(value, "D", out _);
@@ -20,6 +21,10 @@ internal static class ChatIds
     /// <summary>Whether <paramref name="value"/> is a channel's id rather than its name.</summary>
     public static bool IsChannelId(string value) =>
         IsConversationId(value) && value.StartsWith("19:", StringComparison.Ordinal) && value.Contains("@thread.", StringComparison.Ordinal);
+
+    /// <summary>Whether <paramref name="value"/> is the id of a chat: a channel's, which Graph may serve as a chat, is not.</summary>
+    public static bool IsChatId(string value) =>
+        IsConversationId(value) && !value.Contains(ChannelMarker, StringComparison.OrdinalIgnoreCase);
 
     /// <summary>Whether <paramref name="value"/> is a message id: the digits of its time.</summary>
     public static bool IsMessageId(string value) => value.Length is > 0 and <= 20 && value.All(char.IsAsciiDigit);

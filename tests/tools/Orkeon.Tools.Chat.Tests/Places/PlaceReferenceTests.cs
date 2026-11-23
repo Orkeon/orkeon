@@ -53,6 +53,8 @@ public sealed class PlaceReferenceTests
     [InlineData("user:*@*.org")]
     [InlineData("user:*@example.org.")]
     [InlineData("user:ad*@example.org")]
+    [InlineData("chat:19:builds@thread.tacv2")]
+    [InlineData("chat:19:builds@THREAD.TACV2")]
     [InlineData("team:a\nb")]
     public void Should_refuse_what_is_not_a_place(string? text) => Assert.False(PlaceReference.TryParse(text, out _));
 

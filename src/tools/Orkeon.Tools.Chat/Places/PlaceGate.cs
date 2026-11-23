@@ -148,7 +148,8 @@ internal sealed class PlaceGate : IDisposable
     {
         if (!rules.NamesPeople || !place.Value.EndsWith(DirectChatMarker, StringComparison.OrdinalIgnoreCase))
             return false;
-        if (!_account.Grants(ChatRights.Read))
+        // Reading a chat needs Chat.Read, or Chat.ReadWrite which holds it.
+        if (!_account.Grants(ChatRights.Read) && !_account.Grants(ChatRights.Edit) && !_account.Grants(ChatRights.Delete))
         {
             throw new ChatToolException(
                 ChatErrorCode.PlaceNotAllowed,

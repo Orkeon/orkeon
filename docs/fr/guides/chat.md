@@ -300,6 +300,7 @@ dans un réglage qui doit durer.
 - Une conversation à deux désignée par `chat:<id>` est admise aussi par une entrée `user:`. Un compte
   qui ne fait que publier n'a pas de portée pour voir qui s'y trouve : écrivez `user:<adresse>`.
 - Un domaine est comparé à l'adresse du tenant d'origine de la personne, telle que l'annuaire la
+- L'id d'un canal (`...@thread.tacv2`) n'est pas un `chat:<id>` : un canal ne se désigne que par son équipe.
   tient. Un invité est comparé sur la partie de son nom de connexion qui précède `#EXT#`, jamais sur
   l'adresse e-mail de son profil. Sans cette marque, le nom de connexion ne compte que si l'annuaire
   dit que la personne est un `Member` qui n'a pas été invité (`userType`, `creationType`). Qui n'a pas

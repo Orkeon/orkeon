@@ -59,6 +59,18 @@ public sealed class ChatMessageWriteToolsTests
     }
 
     [Theory]
+    [InlineData("chat_edit")]
+    [InlineData("chat_delete")]
+    [InlineData("chat_react")]
+    public async Task Should_not_reach_a_channel_as_a_chat(string tool)
+    {
+        using var fixture = Changing(["ChannelEdit", "ChannelMessages"], "*");
+
+        Assert.Contains("`place`", await fixture.ErrorAsync(tool, Arguments(tool, "chat:" + Samples.Builds)), StringComparison.Ordinal);
+        Assert.Empty(fixture.Handler.Requests);
+    }
+
+    [Theory]
     [InlineData("chat_edit", "", "ChannelMessage.ReadWrite")]
     [InlineData("chat_delete", "", "ChannelMessage.ReadWrite")]
     [InlineData("chat_edit", "ChannelEdit", "ChannelMessage.Read.All")]

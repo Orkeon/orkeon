@@ -286,6 +286,7 @@ start. A name that matches nothing, or more than one place, sets its entry aside
 - A one-to-one chat named by `chat:<id>` is admitted through a `user:` entry too. An account that
   only sends has no scope to see who is in it: write `user:<address>`.
 - A domain is matched on the address of the person's home tenant, as the directory holds it. A
+- A channel's id (`...@thread.tacv2`) is no `chat:<id>`: a channel is named by its team only.
   guest is matched on the part of the sign-in name before `#EXT#`, never on the e-mail address of
   the profile. Without that marker, the sign-in name counts only when the directory says the person
   is a `Member` who was not invited (`userType`, `creationType`). Whoever's home address cannot be
