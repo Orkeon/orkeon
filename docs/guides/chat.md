@@ -129,7 +129,8 @@ refused later (expired, revoked, a consent withdrawn) makes the tools answer `Si
 the command to run.
 
 **Sign out.** `orkeon chat logout team` deletes the stored tokens: a process that runs stops using them at
-its next call. It revokes nothing at Microsoft,
+its next call. One that was renewing them at that very moment may store them again: run the command again
+if `orkeon chat accounts` still shows the account signed in. It revokes nothing at Microsoft,
 which has no revocation endpoint for these tokens, and the command says so: a tenant administrator
 removes the application's access in the Microsoft Entra admin center (**Enterprise applications**,
 the application, **Permissions**).
@@ -285,8 +286,8 @@ start. A name that matches nothing, or more than one place, sets its entry aside
 
 - A one-to-one chat named by `chat:<id>` is admitted through a `user:` entry too. An account that
   only sends has no scope to see who is in it: write `user:<address>`.
-- A domain is matched on the address of the person's home tenant, as the directory holds it. A
 - A channel's id (`...@thread.tacv2`) is no `chat:<id>`: a channel is named by its team only.
+- A domain is matched on the address of the person's home tenant, as the directory holds it. A
   guest is matched on the part of the sign-in name before `#EXT#`, never on the e-mail address of
   the profile. Without that marker, the sign-in name counts only when the directory says the person
   is a `Member` who was not invited (`userType`, `creationType`). Whoever's home address cannot be

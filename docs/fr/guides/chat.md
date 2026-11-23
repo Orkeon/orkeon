@@ -135,7 +135,8 @@ machine. Un jeton refusé plus tard (expiré, révoqué, un consentement retiré
 `SignInRequired` aux outils, avec la commande à lancer.
 
 **Se déconnecter.** `orkeon chat logout team` supprime les jetons stockés : un processus en cours cesse de
-les employer à son prochain appel. Rien n'est révoqué chez
+les employer à son prochain appel. Celui qui les renouvelait à cet instant peut les stocker de nouveau :
+relancez la commande si `orkeon chat accounts` montre encore le compte connecté. Rien n'est révoqué chez
 Microsoft, qui n'a pas de point de révocation pour ces jetons, et la commande le dit : un
 administrateur du tenant retire l'accès de l'application dans le centre d'administration Microsoft
 Entra (**Applications d'entreprise**, l'application, **Autorisations**).
@@ -299,8 +300,8 @@ dans un réglage qui doit durer.
 
 - Une conversation à deux désignée par `chat:<id>` est admise aussi par une entrée `user:`. Un compte
   qui ne fait que publier n'a pas de portée pour voir qui s'y trouve : écrivez `user:<adresse>`.
-- Un domaine est comparé à l'adresse du tenant d'origine de la personne, telle que l'annuaire la
 - L'id d'un canal (`...@thread.tacv2`) n'est pas un `chat:<id>` : un canal ne se désigne que par son équipe.
+- Un domaine est comparé à l'adresse du tenant d'origine de la personne, telle que l'annuaire la
   tient. Un invité est comparé sur la partie de son nom de connexion qui précède `#EXT#`, jamais sur
   l'adresse e-mail de son profil. Sans cette marque, le nom de connexion ne compte que si l'annuaire
   dit que la personne est un `Member` qui n'a pas été invité (`userType`, `creationType`). Qui n'a pas

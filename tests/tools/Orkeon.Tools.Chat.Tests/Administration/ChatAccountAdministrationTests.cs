@@ -272,6 +272,23 @@ public sealed class ChatAccountAdministrationTests
         Assert.Empty(fixture.Handler.Requests);
     }
 
+    [Theory]
+    [InlineData(ChatRights.Edit, "ChannelEdit")]
+    [InlineData(ChatRights.Delete, "ChannelEdit")]
+    [InlineData(ChatRights.React, "ChannelMessages")]
+    public async Task Should_check_one_right_alone_and_read_the_user(object right, string grant)
+    {
+        using var fixture = new ChatFixture(TestChatAccounts.Teams((ChatRights)right, send: ["*"], granted: grant));
+        fixture.Graph.Directory();
+
+        var result = await fixture.Administration.CheckAsync("work", Token);
+
+        Assert.Equal(("me@example.org", true), (result.User, result.Ready));
+        Assert.Equal((right.ToString(), true), (Assert.Single(result.Rights).Right, result.Rights[0].Ready));
+        Assert.Single(fixture.Graph.To(HttpMethod.Get, "me"));
+        Assert.Empty(fixture.Graph.Writes);
+    }
+
     [Fact]
     public async Task Should_say_the_sign_in_is_missing_When_nothing_else_can_be_checked()
     {

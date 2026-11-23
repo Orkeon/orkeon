@@ -201,7 +201,6 @@ internal sealed class ChatCredentialProvider
         try
         {
             await _store.WriteAsync(key, tokens, cancellationToken).ConfigureAwait(false);
-            _fresh[key] = tokens;
             await _store.DeleteAccountAsync(account.Name, key, cancellationToken).ConfigureAwait(false);
         }
         finally
