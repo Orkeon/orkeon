@@ -31,7 +31,7 @@ internal sealed class GraphClient
     private readonly ResolvedChatAccount _account;
     private readonly ChatCredentialProvider _credentials;
     private readonly TimeProvider _time;
-    private readonly ConcurrentDictionary<string, DateTimeOffset> _pauses = new(StringComparer.Ordinal);
+    private readonly ConcurrentDictionary<string, DateTimeOffset> _pauses = new(StringComparer.OrdinalIgnoreCase);
 
     /// <summary>Creates the client of <paramref name="account"/>.</summary>
     public GraphClient(Func<HttpClient> http, ResolvedChatAccount account, ChatCredentialProvider credentials, TimeProvider time)

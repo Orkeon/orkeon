@@ -182,6 +182,19 @@ public sealed class GraphClientTests : IDisposable
     }
 
     [Fact]
+    public async Task Should_pause_a_team_whatever_the_case_of_its_id()
+    {
+        _fixture.Graph.On(HttpMethod.Get, "teams/ABCDEF/channels", _ => GraphStub.Error(HttpStatusCode.TooManyRequests, "TooManyRequests", retryAfter: TimeSpan.FromSeconds(30)));
+        await Assert.ThrowsAsync<ChatToolException>(() => _fixture.Session.Provider.ListChannelsAsync("ABCDEF", Token));
+        var sent = _fixture.Handler.Requests.Count;
+
+        var error = await Assert.ThrowsAsync<ChatToolException>(() => _fixture.Session.Provider.ListChannelsAsync("abcdef", Token));
+
+        Assert.Equal(ChatErrorCode.Throttled, error.Code);
+        Assert.Equal(sent, _fixture.Handler.Requests.Count);
+    }
+
+    [Fact]
     public async Task Should_assume_ten_seconds_without_Retry_After()
     {
         _fixture.Graph.On(HttpMethod.Get, "me/chats", _ => GraphStub.Error(HttpStatusCode.TooManyRequests, "TooManyRequests"));
