@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — Microsoft Teams as a chat channel of `orkeon-host` (#446)
+
+- `Orkeon:Host:Teams` (off by default) listens for a Teams bot's messages, beside Discord or alone: a thread is a run, the
+  room picks the crew, `AllowedUserIds` (Entra object ids) gates messages and the `/status` and `/stop` text commands, and
+  replies go in the thread. Every activity's bearer token is validated before its body is read (signature, issuer, audience,
+  lifetime, `serviceurl`, channel endorsement, tenant), and the bot's token goes to the validated service only.
+- `ORKEON_TEAMS_APP_SECRET` (`EnvironmentVariableNames.TeamsAppSecret`) is the variable the client secret is read from,
+  unless `Orkeon:Host:Teams:SecretEnvironmentVariable` names another.
+
 ## [1.4.0] - 2026-11-23
 
 A minor release: it adds public members (`PublicAPI.Shipped.txt` grows), so it is not a patch. It also carries

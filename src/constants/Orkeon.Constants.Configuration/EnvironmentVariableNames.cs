@@ -48,6 +48,9 @@ public static class EnvironmentVariableNames
     /// <summary>The bot token of the Discord channel, unless the settings name another variable.</summary>
     public const string DiscordToken = "ORKEON_DISCORD_TOKEN";
 
+    /// <summary>The client secret of the Teams channel's bot, unless the settings name another variable.</summary>
+    public const string TeamsAppSecret = "ORKEON_TEAMS_APP_SECRET";
+
     /// <summary>The key that registers the Brave search tool; also a configuration key of the same name.</summary>
     public const string BraveApiKey = "BRAVE_API_KEY";
 
@@ -101,6 +104,9 @@ public static class EnvironmentVariableNames
         new(DiscordToken, [ServiceHost], "a Discord bot token",
             "The token of the Discord channel: the default of `Orkeon:Host:Discord:TokenEnvironmentVariable`, which may " +
             "name another variable."),
+        new(TeamsAppSecret, [ServiceHost], "a client secret",
+            "The client secret of the Teams channel's bot application: the default of " +
+            "`Orkeon:Host:Teams:SecretEnvironmentVariable`, which may name another variable."),
         new(OllamaBaseUrl, [Cli, ServiceHost, Repl], "the address of an Ollama server",
             "The address the Ollama provider uses when it is given none: `Llm:BaseUrl` wins over it, and " +
             "`http://localhost:11434` is what remains without either."),

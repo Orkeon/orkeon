@@ -33,7 +33,7 @@ internal static class HostServiceRegistration
         ArgumentNullException.ThrowIfNull(configuration);
         ArgumentNullException.ThrowIfNull(crewPlan);
 
-        // The daemon's sections — Orkeon:Host with its A2A, and Discord below — are read once,
+        // The daemon's sections — Orkeon:Host with its A2A, and Discord and Teams below — are read once,
         // here, and their instances are what the services get (GAP-35). Bound lazily, a value the
         // binder could not convert escaped the start as a crash when the host built its services.
         // Read now, it refuses the start, naming its key (exit 78).
@@ -45,6 +45,7 @@ internal static class HostServiceRegistration
         // where it used to be read as absent. orkeon run leaves them to the daemon.
         services.DeclareSettingsShape(OrkeonHostOptions.SectionName, typeof(OrkeonHostOptions));
         services.DeclareSettingsShape(Gateway.DiscordChannelOptions.SectionName, typeof(Gateway.DiscordChannelOptions));
+        services.DeclareSettingsShape(Gateway.TeamsChannelOptions.SectionName, typeof(Gateway.TeamsChannelOptions));
 
         // The crew→virtual-path map travels with the mounts that made it true: CrewRunner
         // loads a hosted crew by its virtual spelling, never by the operator's disk path.
@@ -114,6 +115,8 @@ internal static class HostServiceRegistration
 
         services.AddSingleton(Options.Create(
             HostStartup.ReadSection<Gateway.DiscordChannelOptions>(configuration, Gateway.DiscordChannelOptions.SectionName)));
+        services.AddSingleton(Options.Create(
+            HostStartup.ReadSection<Gateway.TeamsChannelOptions>(configuration, Gateway.TeamsChannelOptions.SectionName)));
 
         // The MCP connection, the A2A server, the chat channel, the crew host — in that order,
         // which is both start order and stop order reversed.

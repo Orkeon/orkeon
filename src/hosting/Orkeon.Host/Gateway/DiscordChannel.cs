@@ -237,10 +237,10 @@ internal sealed partial class DiscordChannel : IChatChannel, IAsyncDisposable
     }
 
     /// <summary>The name of the registered stop command — the button reuses it.</summary>
-    internal const string StopCommandName = "stop";
+    internal const string StopCommandName = ChatCommands.Stop;
 
     /// <summary>The name of the registered status command.</summary>
-    internal const string StatusCommandName = "status";
+    internal const string StatusCommandName = ChatCommands.Status;
 
     /// <summary>
     /// The slash commands this channel registers. Static and separate so a test can hold the
@@ -397,9 +397,10 @@ internal sealed partial class DiscordResponder : IChatResponder
     /// Discord refuses a message over 2000 characters. A crew's answer regularly exceeds it, so
     /// it is cut rather than rejected — losing the tail beats losing the whole answer.
     /// </summary>
-    internal static string Truncate(string text)
+    /// <param name="text">The text to send.</param>
+    /// <param name="limit">The platform's limit, Discord's unless told otherwise.</param>
+    internal static string Truncate(string text, int limit = 2000)
     {
-        const int limit = 2000;
         const string ellipsis = "\n…(truncated)";
 
         // Whitespace-only counts as empty: Discord refuses a blank body, so the send would

@@ -219,10 +219,10 @@ closed list, and what it means.
 | [Tools](#tools) | [`BRAVE_API_KEY`](#brave_api_key), [`MCP`](#mcp), [`MCP:Server`](#mcpserver), [`Orkeon:Bridge`](#orkeonbridge), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Tools:Bridge`](#orkeontoolsbridge), [`Orkeon:Tools:Drive`](#orkeontoolsdrive), [`Orkeon:Tools:Email`](#orkeontoolsemail), [`Orkeon:Tools:Firefox`](#orkeontoolsfirefox), [`Orkeon:Tools:GitHub`](#orkeontoolsgithub), [`Orkeon:Tools:ResultLimits`](#orkeontoolsresultlimits), [`Orkeon:Tools:Shell`](#orkeontoolsshell), [`Plugins`](#plugins), [`RaggableTree`](#raggabletree) | 131 |
 | [Orchestration and persistence](#orchestration-and-persistence) | [`Orkeon:Checkpointing`](#orkeoncheckpointing), [`Orkeon:Compaction`](#orkeoncompaction), [`Orkeon:Compaction:Prune`](#orkeoncompactionprune), [`Orkeon:Consensus`](#orkeonconsensus), [`Orkeon:CrewFactory`](#orkeoncrewfactory), [`Orkeon:ExecutionState:Persistence`](#orkeonexecutionstatepersistence), [`Orkeon:HumanInput`](#orkeonhumaninput), [`Orkeon:RunHistory`](#orkeonrunhistory), [`Orkeon:Skills`](#orkeonskills) | 39 |
 | [Scripts and console](#scripts-and-console) | [`Orkeon:Cli:ConsoleStreaming`](#orkeoncliconsolestreaming), [`Orkeon:Cli:Memory`](#orkeonclimemory), [`Orkeon:Cli:ScriptCommands`](#orkeoncliscriptcommands), [`Orkeon:Cli:ScriptHost`](#orkeoncliscripthost), [`Orkeon:Cli:Session`](#orkeonclisession), [`Orkeon:Cli:Tui`](#orkeonclitui), [`Orkeon:Scripting:AgentInstances`](#orkeonscriptingagentinstances), [`Orkeon:Scripting:AgentMemory`](#orkeonscriptingagentmemory), [`Orkeon:Scripting:Limits`](#orkeonscriptinglimits), [`Orkeon:Scripting:Toolchain`](#orkeonscriptingtoolchain) | 35 |
-| [Service host and A2A](#service-host-and-a2a) | [`A2A`](#a2a), [`A2A:Security`](#a2asecurity), [`A2A:Security:AzureAD`](#a2asecurityazuread), [`A2A:Security:Oidc`](#a2asecurityoidc), [`Orkeon:Host`](#orkeonhost), [`Orkeon:Host:Discord`](#orkeonhostdiscord) | 59 |
+| [Service host and A2A](#service-host-and-a2a) | [`A2A`](#a2a), [`A2A:Security`](#a2asecurity), [`A2A:Security:AzureAD`](#a2asecurityazuread), [`A2A:Security:Oidc`](#a2asecurityoidc), [`Orkeon:Host`](#orkeonhost), [`Orkeon:Host:Discord`](#orkeonhostdiscord), [`Orkeon:Host:Teams`](#orkeonhostteams) | 70 |
 | [Observability](#observability) | [`Logging`](#logging), [`Orkeon:Monitoring`](#orkeonmonitoring), [`Telemetry`](#telemetry) | 8 |
 
-88 sections, 574 keys. Read by no shipped binary, only by a host written in C# (6): [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting), [`Orkeon:VectorSearch`](#orkeonvectorsearch), [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Monitoring`](#orkeonmonitoring).
+89 sections, 585 keys. Read by no shipped binary, only by a host written in C# (6): [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting), [`Orkeon:VectorSearch`](#orkeonvectorsearch), [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Monitoring`](#orkeonmonitoring).
 <!-- /settings-index -->
 
 How to read a table:
@@ -470,7 +470,7 @@ covers is not the one read, so it is not judged. The settings judged, from
 | Settings | Correction stated |
 |---|---|
 | `Llm:ApiKey`, `Llm:Profiles:<name>:ApiKey`, `Orkeon:Embeddings:ApiKey` | write `"ApiKeyEnvVar": "<NAME>"` instead |
-| `Llm:ApiKeyEnvVar`, `Llm:Profiles:<name>:ApiKeyEnvVar`, `Orkeon:Rag:WebFallback:ApiKeyEnvVar`, `Orkeon:Embeddings:ApiKeyEnvVar`, `Orkeon:Host:Discord:TokenEnvironmentVariable`, `Orkeon:Tools:Bridge:TokenEnvVar`, `Orkeon:Bridge:TokenEnvVar`, `A2A:Security:ApiKeySecretNames:<i>`, `Orkeon:Encryption:SecretName`, `Orkeon:Tools:GitHub:TokenVariable` | write the name alone, without `${` and `}` |
+| `Llm:ApiKeyEnvVar`, `Llm:Profiles:<name>:ApiKeyEnvVar`, `Orkeon:Rag:WebFallback:ApiKeyEnvVar`, `Orkeon:Embeddings:ApiKeyEnvVar`, `Orkeon:Host:Discord:TokenEnvironmentVariable`, `Orkeon:Host:Teams:SecretEnvironmentVariable`, `Orkeon:Tools:Bridge:TokenEnvVar`, `Orkeon:Bridge:TokenEnvVar`, `A2A:Security:ApiKeySecretNames:<i>`, `Orkeon:Encryption:SecretName`, `Orkeon:Tools:GitHub:TokenVariable` | write the name alone, without `${` and `}` |
 | `MCP:Servers:<id>:Command`, `:Args:<i>`, `:Url`; `Llm:AgentCli:Command`; `Orkeon:Redis:ConnectionString`, `Orkeon:Sqlite:ConnectionString`; `RaggableTree:Embedding:ApiKey`, `Orkeon:Pinecone:ApiKey`, `Orkeon:LanceDb:ApiKey`; `Llm:BaseUrl`, `Llm:Profiles:<name>:BaseUrl`, `RaggableTree:Embedding:BaseUrl`, `Orkeon:ChromaDb:BaseUrl`, `Orkeon:Pinecone:Host`, `Orkeon:LanceDb:Endpoint`, `Orkeon:Embeddings:Endpoint`, `Orkeon:Rag:WebFallback:Endpoint`, `Telemetry:OtlpEndpoint`; `Security:Vault:AzureKeyVaultUri`, `A2A:Security:AzureAD:Authority`, `A2A:Security:Oidc:Authority`; `Orkeon:Tools:GitHub:Token` | write the value, or keep it out of the file through the environment layer `ORKEON_<path with __>` |
 | `MCP:Servers:<id>:Env:<name>` | remove the entry: the server inherits the environment Orkeon runs in, set the variable there |
 | `Secrets:<name>` | remove the entry and set `ORKEON_<name>`, which the secret chain reads first |
@@ -2448,6 +2448,31 @@ crew when unset. A route to an undeclared crew, a route key that is not a channe
 | `TokenEnvironmentVariable` | string | `"ORKEON_DISCORD_TOKEN"` | Name of the environment variable holding the bot token. |
 <!-- /settings -->
 
+### `Orkeon:Host:Teams`
+
+The Microsoft Teams channel ([what to set up](../architecture/service-host.md#the-microsoft-teams-channel)). `Routes` is a
+list of `{ "Channel", "Crew" }`, since a Teams channel id contains `:`; `DefaultCrew` is the crew an unrouted channel
+reaches. An empty `AllowedUserIds`, an id that is not a GUID, an unset secret, a prefix that cannot be bound or a route that
+cannot be honoured refuses the start.
+
+<!-- settings:Orkeon:Host:Teams -->
+**Read by**: `orkeon-host`.
+
+| Key | Type | Default | Meaning |
+|---|---|---|---|
+| `AllowedUserIds` | list of string | `[]` | Entra object ids of the people allowed to talk to the bot. **Empty denies everyone**, and an enabled channel refuses the start. |
+| `AppId` | string | `""` | The bot's application (client) id: the audience every incoming token must carry. |
+| `DefaultCrew` | string | — | The crew a room without a route reaches. Unset, it is the first crew declared under `Orkeon:Host:Crews`; set, it must name one of them. |
+| `Enabled` | boolean | `false` | Whether the channel is switched on. Off unless a deployment says otherwise. |
+| `Prefix` | string | `"http://localhost:3978/"` | The listener's prefix: scheme, host, port and a closing slash. The channel answers `POST /api/messages` there; Microsoft must reach it over HTTPS, through a reverse proxy that terminates TLS in front of it. |
+| `ProgressInterval` | duration | `"00:00:05"` | How long progress updates are spaced out. Teams limits what a bot posts in one conversation. |
+| `Routes:<i>:Channel` | string | `""` | The Teams channel (or chat) id, as Teams writes it: `19:…@thread.tacv2`. |
+| `Routes:<i>:Crew` | string | `""` | The hosted crew a thread opened in that channel starts. |
+| `SecretEnvironmentVariable` | string | `"ORKEON_TEAMS_APP_SECRET"` | Name of the environment variable holding the application's client secret. |
+| `ServiceHosts` | list of string | `[]` | Hosts of the Bot Connector service replies may go to, beside the ones Microsoft publishes for Teams (`smba.trafficmanager.net`, `smba.infra.gcc.teams.microsoft.com`). An activity naming another host is refused, whatever its token says. |
+| `TenantId` | string | `""` | The Entra tenant the bot is registered in (single-tenant). An activity of another tenant is refused. |
+<!-- /settings -->
+
 ### `A2A`
 
 A2A server and client; `EnableServer` also registers the hosted service that starts the server
@@ -2613,6 +2638,7 @@ variable itself. The list is the one the code carries — a test holds this tabl
 | `ORKEON_LLM_API_KEY` | `orkeon` | an API key | The variable `orkeon llm probe` and `orkeon llm models` read the key from when `--api-key-env` names no other. |
 | `BRAVE_API_KEY` | `orkeon`, `orkeon-host` | a Brave Search API key | Registers the `brave_search` tool. It is read as a configuration key first, so the settings file and `ORKEON_BRAVE_API_KEY` give it too. |
 | `ORKEON_DISCORD_TOKEN` | `orkeon-host` | a Discord bot token | The token of the Discord channel: the default of `Orkeon:Host:Discord:TokenEnvironmentVariable`, which may name another variable. |
+| `ORKEON_TEAMS_APP_SECRET` | `orkeon-host` | a client secret | The client secret of the Teams channel's bot application: the default of `Orkeon:Host:Teams:SecretEnvironmentVariable`, which may name another variable. |
 | `OLLAMA_BASE_URL` | `orkeon`, `orkeon-host`, `orkeon-repl` | the address of an Ollama server | The address the Ollama provider uses when it is given none: `Llm:BaseUrl` wins over it, and `http://localhost:11434` is what remains without either. |
 | `TUI_DRIVER` | `orkeon-repl` | `windows`, `dotnet` or `ansi` | The Terminal.Gui driver of the text interfaces, for diagnosis. Unset: `windows` under Windows, `dotnet` elsewhere — `ansi` draws nothing under WSL and in many container terminals. |
 | `TUI_DIAG` | `orkeon-repl` | `1` | The split-pane console writes `[tui-diag]` lines on stderr while it starts: the terminal, the driver chosen. |
@@ -2661,6 +2687,7 @@ value: the secret stays out of the file. `orkeon settings <key>` describes each.
 | `Orkeon:Embeddings:ApiKeyEnvVar` | The API key of the `mistral`, `azure-openai` or `gemini` embedding provider, read when no `Orkeon:Embeddings:ApiKey` is set. | The process environment. |
 | `Orkeon:Rag:WebFallback:ApiKeyEnvVar` | The key of the web search the corrective RAG falls back to; empty, no key is sent. | The process environment. |
 | `Orkeon:Host:Discord:TokenEnvironmentVariable` | The bot token of the Discord channel; the key names `ORKEON_DISCORD_TOKEN` when nothing sets it. | The process environment. |
+| `Orkeon:Host:Teams:SecretEnvironmentVariable` | The client secret of the Teams channel's bot application; the key names `ORKEON_TEAMS_APP_SECRET` when nothing sets it. | The process environment. |
 | `Orkeon:Tools:Bridge:TokenEnvVar` | The token the run sends to the tool bridge; the key names `ORKEON_BRIDGE_TOKEN` when nothing sets it. | The process environment. |
 | `Orkeon:Bridge:TokenEnvVar` | The token the tool bridge server expects from its callers; the key names `ORKEON_BRIDGE_TOKEN` when nothing sets it. | The process environment. |
 

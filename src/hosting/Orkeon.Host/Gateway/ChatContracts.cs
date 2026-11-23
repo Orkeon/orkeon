@@ -1,20 +1,20 @@
 namespace Orkeon.Host.Gateway;
 
 /// <summary>One message arriving from a channel.</summary>
-internal sealed record InboundMessage
+internal record InboundMessage
 {
-    /// <summary>The channel it came from — <c>discord</c>, <c>console</c>, a test.</summary>
+    /// <summary>The channel it came from — <c>discord</c>, <c>teams</c>, <c>console</c>, a test.</summary>
     public required string Channel { get; init; }
 
     /// <summary>
-    /// The conversation it belongs to. On Discord this is a thread; the routing strategy makes
+    /// The conversation it belongs to. On Discord and Teams this is a thread; the routing strategy makes
     /// one conversation one run, which is the only mapping a person can predict.
     /// </summary>
     public required string ConversationId { get; init; }
 
     /// <summary>
     /// The room the conversation was opened in — on Discord, the channel a thread belongs to.
-    /// It is what a chat route names (<c>Orkeon:Host:Discord:Routes</c>); null when the
+    /// It is what a chat route names (<c>Orkeon:Host:Discord:Routes</c>, <c>Orkeon:Host:Teams:Routes</c>); null when the
     /// channel has no notion of rooms.
     /// </summary>
     public string? RoomId { get; init; }
@@ -53,7 +53,7 @@ internal interface IChatResponder
 }
 
 /// <summary>
-/// A place people talk to Orkeon from. Discord is the first; the JSONL protocol of the run
+/// A place people talk to Orkeon from. Discord and Teams are the shipped ones; the JSONL protocol of the run
 /// event bus is a legitimate implementation of the same shape, which is why this is not named
 /// after chat platforms.
 /// </summary>
@@ -67,6 +67,22 @@ internal interface IChatChannel
 
     /// <summary>The responder replies go through.</summary>
     IChatResponder Responder { get; }
+
+    /// <summary>
+    /// Raised for a command — a Discord slash command or its stop button, a Teams message that is one. The returned text
+    /// answers whoever invoked it. One event, so one authorization check, whatever the platform.
+    /// </summary>
+    event Func<CommandInvocation, Task<string>>? CommandInvoked;
+}
+
+/// <summary>The commands every channel offers.</summary>
+internal static class ChatCommands
+{
+    /// <summary>Stops the conversation's run.</summary>
+    public const string Stop = "stop";
+
+    /// <summary>What the conversation is running, and since when.</summary>
+    public const string Status = "status";
 }
 
 /// <summary>

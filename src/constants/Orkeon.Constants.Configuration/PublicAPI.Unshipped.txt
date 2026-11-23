@@ -1,1 +1,2 @@
 #nullable enable
+const Orkeon.Constants.Configuration.EnvironmentVariableNames.TeamsAppSecret = "ORKEON_TEAMS_APP_SECRET" -> string!
