@@ -48,6 +48,16 @@ public class FirefoxToolOptionsTests
         Assert.IsType<FirefoxEngine>(BrowserEngines.Create(new FirefoxToolOptions { Engine = " FIREFOX" }, null));
     }
 
+    [Fact]
+    public void Should_RefuseHeadless_When_TheEngineHasNone()
+    {
+        var refused = Assert.Throws<InvalidOperationException>(
+            () => BrowserEngines.Create(new FirefoxToolOptions { Engine = "safari", Headless = true }, null));
+
+        Assert.Equal("Orkeon:Tools:Browser:Headless cannot be true with the engine safari: Safari has no headless mode.", refused.Message);
+        Assert.Equal("safari", BrowserEngines.Create(new FirefoxToolOptions { Engine = "safari" }, null).Id);
+    }
+
     private static IConfiguration Settings(params (string Key, string Value)[] values) =>
         new ConfigurationBuilder().AddInMemoryCollection(values.ToDictionary(v => v.Key, v => (string?)v.Value)).Build();
 

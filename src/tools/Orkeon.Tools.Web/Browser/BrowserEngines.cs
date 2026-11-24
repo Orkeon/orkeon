@@ -19,13 +19,20 @@ internal static class BrowserEngines
         };
 
     /// <summary>The engine the options name.</summary>
-    /// <exception cref="InvalidOperationException">The options name no engine the tool knows: the value is never written, another engine never taken.</exception>
+    /// <exception cref="InvalidOperationException">The options name no engine the tool knows: the value is never written, another engine never taken. Or they ask for a headless mode the engine lacks.</exception>
     public static IBrowserEngine Create(FirefoxToolOptions options, ILogger? logger)
     {
         ArgumentNullException.ThrowIfNull(options);
-        return s_engines.TryGetValue(options.Engine.Trim(), out var create)
-            ? create(options, logger)
-            : throw new InvalidOperationException(
+        if (!s_engines.TryGetValue(options.Engine.Trim(), out var create))
+        {
+            throw new InvalidOperationException(
                 $"{options.Section}:{nameof(FirefoxToolOptions.Engine)} is not a browser engine: write one of {string.Join(", ", s_engines.Keys)}.");
+        }
+
+        var engine = create(options, logger);
+        return options.Headless && !engine.Capabilities.Headless
+            ? throw new InvalidOperationException(
+                $"{options.Section}:{nameof(FirefoxToolOptions.Headless)} cannot be true with the engine {engine.Id}: {engine.DisplayName} has no headless mode.")
+            : engine;
     }
 }

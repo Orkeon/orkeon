@@ -17,4 +17,10 @@ jobs:
       - run: sudo safaridriver --enable
       - run: dotnet build tests/tools/Orkeon.Tools.Web.Tests/Orkeon.Tools.Web.Tests.csproj -c Release
       - env: { ORKEON_TEST_BROWSER_SAFARI: /usr/bin/safaridriver }
-        run: dotnet test tests/tools/Orkeon.Tools.Web.Tests/Orkeon.Tools.Web.Tests.csproj -c Release --no-build --filter "FullyQualifiedName~SafariToolIntegrationTests" -- --no-ansi
+        run: |
+          set +e
+          for i in 1 2 3; do
+            echo "== run $i"; date; ps ax | grep -iE "safari" | grep -v grep | cut -c1-150
+            dotnet test tests/tools/Orkeon.Tools.Web.Tests/Orkeon.Tools.Web.Tests.csproj -c Release --no-build --filter "FullyQualifiedName~SafariToolIntegrationTests" --output Detailed -- --no-ansi
+          done
+          log show --last 12m --style compact --predicate 'process == "safaridriver"' | tail -n 60

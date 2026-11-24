@@ -57,6 +57,7 @@ internal sealed class SafariTransport : IBiDiTransport
 
     private readonly HttpClient _http;
     private readonly Uri _session;
+    private readonly TimeSpan _limit;
     private readonly Channel<string> _commands = Channel.CreateUnbounded<string>();
     private readonly Channel<string> _messages = Channel.CreateUnbounded<string>();
     private readonly CancellationTokenSource _stopping = new();
@@ -69,8 +70,10 @@ internal sealed class SafariTransport : IBiDiTransport
     private bool _ended;
     private int _disposed;
 
-    private SafariTransport(HttpClient http, Uri session)
+    private SafariTransport(HttpClient http, Uri session, TimeSpan commandTimeout)
     {
+        // The driver gives up on a page or a script first: a command it holds holds the ones behind it.
+        _limit = commandTimeout + TimeSpan.FromSeconds(10);
         _http = http;
         _session = session;
     }
@@ -78,14 +81,15 @@ internal sealed class SafariTransport : IBiDiTransport
     /// <summary>Waits for the driver listening at <paramref name="driver"/> and opens its session.</summary>
     /// <exception cref="FirefoxException">The driver refused the session.</exception>
     [SuppressMessage("Reliability", "CA2000", Justification = "The client is handed to the transport returned, which disposes it; a start that fails disposes it below.")]
-    public static async Task<SafariTransport> ConnectAsync(Uri driver, TimeSpan commandTimeout, CancellationToken cancellationToken)
+    public static async Task<SafariTransport> ConnectAsync(
+        Uri driver, TimeSpan commandTimeout, CancellationToken cancellationToken, HttpMessageHandler? handler = null)
     {
         ArgumentNullException.ThrowIfNull(driver);
 
-        // The driver gives up on a page or a script first: a command it holds holds the ones behind it.
-        var http = new HttpClient(new SocketsHttpHandler { UseProxy = false, AllowAutoRedirect = false })
+        // The start is bounded by the caller, each command by its own limit.
+        var http = new HttpClient(handler ?? new SocketsHttpHandler { UseProxy = false, AllowAutoRedirect = false })
         {
-            Timeout = commandTimeout + TimeSpan.FromSeconds(10),
+            Timeout = Timeout.InfiniteTimeSpan,
         };
         try
         {
@@ -96,7 +100,7 @@ internal sealed class SafariTransport : IBiDiTransport
             }, cancellationToken).ConfigureAwait(false);
             var id = created?["sessionId"]?.GetValue<string>()
                 ?? throw new FirefoxException("safaridriver opened a session without an id.");
-            var transport = new SafariTransport(http, new Uri(driver, $"/session/{Uri.EscapeDataString(id)}/"));
+            var transport = new SafariTransport(http, new Uri(driver, $"/session/{Uri.EscapeDataString(id)}/"), commandTimeout);
             try
             {
                 await transport.StartAsync(commandTimeout, cancellationToken).ConfigureAwait(false);
@@ -212,7 +216,7 @@ internal sealed class SafariTransport : IBiDiTransport
                 catch (Exception ex) when (ex is not HttpRequestException && !_stopping.IsCancellationRequested)
                 {
                     answer["type"] = "error";
-                    answer["error"] = ex is WebDriverException refused ? BiDiCode(refused.Code) : ex is TaskCanceledException ? BiDiException.Timeout : "unknown error";
+                    answer["error"] = ex is WebDriverException refused ? BiDiCode(refused.Code) : ex is OperationCanceledException ? BiDiException.Timeout : "unknown error";
                     answer["message"] = ex.Message;
                 }
 
@@ -426,7 +430,7 @@ internal sealed class SafariTransport : IBiDiTransport
 
             // The page or the tab is changing: the next command looks again.
         }
-        catch (TaskCanceledException) when (!cancellationToken.IsCancellationRequested)
+        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
         {
             // The driver did not answer in time: the next command says so.
         }
@@ -528,8 +532,12 @@ internal sealed class SafariTransport : IBiDiTransport
     private Task<JsonNode?> PostAsync(string command, JsonObject body, CancellationToken cancellationToken) =>
         CallAsync(HttpMethod.Post, command, body, cancellationToken);
 
-    private Task<JsonNode?> CallAsync(HttpMethod method, string command, JsonObject? body, CancellationToken cancellationToken) =>
-        CallAsync(_http, method, new Uri(_session, command), body, cancellationToken);
+    private async Task<JsonNode?> CallAsync(HttpMethod method, string command, JsonObject? body, CancellationToken cancellationToken)
+    {
+        using var bounded = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        bounded.CancelAfter(_limit);
+        return await CallAsync(_http, method, new Uri(_session, command), body, bounded.Token).ConfigureAwait(false);
+    }
 
     private static async Task<JsonNode?> CallAsync(HttpClient http, HttpMethod method, Uri address, JsonObject? body, CancellationToken cancellationToken)
     {

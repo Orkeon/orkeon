@@ -149,7 +149,7 @@ internal static partial class BrowserHost
                 var transport = await launch.ConnectAsync(endpoint, cancellationToken).ConfigureAwait(false);
                 return new Child(process, launch, transport);
             }
-            catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
+            catch (Exception ex) when (ex is not FirefoxException && !cancellationToken.IsCancellationRequested)
             {
                 throw new FirefoxException($"The connection to {launch.DisplayName} at {endpoint} failed ({ex.Message}).", ex);
             }

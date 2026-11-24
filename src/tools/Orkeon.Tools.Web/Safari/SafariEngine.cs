@@ -35,8 +35,6 @@ internal sealed class SafariEngine : IBrowserEngine
     public async Task<IBrowserProcess> LaunchAsync(BrowserProfileChoice profile, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(profile);
-        if (_options.Headless)
-            throw new FirefoxException($"Safari has no headless mode: {_options.Section}:{nameof(FirefoxToolOptions.Headless)} must be false.");
         var executable = LocateOnHost() ?? throw BrowserHost.Missing(DisplayName, _options);
         var port = FreePort();
         var commandTimeout = TimeSpan.FromSeconds(_options.CommandTimeoutSeconds);
@@ -52,7 +50,14 @@ internal sealed class SafariEngine : IBrowserEngine
             {
                 using var bounded = CancellationTokenSource.CreateLinkedTokenSource(ct);
                 bounded.CancelAfter(startup);
-                return await SafariTransport.ConnectAsync(endpoint, commandTimeout, bounded.Token).ConfigureAwait(false);
+                try
+                {
+                    return await SafariTransport.ConnectAsync(endpoint, commandTimeout, bounded.Token).ConfigureAwait(false);
+                }
+                catch (OperationCanceledException ex) when (!ct.IsCancellationRequested)
+                {
+                    throw new FirefoxException($"safaridriver did not open a session within {startup.TotalSeconds:0.#} s.", ex);
+                }
             },
             RemoveProfileAsync = static () => Task.CompletedTask,
             Profile = profile,
