@@ -179,5 +179,5 @@ public sealed class OAuthClientAssertionTests : IDisposable
 
     [Fact]
     public void ShouldNotPrintTheCredential_WhenFormatted() =>
-        Assert.DoesNotContain("aaa.bbb.ccc", OAuthClientAssertion.FromFederatedToken("aaa.bbb.ccc").ToString(), StringComparison.Ordinal);
+        Assert.DoesNotContain("aaa.bbb.ccc", Convert.ToString((object)OAuthClientAssertion.FromFederatedToken("aaa.bbb.ccc"), System.Globalization.CultureInfo.InvariantCulture), StringComparison.Ordinal);
 }

@@ -65,6 +65,7 @@ paths their `on.pull_request.paths` list.
 | `cs/useless-upcast` | warning | `(string?)null` inside a tuple or an argument | assert the two values apart: `Assert.Null(after)` |
 | `cs/unused-collection` | error | a list or `JsonArray` that is filled and never read | delete it, with the lines that fill it |
 | `cs/useless-assignment-to-local` | warning | `await using (var x = Start(...))` where `x` is never read; a local assigned and not used | `await using (Start(...))`; drop the local |
+| `cs/call-to-object-tostring` | warning | `.ToString()` on a type that does not override it, as a test that a secret is not printed does. No pattern predicts it | `Convert.ToString((object)value, CultureInfo.InvariantCulture)` in such a test |
 | `cs/xmldoc/missing-summary` | note | a public member documented with `<param>` only | a `<summary>` first |
 | `cs/path-combine` | note | `Path.Combine(a, b)` | accepted in tests; in `src/` the VFS rule forbids physical paths anyway |
 | `cs/linq/missed-select`, `cs/linq/missed-where`, `cs/coupled-types` | note | a `foreach` that maps or filters at once; a large facade | accepted when the loop throws or reads better; not a reason to restructure |
