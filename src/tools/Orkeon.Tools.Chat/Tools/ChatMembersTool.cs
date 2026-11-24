@@ -98,7 +98,7 @@ internal sealed class ChatMembersTool : ToolBase<ChatMembersRequest, ChatMembers
 
     private ChatMemberDto Member(ChatPerson person) => new()
     {
-        Id = person.Id,
+        Id = ChatIds.Shown(person.Id),
         Name = _screen.Label(person.Name),
         Address = _screen.Label(person.Address),
         Guest = person.IsGuest ? true : null,
@@ -107,7 +107,7 @@ internal sealed class ChatMembersTool : ToolBase<ChatMembersRequest, ChatMembers
 
     private ChatMemberDto Member(ChatMember member) => new()
     {
-        Id = member.UserId,
+        Id = ChatIds.Shown(member.UserId),
         Name = _screen.Label(member.Name),
         Address = _screen.Label(member.Email),
         Guest = member.Roles.Contains("guest", StringComparer.OrdinalIgnoreCase) ? true : null,

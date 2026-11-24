@@ -94,7 +94,14 @@ Ces accès ne peuvent pas passer par le VFS par nature et sont **définitivement
 | Watcher bridge | `Analysis/.../FileSystemWatcherCodebaseWatcher.cs` | `EXCEPTION-WATCHER-BRIDGE` | Adapte `System.IO.FileSystemWatcher` vers `ICodebaseWatcher` |
 | Sonde RaggableTree | `Analysis/Core/FileSystemDiscoverer.cs` (sonde diagnostique uniquement) | `OUT-OF-SCOPE` | La *découverte batch elle-même* utilise `EnumerateFilesAsync` ; la sonde compte délibérément les entrées physiques pour distinguer « le VFS n'a rien renvoyé » de « le disque est vide » |
 | Persistance SQLite | `SqliteMemoryProvider`, `SqliteStateStore` | gouverné | Le moteur exige un chemin réel ; le `Data Source` est résolu via `ResolveAndValidate` avant d'atteindre le driver |
-| Fichier d'identifiant de l'opérateur | `Tools.Chat/Auth/ChatCredentialFile.cs` | `OUT-OF-SCOPE` | Le certificat ou le fichier de jeton fédéré d'un compte chat d'application, nommé par une variable d'environnement et renouvelé par l'hôte. Il n'est sous aucun montage, et ne doit pas l'être : un montage laisserait les outils de fichiers des agents lire la clé. Non ratifié : attend la décision du propriétaire |
+
+### En attente de ratification
+
+Suppression présente dans le code, non ratifiée : le propriétaire n'a pas encore décidé.
+
+| Domaine | Emplacement | Catégorie | Justification |
+|---|---|---|---|
+| Fichier d'identifiant de l'opérateur | `Tools.Chat/Auth/ChatCredentialFile.cs` | `OUT-OF-SCOPE` | Le certificat ou le fichier de jeton fédéré d'un compte chat d'application, nommé par une variable d'environnement et renouvelé par l'hôte. Il n'est sous aucun montage, et ne doit pas l'être : un montage laisserait les outils de fichiers des agents lire la clé. |
 
 ## Ajouter un nouvel outil ou service
 
@@ -304,15 +311,15 @@ Un runner monte pour lui-même quelques racines en montages **internes**
 d'échanges de `--llm-log`), `/sandbox` (où les sandboxes de code déposent ce qu'elles exécutent),
 `/state` (le magasin de checkpoints), `/runs` (l'historique des runs), `/llm-mock` et
 `/llm-cassette` (`--llm-mock`, `--llm-record`/`--llm-replay`) et `/credentials` (les jetons OAuth des comptes e-mail, drive et chat — montée seulement quand un compte OAuth
-de l'une des deux familles est déclaré). Le registre refuse un montage interne à tout appelant ordinaire et le signale comme
+de l'une de ces familles est déclaré). Le registre refuse un montage interne à tout appelant ordinaire et le signale comme
 un chemin inexistant : aucun outil destiné aux agents ne peut l'atteindre ni même le nommer
 ([ADR-008](../adr/ADR-008-virtual-paths-are-the-only-currency.md)). Les quelques composants qui
 doivent y écrire demandent `PrivilegedFileSystemAccess` à la DI, par son nom : l'enregistreur des
-échanges, les sandboxes de code et les magasins de jetons (`FileSystemEmailTokenStore` et
-`FileSystemDriveTokenStore`, que l'hôte des runners enregistre sur `/credentials/email` et
-`/credentials/drive`). Ils passent toujours par le VFS. Le seul
+échanges, les sandboxes de code et les magasins de jetons (`FileSystemEmailTokenStore`,
+`FileSystemDriveTokenStore` et `FileSystemChatTokenStore`, que l'hôte des runners enregistre sur
+`/credentials/email`, `/credentials/drive` et `/credentials/chat`). Ils passent toujours par le VFS. Le seul
 `System.IO` brut sur ce chemin est la création, par le runner, du répertoire physique
-`credentials` et de ses sous-répertoires `email` et `drive` (réservés au propriétaire sous Unix) avant
+`credentials` et de ses sous-répertoires `email`, `drive` et `chat` (réservés au propriétaire sous Unix) avant
 qu'aucun montage n'existe — du bootstrap `Hosting/Runner*`, une portée `EXCEPTION-BOOTSTRAP` déjà
 ratifiée, pas une nouvelle catégorie. `orkeon run` refuse un montage utilisateur qui revendique
 l'une de ces racines (`EnsureReservedRootsAreFree`, `/state` et `/runs` compris) ; chaque autre

@@ -117,7 +117,7 @@ internal sealed class OAuth2Client
         if (TryReadError(root, out var error, out var description))
         {
             // A provider may echo what it was sent: the credential is never repeated.
-            throw new OAuthException(OAuthFailure.AuthenticationFailed,
+            throw new OAuthException(FailureOf(error, OAuthFailure.AuthenticationFailed),
                 OAuthRedaction.Redact($"The client credentials grant was refused: {error} {description}".Trim(), credential));
         }
 
@@ -143,7 +143,7 @@ internal sealed class OAuth2Client
 
         var root = document.RootElement;
         if (TryReadError(root, out var error, out var description))
-            throw new OAuthException(OAuthFailure.AuthenticationFailed, $"The device authorization was refused: {error} {description}".Trim());
+            throw new OAuthException(FailureOf(error, OAuthFailure.AuthenticationFailed), $"The device authorization was refused: {error} {description}".Trim());
 
         var verification = ReadString(root, "verification_uri") ?? ReadString(root, "verification_url");
         if (ReadString(root, "device_code") is not { } deviceCode
@@ -195,7 +195,7 @@ internal sealed class OAuth2Client
                     interval += SlowDownStep;
                     continue;
                 default:
-                    throw new OAuthException(OAuthFailure.LoginRequired, OAuthRedaction.Redact($"The sign-in did not complete: {error} {description}".Trim(), clientSecret, grant.DeviceCode));
+                    throw new OAuthException(FailureOf(error, OAuthFailure.LoginRequired), OAuthRedaction.Redact($"The sign-in did not complete: {error} {description}".Trim(), clientSecret, grant.DeviceCode));
             }
         }
 
@@ -258,7 +258,7 @@ internal sealed class OAuth2Client
         using var document = await PostAsync(settings.TokenEndpoint, form, cancellationToken).ConfigureAwait(false);
         var root = document.RootElement;
         if (TryReadError(root, out var error, out var description))
-            throw new OAuthException(OAuthFailure.AuthenticationFailed, $"The authorization code was refused: {error} {description}".Trim());
+            throw new OAuthException(FailureOf(error, OAuthFailure.AuthenticationFailed), $"The authorization code was refused: {error} {description}".Trim());
         return ReadTokens(root, previousRefreshToken: null, settings.Scopes);
     }
 
@@ -283,7 +283,7 @@ internal sealed class OAuth2Client
         {
             var code = error is "invalid_grant" or "interaction_required" or "invalid_client" or "unauthorized_client"
                 ? OAuthFailure.LoginRequired
-                : OAuthFailure.AuthenticationFailed;
+                : FailureOf(error, OAuthFailure.AuthenticationFailed);
             throw new OAuthException(code, OAuthRedaction.Redact($"The token refresh was refused: {error} {description}".Trim(), clientSecret, refreshToken));
         }
 
@@ -386,6 +386,10 @@ internal sealed class OAuth2Client
         };
     }
 
+    /// <summary>What an error answer means: a provider that says it is at fault refused nothing (RFC 6749, section 4.1.2.1).</summary>
+    private static OAuthFailure FailureOf(string error, OAuthFailure refusal) =>
+        error is "temporarily_unavailable" or "server_error" ? OAuthFailure.ServerError : refusal;
+
     private static bool TryReadError(JsonElement root, out string error, out string description)
     {
         error = ReadString(root, "error") ?? string.Empty;
@@ -393,10 +397,20 @@ internal sealed class OAuth2Client
         return error.Length > 0;
     }
 
-    private static string? ReadString(JsonElement root, string name) =>
-        root.ValueKind == JsonValueKind.Object && root.TryGetProperty(name, out var value) && value.ValueKind == JsonValueKind.String
-            ? value.GetString()
-            : null;
+    private static string? ReadString(JsonElement root, string name)
+    {
+        if (root.ValueKind != JsonValueKind.Object || !root.TryGetProperty(name, out var value) || value.ValueKind != JsonValueKind.String)
+            return null;
+        try
+        {
+            return value.GetString();
+        }
+        catch (InvalidOperationException)
+        {
+            // JSON may escape half a character, which is no text.
+            return null;
+        }
+    }
 
     private static int? ReadInt(JsonElement root, string name)
     {

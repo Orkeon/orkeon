@@ -47,7 +47,7 @@ src/
     │   ├── Testing/              ← doublures LLM / outil (non exposées aux scripts)
     │   ├── Toolchain/            ← IScriptTranspiler, PassThroughTranspiler (esbuild derrière eux, interne)
     │   └── Typings/              ← les déclarations *.d.ts
-    └── Orkeon.Scripting.Cli/     ← l'outil `orkeon` : `run`, `quickstart`, `init`, `doctor`, `settings`, `llm`, `rag`, `eval`, `forge`, `usecases`, `email`, `drive`, `typings`, `mcp`, `runs`
+    └── Orkeon.Scripting.Cli/     ← l'outil `orkeon` : `run`, `quickstart`, `init`, `doctor`, `settings`, `llm`, `rag`, `eval`, `forge`, `usecases`, `email`, `drive`, `chat`, `typings`, `mcp`, `runs`
 ```
 
 ## Démarrage rapide

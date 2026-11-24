@@ -1455,8 +1455,8 @@ prompt — see [Security](../architecture/security.md).
 ### `Security:ToolResults`
 
 Tool-result screening: `Policy` is `Warn` by default — tagged as data and reported —, `Block`
-withholds High/Critical, `None` passes everything; `TrustedTools` are added to the `email_*`
-defaults. The length bound is not configured here but under `Orkeon:Tools:ResultLimits`
+withholds High/Critical, `None` passes everything; `TrustedTools` are added to the
+defaults: the `email_*` tools, `drive_read`, `chat_list`, `chat_meetings`, `chat_members`, `chat_read` and `chat_search`. The length bound is not configured here but under `Orkeon:Tools:ResultLimits`
 (below). Bound by `AddOrkeonInfrastructure()` and applied to every tool result by
 `IToolInvocationPipeline`.
 
@@ -1712,8 +1712,8 @@ never copied into the process; the process environment alone on Linux and macOS.
 Bound by `AddOrkeonChatTools(configuration)` and validated lazily, as the drive section is: an account
 is validated the first time a tool or an `orkeon chat` command uses it, every problem reported at
 once, and a value that cannot be read sets that one account aside instead of failing the host. No key
-holds a secret: the application is a public client, and a webhook's address or an application's credential is named by
-its variable. Walkthroughs and the tools:
+holds a secret: a user account signs in through a public client, which has none, and a webhook's address or an
+application's credential (a certificate, a federated token or a client secret) is named by its variable. Walkthroughs and the tools:
 [Chat tools](../guides/chat.md).
 
 - **`DefaultAccount`** — the account a call that names none uses (optional with a single account).
@@ -1745,7 +1745,7 @@ its variable. Walkthroughs and the tools:
 | `Accounts:<name>:Auth:FederatedTokenFileEnvVar` | string | — |  | Name of the environment variable holding the path of a federated token file, for `ClientCredentials`. |
 | `Accounts:<name>:Auth:Method` | enum | — | `OAuth2`, `ClientCredentials` | `OAuth2` (default): a user signs in. `ClientCredentials`: an application signs in as itself, to read alone. |
 | `Accounts:<name>:Auth:Tenant` | string | — |  | The tenant id or domain; `organizations` when unset. Mandatory for `ClientCredentials`. |
-| `Accounts:<name>:Cloud` | enum | — | `Global`, `UsGov`, `UsGovDoD`, `China` | The Microsoft cloud: `Global` (default), `UsGov` or `UsGovDoD`. Not read for a `TeamsWebhook`. |
+| `Accounts:<name>:Cloud` | enum | — | `Global`, `UsGov`, `UsGovDoD`, `China` | The Microsoft cloud: `Global` (default), `UsGov` or `UsGovDoD`; `China` is refused. Not read for a `TeamsWebhook`. |
 | `Accounts:<name>:Provider` | enum | — | `Teams`, `TeamsWebhook` | `Teams`, or `TeamsWebhook` to post into one place with no sign-in. Mandatory. |
 | `Accounts:<name>:Read:AllowedPlaces` | list of string | `[]` |  | The places an agent may read. Empty means none. |
 | `Accounts:<name>:Rights` | enum | `"None"` | `None`, `Read`, `Send`, `Edit`, `Delete`, `React`, `Meetings` | What an agent may do, e.g. `"Read, Send"`. Mandatory. |

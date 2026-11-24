@@ -365,4 +365,21 @@ public sealed class ChatAccountAdministrationTests
             ["chat_send needs the Send right with a non-empty Send:AllowedPlaces on a ready chat account, and no account has it. Add it under Orkeon:Tools:Chat:Accounts:<name>:Rights and Send."],
             await check.CheckAsync(["chat_send", "chat_read"], Token));
     }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task Logout_of_an_account_that_stores_no_token_needs_no_token_store(bool webhook)
+    {
+        using var fixture = new ChatFixture(webhook ? TestChatAccounts.Webhook() : TestChatAccounts.Application("chat:" + Samples.Group));
+        var credentials = new ChatCredentialProvider(new UnavailableChatTokenStore(), fixture.OAuth, new SecretEnvironment(_ => null));
+        using var http = new HttpClient(fixture.Handler, disposeHandler: false);
+        var administration = new ChatAccountAdministration(
+            fixture.Registry, credentials, fixture.OAuth, ChatSessions.Over(credentials, () => http, fixture.Time, () => http));
+
+        var result = await administration.LogoutAsync("work", TestContext.Current.CancellationToken);
+
+        Assert.False(result.Deleted);
+        Assert.Contains(webhook ? "a webhook" : "an application", result.Notice, StringComparison.Ordinal);
+    }
 }

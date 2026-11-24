@@ -97,6 +97,12 @@ internal static class ChatAccountResolver
 
         if ((options.Rights & ~(ChatRights.Read | ChatRights.Meetings)) != 0)
             problems.Add("Rights holds more than Read and Meetings, and Auth:Method ClientCredentials only reads: Microsoft Graph lets no application post as a user");
+        if ((options.Rights & ChatRights.Meetings) != 0 && (options.Rights & ChatRights.Read) == 0)
+            problems.Add("Rights holds Meetings without Read, and an application reads a meeting through a chat it may read: add Read");
+        if (Declares(options.Send.AllowedPlaces))
+            problems.Add("Send:AllowedPlaces goes with Auth:Method OAuth2 alone: an application posts nothing");
+        if (options.Send.MaxPerHour is not null)
+            problems.Add("Send:MaxPerHour goes with Auth:Method OAuth2 alone: an application posts nothing");
         if (options.Auth.AdminGranted.Any(entry => !string.IsNullOrWhiteSpace(entry)))
             problems.Add("Auth:AdminGranted goes with Auth:Method OAuth2 alone: an administrator grants every permission of an application");
         if (declared.Count != 1)

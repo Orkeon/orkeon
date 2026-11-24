@@ -1,3 +1,5 @@
+using System.Security.Cryptography;
+using System.Text;
 using Microsoft.Extensions.Logging;
 using Orkeon.Domain.Attributes;
 using Orkeon.Domain.Tools;
@@ -70,8 +72,7 @@ internal sealed class ChatReadTool : ToolBase<ChatReadRequest, ChatReadResponse>
         }
 
         var limit = ChatToolHelpers.Limit(request.Limit);
-        var scope = request.MessageId is null ? target.Place : $"{target.Place}#{request.MessageId}";
-        var cursor = ChatCursor.Decode(request.Cursor, scope, limit);
+        var cursor = ChatCursor.Decode(request.Cursor, Scope(target, request), limit);
         return await CollectAsync(session, target, request, cursor, limit, since, until, cancellationToken).ConfigureAwait(false);
     }
 
@@ -108,8 +109,11 @@ internal sealed class ChatReadTool : ToolBase<ChatReadRequest, ChatReadResponse>
                 var dto = await describer.DescribeAsync(message, textChars, cancellationToken).ConfigureAwait(false);
                 var here = next with { Offset = i };
                 length += ChatToolHelpers.RenderedLength(dto) + 1;
-                // The cursor is in the result too.
-                if (messages.Count == limit || (messages.Count > 0 && length + here.Encode().Length > budget))
+                // The cursor is in the result too: the one of this message, or the next page's, which may be the longer.
+                var room = here.Encode().Length;
+                if (page.Next is not null)
+                    room = Math.Max(room, new ChatCursor(next.Place, next.Top, page.Next, 0).Encode().Length);
+                if (messages.Count == limit || (messages.Count > 0 && length + room > budget))
                     return Finish(envelope, messages, here);
                 messages.Add(dto);
             }
@@ -122,6 +126,17 @@ internal sealed class ChatReadTool : ToolBase<ChatReadRequest, ChatReadResponse>
         }
 
         return Finish(envelope, messages, next);
+    }
+
+    /// <summary>What a cursor is good for: the place, the thread, and the dates, outside of which a page would be read as another one.</summary>
+    private static string Scope(ChatTarget target, ChatReadRequest request)
+    {
+        var scope = request.MessageId is null ? target.Place : $"{target.Place}#{request.MessageId}";
+        var since = request.Since?.Trim();
+        var until = request.Until?.Trim();
+        return string.IsNullOrEmpty(since) && string.IsNullOrEmpty(until)
+            ? scope
+            : $"{scope}?{Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes($"{since}\n{until}")))[..16]}";
     }
 
     private static ChatReadResponse Finish(ChatReadResponse envelope, List<ChatMessageDto> messages, ChatCursor? next) => envelope with

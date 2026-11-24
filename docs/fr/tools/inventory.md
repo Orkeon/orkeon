@@ -436,7 +436,7 @@ services.AddOrkeonInMemoryEventHub();
 services.AddOrkeonEventHubTools();     // les 7 tools du hub d'événements
 services.AddOrkeonEmailTools(configuration); // les 13 tools email_* ; ceux de boîte aux lettres demandent un compte déclaré
 services.AddOrkeonDriveTools(configuration); // les 11 tools drive_* ; ils demandent un compte déclaré et connecté
-services.AddOrkeonChatTools(configuration);  // les 10 tools chat_* ; ils demandent un compte déclaré et connecté
+services.AddOrkeonChatTools(configuration);  // les 10 tools chat_* ; ils demandent un compte déclaré, connecté sauf pour un webhook ou une application
 services.AddRaggableTreeTools();       // les 29 tools d'analyse
 services.AddOrkeonLocalEmbeddings();   // local_embed_text
 services.AddSemanticSearchTool();      // semantic_search (l'extension vit dans Orkeon.Hosting)

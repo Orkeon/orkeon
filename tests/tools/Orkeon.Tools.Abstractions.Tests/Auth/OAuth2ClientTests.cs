@@ -240,7 +240,8 @@ public sealed class OAuth2ClientTests : IDisposable
     [InlineData("interaction_required", "LoginRequired")]
     [InlineData("invalid_client", "LoginRequired")]
     [InlineData("unauthorized_client", "LoginRequired")]
-    [InlineData("temporarily_unavailable", "AuthenticationFailed")]
+    [InlineData("invalid_scope", "AuthenticationFailed")]
+    [InlineData("temporarily_unavailable", "ServerError")]
     public async Task Should_ask_for_a_new_sign_in_only_When_the_grant_itself_is_refused(string error, string code)
     {
         _handler.Enqueue(new FakeHttpResponse(HttpStatusCode.BadRequest, $$"""{"error":"{{error}}","error_description":"AADSTS70008"}"""));

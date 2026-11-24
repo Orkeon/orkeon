@@ -392,13 +392,13 @@ orkeon chat check [<account>] [--settings <file>] [--events jsonl]              
 ```
 
 The operator's side of the chat tools ([guide](../guides/chat.md)): what is declared under
-`Orkeon:Tools:Chat`, the one interactive step every account needs, and a check. Agents never run
+`Orkeon:Tools:Chat`, the one interactive step an account that signs in as a user needs (OAuth2), and a check. Agents never run
 these — a tool that finds no usable token answers with the `orkeon chat login <account>` to run.
 
 - **`accounts`** lists every declared account — its provider, rights and cloud, whether it is the
   default — and says `ready`, or what to fix. No network. `--json` writes one object per account
-  (`name`, `provider`, `rights`, `cloud`, `default`, `ready`, `problem`, `configuration_problems`,
-  `credential_problem`, `token_endpoint`).
+  (`name`, `provider`, `rights`, `application`, `cloud`, `default`, `ready`, `problem`,
+  `configuration_problems`, `credential_problem`, `token_endpoint`).
 - **`login`** signs in through the browser, with a redirect to `http://127.0.0.1:<port>/` (or the
   pasted address it ends on), or with Microsoft's device code under `--device-code`. A sign-in
   without a refresh token is refused. The tokens land in the `chat` subdirectory of the credentials

@@ -3,6 +3,7 @@ using Microsoft.Extensions.Options;
 using Orkeon.Host.Gateway;
 using Orkeon.Host.Tests.Doubles;
 using Orkeon.Tests.Shared.Network;
+using Orkeon.Tests.Shared.Timing;
 
 namespace Orkeon.Host.Tests;
 
@@ -27,13 +28,16 @@ public sealed class ChatChannelServiceTests
     private static ChatChannelService Build(DiscordChannelOptions discord, params HostedCrewOptions[] crews) =>
         Build(discord, new TeamsChannelOptions(), crews);
 
-    private static ChatChannelService Build(DiscordChannelOptions discord, TeamsChannelOptions teams, params HostedCrewOptions[] crews)
+    private static ChatChannelService Build(DiscordChannelOptions discord, TeamsChannelOptions teams, params HostedCrewOptions[] crews) =>
+        Build(discord, teams, new ScriptedRunner(), crews);
+
+    private static ChatChannelService Build(DiscordChannelOptions discord, TeamsChannelOptions teams, ScriptedRunner runner, params HostedCrewOptions[] crews)
     {
         var registry = new CrewHostRegistry(Options.Create(new OrkeonHostOptions { Crews = crews }));
         return new ChatChannelService(
             Options.Create(discord),
             Options.Create(teams),
-            new ScriptedRunner(),
+            runner,
             registry,
             NullLoggerFactory.Instance,
             NullLogger<ChatChannelService>.Instance,
@@ -230,6 +234,61 @@ public sealed class ChatChannelServiceTests
 
         await service.StopAsync(TestContext.Current.CancellationToken);
         Assert.True(service.ExecuteTask?.IsCompletedSuccessfully);
+    }
+
+    [Fact]
+    public async Task Two_channels_each_keep_their_own_allow_list_and_routes()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        using var microsoft = new FakeBotConnector();
+        await using var discordChannel = new FakeChatChannel();
+        var runner = new ScriptedRunner();
+        var discord = Enabled();
+        var billing = new HostedCrewOptions { Name = "billing", Path = "/crews/billing" };
+        Environment.SetEnvironmentVariable(discord.TokenEnvironmentVariable, "a-token");
+        try
+        {
+            var (service, port) = await LoopbackPorts.StartAsync(
+                p =>
+                {
+                    var teams = microsoft.Options(LoopbackPorts.BaseAddress(p).AbsoluteUri) with { Routes = [new() { Channel = Activities.Room, Crew = "billing" }] };
+                    var built = Build(discord, teams, runner, Crew(), billing);
+                    built.CreateDiscord = () => discordChannel;
+                    built.CreateTeams = () => new TeamsChannel(Options.Create(teams), NullLogger<TeamsChannel>.Instance, microsoft.Time, microsoft.Transport);
+                    return built;
+                },
+                (s, token) => s.StartAsync(token),
+                ct);
+            using var running = service;
+            var fromDiscord = await discordChannel.Listening.WaitAsync(Polling.DefaultTimeout, ct);
+
+            // A user of one channel is a stranger to the other, whatever the id.
+            await fromDiscord(Discord(Activities.UserId), ct);
+            Assert.Empty(runner.Ran);
+            Assert.Contains("not authorized", await discordChannel.InvokeAsync(new CommandInvocation("status", "1", Activities.UserId)), StringComparison.OrdinalIgnoreCase);
+
+            await fromDiscord(Discord("123"), ct);
+            Assert.Equal(["support:hello"], runner.Ran);
+
+            using var client = new HttpClient();
+            using var request = new HttpRequestMessage(HttpMethod.Post, new Uri(LoopbackPorts.BaseAddress(port), "api/messages"));
+            request.Content = new StringContent(System.Text.Json.JsonSerializer.Serialize(Activities.Message()), System.Text.Encoding.UTF8, "application/json");
+            request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", microsoft.Token());
+            using var response = await client.SendAsync(request, ct);
+            await Polling.WaitUntilAsync(() => runner.Ran.Count == 2, Polling.DefaultTimeout);
+            Assert.Equal("billing:hello", runner.Ran[1]);
+
+            await service.StopAsync(ct);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable(discord.TokenEnvironmentVariable, null);
+        }
+
+        static InboundMessage Discord(string sender) => new()
+        {
+            Channel = "discord", ConversationId = "1", SenderId = sender, Text = "hello", ReceivedAt = DateTimeOffset.UnixEpoch,
+        };
     }
 
     // ---- One registered command, end to end (the wiring the channel invokes) ------------

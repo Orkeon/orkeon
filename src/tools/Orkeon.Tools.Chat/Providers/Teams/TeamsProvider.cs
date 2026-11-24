@@ -488,7 +488,7 @@ internal sealed class TeamsProvider : IChatProvider
     private static ChatMember ReadMember(JsonElement json)
     {
         var roles = json.TryGetProperty("roles", out var list) && list.ValueKind == JsonValueKind.Array
-            ? list.EnumerateArray().Where(role => role.ValueKind == JsonValueKind.String).Select(role => role.GetString()).OfType<string>().ToList()
+            ? list.EnumerateArray().Select(GraphJson.Text).OfType<string>().ToList()
             : [];
         return new ChatMember(GraphJson.Text(json, "userId"), GraphJson.Text(json, "displayName") ?? string.Empty, GraphJson.Text(json, "email"), roles);
     }

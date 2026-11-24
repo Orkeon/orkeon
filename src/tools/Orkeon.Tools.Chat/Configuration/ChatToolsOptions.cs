@@ -54,7 +54,7 @@ internal sealed class ChatAccountOptions
     /// <summary>The webhook of a <c>TeamsWebhook</c> account.</summary>
     public ChatWebhookOptions Webhook { get; } = new();
 
-    /// <summary>The Microsoft cloud: <c>Global</c> (default), <c>UsGov</c> or <c>UsGovDoD</c>. Not read for a <c>TeamsWebhook</c>.</summary>
+    /// <summary>The Microsoft cloud: <c>Global</c> (default), <c>UsGov</c> or <c>UsGovDoD</c>; <c>China</c> is refused. Not read for a <c>TeamsWebhook</c>.</summary>
     public ChatCloud? Cloud { get; set; }
 
     /// <summary>What an agent may read.</summary>

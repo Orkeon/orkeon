@@ -24,7 +24,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   attachments, images or a quote. `chat_react` works in chats only. Edits, deletions and reactions count in `Send:MaxPerHour`
   and in the pace of a place. Sign-in: `Edit` and `Delete` also ask `Team.ReadBasic.All`, `Channel.ReadBasic.All` and
   `User.ReadBasic.All` (and `ChannelMessage.Read.All` with `ChannelMessages`); `React` asks `ChatMessage.Send` and
-  `User.ReadBasic.All`, no longer `ChannelMessage.Send`. `chat_search` is in `TrustedTools`. Not run on a real tenant.
+  `User.ReadBasic.All`. `chat_search` is in `TrustedTools`. Not run on a real tenant.
 - `chat_meetings` (Read) lists the
   transcripts of a Teams meeting and reads the text of one, `[hh:mm:ss] speaker: words`, a page at a time. It needs the
   right `Meetings` and `AdminGranted: ["Meetings"]` (`OnlineMeetings.Read` and `OnlineMeetingTranscript.Read.All`, asked
@@ -40,17 +40,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - A Teams chat account can be an application that only reads: `Auth:Method` `ClientCredentials` with exactly one of
   `Auth:CertificatePathEnvVar`, `Auth:FederatedTokenFileEnvVar` and `Auth:ClientSecretEnvVar`, a named tenant, named
   places (`*`, `user:` and a team by its name are refused) and a token kept in memory alone. `chat_meetings` reads there
-  by `place` alone, under the organizer the chat tells. Not tried on a real tenant.
-- `orkeon chat accounts`, `login` (the browser, or `--device-code`), `logout` and `check`.
+  by `place` alone, under the organizer the chat tells. `Send:AllowedPlaces`, `Send:MaxPerHour` and `Meetings` without
+  `Read` are refused there. Not tried on a real tenant.
+- `orkeon chat accounts`, `login` (the browser, or `--device-code`), `logout` and `check`. With `--events jsonl`, `login`
+  and `check` write one event per line, of the kinds of `Orkeon.Constants.Protocol.ChatEventKinds`. `logout` of a webhook
+  or application account succeeds with no `/credentials` root.
+- `ConfigurationKeys.ToolsChat`, and `Orkeon:Tools:Chat` among the `SettingsSections`.
+- A run keeps one credentials directory for the e-mail, drive and chat accounts. When the families name different
+  ones in `CredentialsDirectory`, e-mail's wins, then drive's, and the others are said to be ignored.
 - The shared OAuth client takes the flow at the sign-in, token revocation, a client assertion and
   `OAuthSettings.Prompt`; left null, `Prompt` keeps the Google parameters of before. E-mail and drive accounts sign in
   as they did.
 - Teams as a chat channel of `orkeon-host`: `Orkeon:Host:Teams` (off by default) listens for a Teams bot's messages, beside Discord or alone: a thread is a run, the
   room picks the crew, `AllowedUserIds` (Entra object ids) gates messages and the `/status` and `/stop` text commands, and
   replies go in the thread. Every activity's bearer token is validated before its body is read (signature, issuer, audience,
-  lifetime, `serviceurl`, channel endorsement, tenant), and the bot's token goes to the validated service only.
+  lifetime, `serviceurl`, channel endorsement, tenant), and the bot's token goes to the validated service only. A final
+  reply is retried on a connection failure, a transient sign-in failure and HTTP 412, 429, 502, 503 and 504. HTML in an
+  answer is escaped outside code, and Markdown images become plain links.
+- Several chat channels of `orkeon-host` run in one service, each with its own allow list, routes and default crew.
 - `ORKEON_TEAMS_APP_SECRET` (`EnvironmentVariableNames.TeamsAppSecret`) is the variable the client secret is read from,
   unless `Orkeon:Host:Teams:SecretEnvironmentVariable` names another.
+
+### Security
+
+- The Markdown link and HTML comment patterns of the prompt-injection screen run in bounded time: they were cubic and
+  quadratic in the length of the text. It affects RAG, e-mail and drive as well as chat.
+
+### Fixed
+
+- An identity provider that answers `temporarily_unavailable` or `server_error` is a server failure of `OAuth2Client`
+  (`OAuthFailure.ServerError`, to be tried later), no longer a refused sign-in: e-mail and drive accounts too.
 
 ## [1.4.0] - 2026-11-23
 

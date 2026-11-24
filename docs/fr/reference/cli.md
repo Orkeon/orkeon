@@ -397,14 +397,14 @@ orkeon chat check [<account>] [--settings <file>] [--events jsonl]              
 ```
 
 Le côté opérateur des outils chat ([guide](../guides/chat.md)) : ce qui est déclaré sous
-`Orkeon:Tools:Chat`, la seule étape interactive dont chaque compte a besoin, et une vérification. Les
+`Orkeon:Tools:Chat`, la seule étape interactive dont un compte connecté comme utilisateur (OAuth2) a besoin, et une vérification. Les
 agents ne lancent jamais ces commandes — un outil qui ne trouve aucun jeton utilisable répond avec le
 `orkeon chat login <account>` à lancer.
 
 - **`accounts`** liste chaque compte déclaré — son fournisseur, ses droits et son cloud, s'il est le
   compte par défaut — et dit `ready`, ou ce qu'il faut corriger. Aucun accès réseau. `--json` écrit un
-  objet par compte (`name`, `provider`, `rights`, `cloud`, `default`, `ready`, `problem`,
-  `configuration_problems`, `credential_problem`, `token_endpoint`).
+  objet par compte (`name`, `provider`, `rights`, `application`, `cloud`, `default`, `ready`,
+  `problem`, `configuration_problems`, `credential_problem`, `token_endpoint`).
 - **`login`** connecte par le navigateur, avec une redirection vers `http://127.0.0.1:<port>/` (ou
   l'adresse collée où elle aboutit), ou par le code d'appareil de Microsoft avec `--device-code`. Une
   connexion sans jeton de rafraîchissement est refusée. Les jetons arrivent dans le sous-répertoire

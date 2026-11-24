@@ -18,6 +18,12 @@ internal static class ChatIds
         && char.IsAsciiLetterOrDigit(value[0])
         && value.All(c => char.IsAsciiLetterOrDigit(c) || c is ':' or '@' or '.' or '_' or '-');
 
+    /// <summary>
+    /// The id of a person, a bot or a member as a result shows it: one a service made up of other characters is text
+    /// to the model that reads it, and is left out.
+    /// </summary>
+    public static string? Shown(string? value) => value is not null && IsConversationId(value) ? value : null;
+
     /// <summary>Whether <paramref name="value"/> is a channel's id rather than its name.</summary>
     public static bool IsChannelId(string value) =>
         IsConversationId(value) && value.StartsWith("19:", StringComparison.Ordinal) && value.Contains("@thread.", StringComparison.Ordinal);

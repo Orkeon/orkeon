@@ -94,7 +94,14 @@ These accesses cannot go through the VFS by nature and are **permanently** allow
 | Watcher bridge | `Analysis/.../FileSystemWatcherCodebaseWatcher.cs` | `EXCEPTION-WATCHER-BRIDGE` | Adapts `System.IO.FileSystemWatcher` to `ICodebaseWatcher` |
 | RaggableTree probe | `Analysis/Core/FileSystemDiscoverer.cs` (diagnostic probe only) | `OUT-OF-SCOPE` | The *batch discovery itself* runs on `EnumerateFilesAsync`; the probe deliberately counts physical entries to distinguish "VFS yielded nothing" from "disk empty" |
 | SQLite persistence | `SqliteMemoryProvider`, `SqliteStateStore` | governed | The engine needs a real path; the `Data Source` is resolved via `ResolveAndValidate` before reaching the driver |
-| Operator credential file | `Tools.Chat/Auth/ChatCredentialFile.cs` | `OUT-OF-SCOPE` | The certificate or federated token file of a chat application account, named by an environment variable and rotated by the host. It is under no mount, and must not be: a mount would let the agents' file tools read the key. Not ratified: awaits the owner's decision |
+
+### Awaiting ratification
+
+Suppressed in the code, and not ratified: the owner has yet to decide.
+
+| Area | Location | Category | Why |
+|---|---|---|---|
+| Operator credential file | `Tools.Chat/Auth/ChatCredentialFile.cs` | `OUT-OF-SCOPE` | The certificate or federated token file of a chat application account, named by an environment variable and rotated by the host. It is under no mount, and must not be: a mount would let the agents' file tools read the key. |
 
 ## Adding a new tool or service
 
@@ -289,15 +296,15 @@ A runner mounts a few roots for itself as **internal** mounts (`Orkeon:FileSyste
 `MountVisibility.Internal`): `/llm-logs` (the `--llm-log` exchange files), `/sandbox` (where the
 code sandboxes stage what they run), `/state` (the checkpoint store), `/runs` (the run history),
 `/llm-mock` and `/llm-cassette` (`--llm-mock`, `--llm-record`/`--llm-replay`) and `/credentials` (the OAuth tokens of the e-mail, drive and chat accounts —
-mounted only when an OAuth account of either family is declared). The registry refuses an internal mount to every
+mounted only when an OAuth account of one of these families is declared). The registry refuses an internal mount to every
 ordinary caller and reports it like a path that does not exist, so no agent-facing tool can reach
 or even name one ([ADR-008](../adr/ADR-008-virtual-paths-are-the-only-currency.md)). The few
 components that must write there ask DI for `PrivilegedFileSystemAccess` by name: the exchange
-logger, the code sandboxes and the token stores (`FileSystemEmailTokenStore` and
-`FileSystemDriveTokenStore`, which the runner host registers over `/credentials/email` and
-`/credentials/drive`). They still go through the VFS. The only raw
+logger, the code sandboxes and the token stores (`FileSystemEmailTokenStore`,
+`FileSystemDriveTokenStore` and `FileSystemChatTokenStore`, which the runner host registers over
+`/credentials/email`, `/credentials/drive` and `/credentials/chat`). They still go through the VFS. The only raw
 `System.IO` on that path is the runner creating the physical `credentials` directory and its
-`email` and `drive` subdirectories (owner-only on Unix) before any mount exists — `Hosting/Runner*` bootstrap,
+`email`, `drive` and `chat` subdirectories (owner-only on Unix) before any mount exists — `Hosting/Runner*` bootstrap,
 an already-ratified `EXCEPTION-BOOTSTRAP` scope, not a new category. `orkeon run` refuses a user
 mount claiming one of these roots (`EnsureReservedRootsAreFree`, `/state` and `/runs` included);
 every other entry point refuses the roots it reserves for itself (`/crew` and `/sandbox` for

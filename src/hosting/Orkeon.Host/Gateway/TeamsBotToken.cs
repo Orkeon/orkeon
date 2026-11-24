@@ -1,3 +1,4 @@
+using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 
@@ -74,6 +75,9 @@ internal sealed class TeamsBotToken : IDisposable
         using var response = await _http
             .PostAsync(new Uri($"https://login.microsoftonline.com/{_options.TenantId}/oauth2/v2.0/token"), form, ct)
             .ConfigureAwait(false);
+        if (response.StatusCode == HttpStatusCode.TooManyRequests || (int)response.StatusCode >= 500)
+            // At fault, or asking to wait: it refused nothing. The status says so to the caller; the answer is never quoted.
+            throw new HttpRequestException($"The sign-in service failed (HTTP {(int)response.StatusCode}).", inner: null, response.StatusCode);
         if (!response.IsSuccessStatusCode)
             throw new InvalidOperationException(
                 $"The sign-in service refused the bot's credentials (HTTP {(int)response.StatusCode}): check Teams:AppId, "

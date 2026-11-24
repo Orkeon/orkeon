@@ -250,7 +250,7 @@ public sealed class ChatAccountAdministration
         {
             return new ChatLogoutResult
             {
-                Deleted = await _credentials.ForgetAsync(name, account: null, CancellationToken.None).ConfigureAwait(false),
+                Deleted = await ForgetUnstoredAsync(name, account: null).ConfigureAwait(false),
                 Revoked = false,
                 Notice = "The account is a webhook: there is nothing to revoke. Whoever made the workflow deletes it, or makes a new address.",
             };
@@ -259,7 +259,7 @@ public sealed class ChatAccountAdministration
         // An application's token is in the memory of the process that asked for it, and lapses within the hour.
         if (resolved?.IsApplication == true)
         {
-            var dropped = await _credentials.ForgetAsync(name, resolved, CancellationToken.None).ConfigureAwait(false);
+            var dropped = await ForgetUnstoredAsync(name, resolved).ConfigureAwait(false);
             _sessions.Forget(resolved);
             return new ChatLogoutResult
             {
@@ -295,6 +295,19 @@ public sealed class ChatAccountAdministration
         if (!revoked)
             notice = notice is null ? ChatDefaults.RemoveAccessHint : $"The provider did not revoke the token: {notice}";
         return new ChatLogoutResult { Deleted = deleted, Revoked = revoked, Notice = notice };
+    }
+
+    /// <summary>Forgets an account that stores no token itself: a host that has no token store holds none of its name either.</summary>
+    private async Task<bool> ForgetUnstoredAsync(string name, ResolvedChatAccount? account)
+    {
+        try
+        {
+            return await _credentials.ForgetAsync(name, account, CancellationToken.None).ConfigureAwait(false);
+        }
+        catch (ChatToolException ex) when (ex.Code == ChatErrorCode.NotConfigured)
+        {
+            return false;
+        }
     }
 
     /// <summary>Connects and tells, right by right, what the account can do now and what is missing.</summary>
@@ -372,8 +385,6 @@ public sealed class ChatAccountAdministration
         if (account.Grants(ChatRights.Meetings))
         {
             var blocking = new List<string>();
-            if (!account.Grants(ChatRights.Read))
-                blocking.Add("an application finds a meeting by its chat, which needs the Read right");
             await CheckPlacesAsync(session, ChatRights.Meetings, blocking, cancellationToken).ConfigureAwait(false);
             rights.Add(new ChatRightStatus
             {

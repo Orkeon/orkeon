@@ -70,7 +70,7 @@ internal sealed class ChatMessageDescriber
             Screening = screening.Verdict == "clean" ? null : screening.Verdict,
             HiddenText = message.HadHiddenText ? true : null,
             Mentions = message.Mentions.Count == 0 ? null : message.Mentions.Take(MaxListed)
-                .Select(mention => new ChatMentionDto { Id = mention.Id, Name = _screen.Label(mention.Name) }).ToList(),
+                .Select(mention => new ChatMentionDto { Id = ChatIds.Shown(mention.Id), Name = _screen.Label(mention.Name) }).ToList(),
             Reactions = message.Reactions.Count == 0 ? null : message.Reactions.Take(MaxListed)
                 .GroupBy(reaction => _screen.Label(reaction.Key) ?? "?", StringComparer.Ordinal)
                 .ToDictionary(group => group.Key, group => group.Sum(reaction => reaction.Value), StringComparer.Ordinal),
@@ -87,7 +87,7 @@ internal sealed class ChatMessageDescriber
             return null;
         return new ChatAuthorDto
         {
-            Id = author.Id,
+            Id = ChatIds.Shown(author.Id),
             Name = _screen.Label(author.Name),
             Address = _screen.Label(person?.Address),
             Guest = author.IsExternal || person?.IsGuest == true ? true : null,

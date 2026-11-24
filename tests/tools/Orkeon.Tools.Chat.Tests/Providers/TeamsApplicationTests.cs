@@ -353,19 +353,6 @@ public sealed class TeamsApplicationTests : IDisposable
         Assert.Contains("application access policy", error, StringComparison.Ordinal);
     }
 
-    [Fact]
-    public async Task Should_check_that_meetings_are_found_by_their_chat()
-    {
-        var options = TestChatAccounts.Application($"chat:{Chat}");
-        options.Rights = ChatRights.Meetings;
-        using var fixture = Create(options);
-
-        var meetings = Assert.Single((await fixture.Administration.CheckAsync("work", Token)).Rights);
-
-        Assert.False(meetings.Ready);
-        Assert.Contains(meetings.Missing, line => line.Contains("needs the Read right", StringComparison.Ordinal));
-    }
-
     [Theory]
     [InlineData("rights", "Rights holds more than Read and Meetings")]
     [InlineData("granted", "Auth:AdminGranted goes with Auth:Method OAuth2 alone")]

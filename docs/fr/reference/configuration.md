@@ -1509,7 +1509,7 @@ l'invite de chaque tour d'agent — voir [Sécurité](../architecture/security.m
 
 Filtrage des résultats d'outils : `Policy` vaut `Warn` par défaut — balisé comme donnée et
 signalé —, `Block` retient High/Critical, `None` laisse tout passer ; les `TrustedTools` s'ajoutent
-aux `email_*` par défaut. La longueur ne se règle pas ici mais sous `Orkeon:Tools:ResultLimits`
+aux outils par défaut : les `email_*`, `drive_read`, `chat_list`, `chat_meetings`, `chat_members`, `chat_read` et `chat_search`. La longueur ne se règle pas ici mais sous `Orkeon:Tools:ResultLimits`
 (ci-dessous). Liée par `AddOrkeonInfrastructure()` et appliquée à chaque résultat d'outil par
 `IToolInvocationPipeline`.
 
@@ -1519,7 +1519,7 @@ aux `email_*` par défaut. La longueur ne se règle pas ici mais sous `Orkeon:To
 | Clé | Type | Défaut | Valeurs | Sens |
 |---|---|---|---|---|
 | `Policy` | énumération | `"Warn"` | `None`, `Warn`, `Block` | La politique appliquée à un résultat d'outil réussi. Défaut `Warn` : le résultat arrive au modèle balisé comme donnée, et tout motif d'injection est journalisé et audité. `Block` retient un résultat qui porte un motif High ou Critical (le modèle en est informé) ; `None` laisse passer les résultats intacts et sans balise. |
-| `TrustedTools` | liste de chaînes | `["email_accounts", "email_create_folder", "email_delete", "email_draft", "email_folders", "email_mark", "email_move", "email_parser", "email_read", "email_rename_folder", "email_save_attachment", "email_search", "email_send", "drive_read", "chat_list", "chat_meetings", "chat_members", "chat_read", "chat_search"]` |  | Outils dont les résultats contournent le filtrage. Par défaut les outils `email_*`, qui filtrent ce qu'ils lisent avec `PromptInjectionDocumentValidator` et le marquent eux-mêmes comme non fiable (ADR-012), `drive_read`, qui fait de même avec le texte d'un fichier (ADR-013), et `chat_list`, `chat_members` et `chat_read`, qui filtrent les noms et les messages qu'ils rendent (ADR-021) — les baliser de nouveau empilerait deux enveloppes. Les autres outils `drive_*` rendent des noms et des métadonnées qu'ils ne filtrent pas, et restent assainis. Les entrées de la configuration s'ajoutent à celles-ci. |
+| `TrustedTools` | liste de chaînes | `["email_accounts", "email_create_folder", "email_delete", "email_draft", "email_folders", "email_mark", "email_move", "email_parser", "email_read", "email_rename_folder", "email_save_attachment", "email_search", "email_send", "drive_read", "chat_list", "chat_meetings", "chat_members", "chat_read", "chat_search"]` |  | Outils dont les résultats contournent le filtrage. Par défaut les outils `email_*`, qui filtrent ce qu'ils lisent avec `PromptInjectionDocumentValidator` et le marquent eux-mêmes comme non fiable (ADR-012), `drive_read`, qui fait de même avec le texte d'un fichier (ADR-013), et `chat_list`, `chat_meetings`, `chat_members`, `chat_read` et `chat_search`, qui filtrent les noms et les messages qu'ils rendent (ADR-021) — les baliser de nouveau empilerait deux enveloppes. Les autres outils `drive_*` rendent des noms et des métadonnées qu'ils ne filtrent pas, et restent assainis. Les entrées de la configuration s'ajoutent à celles-ci. |
 <!-- /settings -->
 
 ### `Security:Url`
@@ -1775,8 +1775,9 @@ Parcours par fournisseur et table clé par clé :
 Lié par `AddOrkeonChatTools(configuration)` et validé paresseusement, comme la section drive : un
 compte est validé la première fois qu'un outil ou une commande `orkeon chat` s'en sert, tous ses
 problèmes signalés d'un coup, et une valeur illisible met ce seul compte de côté au lieu de faire
-échouer l'hôte. Aucune clé ne contient de secret : l'application est un client public, et l'adresse d'un
-webhook ou l'identifiant d'une application est nommé par sa variable. Parcours et
+échouer l'hôte. Aucune clé ne contient de secret : un compte d'utilisateur se connecte par un client
+public, qui n'en a pas, et l'adresse d'un webhook ou l'identifiant d'une application (certificat, jeton
+fédéré ou secret client) est nommé par sa variable. Parcours et
 outils : [Outils chat](../guides/chat.md).
 
 - **`DefaultAccount`** — le compte qu'utilise un appel qui n'en nomme aucun (facultatif avec un seul
@@ -1810,7 +1811,7 @@ outils : [Outils chat](../guides/chat.md).
 | `Accounts:<nom>:Auth:FederatedTokenFileEnvVar` | chaîne | — |  | Nom de la variable d'environnement qui contient le chemin d'un fichier de jeton fédéré, pour `ClientCredentials`. |
 | `Accounts:<nom>:Auth:Method` | énumération | — | `OAuth2`, `ClientCredentials` | `OAuth2` (défaut) : un utilisateur se connecte. `ClientCredentials` : une application se connecte en son propre nom, pour lire seulement. |
 | `Accounts:<nom>:Auth:Tenant` | chaîne | — |  | L'identifiant ou le domaine du tenant ; `organizations` s'il n'est pas renseigné. Obligatoire pour `ClientCredentials`. |
-| `Accounts:<nom>:Cloud` | énumération | — | `Global`, `UsGov`, `UsGovDoD`, `China` | Le cloud Microsoft : `Global` (défaut), `UsGov` ou `UsGovDoD`. Non lu pour un `TeamsWebhook`. |
+| `Accounts:<nom>:Cloud` | énumération | — | `Global`, `UsGov`, `UsGovDoD`, `China` | Le cloud Microsoft : `Global` (défaut), `UsGov` ou `UsGovDoD` ; `China` est refusé. Non lu pour un `TeamsWebhook`. |
 | `Accounts:<nom>:Provider` | énumération | — | `Teams`, `TeamsWebhook` | `Teams`, ou `TeamsWebhook` pour publier dans un seul lieu sans connexion. Obligatoire. |
 | `Accounts:<nom>:Read:AllowedPlaces` | liste de chaînes | `[]` |  | Les lieux qu'un agent peut lire. Vide signifie aucun. |
 | `Accounts:<nom>:Rights` | énumération | `"None"` | `None`, `Read`, `Send`, `Edit`, `Delete`, `React`, `Meetings` | Ce qu'un agent peut faire, p. ex. `"Read, Send"`. Obligatoire. |

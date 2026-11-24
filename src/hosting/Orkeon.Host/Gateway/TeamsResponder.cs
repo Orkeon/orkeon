@@ -82,14 +82,25 @@ internal sealed partial class TeamsResponder : IChatResponder
 
     private async Task PostAsync(TeamsReplyTarget target, string text, int attempts, CancellationToken ct)
     {
+        var body = BodyOf(target, text);
         var renewed = false;
         for (var attempt = 1; ;)
         {
-            var token = await _token.GetAsync(ct).ConfigureAwait(false);
-            using var request = new HttpRequestMessage(HttpMethod.Post, AddressOf(target));
-            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
-            request.Content = JsonContent.Create(BodyOf(target, text), options: s_json);
-            using var response = await _http.SendAsync(request, ct).ConfigureAwait(false);
+            string token;
+            HttpResponseMessage answer;
+            try
+            {
+                token = await _token.GetAsync(ct).ConfigureAwait(false);
+                answer = await SendOnceAsync(target, body, token, ct).ConfigureAwait(false);
+            }
+            catch (HttpRequestException ex) when (attempt < attempts && IsTransient(ex))
+            {
+                await Task.Delay(TimeSpan.FromSeconds(2 * attempt), _time, ct).ConfigureAwait(false);
+                attempt++;
+                continue;
+            }
+
+            using var response = answer;
             if (response.IsSuccessStatusCode)
                 return;
 
@@ -111,6 +122,14 @@ internal sealed partial class TeamsResponder : IChatResponder
         }
     }
 
+    private async Task<HttpResponseMessage> SendOnceAsync(TeamsReplyTarget target, Dictionary<string, object> body, string token, CancellationToken ct)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Post, AddressOf(target));
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        request.Content = JsonContent.Create(body, options: s_json);
+        return await _http.SendAsync(request, ct).ConfigureAwait(false);
+    }
+
     private static Uri AddressOf(TeamsReplyTarget target) =>
         new($"{target.ServiceUrl.AbsoluteUri.TrimEnd('/')}/v3/conversations/{Uri.EscapeDataString(target.ConversationId)}"
             + $"/activities/{Uri.EscapeDataString(target.ActivityId)}");
@@ -123,11 +142,20 @@ internal sealed partial class TeamsResponder : IChatResponder
         ["conversation"] = new { id = target.ConversationId },
         ["replyToId"] = target.ActivityId,
         ["textFormat"] = "markdown",
-        ["text"] = DiscordResponder.Truncate(text, MaxTextLength),
+        ["text"] = TeamsMarkdown.Harmless(DiscordResponder.Truncate(text, MaxTextLength)),
     };
 
     private static bool IsTransient(HttpStatusCode status) =>
-        status is HttpStatusCode.TooManyRequests or HttpStatusCode.BadGateway or HttpStatusCode.ServiceUnavailable or HttpStatusCode.GatewayTimeout;
+        status is HttpStatusCode.PreconditionFailed or HttpStatusCode.TooManyRequests or HttpStatusCode.BadGateway or HttpStatusCode.ServiceUnavailable or HttpStatusCode.GatewayTimeout;
+
+    /// <summary>
+    /// Whether nothing was posted yet: no connection was made, or the sign-in service is at
+    /// fault (the one failure here that carries a status). A connection lost
+    /// after the request left may have posted it, and the same text twice is worse than a failure in the log.
+    /// </summary>
+    private static bool IsTransient(HttpRequestException ex) =>
+        ex.StatusCode is not null
+        || ex.HttpRequestError is HttpRequestError.NameResolutionError or HttpRequestError.ConnectionError or HttpRequestError.SecureConnectionError;
 
     private static TimeSpan DelayOf(HttpResponseMessage response, int attempt)
     {

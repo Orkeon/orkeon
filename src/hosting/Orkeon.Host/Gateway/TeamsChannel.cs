@@ -55,6 +55,10 @@ internal sealed partial class TeamsChannel : IChatChannel, IAsyncDisposable, IDi
     private long _sequence;
     private long _refusalLoggedAt;
 
+    /// <summary>The channel's own outbound transport.</summary>
+    internal static SocketsHttpHandler CreateHandler() =>
+        new() { AllowAutoRedirect = false, PooledConnectionLifetime = TimeSpan.FromMinutes(10) };
+
     /// <summary>Builds the channel over its configuration.</summary>
     /// <param name="options">The configuration, validated by the caller.</param>
     /// <param name="logger">Where the channel logs.</param>
@@ -73,7 +77,7 @@ internal sealed partial class TeamsChannel : IChatChannel, IAsyncDisposable, IDi
         _time = timeProvider ?? TimeProvider.System;
 
         // No redirect: the bot's token and its secret go to the address they were meant for, or nowhere.
-        _http = new HttpClient(handler ?? new SocketsHttpHandler { AllowAutoRedirect = false, PooledConnectionLifetime = TimeSpan.FromMinutes(10) })
+        _http = new HttpClient(handler ?? CreateHandler())
         {
             Timeout = TimeSpan.FromSeconds(30),
             MaxResponseContentBufferSize = 1 << 20,

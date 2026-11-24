@@ -202,7 +202,7 @@ Messages **inside a thread**, from people: a message posted in a plain channel i
 
 **Replies go to the validated service only.** The `serviceurl` claim must be `https` on a host Microsoft publishes for Teams, or one named by `ServiceHosts`; redirects are not followed. The bot's own token is obtained with the client credentials, cached until shortly before it expires, and neither it nor the secret is logged. The national clouds (GCC High, DoD, 21Vianet) use other issuers and sign-in addresses and are not supported.
 
-**A thread is a run** here too: in a team's channel, the thread; in a personal or group chat, the whole chat. In a channel Teams delivers only the messages that **mention the bot** (unless the app was granted more), and the mention is removed. A message without an Entra object id, from another bot, or empty is ignored; an activity delivered twice runs once. The request is answered at once, and the run goes on. Answers are cut to 20,000 characters.
+**A thread is a run** here too: in a team's channel, the thread; in a personal or group chat, the whole chat. In a channel Teams delivers only the messages that **mention the bot** (unless the app was granted more), and the mention is removed. A message without an Entra object id, from another bot, or empty is ignored; an activity delivered twice runs once. The request is answered at once, and the run goes on. Answers are cut to 20,000 characters. HTML in an answer is escaped outside code, so `List<string>` shows literally and no image tag is rendered; a Markdown image becomes a plain link. A final reply is retried when the connection fails, when the bot's sign-in fails for a transient reason, and on HTTP 412, 429, 502, 503 and 504.
 
 ### Commands
 

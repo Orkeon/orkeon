@@ -10,7 +10,22 @@ internal static class GraphJson
 
     /// <summary>The string member <paramref name="name"/>, or null.</summary>
     public static string? Text(JsonElement element, string name) =>
-        Member(element, name) is { ValueKind: JsonValueKind.String } value ? value.GetString() : null;
+        Member(element, name) is { } value ? Text(value) : null;
+
+    /// <summary>The string <paramref name="value"/> is, or null: JSON may escape half a character, which is no text.</summary>
+    public static string? Text(JsonElement value)
+    {
+        if (value.ValueKind != JsonValueKind.String)
+            return null;
+        try
+        {
+            return value.GetString();
+        }
+        catch (InvalidOperationException)
+        {
+            return null;
+        }
+    }
 
     /// <summary>The code of the inner error of a failure's body, or null.</summary>
     public static string? InnerErrorCode(string body)

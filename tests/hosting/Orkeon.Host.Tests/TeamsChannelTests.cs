@@ -538,6 +538,87 @@ public sealed class TeamsChannelTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task A_conflict_is_sent_again()
+    {
+        var answers = new ConcurrentQueue<HttpStatusCode>([HttpStatusCode.PreconditionFailed, HttpStatusCode.Created]);
+        _microsoft.Connector = () => new FakeHttpResponse(answers.TryDequeue(out var status) ? status : HttpStatusCode.Created, "{}");
+
+        await CompleteAfterOneDelayAsync(() => _microsoft.Replies.Count == 1);
+
+        Assert.Equal(2, _microsoft.Replies.Count);
+    }
+
+    [Theory]
+    [InlineData(HttpRequestError.ConnectionError, 2)]
+    [InlineData(HttpRequestError.NameResolutionError, 2)]
+    [InlineData(HttpRequestError.ResponseEnded, 1)]
+    public async Task A_final_reply_is_sent_again_when_it_cannot_have_left(HttpRequestError error, int posts)
+    {
+        var failures = 0;
+        _microsoft.Connector = () => failures++ == 0
+            ? throw new HttpRequestException(error, "down")
+            : new FakeHttpResponse(HttpStatusCode.Created, "{}");
+
+        if (posts == 1)
+            await _channel.Responder.CompleteAsync(await InboundAsync(), "done", TestContext.Current.CancellationToken);
+        else
+            await CompleteAfterOneDelayAsync(() => true);
+
+        Assert.Equal(posts, _microsoft.Replies.Count);
+    }
+
+    [Theory]
+    [InlineData(HttpStatusCode.TooManyRequests)]
+    [InlineData(HttpStatusCode.InternalServerError)]
+    [InlineData(HttpStatusCode.ServiceUnavailable)]
+    public async Task A_final_reply_waits_for_a_sign_in_service_at_fault(HttpStatusCode status)
+    {
+        var good = _microsoft.SignIn;
+        _microsoft.SignIn = new FakeHttpResponse(status, "later");
+
+        await CompleteAfterOneDelayAsync(() => _microsoft.SignIns.Count == 1, () => _microsoft.SignIn = good);
+
+        Assert.Equal((2, 1), (_microsoft.SignIns.Count, _microsoft.Replies.Count));
+    }
+
+    [Fact]
+    public async Task A_refused_sign_in_is_not_asked_again()
+    {
+        _microsoft.SignIn = new FakeHttpResponse(HttpStatusCode.Unauthorized, "no");
+
+        await _channel.Responder.CompleteAsync(await InboundAsync(), "done", TestContext.Current.CancellationToken);
+
+        Assert.Single(_microsoft.SignIns);
+    }
+
+    [Fact]
+    public async Task An_answer_posts_no_html_and_no_image()
+    {
+        await _channel.Responder.CompleteAsync(await InboundAsync(), "![a](https://x.test/) <img>", TestContext.Current.CancellationToken);
+
+        using var body = JsonDocument.Parse(Assert.Single(_microsoft.Replies).Body!);
+        Assert.Equal("[a](https://x.test/) &lt;img>", body.RootElement.GetProperty("text").GetString());
+    }
+
+    [Fact]
+    public void The_channels_own_transport_follows_no_redirect()
+    {
+        using var handler = TeamsChannel.CreateHandler();
+
+        Assert.False(handler.AllowAutoRedirect);
+    }
+
+    private async Task CompleteAfterOneDelayAsync(Func<bool> firstAttemptMade, Action? before = null)
+    {
+        var message = await InboundAsync();
+        var sending = _channel.Responder.CompleteAsync(message, "done", TestContext.Current.CancellationToken);
+        await Polling.WaitUntilAsync(() => _microsoft.Time.PendingTimers > 0 && firstAttemptMade(), Polling.DefaultTimeout);
+        before?.Invoke();
+        _microsoft.Time.Advance(TimeSpan.FromSeconds(2));
+        await sending.WaitAsync(Polling.DefaultTimeout, TestContext.Current.CancellationToken);
+    }
+
+    [Fact]
     public async Task A_redirect_is_not_followed_and_a_refusal_fails_no_run()
     {
         _microsoft.Connector = () => new FakeHttpResponse(HttpStatusCode.TemporaryRedirect, "", Location: new Uri("https://evil.example/"));

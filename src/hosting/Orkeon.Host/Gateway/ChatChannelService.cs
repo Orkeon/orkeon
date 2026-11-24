@@ -25,6 +25,12 @@ internal sealed partial class ChatChannelService : BackgroundService
     private readonly List<Func<ConfiguredChannel>> _channels = [];
     private TeamsChannel? _teamsChannel;
 
+    /// <summary>What builds the Discord channel, a double in the tests.</summary>
+    internal Func<IChatChannel> CreateDiscord { get; set; }
+
+    /// <summary>What builds the Teams channel; the tests give it a transport.</summary>
+    internal Func<TeamsChannel> CreateTeams { get; set; }
+
     /// <summary>Builds the service over the channel configuration and the runner.</summary>
     public ChatChannelService(
         IOptions<DiscordChannelOptions> discord,
@@ -44,6 +50,8 @@ internal sealed partial class ChatChannelService : BackgroundService
         _loggers = loggers ?? throw new ArgumentNullException(nameof(loggers));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _lifetime = lifetime ?? throw new ArgumentNullException(nameof(lifetime));
+        CreateDiscord = () => new DiscordChannel(Options.Create(_discord), _loggers.CreateLogger<DiscordChannel>());
+        CreateTeams = () => new TeamsChannel(Options.Create(_teams), _loggers.CreateLogger<TeamsChannel>());
     }
 
     /// <inheritdoc />
@@ -63,7 +71,7 @@ internal sealed partial class ChatChannelService : BackgroundService
             routed.Add(("Discord", routes));
             _channels.Add(() => new ConfiguredChannel(
                 "Discord",
-                new DiscordChannel(Options.Create(_discord), _loggers.CreateLogger<DiscordChannel>()),
+                CreateDiscord(),
                 new AllowListChatAuthorizer(_discord.AllowedUserIds),
                 routes));
         }
@@ -78,7 +86,7 @@ internal sealed partial class ChatChannelService : BackgroundService
             routed.Add(("Teams", routes));
 
             // Bound here, so a port already held refuses the start instead of crashing a host that reported ready.
-            _teamsChannel = new TeamsChannel(Options.Create(_teams), _loggers.CreateLogger<TeamsChannel>());
+            _teamsChannel = CreateTeams();
             _teamsChannel.Bind();
             _channels.Add(() => new ConfiguredChannel(
                 "Teams",

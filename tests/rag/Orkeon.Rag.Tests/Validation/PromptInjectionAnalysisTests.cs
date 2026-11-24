@@ -215,4 +215,45 @@ public class PromptInjectionAnalysisTests
 
         Assert.Equal(PromptInjectionVerdict.Rejected, analysis.Verdict);
     }
+
+    // ------------------------------------------------------------------
+    // Markdown targets: read in linear time
+    // ------------------------------------------------------------------
+
+    [Theory]
+    [InlineData("[a](https://x.example/?d=%41%42%43%44%45%46)", "md-link-encoded")]
+    [InlineData("[a]( https://%41%42%43%44%45%46%47%48/tail)", "md-link-encoded")]
+    [InlineData("[a](http://b[c](http://d/%41%42%43%44%45%46)", "md-link-encoded")]
+    [InlineData("[[[a](http://d/%41%42%43%44%45%46)", "md-link-encoded")]
+    [InlineData("![a](https://x.example/p.png?d=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa)", "md-image-exfil")]
+    public void Analyze_MarkdownTarget_IsFoundWithItsSpan(string content, string rule)
+    {
+        var span = Assert.Single(Validator.Analyze("see " + content + " now").Spans, s => s.RuleId == rule);
+
+        Assert.Equal((4, content.Length), (span.Start, span.Length));
+    }
+
+    [Theory]
+    [InlineData("[a](https://x.example/?d=%41%42%43%44%45)")]
+    [InlineData("[a](https://x.example/?d=%41%42%43%44%45%46")]
+    [InlineData("[a](https://x.example/ %41%42%43%44%45%46)")]
+    [InlineData("%41%42%43%44%45%46 [a](https://x.example/)")]
+    [InlineData("![a](https://x.example/p.png?d=aaaaaaaaaaaaaaaaaaaaaaaaaaaaa)")]
+    [InlineData("![a](https://?aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa)")]
+    [InlineData("![a](https://)")]
+    public void Analyze_HarmlessMarkdownTarget_IsNotFound(string content) =>
+        Assert.DoesNotContain(Validator.Analyze(content).Spans, s => s.RuleId.StartsWith("md-", StringComparison.Ordinal));
+
+    [Fact]
+    public void Analyze_UnclosedHostileMarkup_EndsWithoutAVerdict()
+    {
+        // Each was cubic or quadratic as one pattern: a regression hangs this test for hours.
+        const int size = 400_000;
+        foreach (var piece in new[] { "%41", "[a](http://", "![a](http://?", "![a](https://x?", "<!--" })
+        {
+            var content = "[a](http://" + string.Concat(Enumerable.Repeat(piece, size / piece.Length));
+
+            Assert.Equal(PromptInjectionVerdict.Clean, Validator.Analyze(content).Verdict);
+        }
+    }
 }

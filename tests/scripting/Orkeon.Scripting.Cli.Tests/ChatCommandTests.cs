@@ -4,6 +4,7 @@ using Microsoft.Extensions.Hosting;
 using Orkeon.Scripting.Cli.Commands;
 using Orkeon.Scripting.Cli.Tests.Doubles;
 using Orkeon.Tests.Shared.Network;
+using Orkeon.Tools.Chat.Administration;
 
 namespace Orkeon.Scripting.Cli.Tests;
 
@@ -213,6 +214,11 @@ public sealed class ChatCommandTests
             Assert.Contains("orkeon chat check: Chat account 'pro' needs a sign-in: run `orkeon chat login pro`", console.Stderr, StringComparison.Ordinal);
         }
     }
+
+    [Fact]
+    public void Logout_WithoutTokens_StillSaysWhatIsLeftToDo() => Assert.Equal(
+        $"Chat account 'pro' had no stored tokens.{Environment.NewLine}Delete the workflow.",
+        ChatCommand.RenderLogout("pro", new ChatLogoutResult { Deleted = false, Revoked = false, Notice = "Delete the workflow." }));
 
     [Fact]
     public async Task Logout_OfAnAccountWithoutTokens_SaysSo()

@@ -3091,7 +3091,7 @@
         "UsGovDoD",
         "China"
       ],
-      "description": "The Microsoft cloud: `Global` (default), `UsGov` or `UsGovDoD`. Not read for a `TeamsWebhook`."
+      "description": "The Microsoft cloud: `Global` (default), `UsGov` or `UsGovDoD`; `China` is refused. Not read for a `TeamsWebhook`."
     },
     {
       "path": "Orkeon:Tools:Chat:Accounts:<name>:Provider",

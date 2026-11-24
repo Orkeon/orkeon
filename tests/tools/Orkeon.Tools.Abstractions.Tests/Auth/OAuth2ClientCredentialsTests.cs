@@ -145,4 +145,26 @@ public sealed class OAuth2ClientCredentialsTests : IDisposable
         Assert.DoesNotContain(Canary, ex.Message, StringComparison.Ordinal);
         Assert.Contains("invalid_grant", ex.Message, StringComparison.Ordinal);
     }
+
+    [Theory]
+    [InlineData("temporarily_unavailable", OAuthFailure.ServerError)]
+    [InlineData("server_error", OAuthFailure.ServerError)]
+    [InlineData("invalid_scope", OAuthFailure.AuthenticationFailed)]
+    public async Task ShouldTellAProviderAtFault_FromARefusal(string error, OAuthFailure failure)
+    {
+        var answer = new FakeHttpResponse(HttpStatusCode.BadRequest, $$"""{"error":"{{error}}"}""");
+        _handler.Enqueue(answer);
+        _handler.Enqueue(answer);
+
+        Assert.Equal(failure, (await Assert.ThrowsAsync<OAuthException>(() => _client.RequestClientCredentialsAsync(Settings, Canary, Token))).Failure);
+        Assert.Equal(failure, (await Assert.ThrowsAsync<OAuthException>(() => _client.RefreshAsync(Settings, Canary, "rt", Token))).Failure);
+    }
+
+    [Fact]
+    public async Task ShouldReadAnAnswer_WhoseJsonEscapesHalfACharacter()
+    {
+        _handler.Enqueue(new FakeHttpResponse(HttpStatusCode.BadRequest, """{"error":"invalid_client","error_description":"\ud83d"}"""));
+
+        await Assert.ThrowsAsync<OAuthException>(() => _client.RequestClientCredentialsAsync(Settings, Canary, Token));
+    }
 }

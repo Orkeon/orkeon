@@ -178,4 +178,21 @@ public sealed class ChatAccountResolverTests
         Assert.Equal([problem], resolution.Problems);
         Assert.Null(resolution.Account);
     }
+
+    [Theory]
+    [InlineData("send-place", "Send:AllowedPlaces goes with Auth:Method OAuth2 alone: an application posts nothing")]
+    [InlineData("cap", "Send:MaxPerHour goes with Auth:Method OAuth2 alone: an application posts nothing")]
+    [InlineData("meetings", "Rights holds Meetings without Read, and an application reads a meeting through a chat it may read: add Read")]
+    public void Should_refuse_what_an_application_never_uses(string wrong, string problem)
+    {
+        var options = TestChatAccounts.Application("chat:19:a@thread.v2");
+        switch (wrong)
+        {
+            case "send-place": options.Send.AllowedPlaces.Add("chat:19:a@thread.v2"); break;
+            case "cap": options.Send.MaxPerHour = 3; break;
+            default: options.Rights = ChatRights.Meetings; break;
+        }
+
+        Assert.Equal([problem], ChatAccountResolver.Resolve("work", options).Problems);
+    }
 }

@@ -236,11 +236,11 @@ internal static class ChatCommand
     internal static string RenderLogout(string account, ChatLogoutResult result)
     {
         ArgumentNullException.ThrowIfNull(result);
+        var notice = result.Notice is null ? string.Empty : Environment.NewLine + result.Notice.TrimEnd('.') + ".";
         if (!result.Deleted)
-            return $"Chat account '{account}' had no stored tokens.";
+            return $"Chat account '{account}' had no stored tokens.{notice}";
 
         var revoked = result.Revoked ? " and revoked" : string.Empty;
-        var notice = result.Notice is null ? string.Empty : Environment.NewLine + result.Notice.TrimEnd('.') + ".";
         return $"Signed out: the tokens of chat account '{account}' are deleted{revoked}.{notice}";
     }
 
