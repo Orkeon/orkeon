@@ -171,7 +171,7 @@ named factories are created: no store, provider, model or connection. The first 
 `RunnerSettingsException` naming its key, the host disposed: nothing is logged, warned or started.
 
 Then the host logs the mount decisions it took, warns (on the log and on stderr) when
-an OAuth e-mail account has no token store or when there is no `Llm` section — the runtime
+an OAuth e-mail, drive or chat account has no token store or when there is no `Llm` section — the runtime
 then falls back to the echo provider —, says where the key of the default and of each profile
 offered to crews comes from — the profiles its allow-list hides (`LlmProfileAccessOptions`, which
 `orkeon-host` binds) on one line of their own, never warned about — and resolves the OpenTelemetry tracer and meter

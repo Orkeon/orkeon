@@ -305,7 +305,7 @@ d'échanges de `--llm-log`), `/sandbox` (où les sandboxes de code déposent ce 
 `/llm-cassette` (`--llm-mock`, `--llm-record`/`--llm-replay`), `/credentials` (les jetons OAuth des comptes e-mail, drive et chat — montée seulement quand un compte OAuth
 de l'une de ces familles est déclaré) et `/credential-files` (le dossier de chaque fichier de certificat ou de jeton fédéré
 d'un compte chat d'application, monté en **lecture seule**, un sous-dossier par dossier,
-`/credential-files/<16 hex du SHA-256 du chemin du dossier>`, seulement quand un tel compte est déclaré ; le REPL le monte aussi). Le registre refuse un montage interne à tout appelant ordinaire et le signale comme
+`/credential-files/<16 hex du SHA-256 du chemin du dossier>`, seulement quand un tel compte est déclaré) ; le REPL monte ces deux derniers comme le fait un runner. Le registre refuse un montage interne à tout appelant ordinaire et le signale comme
 un chemin inexistant : aucun outil destiné aux agents ne peut l'atteindre ni même le nommer
 ([ADR-008](../adr/ADR-008-virtual-paths-are-the-only-currency.md)). Les quelques composants qui
 doivent y écrire demandent `PrivilegedFileSystemAccess` à la DI, par son nom : l'enregistreur des

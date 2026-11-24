@@ -142,3 +142,7 @@ Les contraintes des fournisseurs, vérifiées le 2026-09-26 :
 ## Amendement (2026-10-29)
 
 Les versions citées à la décision 2 (MailKit 4.18.0, MimeKit 4.18.1) étaient celles du 2026-09-26 ; `Directory.Packages.props` épingle maintenant MailKit 4.18.2 et MimeKit 4.18.2.
+
+## Amendement (2026-11-24)
+
+- `orkeon-repl` tient les magasins de jetons des trois familles de comptes (#482) : il monte la même racine interne `/credentials` qu'un runner, selon les mêmes règles, et les jetons restent hors de portée des outils du VFS. La limite dite dans les conséquences ne vaut plus. La connexion reste `orkeon email login`.

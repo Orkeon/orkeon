@@ -76,3 +76,7 @@ internal to `Orkeon.Tools.Email`.
 ## Amendment (2026-11-17)
 
 - The real-account campaign (DRIVE-07) was closed on 2026-11-17. What it covered and the limits that remain are in [limitations](../reference/limitations.md); the guide keeps a general test-coverage note and does not record the pass.
+
+## Amendment (2026-11-24)
+
+- `orkeon-repl` keeps the token stores of the three account families (#482): it mounts the same internal `/credentials` root as a runner, under the same rules, and the tokens stay out of reach of the VFS tools. The sign-in stays `orkeon drive login`.

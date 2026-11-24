@@ -235,6 +235,7 @@ static class Program
                 AllowExternalMounts = scriptedOpts.EffectiveAllowExternalMounts,
             },
             SettingsLabel(scriptedOpts, globalSettingsPath),
+            key => SettingsFileOf(key, scriptedOpts, globalSettingsPath),
             decisions ?? new Orkeon.Hosting.RunnerHost.MountDecisions());
     }
 
@@ -279,6 +280,24 @@ static class Program
             return string.Join(", ", scriptedOpts.SettingsFiles.Select(Path.GetFullPath));
 
         return globalSettingsPath is not null && File.Exists(globalSettingsPath) ? globalSettingsPath : null;
+    }
+
+    /// <summary>
+    /// The settings file a relative path under <paramref name="key"/> is read from, so a sign-in and the REPL
+    /// over the same file share one folder: the last <c>--settings</c> file that declares the key, else the
+    /// last one (the key comes from the environment or the command line); without any, the global file.
+    /// </summary>
+    /// <param name="key">The configuration key holding the path.</param>
+    /// <param name="scriptedOpts">The REPL's options.</param>
+    /// <param name="globalSettingsPath">The global file <c>orkeon init</c> writes, or null.</param>
+    internal static string? SettingsFileOf(string key, ScriptedCommandsCliOptions scriptedOpts, string? globalSettingsPath)
+    {
+        if (scriptedOpts.SettingsFiles.Count == 0)
+            return SettingsLabel(scriptedOpts, globalSettingsPath);
+
+        var files = scriptedOpts.SettingsFiles.Select(Path.GetFullPath).ToList();
+        return files.FindLast(file => new ConfigurationBuilder().AddJsonFile(file, optional: true, reloadOnChange: false).Build()[key] is not null)
+            ?? files[^1];
     }
 
     /// <summary>
@@ -338,16 +357,14 @@ static class Program
         // Orkeon:Tools:Shell, bound by the code tools, declared here as orkeon run declares it (GAP-40).
         Orkeon.Hosting.RunnerHost.DeclareShellSettings(services);
         services.AddOrkeonAbstractionTools();
-        // E-mail tools (MAIL): password accounts work here; OAuth accounts need the token store
-        // the `orkeon` runners mount, and say so when called from the REPL.
+        // E-mail, drive and chat tools: the OAuth accounts sign in with `orkeon email|drive|chat login`, and the
+        // REPL reads and refreshes the tokens under the internal root RunnerHost.ConfigureMounts mounted (#482).
+        // A chat account that signs in as an application reads its certificate or federated token file through
+        // the internal root of its folder.
         services.AddOrkeonEmailTools(context.Configuration);
-        // Drive tools (DRIVE): every drive account signs in with OAuth, whose tokens only the
-        // `orkeon` runners keep; called from the REPL, a drive tool says so.
         services.AddOrkeonDriveTools(context.Configuration);
-        // Chat tools (Microsoft Teams): the same for an account that signs in as a user. One that signs in
-        // as an application reads its certificate or federated token file here as under a runner, through
-        // the internal root RunnerHost.ConfigureMounts mounted its folder under.
         services.AddOrkeonChatTools(context.Configuration);
+        Orkeon.Hosting.RunnerHost.RegisterTokenStores(context, services);
         services.AddOrkeonChatCredentialFiles(
             sp => sp.GetRequiredService<Orkeon.Infrastructure.FileSystem.PrivilegedFileSystemAccess>().FileSystem,
             Orkeon.Constants.FileSystem.RunnerVirtualRoots.CredentialFiles);

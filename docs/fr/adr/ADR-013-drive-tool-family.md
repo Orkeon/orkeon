@@ -83,3 +83,7 @@ l'environnement, et Microsoft Graph en HTTP simple — le tout interne à `Orkeo
 ## Amendement (2026-11-17)
 
 - La campagne sur de vrais comptes (DRIVE-07) a été close le 2026-11-17. Ce qu'elle a couvert et les limites qui restent sont dans [les limitations](../reference/limitations.md) ; le guide garde une note générale de couverture de test et ne consigne pas le passage.
+
+## Amendement (2026-11-24)
+
+- `orkeon-repl` tient les magasins de jetons des trois familles de comptes (#482) : il monte la même racine interne `/credentials` qu'un runner, selon les mêmes règles, et les jetons restent hors de portée des outils du VFS. La connexion reste `orkeon drive login`.

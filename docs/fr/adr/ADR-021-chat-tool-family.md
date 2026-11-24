@@ -89,3 +89,7 @@ Chacune était une question laissée ouverte par l'issue ; la recommandation a �
 - Dix outils, un fournisseur par compte, et les parties connexion, webhook, compte d'application et canal entrant décrites ci-dessus.
 - Pages corrigées avec les outils : CONTRIBUTING (« The scope is frozen »), la page des limites, l'inventaire des outils (dont la ligne qui dit qu'il n'existe pas d'outil Teams), les décomptes d'outils, les typings, un guide `chat` et la référence de configuration.
 - Aucun locataire Microsoft 365 n'est disponible ici pour les mainteneurs : les outils sont validés sur des réponses Graph rejouées, et les essais sur un vrai locataire (D4, D5, transcriptions, webhook) reviennent au propriétaire.
+
+## Amendement (2026-11-24)
+
+- `orkeon-repl` tient les magasins de jetons des trois familles de comptes (#482) : il monte la même racine interne `/credentials` qu'un runner, selon les mêmes règles, et les jetons restent hors de portée des outils du VFS. La connexion reste `orkeon chat login`.

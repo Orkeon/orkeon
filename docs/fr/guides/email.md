@@ -644,19 +644,19 @@ des outils du VFS — **pas** d'un outil shell ou de code qui tourne sous le mê
 système. Tenez `shell_command` et l'interpréteur de code à l'écart des crews qui disposent d'un
 compte OAuth. Ce bouclier ne tient d'ailleurs que tant que le runner monte `/credentials` : ne
 donnez jamais à un crew un montage qui couvre le répertoire des réglages de l'utilisateur ou un
-`CredentialsDirectory`, car un run dont les réglages ne déclarent aucun compte OAuth, ou
-`orkeon-repl`, y montrerait les fichiers de jetons.
+`CredentialsDirectory`, car un hôte dont les réglages ne déclarent aucun compte OAuth — un run ou
+`orkeon-repl` — y montrerait les fichiers de jetons.
 
 Le nom du fichier porte une empreinte de l'adresse, du client, du point d'accès du tenant et des
 scopes : changez l'un d'eux et le compte redemande un login au lieu d'envoyer un jeton vers un
 destinataire pour lequel il n'a pas été délivré. Lancez `orkeon email logout` avant un tel
-changement, ou supprimez l'ancien fichier. `orkeon-repl` enregistre les outils mais ne tient
-aucun magasin de jetons : les comptes à mot de passe y fonctionnent, les comptes OAuth y sont
-refusés avec un message qui le dit — un compte connecté avec `orkeon email login` sert aux runs
-`orkeon`, pas au REPL. Un montage utilisateur qui revendique `/credentials` est
+changement, ou supprimez l'ancien fichier. `orkeon-repl` lit et rafraîchit les mêmes jetons,
+selon les mêmes règles : un compte connecté avec `orkeon email login` sert aussi au REPL, dès qu'il
+démarre sur les mêmes réglages ; le REPL n'ouvre lui-même aucune connexion. Avec plusieurs fichiers
+`--settings`, un `CredentialsDirectory` relatif se lit depuis le répertoire du dernier qui le
+déclare. Un montage utilisateur qui revendique `/credentials` est
 refusé quels que soient les comptes — par chaque commande `orkeon`, par `orkeon-host` et par
-`orkeon-repl` avant leur démarrage (le REPL ne monte aucun `/credentials`, et refuse la racine
-tout de même, comme toute commande).
+`orkeon-repl` avant leur démarrage.
 
 ## Dans un hôte à vous
 
@@ -744,7 +744,8 @@ brancher, les codes que le CLI traduit en codes de sortie.
 - **« The TLS handshake … failed »** — le port et `Security` ne correspondent pas :
   `SslOnConnect` pour 993, 995 et 465, `StartTls` pour 143, 110 et 587.
 - **« This host keeps no OAuth tokens »** — l'hôte n'a pas de magasin de jetons :
-  `orkeon-repl`, un hôte à vous qui n'en a enregistré aucun, ou un conteneur où aucun
+  un hôte à vous qui n'en a enregistré aucun, un répertoire qui ne peut être préparé (dit au
+  démarrage), ou un conteneur où aucun
   répertoire utilisateur n'existe (réglez `CredentialsDirectory`).
 - **`orkeon email` ne lance pas le dossier de crew nommé `email`** — le verbe est reconnu en
   premier ; lancez le dossier avec `orkeon run email`.

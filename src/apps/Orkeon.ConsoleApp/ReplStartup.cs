@@ -121,6 +121,10 @@ internal static class ReplStartup
         // on the log, in the runners' words.
         RunnerHost.LogMountDecisions(host, decisions);
 
+        // A token store or a credential file the REPL cannot provide (#482): said on stderr and on the
+        // log, in the runners' words, and the REPL starts; the account alone refuses its calls.
+        RunnerHost.WarnIfTokensUnavailable(host, decisions);
+
         // What the settings write and no component of the REPL reads: said before the console
         // opens, as a runner says it, and the REPL starts.
         RunnerHost.AnnounceSettingsNotices(host.Services, notice => report($"orkeon-repl: warning: {notice}"));

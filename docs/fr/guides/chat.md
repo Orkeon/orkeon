@@ -479,8 +479,10 @@ aux agents ne résout, à côté de ceux de `email` et `drive`. Un run garde un 
 répertoire d'identifiants pour les trois familles : quand elles en nomment de différents, celui de
 l'e-mail l'emporte, puis celui du drive. Comme pour eux, les jetons sont à l'abri
 des outils du VFS, **pas** d'un `shell_command` qui tourne sous le même utilisateur du système.
-`orkeon-repl` ne tient aucun magasin de jetons : un compte chat qui se connecte comme utilisateur (`OAuth2`) le dit là. Un compte
-d'application marche dans le REPL, avec un certificat, un jeton fédéré ou un secret client.
+`orkeon-repl` monte la même racine et utilise les mêmes jetons : un compte connecté avec
+`orkeon chat login` y lit et y poste comme son utilisateur. Le REPL n'ouvre aucune connexion. Quand le
+répertoire ne peut être préparé, le REPL le dit au démarrage et continue ; seul ce compte refuse ses
+appels. Dans un conteneur, montez le dossier et nommez-le par `CredentialsDirectory`.
 
 ## Erreurs
 

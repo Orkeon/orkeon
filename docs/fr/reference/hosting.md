@@ -181,7 +181,7 @@ est une `RunnerSettingsException` qui nomme sa clé, l'hôte libéré : rien n'e
 démarré.
 
 Ensuite l'hôte journalise les décisions de montage qu'il a prises, avertit (dans le
-journal et sur stderr) quand un compte e-mail OAuth n'a pas de magasin de jetons ou quand il n'y a
+journal et sur stderr) quand un compte e-mail, drive ou chat OAuth n'a pas de magasin de jetons ou quand il n'y a
 pas de section `Llm` — le runtime se replie alors sur le fournisseur écho —, dit d'où vient la clé
 du défaut et de chaque profil offert aux crews — les profils que cache sa liste blanche
 (`LlmProfileAccessOptions`, que lie `orkeon-host`) sur une ligne à part, jamais signalés — et résout les

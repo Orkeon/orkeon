@@ -129,3 +129,7 @@ The provider constraints, checked on 2026-09-26:
 ## Amendment (2026-10-29)
 
 The versions named in decision 2 (MailKit 4.18.0, MimeKit 4.18.1) were those of 2026-09-26; `Directory.Packages.props` now pins MailKit 4.18.2 and MimeKit 4.18.2.
+
+## Amendment (2026-11-24)
+
+- `orkeon-repl` keeps the token stores of the three account families (#482): it mounts the same internal `/credentials` root as a runner, under the same rules, and the tokens stay out of reach of the VFS tools. The limit stated in Consequences no longer holds. The sign-in stays `orkeon email login`.
