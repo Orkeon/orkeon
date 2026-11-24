@@ -204,6 +204,8 @@
       href: adr/ADR-020-agent-cli-provider.md
     - name: ADR-021 — The chat tool family
       href: adr/ADR-021-chat-tool-family.md
+    - name: ADR-022 — One browser tool, several engines
+      href: adr/ADR-022-browser-tool-engines.md
     - name: ADR — RaggableTree semantic graph
       href: architecture/raggable-tree-adr.md
 - name: Templates
