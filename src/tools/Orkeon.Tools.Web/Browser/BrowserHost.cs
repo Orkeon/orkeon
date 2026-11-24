@@ -21,6 +21,9 @@ internal sealed record BrowserLaunch
     /// <summary>Variables added to the environment the browser inherits.</summary>
     public IReadOnlyDictionary<string, string> Environment { get; init; } = new Dictionary<string, string>();
 
+    /// <summary>The endpoint, when the program announces none: the one it was told to listen at.</summary>
+    public Uri? Endpoint { get; init; }
+
     /// <summary>The endpoint a line of the standard error announces, or <c>null</c>.</summary>
     public required Func<string, Uri?> ReadEndpoint { get; init; }
 
@@ -127,6 +130,8 @@ internal static partial class BrowserHost
         {
             var announced = new TaskCompletionSource<Uri>(TaskCreationOptions.RunContinuationsAsynchronously);
             process = Start(launch, announced);
+            if (launch.Endpoint is not null)
+                announced.TrySetResult(launch.Endpoint);
 
             Uri endpoint;
             try

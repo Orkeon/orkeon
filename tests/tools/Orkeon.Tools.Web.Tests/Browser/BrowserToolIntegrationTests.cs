@@ -12,6 +12,7 @@ using Orkeon.Tests.Shared.Timing;
 using Orkeon.Tools.Web.Browser;
 using Orkeon.Tools.Web.Chromium;
 using Orkeon.Tools.Web.Firefox;
+using Orkeon.Tools.Web.Safari;
 using Orkeon.Tools.Web.Tests.Doubles;
 
 namespace Orkeon.Tools.Web.Tests.Browser;
@@ -54,11 +55,11 @@ public abstract class BrowserToolIntegrationTests : IDisposable
     // runner outlasted 30 s (#379), and no test here is about how long Firefox takes to start.
     private readonly FirefoxToolOptions _options;
 
-    private protected BrowserToolIntegrationTests(string engine) => _options = new FirefoxToolOptions
+    private protected BrowserToolIntegrationTests(string engine, bool headless = true) => _options = new FirefoxToolOptions
     {
         Engine = engine,
         ExecutablePath = Environment.GetEnvironmentVariable("ORKEON_TEST_BROWSER_" + engine.ToUpperInvariant()),
-        Headless = true,
+        Headless = headless,
         StartupTimeoutSeconds = (int)HangGuards.ProcessStart.TotalSeconds,
     };
 
@@ -75,6 +76,9 @@ public abstract class BrowserToolIntegrationTests : IDisposable
     private protected virtual void Prepare(string folder)
     {
     }
+
+    /// <summary>Whether the browser starts on a profile folder named.</summary>
+    private protected virtual bool NamedProfiles => true;
 
     private static CancellationToken Ct => TestContext.Current.CancellationToken;
 
@@ -308,6 +312,7 @@ public abstract class BrowserToolIntegrationTests : IDisposable
     /// <summary>A profile folder of its own, with the preferences of a quiet first run, where the snap can read it.</summary>
     private string NamedProfileFolder()
     {
+        Assert.SkipUnless(NamedProfiles && IsInstalled(_options), $"The engine '{_options.Engine}' has no named profile here.");
         var folder = Path.Combine(ProfileRoot, "named-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(folder);
         Prepare(folder);
@@ -397,6 +402,20 @@ public sealed class FirefoxToolIntegrationTests() : BrowserToolIntegrationTests(
 
     private protected override void Prepare(string folder) =>
         File.WriteAllText(Path.Combine(folder, "user.js"), FirefoxProfile.Preferences);
+}
+
+/// <summary>Opens windows on the Mac, once remote automation is allowed: runs only where <c>ORKEON_TEST_BROWSER_SAFARI</c> names safaridriver.</summary>
+[Trait("Category", "Integration")]
+public sealed class SafariToolIntegrationTests() : BrowserToolIntegrationTests(SafariEngine.EngineId, headless: false)
+{
+    private protected override string ProfileRoot => string.Empty;
+
+    private protected override string ProfileFile => string.Empty;
+
+    private protected override bool NamedProfiles => false;
+
+    private protected override bool IsInstalled(FirefoxToolOptions options) =>
+        options.ExecutablePath is not null && new SafariEngine(options).LocateOnHost() is not null;
 }
 
 [Trait("Category", "Integration")]

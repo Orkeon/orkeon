@@ -44,7 +44,7 @@ public class FirefoxToolOptionsTests
     {
         var refused = Assert.Throws<InvalidOperationException>(() => BrowserEngines.Create(new FirefoxToolOptions { Engine = engine }, null));
 
-        Assert.Equal("Orkeon:Tools:Browser:Engine is not a browser engine: write one of firefox, chrome, edge, brave.", refused.Message);
+        Assert.Equal("Orkeon:Tools:Browser:Engine is not a browser engine: write one of firefox, chrome, edge, brave, safari.", refused.Message);
         Assert.IsType<FirefoxEngine>(BrowserEngines.Create(new FirefoxToolOptions { Engine = " FIREFOX" }, null));
     }
 
