@@ -7,10 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — Chrome, Edge and Brave engines (#441, #442, #443)
+
+- `Orkeon:Tools:Browser:Engine` takes `chrome` (Google Chrome or Chromium), `edge` and `brave`: the same actions, over
+  the DevTools protocol and the `chromium-bidi` mapper embedded in `Orkeon.Tools.Web`, with no driver to install. A named
+  profile is a folder path, the user's own data folder is refused, and the browser's sandbox stays on
+  ([guide](docs/guides/browser.md#engines)).
+
 ### Changed — the `firefox` tool is `browser` (#440)
 
 - The browser tool is `browser`, and its section `Orkeon:Tools:Browser`: the host picks the engine with `Engine`
-  (`firefox`, the default and the only one built), and an unknown engine is refused. Every answer carries `engine`.
+  (`firefox`, the default), and an unknown engine is refused. Every answer carries `engine`.
   `FirefoxToolOptions.Engine`, `FirefoxToolOptions.BrowserSectionName` and `FirefoxResponse.Engine` are new
   ([guide](docs/guides/browser.md), [ADR-022](docs/adr/ADR-022-browser-tool-engines.md)).
 - **Deprecated**, removed at the next major version: the name `firefox`, a second name of the same tool over the same

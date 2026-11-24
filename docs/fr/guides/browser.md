@@ -7,7 +7,7 @@
 > [RaggableTree](../architecture/raggable-tree.md) · [Limitations connues](../reference/limitations.md) ·
 > [Retour à l'index](../INDEX.md)
 
-`browser` donne un navigateur à un agent : celui installé sur la machine — Firefox, le seul moteur construit à ce jour —, piloté par
+`browser` donne un navigateur à un agent : celui installé sur la machine — Firefox, Chrome, Edge ou Brave —, piloté par
 [WebDriver BiDi](https://w3c.github.io/webdriver-bidi/) sur un WebSocket. Aucun binaire de
 pilote, aucun paquet d'éditeur, aucun téléchargement de navigateur. L'agent ouvre une page, la lit
 comme un plan de sections, de liens et de contrôles, clique, saisit, presse des touches, cherche
@@ -19,7 +19,7 @@ leur JavaScript : ce que `web_scrape` ne voit pas, `browser` le voit.
 > `Orkeon:Tools:Browser` est absente (les deux présentes, c'est refusé). Ils partent à la prochaine majeure
 > ([ADR-022](../adr/ADR-022-browser-tool-engines.md)).
 
-- **Un navigateur par exécution d'agent.** Firefox démarre à la première action de l'exécution,
+- **Un navigateur par exécution d'agent.** Le navigateur démarre à la première action de l'exécution,
   garde ses pages d'une action à la suivante et se ferme avec l'exécution. Des agents qui
   s'exécutent côte à côte ont chacun leur navigateur, ou en partagent un avec des onglets à eux
   quand l'hôte le dit (`SharedInstance`). Hors de toute exécution, une action reçoit un
@@ -27,7 +27,7 @@ leur JavaScript : ce que `web_scrape` ne voit pas, `browser` le voit.
   l'exécution le garde avec `Lifetime: host`
   ([ci-dessous](#un-navigateur-qui-survit-à-lexécution)).
 - **Un profil jetable** par défaut : un dossier neuf, supprimé à la fermeture du navigateur.
-  L'hôte peut démarrer le navigateur sur un profil du Firefox installé sur la machine à la place,
+  L'hôte peut démarrer le navigateur sur un profil nommé à la place,
   et nommer les profils qu'un agent peut demander et ceux qu'aucun navigateur n'utilise jamais
   ([Profils](#profils)).
 - **La fenêtre est visible** par défaut — l'opérateur voit ce que fait l'agent. `Headless` la
@@ -52,11 +52,33 @@ agents:
     tools: [browser]
 ```
 
-Firefox doit être installé sur l'hôte (`firefox` sur le PATH, ou `ExecutablePath`). L'outil est
+Le navigateur du moteur doit être installé sur l'hôte (sur le PATH, dans son dossier habituel, ou à `ExecutablePath`). L'outil est
 enregistré par `AddOrkeonWebTools()`, que chaque hôte livré appelle ; un hôte bibliothèque a aussi
 besoin d'un `IFileSystemService` (la capture d'écran passe par lui) et, pour `search`, de
 `AddOrkeonEphemeralSearch()` avec un fournisseur d'embeddings configuré — sans lui, toutes les
 autres actions fonctionnent et `search` le dit.
+
+### Moteurs
+
+`Engine` choisit le navigateur, par hôte ; les actions, les réponses et les vérifications sont les mêmes sur tous.
+
+| `Engine` | Navigateur | Comment il est piloté |
+|---|---|---|
+| `firefox` (défaut) | Firefox | Son propre point d'accès WebDriver BiDi |
+| `chrome` | Google Chrome, ou Chromium | Le protocole DevTools, par le mapper `chromium-bidi` qu'Orkeon embarque |
+| `edge` | Microsoft Edge | De même |
+| `brave` | Brave | De même ; Shields reste tel que Brave le règle, et peut bloquer ce qu'une page charge |
+
+Chrome, Edge et Brave exécutent le mapper dans un onglet caché du navigateur lui-même : pas de `chromedriver`, rien à
+télécharger. Trois choses diffèrent de Firefox :
+
+- **Un profil nommé est un chemin de dossier**, jamais un nom de profil : le navigateur refuse le pilotage à distance
+  sur le dossier de données de l'utilisateur, et Orkeon refuse ce dossier, et tout dossier qu'il contient, avant le
+  démarrage. Créez un dossier pour l'agent.
+- **Le bac à sable reste actif.** Orkeon ne passe jamais `--no-sandbox` : dans un conteneur sans espaces de noms
+  utilisateur, ou en root, le navigateur ne démarre pas, et l'erreur porte ce qu'il a dit.
+- **Les boîtes qu'une page ouvre** (`alert`, `confirm`, `prompt`) sont fermées par le mapper lui-même, et rapportées de
+  la même façon.
 
 ## Les actions
 
@@ -136,7 +158,7 @@ page.
   transcription garde. Une page qui demande un mot de passe est une page que l'agent ne doit pas
   remplir.
 - Une **page hors de la politique** : les sous-ressources qu'une page charge (images, scripts,
-  cadres) sont récupérées par Firefox lui-même et ne sont pas vérifiées par la politique d'URL ;
+  cadres) sont récupérées par le navigateur lui-même et ne sont pas vérifiées par la politique d'URL ;
   seules les pages que l'onglet affiche le sont. Gardez le navigateur sur un réseau isolé quand la
   politique compte.
 - Le **texte d'une page n'est pas filtré** contre l'injection de consignes : un agent le lit comme
@@ -153,9 +175,9 @@ Un navigateur démarre sur l'un de trois genres de profil, et le `profile` de la
   (`about:profiles` les montre) : utilisé sur place, avec ses cookies, ses sessions, ses extensions
   et son historique, et jamais supprimé. L'agent voit ce que voit l'utilisateur du profil, connecté
   là où il l'est : donnez à un agent un profil fait pour lui, jamais celui de l'opérateur. Un
-  profil qu'un autre Firefox tient ouvert est refusé : fermez ce Firefox, ou prenez un autre profil.
+  profil qu'un autre Firefox tient ouvert est refusé : fermez ce Firefox, ou prenez un autre profil. Firefox seulement.
 - **Un dossier de profil**, par son chemin : la même chose, pour un profil que `profiles.ini` ne
-  liste pas.
+  liste pas, et pour le dossier de données d'un moteur Chromium.
 
 Qui choisit : `Orkeon:Tools:Browser:Profile` nomme le profil sur lequel un navigateur démarre
 quand l'agent n'en nomme aucun. Un agent peut nommer `disposable`, ce profil, ou l'un de
@@ -211,7 +233,7 @@ Dans une exécution, `close` ferme le navigateur de l'exécution, comme toujours
 l'exécution n'en a pas encore utilisé, le navigateur de l'hôte du profil nommé, celui du profil
 par défaut sans ; hors de toute exécution — une console, un script — `close` ferme le navigateur
 de l'hôte de la même façon. Chaque fois qu'un profil jetable est créé, l'outil supprime d'abord,
-sous `ProfileRoot`, les dossiers jetables de plus de dix minutes qu'aucun Firefox ne tient : ce
+sous `ProfileRoot`, les dossiers jetables de plus de dix minutes qu'aucun navigateur ne tient : ce
 qu'un hôte tué avec ses navigateurs a laissé derrière lui.
 
 ## Réglages
@@ -219,9 +241,9 @@ qu'un hôte tué avec ses navigateurs a laissé derrière lui.
 `Orkeon:Tools:Browser` — voir la [référence de configuration](../reference/configuration.md#orkeontoolsbrowser) :
 `Engine`, `ExecutablePath`, `Headless`, `Profile`, `AllowedProfiles`, `DeniedProfiles`, `SharedInstance`,
 `Lifetime`, `ProfileRoot`, `StartupTimeoutSeconds`, `CommandTimeoutSeconds`, `MaxNodes`,
-`MaxTextLength`. `Engine` choisit le navigateur (`firefox`, le défaut, est le seul construit) ; un inconnu est
-refusé, et rien ne se replie sur Firefox. C'est l'hôte qui le choisit, jamais l'agent. Quand Firefox est un snap, la racine de profil par défaut est
-`~/snap/firefox/common/orkeon/profiles` : un snap ne lit pas le dossier temporaire du système.
+`MaxTextLength`. `Engine` choisit le navigateur ([Moteurs](#moteurs)) ; un inconnu est
+refusé, et rien ne se replie sur Firefox. C'est l'hôte qui le choisit, jamais l'agent. Quand le navigateur est un snap, la racine de profil par défaut est
+`~/snap/<snap>/common/orkeon/profiles` : un snap ne lit pas le dossier temporaire du système.
 
 Firefox annonce son protocole distant tôt dans son démarrage et ne répond à la première commande,
 `session.new`, qu'une fois sa première fenêtre chargée : cette réponse est la seconde moitié du

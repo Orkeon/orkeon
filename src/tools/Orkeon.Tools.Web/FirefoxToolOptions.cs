@@ -18,36 +18,37 @@ public sealed class FirefoxToolOptions
     /// <summary>The former name of <see cref="BrowserSectionName"/>, read when that section is absent.</summary>
     public const string SectionName = "Orkeon:Tools:Firefox";
 
-    /// <summary>The browser the host drives: `firefox` (the default). Case ignored; any other value is refused.</summary>
+    /// <summary>The browser the host drives: `firefox` (the default), `chrome`, `edge` or `brave`. Case ignored; any other value is refused.</summary>
     public string Engine { get; set; } = FirefoxEngine.EngineId;
 
     /// <summary>The section the options were read from, which errors name.</summary>
     internal string Section { get; private set; } = BrowserSectionName;
 
     /// <summary>
-    /// Path of the Firefox program, or its name on the PATH. Not set: `firefox` on the PATH, then the
-    /// usual install folder of the platform.
+    /// Path of the browser's program, or its name on the PATH. Not set: the engine's usual names on the
+    /// PATH, then the usual install folder of the platform.
     /// </summary>
     public string? ExecutablePath { get; set; }
 
     /// <summary>
-    /// `true` starts Firefox without a window. The default shows the window; under Linux with neither
+    /// `true` starts the browser without a window. The default shows the window; under Linux with neither
     /// `DISPLAY` nor `WAYLAND_DISPLAY` the browser starts headless anyway, and a warning says so.
     /// </summary>
     public bool Headless { get; set; }
 
     /// <summary>
     /// Folder under which each browser gets its own profile folder, removed when the browser closes.
-    /// Not set: `~/snap/firefox/common/orkeon/profiles` when Firefox is a snap (a snap cannot read the
-    /// system's temp folder), else `orkeon-firefox` under the system's temp folder.
+    /// Not set: `~/snap/&lt;snap&gt;/common/orkeon/profiles` when the browser is a snap (a snap cannot read the
+    /// system's temp folder), else `orkeon-&lt;engine&gt;` under the system's temp folder.
     /// </summary>
     public string? ProfileRoot { get; set; }
 
     /// <summary>
     /// The profile a browser starts with when the agent names none: `disposable` (the default, a fresh
     /// folder removed when the browser closes), the name of a profile of the Firefox installed on the
-    /// host (`profiles.ini`), or the path of a profile folder. A named profile is used in place, with
-    /// its cookies and sessions, and never removed; a profile another Firefox holds open is refused.
+    /// host (`profiles.ini`), or the path of a profile folder — the only form a Chromium engine
+    /// takes, and never the user's own data folder. A named profile is used in place, with its cookies
+    /// and sessions, and never removed; a profile another browser holds open is refused.
     /// </summary>
     public string? Profile { get; set; }
 
@@ -79,7 +80,7 @@ public sealed class FirefoxToolOptions
     /// </summary>
     public FirefoxBrowserLifetime Lifetime { get; set; }
 
-    /// <summary>Seconds Firefox is given to open its remote protocol; its session, which it answers once its first window has loaded, then waits the larger of this and `CommandTimeoutSeconds`.</summary>
+    /// <summary>Seconds the browser is given to open its remote protocol; its session, which Firefox answers once its first window has loaded, then waits the larger of this and `CommandTimeoutSeconds`.</summary>
     public int StartupTimeoutSeconds { get; set; } = 30;
 
     /// <summary>Seconds one browser command (a page load, a script, a click) is given to answer.</summary>

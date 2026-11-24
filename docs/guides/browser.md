@@ -7,7 +7,7 @@
 > [RaggableTree](../architecture/raggable-tree.md) · [Known limitations](../reference/limitations.md) ·
 > [Back to index](../INDEX.md)
 
-`browser` gives an agent a browser: the one installed on the machine — Firefox, the only engine built so far —, driven over
+`browser` gives an agent a browser: the one installed on the machine — Firefox, Chrome, Edge or Brave —, driven over
 [WebDriver BiDi](https://w3c.github.io/webdriver-bidi/) on a WebSocket. No driver binary, no
 vendor package, no browser download. The agent opens a page, reads it as an outline of sections,
 links and controls, clicks, types, presses keys, searches the page by meaning, runs a script and
@@ -18,14 +18,14 @@ saves a screenshot. Pages run their JavaScript: what `web_scrape` cannot see, `b
 > absent (both set is refused). They go at the next major version
 > ([ADR-022](../adr/ADR-022-browser-tool-engines.md)).
 
-- **One browser per agent run.** Firefox starts at the run's first action, keeps its pages
+- **One browser per agent run.** The browser starts at the run's first action, keeps its pages
   from one action to the next, and closes with the run. Agents running side by side have their
   own browsers, or share one with tabs of their own when the host says so (`SharedInstance`).
   Outside any run, an action gets a browser of its own, closed right after it. A host that
   wants the browser to outlive the run keeps it with `Lifetime: host`
   ([below](#a-browser-that-outlives-the-run)).
 - **A disposable profile** by default: a fresh folder, removed when the browser closes. The
-  host may start the browser on a profile of the Firefox installed on the machine instead, and
+  host may start the browser on a named profile instead, and
   name the profiles an agent may ask for and the ones no browser ever uses
   ([Profiles](#profiles)).
 - **The window is visible** by default — the operator sees what the agent does. `Headless`
@@ -47,11 +47,31 @@ agents:
     tools: [browser]
 ```
 
-Firefox must be installed on the host (`firefox` on the PATH, or `ExecutablePath`). The tool is
+The engine's browser must be installed on the host (on the PATH, in its usual folder, or at `ExecutablePath`). The tool is
 registered by `AddOrkeonWebTools()`, which every shipped host calls; a library host also needs an
 `IFileSystemService` (the screenshot is written through it) and, for `search`,
 `AddOrkeonEphemeralSearch()` with an embedding provider configured — without one, every other
 action works and `search` says so.
+
+### Engines
+
+`Engine` picks the browser, per host; the actions, the answers and the checks are the same on all of them.
+
+| `Engine` | Browser | How it is driven |
+|---|---|---|
+| `firefox` (default) | Firefox | Its own WebDriver BiDi endpoint |
+| `chrome` | Google Chrome, or Chromium | The DevTools protocol, through the `chromium-bidi` mapper Orkeon embeds |
+| `edge` | Microsoft Edge | The same |
+| `brave` | Brave | The same; Shields stays as Brave sets it, and may block what a page loads |
+
+Chrome, Edge and Brave run the mapper in a hidden tab of the browser itself: no `chromedriver`, nothing
+downloaded. Three things differ from Firefox:
+
+- **A named profile is a folder path**, never a profile name: the browser refuses remote control on the user's own
+  data folder, and Orkeon refuses that folder, and any folder in it, before the start. Make a folder for the agent.
+- **The sandbox stays on.** Orkeon never passes `--no-sandbox`: in a container without user namespaces, or as root,
+  the browser does not start, and the error carries what it said.
+- **Boxes a page opens** (`alert`, `confirm`, `prompt`) are dismissed by the mapper itself, and reported the same way.
 
 ## The actions
 
@@ -128,7 +148,7 @@ found: that is the link between the RAG subsystem and the page graph.
 - A **secret**: the text of `type` is a tool argument, which the model writes and the transcript
   keeps. A page that asks for a password is a page the agent should not fill in.
 - A **page outside the policy**: the sub-resources a page loads (images, scripts, frames) are
-  fetched by Firefox itself and are not checked by the URL policy; only the pages the tab shows
+  fetched by the browser itself and are not checked by the URL policy; only the pages the tab shows
   are. Keep the browser on an isolated network when the policy matters.
 - The **text of a page is not screened** for prompt injection: an agent reads it as it reads
   any tool result. The host's Guardian applies to what the agent then says and does.
@@ -143,8 +163,9 @@ A browser starts on one of three kinds of profile, and the answer's `profile` sa
   (`about:profiles` shows them): used in place, with its cookies, sessions, extensions and
   history, and never removed. The agent sees what the profile's user sees, signed in where they
   are: give an agent a profile made for it, never the operator's own. A profile another
-  Firefox holds open is refused: close that Firefox, or use another profile.
-- **A profile folder**, by its path: the same, for a profile `profiles.ini` does not list.
+  Firefox holds open is refused: close that Firefox, or use another profile. Firefox only.
+- **A profile folder**, by its path: the same, for a profile `profiles.ini` does not list,
+  and for the data folder of a Chromium engine.
 
 Who chooses: `Orkeon:Tools:Browser:Profile` names the profile a browser starts on when the
 agent names none. An agent may name `disposable`, that profile, or one of `AllowedProfiles` —
@@ -193,7 +214,7 @@ on a blank tab; should the user close that tab, the next run opens one of its ow
 Inside a run, `close` closes the run's browser, as always — or, when the run has not used one
 yet, the host's browser of the profile named, the default's without; outside any run — a console,
 a script — `close` closes the host's browser the same way. Each time a disposable profile is
-created, the tool first removes the disposable folders under `ProfileRoot` that no Firefox holds
+created, the tool first removes the disposable folders under `ProfileRoot` that no browser holds
 and that are more than ten minutes old: what a host killed with its browsers left behind.
 
 ## Settings
@@ -201,8 +222,8 @@ and that are more than ten minutes old: what a host killed with its browsers lef
 `Orkeon:Tools:Browser` — see the [configuration reference](../reference/configuration.md#orkeontoolsbrowser):
 `Engine`, `ExecutablePath`, `Headless`, `Profile`, `AllowedProfiles`, `DeniedProfiles`, `SharedInstance`,
 `Lifetime`, `ProfileRoot`, `StartupTimeoutSeconds`, `CommandTimeoutSeconds`, `MaxNodes`,
-`MaxTextLength`. `Engine` picks the browser (`firefox`, the default, is the only one built); an unknown one is
-refused, and nothing falls back to Firefox. The host chooses it, never the agent. When Firefox is a snap, the default profile root is `~/snap/firefox/common/orkeon/profiles`: a
+`MaxTextLength`. `Engine` picks the browser ([Engines](#engines)); an unknown one is
+refused, and nothing falls back to Firefox. The host chooses it, never the agent. When the browser is a snap, the default profile root is `~/snap/<snap>/common/orkeon/profiles`: a
 snap cannot read the system's temp folder.
 
 Firefox announces its remote protocol early in its start and answers the first command,

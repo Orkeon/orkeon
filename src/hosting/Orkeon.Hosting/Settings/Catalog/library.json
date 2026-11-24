@@ -3067,20 +3067,20 @@
       "section": "Orkeon:Tools:Browser",
       "type": "string",
       "default": "firefox",
-      "description": "The browser the host drives: `firefox` (the default). Case ignored; any other value is refused."
+      "description": "The browser the host drives: `firefox` (the default), `chrome`, `edge` or `brave`. Case ignored; any other value is refused."
     },
     {
       "path": "Orkeon:Tools:Browser:ExecutablePath",
       "section": "Orkeon:Tools:Browser",
       "type": "string",
-      "description": "Path of the Firefox program, or its name on the PATH. Not set: `firefox` on the PATH, then the usual install folder of the platform."
+      "description": "Path of the browser's program, or its name on the PATH. Not set: the engine's usual names on the PATH, then the usual install folder of the platform."
     },
     {
       "path": "Orkeon:Tools:Browser:Headless",
       "section": "Orkeon:Tools:Browser",
       "type": "boolean",
       "default": false,
-      "description": "`true` starts Firefox without a window. The default shows the window; under Linux with neither `DISPLAY` nor `WAYLAND_DISPLAY` the browser starts headless anyway, and a warning says so."
+      "description": "`true` starts the browser without a window. The default shows the window; under Linux with neither `DISPLAY` nor `WAYLAND_DISPLAY` the browser starts headless anyway, and a warning says so."
     },
     {
       "path": "Orkeon:Tools:Browser:Lifetime",
@@ -3111,13 +3111,13 @@
       "path": "Orkeon:Tools:Browser:Profile",
       "section": "Orkeon:Tools:Browser",
       "type": "string",
-      "description": "The profile a browser starts with when the agent names none: `disposable` (the default, a fresh folder removed when the browser closes), the name of a profile of the Firefox installed on the host (`profiles.ini`), or the path of a profile folder. A named profile is used in place, with its cookies and sessions, and never removed; a profile another Firefox holds open is refused."
+      "description": "The profile a browser starts with when the agent names none: `disposable` (the default, a fresh folder removed when the browser closes), the name of a profile of the Firefox installed on the host (`profiles.ini`), or the path of a profile folder — the only form a Chromium engine takes, and never the user's own data folder. A named profile is used in place, with its cookies and sessions, and never removed; a profile another browser holds open is refused."
     },
     {
       "path": "Orkeon:Tools:Browser:ProfileRoot",
       "section": "Orkeon:Tools:Browser",
       "type": "string",
-      "description": "Folder under which each browser gets its own profile folder, removed when the browser closes. Not set: `~/snap/firefox/common/orkeon/profiles` when Firefox is a snap (a snap cannot read the system's temp folder), else `orkeon-firefox` under the system's temp folder."
+      "description": "Folder under which each browser gets its own profile folder, removed when the browser closes. Not set: `~/snap/<snap>/common/orkeon/profiles` when the browser is a snap (a snap cannot read the system's temp folder), else `orkeon-<engine>` under the system's temp folder."
     },
     {
       "path": "Orkeon:Tools:Browser:SharedInstance",
@@ -3131,7 +3131,7 @@
       "section": "Orkeon:Tools:Browser",
       "type": "integer",
       "default": 30,
-      "description": "Seconds Firefox is given to open its remote protocol; its session, which it answers once its first window has loaded, then waits the larger of this and `CommandTimeoutSeconds`."
+      "description": "Seconds the browser is given to open its remote protocol; its session, which Firefox answers once its first window has loaded, then waits the larger of this and `CommandTimeoutSeconds`."
     },
     {
       "path": "Orkeon:Tools:Chat:Accounts:<name>:Auth:AdminGranted",
@@ -3581,20 +3581,20 @@
       "section": "Orkeon:Tools:Firefox",
       "type": "string",
       "default": "firefox",
-      "description": "The browser the host drives: `firefox` (the default). Case ignored; any other value is refused."
+      "description": "The browser the host drives: `firefox` (the default), `chrome`, `edge` or `brave`. Case ignored; any other value is refused."
     },
     {
       "path": "Orkeon:Tools:Firefox:ExecutablePath",
       "section": "Orkeon:Tools:Firefox",
       "type": "string",
-      "description": "Path of the Firefox program, or its name on the PATH. Not set: `firefox` on the PATH, then the usual install folder of the platform."
+      "description": "Path of the browser's program, or its name on the PATH. Not set: the engine's usual names on the PATH, then the usual install folder of the platform."
     },
     {
       "path": "Orkeon:Tools:Firefox:Headless",
       "section": "Orkeon:Tools:Firefox",
       "type": "boolean",
       "default": false,
-      "description": "`true` starts Firefox without a window. The default shows the window; under Linux with neither `DISPLAY` nor `WAYLAND_DISPLAY` the browser starts headless anyway, and a warning says so."
+      "description": "`true` starts the browser without a window. The default shows the window; under Linux with neither `DISPLAY` nor `WAYLAND_DISPLAY` the browser starts headless anyway, and a warning says so."
     },
     {
       "path": "Orkeon:Tools:Firefox:Lifetime",
@@ -3625,13 +3625,13 @@
       "path": "Orkeon:Tools:Firefox:Profile",
       "section": "Orkeon:Tools:Firefox",
       "type": "string",
-      "description": "The profile a browser starts with when the agent names none: `disposable` (the default, a fresh folder removed when the browser closes), the name of a profile of the Firefox installed on the host (`profiles.ini`), or the path of a profile folder. A named profile is used in place, with its cookies and sessions, and never removed; a profile another Firefox holds open is refused."
+      "description": "The profile a browser starts with when the agent names none: `disposable` (the default, a fresh folder removed when the browser closes), the name of a profile of the Firefox installed on the host (`profiles.ini`), or the path of a profile folder — the only form a Chromium engine takes, and never the user's own data folder. A named profile is used in place, with its cookies and sessions, and never removed; a profile another browser holds open is refused."
     },
     {
       "path": "Orkeon:Tools:Firefox:ProfileRoot",
       "section": "Orkeon:Tools:Firefox",
       "type": "string",
-      "description": "Folder under which each browser gets its own profile folder, removed when the browser closes. Not set: `~/snap/firefox/common/orkeon/profiles` when Firefox is a snap (a snap cannot read the system's temp folder), else `orkeon-firefox` under the system's temp folder."
+      "description": "Folder under which each browser gets its own profile folder, removed when the browser closes. Not set: `~/snap/<snap>/common/orkeon/profiles` when the browser is a snap (a snap cannot read the system's temp folder), else `orkeon-<engine>` under the system's temp folder."
     },
     {
       "path": "Orkeon:Tools:Firefox:SharedInstance",
@@ -3645,7 +3645,7 @@
       "section": "Orkeon:Tools:Firefox",
       "type": "integer",
       "default": 30,
-      "description": "Seconds Firefox is given to open its remote protocol; its session, which it answers once its first window has loaded, then waits the larger of this and `CommandTimeoutSeconds`."
+      "description": "Seconds the browser is given to open its remote protocol; its session, which Firefox answers once its first window has loaded, then waits the larger of this and `CommandTimeoutSeconds`."
     },
     {
       "path": "Orkeon:Tools:GitHub:Token",

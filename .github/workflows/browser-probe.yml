@@ -25,8 +25,8 @@ jobs:
           await new Promise(r=>setTimeout(r,3000));
           const req=async(m,u,b)=>{const r=await fetch(base+u,{method:m,headers:{'content-type':'application/json'},body:b?JSON.stringify(b):undefined});const t=await r.text();console.log(m,u,r.status,t.slice(0,700));try{return JSON.parse(t).value}catch{return null}};
           await req('GET','/status');
-          const s=await req('POST','/session',{capabilities:{alwaysMatch:{webSocketUrl:true}}});
-          const url=s?.capabilities?.webSocketUrl; console.log('webSocketUrl:',url);
+          const s=await req('POST','/session',{capabilities:{alwaysMatch:{webSocketUrl:true,'safari:experimentalWebSocketUrl':true}}});
+          console.log('CAPS',JSON.stringify(s)); const url=[s?.capabilities?.['safari:experimentalWebSocketUrl'],s?.capabilities?.webSocketUrl].find(u=>typeof u==='string'&&u.startsWith('ws')); console.log('url:',url);
           if(url){
             const ws=new WebSocket(url);
             await new Promise((r,j)=>{ws.onopen=r;ws.onerror=e=>j(new Error('ws error '+(e.message||'')));setTimeout(()=>j(new Error('ws timeout')),10000)});
@@ -65,13 +65,14 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+        os: [ubuntu-latest]
     runs-on: ${{ matrix.os }}
     timeout-minutes: 40
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
         with: { global-json-file: global.json }
+      - run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
       - run: dotnet build tests/tools/Orkeon.Tools.Web.Tests/Orkeon.Tools.Web.Tests.csproj -c Release
       - run: dotnet test tests/tools/Orkeon.Tools.Web.Tests/Orkeon.Tools.Web.Tests.csproj -c Release --no-build --filter "Category=Integration" -- --no-ansi
       - if: ${{ !cancelled() }}
