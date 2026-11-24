@@ -21,6 +21,8 @@
     <InternalsVisibleTo Include="Orkeon.Infrastructure.Tests" />
     <InternalsVisibleTo Include="Orkeon.Tools.Email" />
     <InternalsVisibleTo Include="Orkeon.Tools.Email.Tests" />
+    <InternalsVisibleTo Include="Orkeon.Tools.Chat" />
+    <InternalsVisibleTo Include="Orkeon.Tools.Chat.Tests" />
     <InternalsVisibleTo Include="Orkeon.Tools.Drive" />
     <InternalsVisibleTo Include="Orkeon.Tools.Drive.Tests" />
     <!-- The firefox tool is no HTTP tool, and checks the pages its browser lands on with the same fail-closed guard. -->

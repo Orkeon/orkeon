@@ -546,10 +546,10 @@
           "Markdig": "[1.5.0, )",
           "Microsoft.Data.Sqlite": "[10.0.13, )",
           "Microsoft.Extensions.DependencyInjection.Abstractions": "[10.0.13, )",
-          "Orkeon.Analysis.Abstractions": "[1.3.0, )",
-          "Orkeon.Constants.FileSystem": "[1.3.0, )",
-          "Orkeon.Constants.Llm": "[1.3.0, )",
-          "Orkeon.Domain": "[1.3.0, )",
+          "Orkeon.Analysis.Abstractions": "[1.4.0, )",
+          "Orkeon.Constants.FileSystem": "[1.4.0, )",
+          "Orkeon.Constants.Llm": "[1.4.0, )",
+          "Orkeon.Domain": "[1.4.0, )",
           "SQLitePCLRaw.lib.e_sqlite3": "[3.53.3, )",
           "TreeSitter.DotNet": "[1.3.0, )",
           "YamlDotNet": "[18.1.0, )"
@@ -558,7 +558,7 @@
       "orkeon.analysis.abstractions": {
         "type": "Project",
         "dependencies": {
-          "Orkeon.Domain": "[1.3.0, )",
+          "Orkeon.Domain": "[1.4.0, )",
           "TreeSitter.DotNet": "[1.3.0, )"
         }
       },
@@ -569,10 +569,10 @@
           "Microsoft.Extensions.DependencyInjection.Abstractions": "[10.0.13, )",
           "Microsoft.Extensions.Hosting.Abstractions": "[10.0.13, )",
           "Microsoft.Extensions.Logging.Abstractions": "[10.0.13, )",
-          "Orkeon.Analysis.Abstractions": "[1.3.0, )",
-          "Orkeon.Constants.Protocol": "[1.3.0, )",
-          "Orkeon.Domain": "[1.3.0, )",
-          "Orkeon.Rag.Abstractions": "[1.3.0, )"
+          "Orkeon.Analysis.Abstractions": "[1.4.0, )",
+          "Orkeon.Constants.Protocol": "[1.4.0, )",
+          "Orkeon.Domain": "[1.4.0, )",
+          "Orkeon.Rag.Abstractions": "[1.4.0, )"
         }
       },
       "orkeon.constants.cli": {
@@ -595,7 +595,7 @@
         "dependencies": {
           "Microsoft.Extensions.DependencyInjection.Abstractions": "[10.0.13, )",
           "Microsoft.Extensions.Logging.Abstractions": "[10.0.13, )",
-          "Orkeon.Constants.Llm": "[1.3.0, )",
+          "Orkeon.Constants.Llm": "[1.4.0, )",
           "Ulid": "[1.4.1, )"
         }
       },
@@ -604,27 +604,28 @@
         "dependencies": {
           "CommandLineParser": "[2.9.1, )",
           "Microsoft.Extensions.Hosting": "[10.0.13, )",
-          "Orkeon.Analysis": "[1.3.0, )",
-          "Orkeon.Application": "[1.3.0, )",
-          "Orkeon.Constants.Cli": "[1.3.0, )",
-          "Orkeon.Constants.Configuration": "[1.3.0, )",
-          "Orkeon.Constants.FileSystem": "[1.3.0, )",
-          "Orkeon.Constants.Protocol": "[1.3.0, )",
-          "Orkeon.Domain": "[1.3.0, )",
-          "Orkeon.Infrastructure": "[1.3.0, )",
-          "Orkeon.Rag": "[1.3.0, )",
-          "Orkeon.Scripting": "[1.3.0, )",
-          "Orkeon.Tools.Abstractions": "[1.3.0, )",
-          "Orkeon.Tools.Analysis": "[1.3.0, )",
-          "Orkeon.Tools.Code": "[1.3.0, )",
-          "Orkeon.Tools.Data": "[1.3.0, )",
-          "Orkeon.Tools.Drive": "[1.3.0, )",
-          "Orkeon.Tools.Email": "[1.3.0, )",
-          "Orkeon.Tools.Embeddings.Local": "[1.3.0, )",
-          "Orkeon.Tools.EventHub": "[1.3.0, )",
-          "Orkeon.Tools.FileSystem": "[1.3.0, )",
-          "Orkeon.Tools.Rag": "[1.3.0, )",
-          "Orkeon.Tools.Web": "[1.3.0, )"
+          "Orkeon.Analysis": "[1.4.0, )",
+          "Orkeon.Application": "[1.4.0, )",
+          "Orkeon.Constants.Cli": "[1.4.0, )",
+          "Orkeon.Constants.Configuration": "[1.4.0, )",
+          "Orkeon.Constants.FileSystem": "[1.4.0, )",
+          "Orkeon.Constants.Protocol": "[1.4.0, )",
+          "Orkeon.Domain": "[1.4.0, )",
+          "Orkeon.Infrastructure": "[1.4.0, )",
+          "Orkeon.Rag": "[1.4.0, )",
+          "Orkeon.Scripting": "[1.4.0, )",
+          "Orkeon.Tools.Abstractions": "[1.4.0, )",
+          "Orkeon.Tools.Analysis": "[1.4.0, )",
+          "Orkeon.Tools.Chat": "[1.4.0, )",
+          "Orkeon.Tools.Code": "[1.4.0, )",
+          "Orkeon.Tools.Data": "[1.4.0, )",
+          "Orkeon.Tools.Drive": "[1.4.0, )",
+          "Orkeon.Tools.Email": "[1.4.0, )",
+          "Orkeon.Tools.Embeddings.Local": "[1.4.0, )",
+          "Orkeon.Tools.EventHub": "[1.4.0, )",
+          "Orkeon.Tools.FileSystem": "[1.4.0, )",
+          "Orkeon.Tools.Rag": "[1.4.0, )",
+          "Orkeon.Tools.Web": "[1.4.0, )"
         }
       },
       "orkeon.infrastructure": {
@@ -656,16 +657,16 @@
           "OpenTelemetry.Extensions.Hosting": "[1.20.1, )",
           "OpenTelemetry.Instrumentation.Http": "[1.20.1, )",
           "OpenTelemetry.Instrumentation.Runtime": "[1.20.1, )",
-          "Orkeon.Analysis": "[1.3.0, )",
-          "Orkeon.Analysis.Abstractions": "[1.3.0, )",
-          "Orkeon.Application": "[1.3.0, )",
-          "Orkeon.Constants.Configuration": "[1.3.0, )",
-          "Orkeon.Constants.FileSystem": "[1.3.0, )",
-          "Orkeon.Constants.Llm": "[1.3.0, )",
-          "Orkeon.Domain": "[1.3.0, )",
-          "Orkeon.Rag": "[1.3.0, )",
-          "Orkeon.Rag.Abstractions": "[1.3.0, )",
-          "Orkeon.Tools.Abstractions": "[1.3.0, )",
+          "Orkeon.Analysis": "[1.4.0, )",
+          "Orkeon.Analysis.Abstractions": "[1.4.0, )",
+          "Orkeon.Application": "[1.4.0, )",
+          "Orkeon.Constants.Configuration": "[1.4.0, )",
+          "Orkeon.Constants.FileSystem": "[1.4.0, )",
+          "Orkeon.Constants.Llm": "[1.4.0, )",
+          "Orkeon.Domain": "[1.4.0, )",
+          "Orkeon.Rag": "[1.4.0, )",
+          "Orkeon.Rag.Abstractions": "[1.4.0, )",
+          "Orkeon.Tools.Abstractions": "[1.4.0, )",
           "Polly": "[8.8.0, )",
           "SQLitePCLRaw.lib.e_sqlite3": "[3.53.3, )",
           "StackExchange.Redis": "[3.4.20, )",
@@ -681,10 +682,10 @@
           "Microsoft.Extensions.DependencyInjection.Abstractions": "[10.0.13, )",
           "Microsoft.Extensions.Logging.Abstractions": "[10.0.13, )",
           "Microsoft.Extensions.Options.ConfigurationExtensions": "[10.0.13, )",
-          "Orkeon.Application": "[1.3.0, )",
-          "Orkeon.Domain": "[1.3.0, )",
-          "Orkeon.Infrastructure": "[1.3.0, )",
-          "Orkeon.Interop.AgentCli.Relay": "[1.3.0, )"
+          "Orkeon.Application": "[1.4.0, )",
+          "Orkeon.Domain": "[1.4.0, )",
+          "Orkeon.Infrastructure": "[1.4.0, )",
+          "Orkeon.Interop.AgentCli.Relay": "[1.4.0, )"
         }
       },
       "orkeon.interop.agentcli.relay": {
@@ -699,11 +700,11 @@
           "Microsoft.Extensions.Http": "[10.0.13, )",
           "Microsoft.Extensions.Logging.Abstractions": "[10.0.13, )",
           "Microsoft.Extensions.Options.ConfigurationExtensions": "[10.0.13, )",
-          "Orkeon.Analysis.Abstractions": "[1.3.0, )",
-          "Orkeon.Application": "[1.3.0, )",
-          "Orkeon.Constants.Configuration": "[1.3.0, )",
-          "Orkeon.Domain": "[1.3.0, )",
-          "Orkeon.Rag.Abstractions": "[1.3.0, )",
+          "Orkeon.Analysis.Abstractions": "[1.4.0, )",
+          "Orkeon.Application": "[1.4.0, )",
+          "Orkeon.Constants.Configuration": "[1.4.0, )",
+          "Orkeon.Domain": "[1.4.0, )",
+          "Orkeon.Rag.Abstractions": "[1.4.0, )",
           "PdfPig": "[0.1.16, )",
           "YamlDotNet": "[18.1.0, )"
         }
@@ -711,7 +712,7 @@
       "orkeon.rag.abstractions": {
         "type": "Project",
         "dependencies": {
-          "Orkeon.Domain": "[1.3.0, )"
+          "Orkeon.Domain": "[1.4.0, )"
         }
       },
       "orkeon.rag.onnx": {
@@ -722,7 +723,7 @@
           "Microsoft.Extensions.Options": "[10.0.13, )",
           "Microsoft.ML.OnnxRuntime": "[1.31.0, )",
           "Microsoft.ML.Tokenizers": "[2.0.1, )",
-          "Orkeon.Rag": "[1.3.0, )"
+          "Orkeon.Rag": "[1.4.0, )"
         }
       },
       "orkeon.rag.onnx.model": {
@@ -736,17 +737,17 @@
           "Microsoft.Extensions.Logging.Abstractions": "[10.0.13, )",
           "Microsoft.Extensions.Options": "[10.0.13, )",
           "Microsoft.Extensions.Options.ConfigurationExtensions": "[10.0.13, )",
-          "Orkeon.Application": "[1.3.0, )",
-          "Orkeon.Domain": "[1.3.0, )",
-          "Orkeon.Infrastructure": "[1.3.0, )",
-          "Orkeon.Rag.Abstractions": "[1.3.0, )"
+          "Orkeon.Application": "[1.4.0, )",
+          "Orkeon.Domain": "[1.4.0, )",
+          "Orkeon.Infrastructure": "[1.4.0, )",
+          "Orkeon.Rag.Abstractions": "[1.4.0, )"
         }
       },
       "orkeon.tools.abstractions": {
         "type": "Project",
         "dependencies": {
           "Microsoft.Extensions.Http": "[10.0.13, )",
-          "Orkeon.Domain": "[1.3.0, )",
+          "Orkeon.Domain": "[1.4.0, )",
           "YamlDotNet": "[18.1.0, )"
         }
       },
@@ -754,16 +755,31 @@
         "type": "Project",
         "dependencies": {
           "Microsoft.Extensions.DependencyInjection.Abstractions": "[10.0.13, )",
-          "Orkeon.Analysis": "[1.3.0, )",
-          "Orkeon.Analysis.Abstractions": "[1.3.0, )",
-          "Orkeon.Tools.Abstractions": "[1.3.0, )"
+          "Orkeon.Analysis": "[1.4.0, )",
+          "Orkeon.Analysis.Abstractions": "[1.4.0, )",
+          "Orkeon.Tools.Abstractions": "[1.4.0, )"
+        }
+      },
+      "orkeon.tools.chat": {
+        "type": "Project",
+        "dependencies": {
+          "HtmlAgilityPack": "[1.13.1, )",
+          "Markdig": "[1.5.0, )",
+          "Microsoft.Extensions.DependencyInjection.Abstractions": "[10.0.13, )",
+          "Microsoft.Extensions.Http": "[10.0.13, )",
+          "Microsoft.Extensions.Logging.Abstractions": "[10.0.13, )",
+          "Microsoft.Extensions.Options.ConfigurationExtensions": "[10.0.13, )",
+          "Orkeon.Constants.Configuration": "[1.4.0, )",
+          "Orkeon.Domain": "[1.4.0, )",
+          "Orkeon.Rag": "[1.4.0, )",
+          "Orkeon.Tools.Abstractions": "[1.4.0, )"
         }
       },
       "orkeon.tools.code": {
         "type": "Project",
         "dependencies": {
           "Microsoft.CodeAnalysis.CSharp.Scripting": "[5.9.0, )",
-          "Orkeon.Tools.Abstractions": "[1.3.0, )"
+          "Orkeon.Tools.Abstractions": "[1.4.0, )"
         }
       },
       "orkeon.tools.data": {
@@ -779,9 +795,9 @@
           "MySqlConnector": "[2.6.2, )",
           "Neo4j.Driver": "[6.4.0, )",
           "Npgsql": "[10.0.3, )",
-          "Orkeon.Rag": "[1.3.0, )",
-          "Orkeon.Rag.Abstractions": "[1.3.0, )",
-          "Orkeon.Tools.Abstractions": "[1.3.0, )",
+          "Orkeon.Rag": "[1.4.0, )",
+          "Orkeon.Rag.Abstractions": "[1.4.0, )",
+          "Orkeon.Tools.Abstractions": "[1.4.0, )",
           "PdfPig": "[0.1.16, )",
           "SQLitePCLRaw.lib.e_sqlite3": "[3.53.3, )",
           "SharpCompress": "[0.50.7, )",
@@ -796,10 +812,10 @@
           "Microsoft.Extensions.Http": "[10.0.13, )",
           "Microsoft.Extensions.Logging.Abstractions": "[10.0.13, )",
           "Microsoft.Extensions.Options.ConfigurationExtensions": "[10.0.13, )",
-          "Orkeon.Constants.Configuration": "[1.3.0, )",
-          "Orkeon.Domain": "[1.3.0, )",
-          "Orkeon.Rag": "[1.3.0, )",
-          "Orkeon.Tools.Abstractions": "[1.3.0, )"
+          "Orkeon.Constants.Configuration": "[1.4.0, )",
+          "Orkeon.Domain": "[1.4.0, )",
+          "Orkeon.Rag": "[1.4.0, )",
+          "Orkeon.Tools.Abstractions": "[1.4.0, )"
         }
       },
       "orkeon.tools.email": {
@@ -812,10 +828,10 @@
           "Microsoft.Extensions.Logging.Abstractions": "[10.0.13, )",
           "Microsoft.Extensions.Options.ConfigurationExtensions": "[10.0.13, )",
           "MimeKit": "[4.18.2, )",
-          "Orkeon.Constants.Configuration": "[1.3.0, )",
-          "Orkeon.Domain": "[1.3.0, )",
-          "Orkeon.Rag": "[1.3.0, )",
-          "Orkeon.Tools.Abstractions": "[1.3.0, )",
+          "Orkeon.Constants.Configuration": "[1.4.0, )",
+          "Orkeon.Domain": "[1.4.0, )",
+          "Orkeon.Rag": "[1.4.0, )",
+          "Orkeon.Tools.Abstractions": "[1.4.0, )",
           "System.Security.Cryptography.Pkcs": "[10.0.13, )"
         }
       },
@@ -825,37 +841,37 @@
           "Microsoft.Extensions.AI.Abstractions": "[10.11.0, )",
           "Microsoft.Extensions.DependencyInjection.Abstractions": "[10.0.13, )",
           "Microsoft.Extensions.Logging.Abstractions": "[10.0.13, )",
-          "Orkeon.Analysis.Abstractions": "[1.3.0, )",
-          "Orkeon.Domain": "[1.3.0, )",
-          "Orkeon.Tools.Abstractions": "[1.3.0, )",
+          "Orkeon.Analysis.Abstractions": "[1.4.0, )",
+          "Orkeon.Domain": "[1.4.0, )",
+          "Orkeon.Tools.Abstractions": "[1.4.0, )",
           "SmartComponents.LocalEmbeddings": "[0.1.0-preview10148, )"
         }
       },
       "orkeon.tools.eventhub": {
         "type": "Project",
         "dependencies": {
-          "Orkeon.Application": "[1.3.0, )",
-          "Orkeon.Domain": "[1.3.0, )",
-          "Orkeon.Tools.Abstractions": "[1.3.0, )"
+          "Orkeon.Application": "[1.4.0, )",
+          "Orkeon.Domain": "[1.4.0, )",
+          "Orkeon.Tools.Abstractions": "[1.4.0, )"
         }
       },
       "orkeon.tools.filesystem": {
         "type": "Project",
         "dependencies": {
-          "Orkeon.Analysis.Abstractions": "[1.3.0, )",
-          "Orkeon.Rag": "[1.3.0, )",
-          "Orkeon.Rag.Abstractions": "[1.3.0, )",
-          "Orkeon.Tools.Abstractions": "[1.3.0, )"
+          "Orkeon.Analysis.Abstractions": "[1.4.0, )",
+          "Orkeon.Rag": "[1.4.0, )",
+          "Orkeon.Rag.Abstractions": "[1.4.0, )",
+          "Orkeon.Tools.Abstractions": "[1.4.0, )"
         }
       },
       "orkeon.tools.rag": {
         "type": "Project",
         "dependencies": {
           "Microsoft.Extensions.DependencyInjection.Abstractions": "[10.0.13, )",
-          "Orkeon.Analysis.Abstractions": "[1.3.0, )",
-          "Orkeon.Rag": "[1.3.0, )",
-          "Orkeon.Rag.Abstractions": "[1.3.0, )",
-          "Orkeon.Tools.Abstractions": "[1.3.0, )"
+          "Orkeon.Analysis.Abstractions": "[1.4.0, )",
+          "Orkeon.Rag": "[1.4.0, )",
+          "Orkeon.Rag.Abstractions": "[1.4.0, )",
+          "Orkeon.Tools.Abstractions": "[1.4.0, )"
         }
       },
       "orkeon.tools.web": {
@@ -863,12 +879,12 @@
         "dependencies": {
           "AngleSharp": "[1.8.5, )",
           "HtmlAgilityPack": "[1.13.1, )",
-          "Orkeon.Analysis": "[1.3.0, )",
-          "Orkeon.Application": "[1.3.0, )",
-          "Orkeon.Constants.Llm": "[1.3.0, )",
-          "Orkeon.Rag": "[1.3.0, )",
-          "Orkeon.Rag.Abstractions": "[1.3.0, )",
-          "Orkeon.Tools.Abstractions": "[1.3.0, )"
+          "Orkeon.Analysis": "[1.4.0, )",
+          "Orkeon.Application": "[1.4.0, )",
+          "Orkeon.Constants.Llm": "[1.4.0, )",
+          "Orkeon.Rag": "[1.4.0, )",
+          "Orkeon.Rag.Abstractions": "[1.4.0, )",
+          "Orkeon.Tools.Abstractions": "[1.4.0, )"
         }
       },
       "AngleSharp": {

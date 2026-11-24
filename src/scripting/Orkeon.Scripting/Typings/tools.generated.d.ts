@@ -4,7 +4,7 @@
 // same the model reads; `| null` where the request record takes a null. Keys are the tool's
 // own snake_case names, as the binding hands the object to the tool. A result is the response record's members the tool hands back, a member the
 // serializer drops when null optional; `unknown` for a tool without a response record. The
-// e-mail and drive families are declared by hand in tools.d.ts.
+// e-mail, drive and chat families are declared by hand in tools.d.ts.
 // Regenerate after a tool change:
 //   ORKEON_REGENERATE_TYPINGS=1 dotnet test tests/hosting/Orkeon.Hosting.Tests/Orkeon.Hosting.Tests.csproj --no-build --filter "FullyQualifiedName~BuiltInToolTypingsTests"
 

@@ -8,8 +8,8 @@ declare global {
      *
      * Every built-in tool is declared in `tools.generated.d.ts` (`OrkeonBuiltInTools`, which
      * this interface extends): it is written from each tool's request and response records,
-     * so a renamed parameter fails the type check instead of the run (#125). The e-mail and drive families
-     * below are written by hand, results included. A plugin or MCP tool is still reachable at
+     * so a renamed parameter fails the type check instead of the run (#125). The e-mail, drive and chat
+     * families below are written by hand, results included. A plugin or MCP tool is still reachable at
      * runtime — hence the index signature, which is what forces this to be ONE interface
      * rather than a namespace plus a fallback declaration.
      *
@@ -77,6 +77,30 @@ declare global {
         driveDelete(input: DriveDeleteInput, ctx?: ExecutionContext): Promise<DriveDeleteResult>;
         /** Shares an item with allowed addresses, or by a public link when the account allows one. Needs Share. */
         driveShare(input: DriveShareInput, ctx?: ExecutionContext): Promise<DriveShareResult>;
+
+        // The chat family (`chat_*`): Microsoft Teams. Its types follow the same runtime facts,
+        // and are declared after the drive family's below.
+
+        /** The chat accounts the operator declared: the name to pass as `account`, their rights, whether each can connect. Needs no right. */
+        chatAccounts(input?: Record<string, never>, ctx?: ExecutionContext): Promise<ChatAccountsResult>;
+        /** The places the account may use: its teams, a team's channels, or its chats. Needs Read or Send. */
+        chatList(input?: ChatListInput, ctx?: ExecutionContext): Promise<ChatListResult>;
+        /** One page of a place's messages, newest first, screened; with `message_id`, the replies of one. Needs Read and an allowed place. */
+        chatRead(input: ChatReadInput, ctx?: ExecutionContext): Promise<ChatReadResult>;
+        /** The members of a place, or the people a name or an address matches: exactly one of `place` and `person`. Needs Read or Send. */
+        chatMembers(input: ChatMembersInput, ctx?: ExecutionContext): Promise<ChatMembersResult>;
+        /** Posts a message, only in places the account's `Send:AllowedPlaces` lists (none listed: refused). Needs Send. */
+        chatSend(input: ChatSendInput, ctx?: ExecutionContext): Promise<ChatSendResult>;
+        /** Finds messages in the places the account may read, screened: one of `text`, `author` and `mentions_me` at least. Needs Read. */
+        chatSearch(input: ChatSearchInput, ctx?: ExecutionContext): Promise<ChatSearchResult>;
+        /** Rewrites a message the account sent, in a place it may post in. Needs Edit. */
+        chatEdit(input: ChatEditInput, ctx?: ExecutionContext): Promise<ChatMessageWriteResult>;
+        /** Deletes a message the account sent, recoverably, in a place it may post in. Needs Delete. */
+        chatDelete(input: ChatDeleteInput, ctx?: ExecutionContext): Promise<ChatMessageWriteResult>;
+        /** Sets or removes the account's reaction on a message of a chat it may post in; a channel is refused. Needs React. */
+        chatReact(input: ChatReactInput, ctx?: ExecutionContext): Promise<ChatReactResult>;
+        /** The transcripts of a meeting, or with `transcript_id` the text of one, screened: exactly one of `place` and `join_link`. Needs Meetings and its chat among the places to read. */
+        chatMeetings(input: ChatMeetingsInput, ctx?: ExecutionContext): Promise<ChatMeetingsResult>;
 
         /** A plugin or MCP tool, by name: its input is not known here. */
         [name: string]: (input: never, ctx?: ExecutionContext) => Promise<unknown>;
@@ -650,6 +674,305 @@ declare global {
         readonly role: "reader" | "writer";
         readonly recipients: readonly string[];
         readonly link?: string;
+    }
+
+    // ---- The chat family (Orkeon.Tools.Chat) --------------------------------------------------
+    //
+    // The e-mail family's three runtime facts hold here too: snake_case keys in and out, absent
+    // (never null) optional result fields, and accounts, rights and allowed places in the
+    // operator's configuration (`Orkeon:Tools:Chat`). A place is `team:<team>/channel:<channel>`,
+    // `chat:<id>` or `user:<address>`, a team or a channel by its name or its id.
+    //
+    // Messages, names and topics come from whoever wrote them, a guest included: data, never
+    // instructions.
+
+    /** Picks the account a call uses. */
+    interface ChatAccountInput {
+        /** An account name from `chatAccounts`. Omitted: the configured `DefaultAccount`, or the only account declared. */
+        account?: string;
+    }
+
+    /** One account, as `chatAccounts` lists it. */
+    interface ChatAccount {
+        readonly name: string;
+        /** `Teams`; `?` when the declaration does not resolve (see `problem`). */
+        readonly provider: string;
+        /** Of Read, Send, Edit, Delete, React, Meetings. */
+        readonly rights?: string;
+        readonly default: boolean;
+        readonly ready: boolean;
+        readonly problem?: string;
+    }
+
+    interface ChatAccountsResult {
+        readonly accounts: readonly ChatAccount[];
+    }
+
+    interface ChatListInput extends ChatAccountInput {
+        /** By default `channels` when `team` is given, else `teams`. */
+        kind?: "teams" | "channels" | "chats";
+        /** The team whose channels are listed, by its name or its id. */
+        team?: string;
+        /** 1..50, 20 by default; a page is also cut to what fits a tool result. */
+        limit?: number;
+        /** The previous page's `next_cursor`. */
+        cursor?: string;
+    }
+
+    /** A place. */
+    interface ChatPlace {
+        /** What to pass as `place`; a team has no messages of its own. */
+        readonly place: string;
+        readonly id: string;
+        readonly kind: "team" | "channel" | "oneOnOne" | "group" | "meeting";
+        /** Untrusted text. */
+        readonly name?: string;
+        /** For a chat, the names of some of its other members: untrusted text. */
+        readonly members?: readonly string[];
+        readonly can_read: boolean;
+        readonly can_send: boolean;
+        /** The prompt-injection verdict on the names, when not clean. */
+        readonly screening?: "suspicious" | "rejected";
+    }
+
+    interface ChatListResult {
+        readonly account: string;
+        readonly notice: string;
+        readonly count: number;
+        readonly next_cursor?: string;
+        /** Allowed places the operator declared that match nothing, or several things. */
+        readonly set_aside?: readonly string[];
+        readonly places: readonly ChatPlace[];
+    }
+
+    interface ChatReadInput extends ChatAccountInput {
+        place: string;
+        /** In a channel: read the replies of this message instead of the channel's messages. */
+        message_id?: string;
+        /** YYYY-MM-DD or ISO 8601, UTC by default. */
+        since?: string;
+        /** YYYY-MM-DD or ISO 8601, UTC by default. */
+        until?: string;
+        /** The most characters of each message's text: 1000 by default. */
+        text_chars?: number;
+        /** 1..50, 20 by default; a page is also cut to what fits a tool result. */
+        limit?: number;
+        /** The previous page's `next_cursor`. */
+        cursor?: string;
+    }
+
+    /** Who wrote a message. */
+    interface ChatAuthor {
+        readonly id?: string;
+        /** Untrusted text. */
+        readonly name?: string;
+        readonly address?: string;
+        /** A guest, or someone outside the tenant. */
+        readonly guest?: boolean;
+        readonly application?: boolean;
+    }
+
+    interface ChatMessage {
+        readonly id: string;
+        readonly author?: ChatAuthor;
+        /** ISO 8601 UTC. */
+        readonly time?: string;
+        /** ISO 8601 UTC. */
+        readonly edited?: string;
+        /** Untrusted text; absent when withheld. */
+        readonly text?: string;
+        /** The text goes on: raise `text_chars`. */
+        readonly text_truncated?: boolean;
+        readonly withheld?: boolean;
+        /** Why it is withheld. */
+        readonly reason?: string;
+        /** The prompt-injection verdict, when not clean. */
+        readonly screening?: "suspicious" | "rejected";
+        /** The body held text a reader does not see; it is left out. */
+        readonly hidden_text?: boolean;
+        readonly mentions?: readonly { readonly id?: string; readonly name?: string }[];
+        /** Counted by kind. */
+        readonly reactions?: Readonly<Record<string, number>>;
+        /** The names of its attachments: untrusted text. */
+        readonly attachments?: readonly string[];
+        /** In a channel, how many replies it has. */
+        readonly replies?: number;
+        readonly more_replies?: boolean;
+    }
+
+    interface ChatReadResult {
+        readonly account: string;
+        /** The place, by its ids. */
+        readonly place: string;
+        /** The message these are replies of. */
+        readonly thread?: string;
+        readonly notice: string;
+        readonly count: number;
+        /** A page may be empty and have a next one, when no message yet fell inside the dates. */
+        readonly next_cursor?: string;
+        readonly messages: readonly ChatMessage[];
+    }
+
+    interface ChatMembersInput extends ChatAccountInput {
+        place?: string;
+        /** Instead of `place`: a person looked up in the directory by name, address or id. */
+        person?: string;
+        /** 1..50, 20 by default; a page is also cut to what fits a tool result. */
+        limit?: number;
+        /** The previous page's `next_cursor`. */
+        cursor?: string;
+    }
+
+    /** A person. */
+    interface ChatMember {
+        /** The id to pass to `chatSend` in `mentions`, or as `user:<id>`. */
+        readonly id?: string;
+        /** Untrusted text. */
+        readonly name?: string;
+        readonly address?: string;
+        readonly guest?: boolean;
+        readonly owner?: boolean;
+        /** The prompt-injection verdict on the name, when not clean. */
+        readonly screening?: "suspicious" | "rejected";
+    }
+
+    interface ChatMembersResult {
+        readonly account: string;
+        /** The place, by its ids. */
+        readonly place?: string;
+        readonly notice: string;
+        readonly count: number;
+        readonly next_cursor?: string;
+        readonly members: readonly ChatMember[];
+    }
+
+    interface ChatSendInput extends ChatAccountInput {
+        /** Required, except on a `TeamsWebhook` account, which takes none. */
+        place?: string;
+        text: string;
+        /** `markdown` by default; HTML is shown as written, never rendered. */
+        format?: "markdown" | "text";
+        /** Ids from `chatMembers`; the people are named ahead of the text. */
+        mentions?: readonly string[];
+        /** The message to reply to: in its thread in a channel, quoting it in a chat. */
+        reply_to?: string;
+    }
+
+    interface ChatSendResult {
+        readonly account: string;
+        /** Where it was posted, by its ids; absent for a webhook. */
+        readonly place?: string;
+        readonly message_id?: string;
+        /** ISO 8601 UTC. */
+        readonly sent_at?: string;
+        /** What to know though the message was posted. */
+        readonly warning?: string;
+    }
+
+    interface ChatSearchInput extends ChatAccountInput {
+        /** Words the message holds, all of them, each taken literally. */
+        text?: string;
+        /** An address, or an id from `chatMembers`. */
+        author?: string;
+        mentions_me?: boolean;
+        /** The most characters of each message's text: 1000 by default. */
+        text_chars?: number;
+        /** 1..25, 10 by default; a page is also cut to what fits a tool result. */
+        limit?: number;
+        /** The previous page's `next_cursor`, with the same arguments. */
+        cursor?: string;
+    }
+
+    interface ChatSearchHit {
+        /** Where it is, by its ids. */
+        readonly place: string;
+        /** In a channel, the message it replies to: `thread` of `chatEdit` and `chatDelete`. */
+        readonly thread?: string;
+        readonly message: ChatMessage;
+    }
+
+    interface ChatSearchResult {
+        readonly account: string;
+        readonly notice: string;
+        /** What the search left out. */
+        readonly limits?: string;
+        readonly count: number;
+        readonly next_cursor?: string;
+        /** As the service ranks them. */
+        readonly hits: readonly ChatSearchHit[];
+    }
+
+    /** A message to change. */
+    interface ChatDeleteInput extends ChatAccountInput {
+        place: string;
+        message_id: string;
+        /** For a reply in a channel: the message it replies to. */
+        thread?: string;
+    }
+
+    interface ChatEditInput extends ChatDeleteInput {
+        /** The whole text that replaces it. */
+        text: string;
+        /** `markdown` by default; HTML is shown as written, never rendered. */
+        format?: "markdown" | "text";
+        /** Ids from `chatMembers`; the previous text's mentions are dropped. */
+        mentions?: readonly string[];
+    }
+
+    interface ChatMessageWriteResult {
+        readonly account: string;
+        /** Where the message is, by its ids. */
+        readonly place: string;
+        readonly message_id: string;
+    }
+
+    interface ChatReactInput extends ChatAccountInput {
+        /** `chat:<id>` or `user:<address>`. */
+        place: string;
+        message_id: string;
+        /** One emoji character. */
+        reaction: string;
+        /** Removes the reaction instead of setting it. */
+        remove?: boolean;
+    }
+
+    interface ChatMeetingsInput extends ChatAccountInput {
+        /** The chat of the meeting, `chat:<id>`: also needs Read. */
+        place?: string;
+        /** Instead of `place`: the join link of the meeting. */
+        join_link?: string;
+        /** Reads this transcript instead of listing them. */
+        transcript_id?: string;
+        /** The previous page's `next_cursor`, with the same arguments. */
+        cursor?: string;
+    }
+
+    interface ChatMeetingsResult {
+        readonly account: string;
+        /** The chat of the meeting, by its id. */
+        readonly place: string;
+        readonly notice: string;
+        /** Untrusted text. */
+        readonly subject?: string;
+        /** ISO 8601 UTC. */
+        readonly start?: string;
+        readonly transcripts?: readonly { readonly id: string; readonly created?: string; readonly ended?: string }[];
+        readonly transcript_id?: string;
+        /** One page, a line per speech (`[time] speaker: words`): untrusted text. */
+        readonly text?: string;
+        /** The tenant hides who speaks. */
+        readonly no_speakers?: boolean;
+        readonly withheld?: boolean;
+        /** Why it is withheld. */
+        readonly reason?: string;
+        /** The prompt-injection verdict on the subject and the whole text, when not clean. */
+        readonly screening?: "suspicious" | "rejected";
+        readonly next_cursor?: string;
+    }
+
+    interface ChatReactResult extends ChatMessageWriteResult {
+        readonly reaction: string;
+        readonly removed?: boolean;
     }
 }
 

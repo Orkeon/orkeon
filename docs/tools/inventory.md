@@ -4,7 +4,7 @@
 
 # Orkeon tool inventory
 
-This page is the reference catalogue of the **124 built-in tool classes**. The counting
+This page is the reference catalogue of the **134 built-in tool classes**. The counting
 rule is the one `scripts/check-doc-claims.py` enforces: every `*Tool.cs` file under
 `src/` except the interface (`IBaseTool.cs`) and the non-tool infrastructure that
 matches the glob (`MockTool.cs`, `JsTool.cs`, `ObservedTool.cs`, `AIAgentTool.cs`). The same script
@@ -228,6 +228,31 @@ security model and the `orkeon drive` commands: [Drive tools](../guides/drive.md
 | `drive_delete` | `DriveDeleteTool` | Delete; Purge with `permanent: true` | Execute | Move an item to the trash, or delete it for good (Google Drive, OneDrive for work; a personal OneDrive refuses it) | `{ "id": "…" }` |
 | `drive_share` | `DriveShareTool` | Share | Execute | Give allowed addresses read or write access (no notification unless `notify`), or create a public link when the account allows one | `{ "id": "…", "recipients": ["boss@example.com"] }` |
 
+## Chat tools (`Orkeon.Tools.Chat`) — `AddOrkeonChatTools(configuration)`
+
+Ten tools over the chat accounts an operator declares under `Orkeon:Tools:Chat`: Microsoft Teams
+through Microsoft Graph, in plain HTTP. Until an account is declared and signed in
+(`orkeon chat login`; a webhook or an application does not sign in), every tool but `chat_accounts`
+refuses each call saying what to do. An agent
+names an account (`account`, or the default one) — never a client or a token — and the account's
+`Rights` decide what it may do; `Read:AllowedPlaces` and `Send:AllowedPlaces` name where, and an
+empty list allows nowhere. A place is a channel (`team:<team>/channel:<channel>`), a chat
+(`chat:<id>`) or a person (`user:<address or id>`). Registration, rights and scopes, the security
+model and the `orkeon chat` commands: [Chat tools](../guides/chat.md).
+
+| Tool | Class | Right needed | Access | Use case | Call example |
+|-------|--------|------|------|-------------|-----------------|
+| `chat_accounts` | `ChatAccountsTool` | none | Read | List the configured accounts: the name to pass as `account`, their provider and rights, the default one, whether each is ready | `{}` |
+| `chat_list` | `ChatListTool` | Read; Send is enough for teams and channels | Read | List the teams, the channels of a `team` or the chats (`kind`), with `can_read` and `can_send`; at most `limit` items per page (20 by default, 50 at most), `next_cursor` for the next one | `{ "kind": "channels", "team": "Engineering" }` |
+| `chat_read` | `ChatReadTool` | Read | Read | Read the messages of a channel or a chat, newest first, or the replies of one channel message (`message_id`): the untrusted-content notice first, the screening verdict of each message, `since` / `until`, `text_chars` (1000 by default). A channel needs `AdminGranted: ["ChannelMessages"]` | `{ "place": "team:Engineering/channel:Releases", "since": "2026-11-01" }` |
+| `chat_members` | `ChatMembersTool` | Read; Send is enough for a person | Read | List the members of a place, or look one person up by name, address or id; a channel needs `AdminGranted: ["ChannelMembers"]` (`ChannelMember.Read.All`) | `{ "person": "ana@example.com" }` |
+| `chat_send` | `ChatSendTool` | Send | Execute | Post a message in an allowed place, in Markdown or plain text, with `mentions` by directory id and `reply_to`; nothing is uploaded; a `TeamsWebhook` account takes no `place` | `{ "place": "user:ana@example.com", "text": "The report is ready." }` |
+| `chat_search` | `ChatSearchTool` | Read | Read | Find messages by words (`text`, all of them, taken literally: no operator, no wildcard), by author (`author`) or that mention the signed-in user (`mentions_me`), in the places allowed for reading only; each hit's place is checked by ids before anything of it is shown, and the text is read from that place, never from the search summary. Bounded window (5 requests of 25 hits, 40 places), no count of left-out hits; channels are left out without `ChannelMessages` | `{ "text": "release blocker", "limit": 10 }` |
+| `chat_edit` | `ChatEditTool` | Edit | Execute | Rewrite a message the account itself sent (`place`, `message_id`, `thread` for a channel reply, `text`, `format`, `mentions`); place in `Send:AllowedPlaces`; a channel needs `ChannelEdit` and `ChannelMessages` in `AdminGranted`; worldwide cloud only; refuses a message with attachments, images or a quote | `{ "place": "chat:19:abc@thread.v2", "message_id": "1700000000000", "text": "The report is final." }` |
+| `chat_delete` | `ChatDeleteTool` | Delete | Execute | Delete a message the account itself sent, in a place it may post in; a soft delete, the service keeps it recoverable; a channel needs `ChannelEdit` and `ChannelMessages` | `{ "place": "chat:19:abc@thread.v2", "message_id": "1700000000000" }` |
+| `chat_react` | `ChatReactTool` | React | Execute | Set or remove (`remove`) a reaction, one emoji, on a message of a chat the account may post in; a channel answers `NotSupportedByAccount` | `{ "place": "chat:19:abc@thread.v2", "message_id": "1700000000000", "reaction": "👍" }` |
+| `chat_meetings` | `ChatMeetingsTool` | Meetings | Read | List the transcripts of a meeting and read the text of one, `[hh:mm:ss] speaker: words`, a page at a time (`cursor`). The meeting is named by exactly one of `join_link` (https, the host of the account's cloud) and `place` (`chat:<id>`, which also needs `Read`); its chat must be in `Read:AllowedPlaces`, and a link whose chat the service does not tell is refused; channel meetings are refused. An application account takes `place` alone, and reads the transcripts under the organizer the chat tells. Needs `Meetings` in `AdminGranted` on a user's account, else `ConsentMissing` before any request. The whole text is screened on each page and withheld whole when the screen rejects it under `Screening:WithholdRejected`; the speakers may be hidden by the tenant (`no_speakers`) | `{ "join_link": "https://teams.microsoft.com/l/meetup-join/...", "transcript_id": "MSMjMCMj..." }` |
+
 ## Codebase analysis tools (`Orkeon.Tools.Analysis`) — `AddRaggableTreeTools()`
 
 Twenty-nine tools over the RaggableTree semantic code graph — the full guide is
@@ -281,7 +306,7 @@ Twenty-nine tools over the RaggableTree semantic code graph — the full guide i
 
 ## Outside the catalogue
 
-Deliberately **not** part of the 124 built-in tool classes:
+Deliberately **not** part of the 134 built-in tool classes:
 
 - `brief_submit` / `blueprint_submit` — internal to the `orkeon forge` command
   (`ForgeSubmission.cs`, `Orkeon.Scripting.Cli`); the engine's own agents use them, a
@@ -306,13 +331,14 @@ number the README and the documentation index state, checked by
 | `Orkeon.Tools.Analysis` (RaggableTree — see [its guide](../architecture/raggable-tree.md)) | 29 |
 | `Orkeon.Tools.Email` (see [its guide](../guides/email.md)) | 13 |
 | `Orkeon.Tools.Drive` (see [its guide](../guides/drive.md)) | 11 |
+| `Orkeon.Tools.Chat` (see [its guide](../guides/chat.md)) | 10 |
 | `Orkeon.Infrastructure` (collaboration, session, sandbox, human input, `semantic_search`, `system_one_decide`, `memory_recall`, `mcp_prompt_get`) | 15 |
 | `Orkeon.Tools.Web` | 11 |
 | `Orkeon.Tools.EventHub` | 7 |
 | `Orkeon.Tools.FileSystem` | 8 |
 | `Orkeon.Tools.Rag` | 3 |
 | `Orkeon.Tools.Abstractions` / `Orkeon.Tools.Code` / `Orkeon.Tools.Embeddings.Local` / `Orkeon.Cli.Commands.Scripting` / `Orkeon.Scripting` | 1 each |
-| **Total** | **124** |
+| **Total** | **134** |
 
 ## Availability by composition root
 
@@ -331,6 +357,7 @@ and serves its tools to an MCP client, `human_input` aside — see
 | FileSystem (8), Data (22), Web core (6), `shell_command`, `list_mounts`, session (6) | ✅ | ✅ |
 | E-mail (13) — the mailbox tools refuse every call until an account is declared under `Orkeon:Tools:Email` | ✅ (OAuth tokens under the internal `/credentials` root) | ✅ password accounts only — the REPL keeps no token store, so an OAuth account is refused |
 | Drive (11) — every tool but `drive_accounts` refuses each call until an account is declared under `Orkeon:Tools:Drive` and signed in | ✅ (OAuth tokens under the internal `/credentials` root) | registered, but every account is refused: all sign in with OAuth, and the REPL keeps no token store |
+| Chat (10) — every tool but `chat_accounts` refuses each call until an account is declared under `Orkeon:Tools:Chat` and signed in (a webhook or an application does not sign in) | ✅ (OAuth tokens under the internal `/credentials` root) | registered, but an account that signs in is refused: the REPL keeps no token store; a webhook or an application account works (its certificate or token file is read through `/credential-files`, mounted there too) |
 | EventHub (7) | ✅ | ❌ |
 | Analysis (29) | ✅ (unless `RaggableTree:Enabled` = `false`) | ✅ |
 | `local_embed_text` | ✅ while RaggableTree is enabled with its default local embedding provider | ✅ |
@@ -401,6 +428,7 @@ services.AddOrkeonInMemoryEventHub();
 services.AddOrkeonEventHubTools();     // the 7 event-hub tools
 services.AddOrkeonEmailTools(configuration); // the 13 email_* tools; the mailbox ones need a declared account
 services.AddOrkeonDriveTools(configuration); // the 11 drive_* tools; they need a declared, signed-in account
+services.AddOrkeonChatTools(configuration);  // the 10 chat_* tools; they need a declared account, signed in unless a webhook or an application
 services.AddRaggableTreeTools();       // the 29 analysis tools
 services.AddOrkeonLocalEmbeddings();   // local_embed_text
 services.AddSemanticSearchTool();      // semantic_search (the extension lives in Orkeon.Hosting)
@@ -425,6 +453,16 @@ The exact name to use in the YAML `tools:` section is the value of the tool clas
 | `batch_anchors` | `BatchAnchorsTool` | `Orkeon.Tools.Analysis` |
 | `brave_search` | `BraveSearchTool` | `Orkeon.Tools.Web` |
 | `cache_search` | `CacheSearchTool` | `Orkeon.Tools.Web` |
+| `chat_accounts` | `ChatAccountsTool` | `Orkeon.Tools.Chat` |
+| `chat_delete` | `ChatDeleteTool` | `Orkeon.Tools.Chat` |
+| `chat_edit` | `ChatEditTool` | `Orkeon.Tools.Chat` |
+| `chat_list` | `ChatListTool` | `Orkeon.Tools.Chat` |
+| `chat_members` | `ChatMembersTool` | `Orkeon.Tools.Chat` |
+| `chat_meetings` | `ChatMeetingsTool` | `Orkeon.Tools.Chat` |
+| `chat_react` | `ChatReactTool` | `Orkeon.Tools.Chat` |
+| `chat_read` | `ChatReadTool` | `Orkeon.Tools.Chat` |
+| `chat_search` | `ChatSearchTool` | `Orkeon.Tools.Chat` |
+| `chat_send` | `ChatSendTool` | `Orkeon.Tools.Chat` |
 | `code_interpreter` | `SecureCodeInterpreterTool` | `Orkeon.Infrastructure` |
 | `codebase_map` | `CodebaseMapTool` | `Orkeon.Tools.Analysis` |
 | `codebase_search` | `CodebaseSearchTool` | `Orkeon.Tools.Analysis` |
@@ -573,9 +611,9 @@ The following categories are not covered by the existing tools:
 
 - **Structured file writing**: `docx_writer` and `xlsx_writer` cover Word and Excel, but there is no structured CSV or PDF writer. `FileWriteTool` writes plain text only (a CSV can of course be written as text).
 - **Data transformation**: no ETL tool to convert between formats (CSV → JSON, XML → CSV, etc.).
-- **Notifications and alerts**: e-mail is covered — `email_send`, limited to each account's allow-list (see [E-mail tools](../guides/email.md)) — and Slack by a host opt-in; there is no SMS, push or Teams tool.
+- **Notifications and alerts**: e-mail is covered — `email_send`, limited to each account's allow-list (see [E-mail tools](../guides/email.md)) —, Slack by a host opt-in, and Microsoft Teams by the chat tools, limited to each account's places (see [Chat tools](../guides/chat.md)); there is no SMS or push tool.
 - **Version control**: no native Git tool for commit, branch, diff (`shell_command` allows read-only git subcommands by default).
 - **Calendar / Scheduling**: no tool to interact with calendars (Google Calendar, Outlook, etc.).
 - **Cloud storage**: Google Drive and OneDrive are covered by the drive tools (see [Drive tools](../guides/drive.md)); there is no tool for S3, Azure Blob, GCS, Dropbox, nor for Google shared drives and SharePoint libraries.
-- **OAuth authentication**: no generic tool for the OAuth flows required by third-party APIs — OAuth exists only for e-mail and drive accounts, signed in once with `orkeon email login` or `orkeon drive login`.
+- **OAuth authentication**: no generic tool for the OAuth flows required by third-party APIs — OAuth exists only for e-mail, drive and chat accounts, signed in once with `orkeon email login`, `orkeon drive login` or `orkeon chat login`.
 - **Image processing**: images reach a model through the opt-in multimodal pipeline (`AddOrkeonMultiModal`, `IMultiModalContentLoader`), but no tool transforms or analyses an image; `image_generation` only creates one.

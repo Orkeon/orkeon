@@ -76,7 +76,7 @@ internal static class HostStartup
           --version             Show the version and exit.
 
     Configuration lives under Orkeon:Host (crews, RunTimeout, ShutdownGracePeriod),
-    Orkeon:Host:Discord and Orkeon:Host:A2A. Secrets are named by environment variable,
+    Orkeon:Host:Discord, Orkeon:Host:Teams and Orkeon:Host:A2A. Secrets are named by environment variable,
     never written in files.
     Documentation: docs/architecture/service-host.md
     """;

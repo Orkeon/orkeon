@@ -34,6 +34,12 @@ internal sealed record OAuthSettings
     /// <summary>Device authorization endpoint of the device-code flow.</summary>
     public Uri? DeviceCodeEndpoint { get; init; }
 
+    /// <summary>
+    /// RFC 7009 token revocation endpoint, or null when the provider has none: the Microsoft identity
+    /// platform publishes none, so its tokens are deleted at logout and not revoked.
+    /// </summary>
+    public Uri? RevocationEndpoint { get; init; }
+
     /// <summary>Audience (resource) the token is issued for, sent when the provider asks for one (Auth0, Okta).</summary>
     public string? Audience { get; init; }
 
@@ -45,6 +51,12 @@ internal sealed record OAuthSettings
     /// token request; Google documents none on a refresh and keeps the ones consented to.
     /// </summary>
     public bool ScopesOnRefresh { get; init; }
+
+    /// <summary>
+    /// The <c>prompt</c> of the authorization request, sent alone. Null sends what Google's refresh
+    /// token needs, <c>access_type=offline</c> with <c>prompt=consent</c>.
+    /// </summary>
+    public string? Prompt { get; init; }
 }
 
 /// <summary>The tokens one sign-in or one refresh returned, before a family stores them its own way.</summary>

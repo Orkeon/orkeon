@@ -37,6 +37,8 @@ using Orkeon.Tools.Analysis.DependencyInjection;
 using Orkeon.Tools.Embeddings.Local.DependencyInjection;
 using Orkeon.Tools.Code.DependencyInjection;
 using Orkeon.Tools.Data.DependencyInjection;
+using Orkeon.Tools.Chat.Configuration;
+using Orkeon.Tools.Chat.DependencyInjection;
 using Orkeon.Tools.Drive.Configuration;
 using Orkeon.Tools.Drive.DependencyInjection;
 using Orkeon.Tools.Email.Configuration;
@@ -1019,7 +1021,7 @@ public static partial class RunnerHost
     /// <para>
     /// That mounts half is <see cref="PlaceMounts"/>, which <c>orkeon-repl</c> applies to its own
     /// layers through <see cref="ConfigureMounts"/> (GAP-49, decision 3). The runner adds what only a
-    /// runner host mounts: the <c>/credentials</c> token store of the OAuth e-mail and drive accounts.
+    /// runner host mounts: the <c>/credentials</c> token store of the OAuth e-mail, drive and chat accounts.
     /// </para>
     /// </summary>
     /// <param name="builder">The host's configuration builder.</param>
@@ -1213,7 +1215,74 @@ public static partial class RunnerHost
         if (mounts.AllowExternalMounts)
             nextWhitelistIndex = WhitelistBases(overrides, mounts.CliMounts.Concat(mounts.InternalMounts), nextWhitelistIndex);
 
+        // The credential files of the chat application accounts (#446): the folder of each, read-only and
+        // Internal, for a runner and the REPL alike.
+        EnsureCredentialFilesRootIsFree(declaredMounts.Select(entry => entry.Value)
+            .Concat(declaredInternal.Select(entry => entry.Value)).Concat(mounts.CliMounts).Concat(mounts.InternalMounts));
+        var agentFolders = inForce.Concat(mounts.CliMounts).Select(TryExtractMountBasePath).OfType<string>()
+            .Append(TryFullPath(mounts.WorkingDirectory ?? Environment.CurrentDirectory)).OfType<string>().ToList();
+        foreach (var (directory, folder) in PlanCredentialFiles(declared, agentFolders, decisions))
+        {
+            overrides[$"{ConfigurationKeys.FileSystemInternalMounts}:{nextInternalIndex++}"] =
+                $"{FileSystemMount.Quote(directory)}:{RunnerVirtualRoots.CredentialFiles}/{folder}:ro";
+            nextWhitelistIndex = WhitelistDirectory(overrides, directory, nextWhitelistIndex);
+        }
+
         return new MountPlacement(declaredMounts, declaredInternal, nextInternalIndex, nextWhitelistIndex);
+    }
+
+    /// <summary>
+    /// The folders to mount under <see cref="RunnerVirtualRoots.CredentialFiles"/>: the directory of each
+    /// certificate or federated token file a chat application account names by its variable, with the name it
+    /// is mounted at. An Internal mount closes its folder to the agents whatever other mount holds it, so a
+    /// directory that is, or holds, one mounted for them is left out and said in
+    /// <paramref name="decisions"/>, like one that does not exist: the run goes on and that account alone refuses.
+    /// </summary>
+    private static List<(string Directory, string Folder)> PlanCredentialFiles(
+        DeclaredConfiguration declared, List<string> agentFolders, MountDecisions decisions)
+    {
+        var planned = new List<(string Directory, string Folder)>();
+        if (declared.Section(ConfigurationKeys.ToolsChat) is not { } section || !section.Exists())
+            return planned;
+
+        foreach (var (directory, folder) in ChatCredentialsLocation.CredentialFileDirectories(section).OrderBy(pair => pair.Value, StringComparer.Ordinal))
+        {
+            if (TryFullPath(directory) is not { } full)
+                continue;
+
+            // EXCEPTION-BOOTSTRAP: judged before the container, and so the VFS, exists.
+            if (!Directory.Exists(full))
+            {
+                decisions.StartupWarnings.Add(
+                    $"The folder of a credential file of {ConfigurationKeys.ToolsChat} does not exist: the account that names it cannot sign in.");
+            }
+            else if (agentFolders.Any(agent => PhysicalPathContainment.IsUnder(agent, full)))
+            {
+                decisions.StartupWarnings.Add(
+                    $"A credential file of {ConfigurationKeys.ToolsChat} lies in the working directory, in a folder mounted for the agents or in one that holds such a folder: " +
+                    "it is not read, and the account that names it cannot sign in. Keep it in a folder of its own.");
+            }
+            else
+            {
+                planned.Add((full, folder));
+            }
+        }
+
+        return planned;
+    }
+
+    /// <summary>Refuses a mount claiming <see cref="RunnerVirtualRoots.CredentialFiles"/> or a path under it, which the host reserves.</summary>
+    private static void EnsureCredentialFilesRootIsFree(IEnumerable<string?> mountStrings)
+    {
+        var claimed = mountStrings.Any(mount => mount is { Length: > 0 }
+            && MountSelection.TryGetVirtualRoot(mount) is { } root
+            && (string.Equals(root, RunnerVirtualRoots.CredentialFiles, StringComparison.Ordinal)
+                || root.StartsWith(RunnerVirtualRoots.CredentialFiles + "/", StringComparison.Ordinal)));
+        if (claimed)
+        {
+            throw new RunnerSettingsException(
+                $"The virtual root {RunnerVirtualRoots.CredentialFiles} is reserved: the host reads the credential files of chat application accounts there. Mount the folder under another name.");
+        }
     }
 
     /// <summary>
@@ -1393,14 +1462,14 @@ public static partial class RunnerHost
     }
 
     /// <summary>
-    /// Where the OAuth tokens of the declared e-mail and drive accounts live, creating the
-    /// directory and the subdirectory of each family that needs one (<c>email</c>, <c>drive</c>),
-    /// or null when no account signs in with OAuth2 — no mount, then, and nothing created. The
+    /// Where the OAuth tokens of the declared e-mail, drive and chat accounts live, creating the
+    /// directory and the subdirectory of each family that needs one (<c>email</c>, <c>drive</c>,
+    /// <c>chat</c>), or null when no account signs in with OAuth2 — no mount, then, and nothing created. The
     /// directory sits next to the per-user settings unless the operator names one
-    /// (<c>Orkeon:Tools:Email:CredentialsDirectory</c> or <c>Orkeon:Tools:Drive:CredentialsDirectory</c>,
-    /// for a service account; a relative one is read from the settings file's directory). The
-    /// runner keeps one credentials directory: when the two families name different ones, the
-    /// e-mail family's wins and the drive's is said to be ignored. On Unix each subdirectory
+    /// (the <c>CredentialsDirectory</c> of <c>Orkeon:Tools:Email</c>, <c>Orkeon:Tools:Drive</c> or
+    /// <c>Orkeon:Tools:Chat</c>, for a service account; a relative one is read from the settings file's directory). The
+    /// runner keeps one credentials directory: when the families name different ones, the first
+    /// in that order wins and the others are said to be ignored. On Unix each subdirectory
     /// holding tokens is owner-only, narrowed to it if it already existed wider. A directory that
     /// cannot be prepared is reported in <paramref name="decisions"/>, not thrown: the run goes on
     /// and only the OAuth accounts refuse. A user mount claiming
@@ -1417,33 +1486,57 @@ public static partial class RunnerHost
     {
         EnsureCredentialsRootIsFree(declaredMounts, declaredInternal, cliMounts);
 
-        var email = declared.Section(ConfigurationKeys.ToolsEmail);
-        var drive = declared.Section(ConfigurationKeys.ToolsDrive);
-        var emailNeeds = email is not null && email.Exists() && EmailCredentialsLocation.NeedsTokenStore(email);
-        var driveNeeds = drive is not null && drive.Exists() && DriveCredentialsLocation.NeedsTokenStore(drive);
-        if (!emailNeeds && !driveNeeds)
+        var families = NeedyTokenFamilies(declared);
+        if (families.Count == 0)
             return null;
 
-        var emailDirectory = emailNeeds ? EmailCredentialsLocation.ConfiguredDirectory(email!) : null;
-        var driveDirectory = driveNeeds ? DriveCredentialsLocation.ConfiguredDirectory(drive!) : null;
-        WarnWhenDirectoriesDiffer(emailDirectory, driveDirectory, decisions);
+        var named = families.FirstOrDefault(family => family.ConfiguredDirectory is not null);
+        if (named is not null)
+            WarnWhenDirectoriesDiffer(named, families, decisions);
 
-        var directory = emailDirectory ?? driveDirectory ?? DefaultCredentialsDirectory();
-        var families = string.Join(" and ", new[] { emailNeeds ? "e-mail" : null, driveNeeds ? "drive" : null }.OfType<string>());
+        var directory = named?.ConfiguredDirectory ?? DefaultCredentialsDirectory();
+        var names = Enumerate(families.Select(family => family.Name).ToList());
         if (directory is null)
         {
             decisions.TokensUnavailable.Add(
-                $"No per-user settings directory can be found to keep the OAuth tokens of {families} accounts: set " +
-                $"{(emailNeeds ? ConfigurationKeys.ToolsEmail : ConfigurationKeys.ToolsDrive)}:CredentialsDirectory.");
+                $"No per-user settings directory can be found to keep the OAuth tokens of {names} accounts: set " +
+                $"{families[0].SectionKey}:CredentialsDirectory.");
             return null;
         }
 
-        var anchored = AnchorCredentialsDirectory(directory, settingsPath, families, decisions);
+        var anchored = AnchorCredentialsDirectory(directory, settingsPath, names, decisions);
         if (anchored is null)
             return null;
 
-        return PrepareTokenDirectories(anchored, emailNeeds, driveNeeds, decisions) ? anchored : null;
+        return PrepareTokenDirectories(anchored, families, decisions) ? anchored : null;
     }
+
+    /// <summary>A tool family whose declared accounts keep OAuth tokens under <c>/credentials</c>.</summary>
+    /// <param name="Name">The family, as the messages name it.</param>
+    /// <param name="SectionKey">Its settings section.</param>
+    /// <param name="Subdirectory">Its subdirectory of the credentials directory.</param>
+    /// <param name="ConfiguredDirectory">The credentials directory the operator named, or null.</param>
+    private sealed record TokenFamily(string Name, string SectionKey, string Subdirectory, string? ConfiguredDirectory);
+
+    /// <summary>The families with an account that signs in with OAuth2, in order of precedence.</summary>
+    private static List<TokenFamily> NeedyTokenFamilies(DeclaredConfiguration declared)
+    {
+        var families = new List<TokenFamily>();
+        Add("e-mail", ConfigurationKeys.ToolsEmail, EmailCredentialsLocation.TokenSubdirectory, EmailCredentialsLocation.NeedsTokenStore, EmailCredentialsLocation.ConfiguredDirectory);
+        Add("drive", ConfigurationKeys.ToolsDrive, DriveCredentialsLocation.TokenSubdirectory, DriveCredentialsLocation.NeedsTokenStore, DriveCredentialsLocation.ConfiguredDirectory);
+        Add("chat", ConfigurationKeys.ToolsChat, ChatCredentialsLocation.TokenSubdirectory, ChatCredentialsLocation.NeedsTokenStore, ChatCredentialsLocation.ConfiguredDirectory);
+        return families;
+
+        void Add(string name, string key, string subdirectory, Func<IConfigurationSection, bool> needs, Func<IConfigurationSection, string?> configured)
+        {
+            if (declared.Section(key) is { } section && section.Exists() && needs(section))
+                families.Add(new TokenFamily(name, key, subdirectory, configured(section)));
+        }
+    }
+
+    /// <summary>The names as a sentence lists them: <c>a</c>, <c>a and b</c>, <c>a, b and c</c>.</summary>
+    private static string Enumerate(List<string> names) =>
+        names.Count == 1 ? names[0] : $"{string.Join(", ", names.Take(names.Count - 1))} and {names[^1]}";
 
     /// <summary>Refuses a mount claiming <see cref="RunnerVirtualRoots.Credentials"/>, which the runner reserves.</summary>
     private static void EnsureCredentialsRootIsFree(
@@ -1459,18 +1552,19 @@ public static partial class RunnerHost
         if (claimed)
         {
             throw new RunnerSettingsException(
-                $"The virtual root {RunnerVirtualRoots.Credentials} is reserved: the runner keeps the OAuth tokens of e-mail and drive accounts there. Mount the folder under another name.");
+                $"The virtual root {RunnerVirtualRoots.Credentials} is reserved: the runner keeps the OAuth tokens of e-mail, drive and chat accounts there. Mount the folder under another name.");
         }
     }
 
-    /// <summary>Says that the drive tokens go to the e-mail credentials directory when the two families name different ones.</summary>
-    private static void WarnWhenDirectoriesDiffer(string? emailDirectory, string? driveDirectory, MountDecisions decisions)
+    /// <summary>Says that a family's tokens go to the directory <paramref name="kept"/> names, when the family names another one.</summary>
+    private static void WarnWhenDirectoriesDiffer(TokenFamily kept, List<TokenFamily> families, MountDecisions decisions)
     {
-        if (emailDirectory is not null && driveDirectory is not null && !string.Equals(emailDirectory, driveDirectory, StringComparison.Ordinal))
+        foreach (var family in families.Where(family => family.ConfiguredDirectory is not null
+            && !string.Equals(family.ConfiguredDirectory, kept.ConfiguredDirectory, StringComparison.Ordinal)))
         {
             decisions.TokensUnavailable.Add(
-                $"{ConfigurationKeys.ToolsDrive}:CredentialsDirectory ({driveDirectory}) differs from {ConfigurationKeys.ToolsEmail}:CredentialsDirectory ({emailDirectory}): " +
-                "the runner keeps one credentials directory, the e-mail one, and the drive tokens go there too.");
+                $"{family.SectionKey}:CredentialsDirectory ({family.ConfiguredDirectory}) differs from {kept.SectionKey}:CredentialsDirectory ({kept.ConfiguredDirectory}): " +
+                $"the runner keeps one credentials directory, the {kept.Name} one, and the {family.Name} tokens go there too.");
         }
     }
 
@@ -1496,18 +1590,13 @@ public static partial class RunnerHost
 
     /// <summary>
     /// Prepares the token subdirectory of each family that needs one; true when at least one is
-    /// ready. Each on its own: one that cannot be prepared leaves the other's token store in place,
-    /// instead of taking both families' OAuth accounts down.
+    /// ready. Each on its own: one that cannot be prepared leaves the others' token stores in place,
+    /// instead of taking every family's OAuth accounts down.
     /// </summary>
-    private static bool PrepareTokenDirectories(string directory, bool emailNeeds, bool driveNeeds, MountDecisions decisions)
+    private static bool PrepareTokenDirectories(string directory, List<TokenFamily> families, MountDecisions decisions)
     {
         var prepared = false;
-        var families = new[]
-        {
-            (Needs: emailNeeds, Family: "e-mail", Subdirectory: EmailCredentialsLocation.TokenSubdirectory),
-            (Needs: driveNeeds, Family: "drive", Subdirectory: DriveCredentialsLocation.TokenSubdirectory),
-        };
-        foreach (var (_, family, subdirectory) in families.Where(candidate => candidate.Needs))
+        foreach (var (family, _, subdirectory, _) in families)
         {
             try
             {
@@ -1776,6 +1865,25 @@ public static partial class RunnerHost
                 $"{RunnerVirtualRoots.Credentials}/{DriveCredentialsLocation.TokenSubdirectory}");
         }
 
+        // Chat (#446): the chat_* tools (Microsoft Teams), inert until an account is declared
+        // under Orkeon:Tools:Chat. Their tokens share the internal /credentials root, in a
+        // subdirectory of their own (ADR-021).
+        services.AddOrkeonChatTools(context.Configuration);
+        if (HasInternalRoot(RunnerVirtualRoots.Credentials))
+        {
+            services.AddOrkeonChatTokenStore(
+                sp => sp.GetRequiredService<PrivilegedFileSystemAccess>().FileSystem,
+                $"{RunnerVirtualRoots.Credentials}/{ChatCredentialsLocation.TokenSubdirectory}");
+        }
+
+        // The certificate or federated token file of an application account, read through the
+        // internal /credential-files root the configuration step mounted its folder under.
+        if (HasInternalRootUnder(RunnerVirtualRoots.CredentialFiles))
+        {
+            services.AddOrkeonChatCredentialFiles(
+                sp => sp.GetRequiredService<PrivilegedFileSystemAccess>().FileSystem, RunnerVirtualRoots.CredentialFiles);
+        }
+
         // RAG (GAP-02): the subsystem and its three agent tools, for every runner — YAML
         // crews, crew directories, declarative and procedural .ork.ts, and orkeon-host. A
         // crew's rag: collections are ingested when it loads, its agents' knowledge: reaches
@@ -1801,6 +1909,12 @@ public static partial class RunnerHost
             var section = context.Configuration.GetSection(key);
             return section.Exists() && section.GetChildren().Any();
         }
+
+        bool HasInternalRootUnder(string root) =>
+            context.Configuration.GetSection(ConfigurationKeys.FileSystemInternalMounts).GetChildren()
+                .Any(entry => entry.Value is { Length: > 0 } mount
+                    && MountSelection.TryGetVirtualRoot(mount) is { } mounted
+                    && mounted.StartsWith(root + "/", StringComparison.Ordinal));
 
         bool HasInternalRoot(string root) =>
             context.Configuration.GetSection(ConfigurationKeys.FileSystemInternalMounts).GetChildren()

@@ -155,8 +155,8 @@ une ligne qui nomme la clé — code de sortie `1` pour `orkeon` et `orkeon-repl
   nombre (`Orkeon:Guardian:Llm:FailMode: "1"`, que le binder prendrait pour `Open`), dans une valeur, une
   liste ou un dictionnaire, ou comme une liste à virgules là où elle prend un seul nom — le refus nomme
   ses membres, jamais la valeur. Toute énumération s'écrit par son nom, dans n'importe quelle casse ;
-  une énumération `[Flags]` (les `Rights` d'un compte e-mail ou drive) comme une liste de noms séparés
-  par des virgules. Sur un compte e-mail ou drive, un nombre, ou une liste à virgules là où l'énumération
+  une énumération `[Flags]` (les `Rights` d'un compte e-mail, drive ou chat) comme une liste de noms séparés
+  par des virgules. Sur un compte e-mail, drive ou chat, un nombre, ou une liste à virgules là où l'énumération
   prend un seul nom (`Incoming:Security`, `Provider`), rend le compte mal configuré, et son problème nomme
   la clé et les membres, jamais la valeur (`Rights holds a number where EmailRights takes names: write
   one or more of …`), chaque nom que la clé prend étant listé, `None` d'une énumération `[Flags]` compris.
@@ -231,13 +231,13 @@ qu'elle accepte quand leur liste est fermée, et son sens.
 | [RAG](#rag) | [`Orkeon:Rag`](#orkeonrag), [`Orkeon:Rag:Ingestion`](#orkeonragingestion), [`Orkeon:Rag:QueryRouting`](#orkeonragqueryrouting), [`Orkeon:Rag:Retrieval:Hybrid`](#orkeonragretrievalhybrid), [`Orkeon:Rag:WebFallback`](#orkeonragwebfallback) | 34 |
 | [Fichiers et bac à sable](#fichiers-et-bac-à-sable) | [`Orkeon:CodeSandbox`](#orkeoncodesandbox), [`Orkeon:CodeSandbox:Docker`](#orkeoncodesandboxdocker), [`Orkeon:FileSystem`](#orkeonfilesystem), [`Orkeon:Sandbox`](#orkeonsandbox), [`PathSecurity`](#pathsecurity) | 33 |
 | [Sécurité](#sécurité) | [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:Guardian`](#orkeonguardian), [`Orkeon:Security:PermissionGate`](#orkeonsecuritypermissiongate), [`Secrets`](#secrets), [`Security:Audit`](#securityaudit), [`Security:Prompt`](#securityprompt), [`Security:ToolResults`](#securitytoolresults), [`Security:Url`](#securityurl), [`Security:Vault`](#securityvault) | 40 |
-| [Outils](#outils) | [`BRAVE_API_KEY`](#brave_api_key), [`MCP`](#mcp), [`MCP:Server`](#mcpserver), [`Orkeon:Bridge`](#orkeonbridge), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Tools:Bridge`](#orkeontoolsbridge), [`Orkeon:Tools:Drive`](#orkeontoolsdrive), [`Orkeon:Tools:Email`](#orkeontoolsemail), [`Orkeon:Tools:Firefox`](#orkeontoolsfirefox), [`Orkeon:Tools:GitHub`](#orkeontoolsgithub), [`Orkeon:Tools:ResultLimits`](#orkeontoolsresultlimits), [`Orkeon:Tools:Shell`](#orkeontoolsshell), [`Plugins`](#plugins), [`RaggableTree`](#raggabletree) | 131 |
+| [Outils](#outils) | [`BRAVE_API_KEY`](#brave_api_key), [`MCP`](#mcp), [`MCP:Server`](#mcpserver), [`Orkeon:Bridge`](#orkeonbridge), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Tools:Bridge`](#orkeontoolsbridge), [`Orkeon:Tools:Chat`](#orkeontoolschat), [`Orkeon:Tools:Drive`](#orkeontoolsdrive), [`Orkeon:Tools:Email`](#orkeontoolsemail), [`Orkeon:Tools:Firefox`](#orkeontoolsfirefox), [`Orkeon:Tools:GitHub`](#orkeontoolsgithub), [`Orkeon:Tools:ResultLimits`](#orkeontoolsresultlimits), [`Orkeon:Tools:Shell`](#orkeontoolsshell), [`Plugins`](#plugins), [`RaggableTree`](#raggabletree) | 148 |
 | [Orchestration et persistance](#orchestration-et-persistance) | [`Orkeon:Checkpointing`](#orkeoncheckpointing), [`Orkeon:Compaction`](#orkeoncompaction), [`Orkeon:Compaction:Prune`](#orkeoncompactionprune), [`Orkeon:Consensus`](#orkeonconsensus), [`Orkeon:CrewFactory`](#orkeoncrewfactory), [`Orkeon:ExecutionState:Persistence`](#orkeonexecutionstatepersistence), [`Orkeon:HumanInput`](#orkeonhumaninput), [`Orkeon:RunHistory`](#orkeonrunhistory), [`Orkeon:Skills`](#orkeonskills) | 39 |
 | [Scripts et console](#scripts-et-console) | [`Orkeon:Cli:ConsoleStreaming`](#orkeoncliconsolestreaming), [`Orkeon:Cli:Memory`](#orkeonclimemory), [`Orkeon:Cli:ScriptCommands`](#orkeoncliscriptcommands), [`Orkeon:Cli:ScriptHost`](#orkeoncliscripthost), [`Orkeon:Cli:Session`](#orkeonclisession), [`Orkeon:Cli:Tui`](#orkeonclitui), [`Orkeon:Scripting:AgentInstances`](#orkeonscriptingagentinstances), [`Orkeon:Scripting:AgentMemory`](#orkeonscriptingagentmemory), [`Orkeon:Scripting:Limits`](#orkeonscriptinglimits), [`Orkeon:Scripting:Toolchain`](#orkeonscriptingtoolchain) | 35 |
-| [Hôte de service et A2A](#hôte-de-service-et-a2a) | [`A2A`](#a2a), [`A2A:Security`](#a2asecurity), [`A2A:Security:AzureAD`](#a2asecurityazuread), [`A2A:Security:Oidc`](#a2asecurityoidc), [`Orkeon:Host`](#orkeonhost), [`Orkeon:Host:Discord`](#orkeonhostdiscord) | 59 |
+| [Hôte de service et A2A](#hôte-de-service-et-a2a) | [`A2A`](#a2a), [`A2A:Security`](#a2asecurity), [`A2A:Security:AzureAD`](#a2asecurityazuread), [`A2A:Security:Oidc`](#a2asecurityoidc), [`Orkeon:Host`](#orkeonhost), [`Orkeon:Host:Discord`](#orkeonhostdiscord), [`Orkeon:Host:Teams`](#orkeonhostteams) | 70 |
 | [Observabilité](#observabilité) | [`Logging`](#logging), [`Orkeon:Monitoring`](#orkeonmonitoring), [`Telemetry`](#telemetry) | 8 |
 
-88 sections, 574 clés. Lues par aucun binaire livré, seulement par un hôte écrit en C# (6) : [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting), [`Orkeon:VectorSearch`](#orkeonvectorsearch), [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Monitoring`](#orkeonmonitoring).
+90 sections, 602 clés. Lues par aucun binaire livré, seulement par un hôte écrit en C# (6) : [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting), [`Orkeon:VectorSearch`](#orkeonvectorsearch), [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Monitoring`](#orkeonmonitoring).
 <!-- /settings-index -->
 
 Lire un tableau :
@@ -497,16 +497,16 @@ n'est pas celle qui est lue : elle n'est pas jugée. Les réglages jugés, tiré
 | Réglages | Correction énoncée |
 |---|---|
 | `Llm:ApiKey`, `Llm:Profiles:<nom>:ApiKey`, `Orkeon:Embeddings:ApiKey` | écrire `"ApiKeyEnvVar": "<NOM>"` à la place |
-| `Llm:ApiKeyEnvVar`, `Llm:Profiles:<nom>:ApiKeyEnvVar`, `Orkeon:Rag:WebFallback:ApiKeyEnvVar`, `Orkeon:Embeddings:ApiKeyEnvVar`, `Orkeon:Host:Discord:TokenEnvironmentVariable`, `Orkeon:Tools:Bridge:TokenEnvVar`, `Orkeon:Bridge:TokenEnvVar`, `A2A:Security:ApiKeySecretNames:<i>`, `Orkeon:Encryption:SecretName`, `Orkeon:Tools:GitHub:TokenVariable` | écrire le nom seul, sans `${` ni `}` |
+| `Llm:ApiKeyEnvVar`, `Llm:Profiles:<nom>:ApiKeyEnvVar`, `Orkeon:Rag:WebFallback:ApiKeyEnvVar`, `Orkeon:Embeddings:ApiKeyEnvVar`, `Orkeon:Host:Discord:TokenEnvironmentVariable`, `Orkeon:Host:Teams:SecretEnvironmentVariable`, `Orkeon:Tools:Bridge:TokenEnvVar`, `Orkeon:Bridge:TokenEnvVar`, `A2A:Security:ApiKeySecretNames:<i>`, `Orkeon:Encryption:SecretName`, `Orkeon:Tools:GitHub:TokenVariable` | écrire le nom seul, sans `${` ni `}` |
 | `MCP:Servers:<id>:Command`, `:Args:<i>`, `:Url` ; `Llm:AgentCli:Command` ; `Orkeon:Redis:ConnectionString`, `Orkeon:Sqlite:ConnectionString` ; `RaggableTree:Embedding:ApiKey`, `Orkeon:Pinecone:ApiKey`, `Orkeon:LanceDb:ApiKey` ; `Llm:BaseUrl`, `Llm:Profiles:<nom>:BaseUrl`, `RaggableTree:Embedding:BaseUrl`, `Orkeon:ChromaDb:BaseUrl`, `Orkeon:Pinecone:Host`, `Orkeon:LanceDb:Endpoint`, `Orkeon:Embeddings:Endpoint`, `Orkeon:Rag:WebFallback:Endpoint`, `Telemetry:OtlpEndpoint` ; `Security:Vault:AzureKeyVaultUri`, `A2A:Security:AzureAD:Authority`, `A2A:Security:Oidc:Authority` ; `Orkeon:Tools:GitHub:Token` | écrire la valeur, ou la garder hors du fichier par la couche d'environnement `ORKEON_<chemin avec __>` |
 | `MCP:Servers:<id>:Env:<nom>` | retirer l'entrée : le serveur hérite de l'environnement où tourne Orkeon, y poser la variable |
 | `Secrets:<nom>` | retirer l'entrée et poser `ORKEON_<nom>`, que la chaîne des secrets lit en premier |
 | `BRAVE_API_KEY` | retirer l'entrée, Orkeon lit la variable |
 
 Un compte e-mail dont `Incoming:Host`, `Outgoing:Host`, `Auth:PasswordEnvVar` ou
-`Auth:ClientSecretEnvVar` contient une référence, ou un compte drive dont `Auth:ClientSecretEnvVar`
-en contient une, ne refuse pas le démarrage : le compte est mis de côté, avec son problème
-([guide e-mail](../guides/email.md), [guide drive](../guides/drive.md)).
+`Auth:ClientSecretEnvVar` contient une référence, un compte drive dont `Auth:ClientSecretEnvVar`
+en contient une, ou un compte chat dont `Auth:ClientId` ou `Auth:Tenant` en contient une, ne refuse pas le démarrage : le compte est mis de côté, avec son problème
+([guide e-mail](../guides/email.md), [guide drive](../guides/drive.md), [guide chat](../guides/chat.md)).
 
 ### Profils nommés (`Llm:Profiles`)
 
@@ -1509,7 +1509,7 @@ l'invite de chaque tour d'agent — voir [Sécurité](../architecture/security.m
 
 Filtrage des résultats d'outils : `Policy` vaut `Warn` par défaut — balisé comme donnée et
 signalé —, `Block` retient High/Critical, `None` laisse tout passer ; les `TrustedTools` s'ajoutent
-aux `email_*` par défaut. La longueur ne se règle pas ici mais sous `Orkeon:Tools:ResultLimits`
+aux outils par défaut : les `email_*`, `drive_read`, `chat_list`, `chat_meetings`, `chat_members`, `chat_read` et `chat_search`. La longueur ne se règle pas ici mais sous `Orkeon:Tools:ResultLimits`
 (ci-dessous). Liée par `AddOrkeonInfrastructure()` et appliquée à chaque résultat d'outil par
 `IToolInvocationPipeline`.
 
@@ -1519,7 +1519,7 @@ aux `email_*` par défaut. La longueur ne se règle pas ici mais sous `Orkeon:To
 | Clé | Type | Défaut | Valeurs | Sens |
 |---|---|---|---|---|
 | `Policy` | énumération | `"Warn"` | `None`, `Warn`, `Block` | La politique appliquée à un résultat d'outil réussi. Défaut `Warn` : le résultat arrive au modèle balisé comme donnée, et tout motif d'injection est journalisé et audité. `Block` retient un résultat qui porte un motif High ou Critical (le modèle en est informé) ; `None` laisse passer les résultats intacts et sans balise. |
-| `TrustedTools` | liste de chaînes | `["email_accounts", "email_create_folder", "email_delete", "email_draft", "email_folders", "email_mark", "email_move", "email_parser", "email_read", "email_rename_folder", "email_save_attachment", "email_search", "email_send", "drive_read"]` |  | Outils dont les résultats contournent le filtrage. Par défaut les outils `email_*`, qui filtrent ce qu'ils lisent avec `PromptInjectionDocumentValidator` et le marquent eux-mêmes comme non fiable (ADR-012) — les baliser de nouveau empilerait deux enveloppes. Les entrées de la configuration s'ajoutent à celles-ci. |
+| `TrustedTools` | liste de chaînes | `["email_accounts", "email_create_folder", "email_delete", "email_draft", "email_folders", "email_mark", "email_move", "email_parser", "email_read", "email_rename_folder", "email_save_attachment", "email_search", "email_send", "drive_read", "chat_list", "chat_meetings", "chat_members", "chat_read", "chat_search"]` |  | Outils dont les résultats contournent le filtrage. Par défaut les outils `email_*`, qui filtrent ce qu'ils lisent avec `PromptInjectionDocumentValidator` et le marquent eux-mêmes comme non fiable (ADR-012), `drive_read`, qui fait de même avec le texte d'un fichier (ADR-013), et `chat_list`, `chat_meetings`, `chat_members`, `chat_read` et `chat_search`, qui filtrent les noms et les messages qu'ils rendent (ADR-021) — les baliser de nouveau empilerait deux enveloppes. Les autres outils `drive_*` rendent des noms et des métadonnées qu'ils ne filtrent pas, et restent assainis. Les entrées de la configuration s'ajoutent à celles-ci. |
 <!-- /settings -->
 
 ### `Security:Url`
@@ -1631,7 +1631,7 @@ combien a été retranché. `shell_command`, son plafond de flux et `job_tail` l
 même que la coupe de repli de `ctx.llm.act` quand aucun pipeline n'en applique. Un outil qui a déjà
 coupé sa propre sortie (`shell_command`, avec son avis) marque le résultat comme déjà borné, et le
 pipeline ne le coupe pas une seconde fois. Le `ResultBudget`
-des outils Drive et Email est une borne distincte, hors de ce réglage.
+des outils Drive, Email et Chat est une borne distincte, hors de ce réglage.
 
 <!-- settings:Orkeon:Tools:ResultLimits -->
 **Lue par** : `orkeon`, `orkeon-host`, `orkeon-repl`.
@@ -1768,6 +1768,59 @@ Parcours par fournisseur et table clé par clé :
 | `CredentialsDirectory` | chaîne | — |  | Répertoire physique qui contient les jetons OAuth, pour un hôte dont le répertoire de réglages par utilisateur n'est pas le bon (un compte de service). Lu par l'hôte, pas par les outils. |
 | `DefaultAccount` | chaîne | — |  | Le compte qu'utilise un appel quand il n'en nomme aucun. Facultatif avec un seul compte. |
 | `Screening:WithholdRejected` | booléen | `false` |  | À true, le corps d'un message que le détecteur d'injection de prompt rejette est retenu. Désactivé par défaut : le détecteur a été réglé sur des pages web, et les lettres d'information le déclenchent. |
+<!-- /settings -->
+
+### `Orkeon:Tools:Chat`
+
+Lié par `AddOrkeonChatTools(configuration)` et validé paresseusement, comme la section drive : un
+compte est validé la première fois qu'un outil ou une commande `orkeon chat` s'en sert, tous ses
+problèmes signalés d'un coup, et une valeur illisible met ce seul compte de côté au lieu de faire
+échouer l'hôte. Aucune clé ne contient de secret : un compte d'utilisateur se connecte par un client
+public, qui n'en a pas, et l'adresse d'un webhook ou l'identifiant d'une application (certificat, jeton
+fédéré ou secret client) est nommé par sa variable. Parcours et
+outils : [Outils chat](../guides/chat.md).
+
+- **`DefaultAccount`** — le compte qu'utilise un appel qui n'en nomme aucun (facultatif avec un seul
+  compte).
+- **`CredentialsDirectory`** — le répertoire physique dont le sous-répertoire `chat` contient les
+  jetons OAuth ; par défaut : `credentials` à côté du fichier de réglages de l'utilisateur. Le
+  runner garde un seul répertoire de jetons : quand `Orkeon:Tools:Email` ou `Orkeon:Tools:Drive` en
+  nomme un autre, celui de l'e-mail l'emporte, puis celui du drive, et le runner le dit au démarrage.
+- **`Screening:WithholdRejected`** — retenir le texte d'un message que le filtre anti-injection de
+  prompt rejette (défaut `false` : signaler seulement).
+- **`Accounts:<nom>`** — un compte. `Provider` (`Teams` ou `TeamsWebhook`), `Rights` et, pour `Teams`, `Auth:ClientId` sont
+  **obligatoires** ; un compte `Teams` dont `Auth:Method` vaut `ClientCredentials` est une application qui
+  ne fait que lire, avec un tenant nommé et un identifiant ; un `TeamsWebhook` ne prend que `Rights` `Send`, `Webhook:UrlEnvVar` et
+  `Send:MaxPerHour` ; les droits dont les outils se servent sont `Read`, `Send`, `Edit`, `Delete`, `React` et `Meetings`. Une liste
+  `Read:AllowedPlaces` vide ne lit nulle part, une liste `Send:AllowedPlaces` vide ne publie, ne
+  modifie, ne supprime et ne réagit nulle part, et `Auth:AdminGranted` ouvre la lecture des canaux
+  (`ChannelMessages`), de leurs membres (`ChannelMembers`), la modification et la suppression dans les
+  canaux (`ChannelEdit`, avec `ChannelMessages`) et `chat_meetings` (`Meetings`).
+  `Send:MaxPerHour` compte ensemble publications, modifications, suppressions et réactions.
+  `chat_search` et `chat_meetings` sont dans `TrustedTools` : ils filtrent ce qu'ils rendent, comme `chat_read`.
+
+<!-- settings:Orkeon:Tools:Chat -->
+**Lue par** : `orkeon`, `orkeon-host`, `orkeon-repl`.
+
+| Clé | Type | Défaut | Valeurs | Sens |
+|---|---|---|---|---|
+| `Accounts:<nom>:Auth:AdminGranted` | liste de chaînes | `[]` |  | Ce à quoi l'administrateur du tenant a consenti pour l'application : `ChannelMessages`, `ChannelEdit`, `Meetings`, `ChannelMembers`. Chaque valeur ajoute sa portée à la connexion suivante. |
+| `Accounts:<nom>:Auth:CertificatePathEnvVar` | chaîne | — |  | Nom de la variable d'environnement qui contient le chemin d'un fichier PEM avec le certificat et sa clé, pour `ClientCredentials`. |
+| `Accounts:<nom>:Auth:ClientId` | chaîne | — |  | L'identifiant de votre application Microsoft Entra. |
+| `Accounts:<nom>:Auth:ClientSecretEnvVar` | chaîne | — |  | Nom de la variable d'environnement qui contient le secret client, pour `ClientCredentials`. |
+| `Accounts:<nom>:Auth:FederatedTokenFileEnvVar` | chaîne | — |  | Nom de la variable d'environnement qui contient le chemin d'un fichier de jeton fédéré, pour `ClientCredentials`. |
+| `Accounts:<nom>:Auth:Method` | énumération | — | `OAuth2`, `ClientCredentials` | `OAuth2` (défaut) : un utilisateur se connecte. `ClientCredentials` : une application se connecte en son propre nom, pour lire seulement. |
+| `Accounts:<nom>:Auth:Tenant` | chaîne | — |  | L'identifiant ou le domaine du tenant ; `organizations` s'il n'est pas renseigné. Obligatoire pour `ClientCredentials`. |
+| `Accounts:<nom>:Cloud` | énumération | — | `Global`, `UsGov`, `UsGovDoD`, `China` | Le cloud Microsoft : `Global` (défaut), `UsGov` ou `UsGovDoD` ; `China` est refusé. Non lu pour un `TeamsWebhook`. |
+| `Accounts:<nom>:Provider` | énumération | — | `Teams`, `TeamsWebhook` | `Teams`, ou `TeamsWebhook` pour publier dans un seul lieu sans connexion. Obligatoire. |
+| `Accounts:<nom>:Read:AllowedPlaces` | liste de chaînes | `[]` |  | Les lieux qu'un agent peut lire. Vide signifie aucun. |
+| `Accounts:<nom>:Rights` | énumération | `"None"` | `None`, `Read`, `Send`, `Edit`, `Delete`, `React`, `Meetings` | Ce qu'un agent peut faire, p. ex. `"Read, Send"`. Obligatoire. |
+| `Accounts:<nom>:Send:AllowedPlaces` | liste de chaînes | `[]` |  | Les lieux où un agent peut publier. Vide signifie aucun. |
+| `Accounts:<nom>:Send:MaxPerHour` | entier | — |  | Le plus grand nombre de publications, modifications, suppressions et réactions, ensemble, que le compte tente en une heure, dans ce processus. Non renseigné : aucun plafond. |
+| `Accounts:<nom>:Webhook:UrlEnvVar` | chaîne | — |  | Nom de la variable d'environnement qui contient l'adresse du webhook Workflows, jamais l'adresse elle-même. |
+| `CredentialsDirectory` | chaîne | — |  | Répertoire physique qui contient les jetons OAuth, pour un hôte dont le répertoire de réglages de l'utilisateur ne convient pas (un compte de service). Lu par l'hôte, pas par les outils. |
+| `DefaultAccount` | chaîne | — |  | Le compte qu'utilise un appel quand il n'en nomme aucun. Facultatif avec un seul compte. |
+| `Screening:WithholdRejected` | booléen | `false` |  | Si vrai, le texte d'un message que le détecteur d'injection de prompt rejette est retenu. Désactivé par défaut, comme pour l'e-mail : le détecteur signale ; les droits et les lieux bornent l'agent. |
 <!-- /settings -->
 
 ### `Orkeon:Tools:Drive`
@@ -2527,6 +2580,31 @@ route qui n'est pas un identifiant de salon ou un `DefaultCrew` inconnu refusent
 | `TokenEnvironmentVariable` | chaîne | `"ORKEON_DISCORD_TOKEN"` | Nom de la variable d'environnement qui contient le jeton du bot. |
 <!-- /settings -->
 
+### `Orkeon:Host:Teams`
+
+Le canal Microsoft Teams ([ce qu'il faut préparer](../architecture/service-host.md#le-canal-microsoft-teams)). `Routes` est
+une liste de `{ "Channel", "Crew" }`, puisqu'un identifiant de canal Teams contient `:` ; `DefaultCrew` est la crew
+qu'atteint un canal sans route. Un `AllowedUserIds` vide, un identifiant qui n'est pas un GUID, un secret non défini, un
+préfixe qui ne peut pas être pris ou une route qui ne peut pas être tenue refusent le démarrage.
+
+<!-- settings:Orkeon:Host:Teams -->
+**Lue par** : `orkeon-host`.
+
+| Clé | Type | Défaut | Sens |
+|---|---|---|---|
+| `AllowedUserIds` | liste de chaînes | `[]` | Identifiants d'objet Entra des personnes autorisées à parler au bot. **Vide refuse tout le monde**, et un canal allumé refuse le démarrage. |
+| `AppId` | chaîne | `""` | L'identifiant d'application (client) du bot : l'audience que chaque jeton entrant doit porter. |
+| `DefaultCrew` | chaîne | — | La crew qu'atteint un salon sans route. Absente, c'est la première crew déclarée sous `Orkeon:Host:Crews` ; présente, elle doit nommer l'une d'elles. |
+| `Enabled` | booléen | `false` | Si le canal est allumé. Éteint tant qu'un déploiement ne dit pas le contraire. |
+| `Prefix` | chaîne | `"http://localhost:3978/"` | Le préfixe de l'écouteur : schéma, hôte, port et barre finale. Le canal y répond à `POST /api/messages` ; Microsoft doit l'atteindre en HTTPS, par un reverse proxy qui termine TLS devant lui. |
+| `ProgressInterval` | durée | `"00:00:05"` | L'espacement des mises à jour de progression. Teams limite ce qu'un bot poste dans une conversation. |
+| `Routes:<i>:Channel` | chaîne | `""` | L'identifiant du canal (ou de la conversation) Teams, tel que Teams l'écrit : `19:…@thread.tacv2`. |
+| `Routes:<i>:Crew` | chaîne | `""` | La crew hébergée que démarre un fil ouvert dans ce canal. |
+| `SecretEnvironmentVariable` | chaîne | `"ORKEON_TEAMS_APP_SECRET"` | Nom de la variable d'environnement qui contient le secret client de l'application. |
+| `ServiceHosts` | liste de chaînes | `[]` | Hôtes du service Bot Connector où les réponses peuvent aller, en plus de ceux que Microsoft publie pour Teams (`smba.trafficmanager.net`, `smba.infra.gcc.teams.microsoft.com`). Une activité qui nomme un autre hôte est refusée, quoi que dise son jeton. |
+| `TenantId` | chaîne | `""` | Le tenant Entra où le bot est inscrit (mono-tenant). Une activité d'un autre tenant est refusée. |
+<!-- /settings -->
+
 ### `A2A`
 
 Serveur et client A2A ; `EnableServer` enregistre aussi le service hébergé qui démarre le serveur
@@ -2694,6 +2772,7 @@ la variable lui-même. La liste est celle que porte le code — un test y tient 
 | `ORKEON_LLM_API_KEY` | `orkeon` | une clé d'API | La variable où `orkeon llm probe` et `orkeon llm models` lisent la clé quand `--api-key-env` n'en nomme pas d'autre. |
 | `BRAVE_API_KEY` | `orkeon`, `orkeon-host` | une clé d'API Brave Search | Inscrit l'outil `brave_search`. Elle est lue d'abord comme une clé de configuration : le fichier de réglages et `ORKEON_BRAVE_API_KEY` la donnent aussi. |
 | `ORKEON_DISCORD_TOKEN` | `orkeon-host` | un jeton de bot Discord | Le jeton du canal Discord : le défaut de `Orkeon:Host:Discord:TokenEnvironmentVariable`, qui peut nommer une autre variable. |
+| `ORKEON_TEAMS_APP_SECRET` | `orkeon-host` | un secret client | Le secret client de l'application du bot du canal Teams : le défaut de `Orkeon:Host:Teams:SecretEnvironmentVariable`, qui peut nommer une autre variable. |
 | `OLLAMA_BASE_URL` | `orkeon`, `orkeon-host`, `orkeon-repl` | l'adresse d'un serveur Ollama | L'adresse que prend le fournisseur Ollama quand on ne lui en donne aucune : `Llm:BaseUrl` l'emporte, et `http://localhost:11434` est ce qui reste sans l'une ni l'autre. |
 | `TUI_DRIVER` | `orkeon-repl` | `windows`, `dotnet` ou `ansi` | Le pilote Terminal.Gui des interfaces texte, pour le diagnostic. Absente : `windows` sous Windows, `dotnet` ailleurs — `ansi` ne dessine rien sous WSL ni dans bien des terminaux de conteneur. |
 | `TUI_DIAG` | `orkeon-repl` | `1` | La console à deux volets écrit des lignes `[tui-diag]` sur stderr pendant son démarrage : le terminal, le pilote choisi. |
@@ -2737,6 +2816,10 @@ une valeur : le secret reste hors du fichier. `orkeon settings <clé>` décrit c
 | `Llm:Profiles:<nom>:ApiKeyEnvVar` | La clé d'API de ce profil, lue de la même façon. | L'environnement du processus, puis les variables de l'utilisateur sous Windows. |
 | `Orkeon:Tools:Email:Accounts:<nom>:Auth:PasswordEnvVar` | Le mot de passe, ou mot de passe d'application, du compte e-mail. | L'environnement du processus, puis les variables de l'utilisateur sous Windows. |
 | `Orkeon:Tools:Email:Accounts:<nom>:Auth:ClientSecretEnvVar` | Le secret client OAuth du compte e-mail. | L'environnement du processus, puis les variables de l'utilisateur sous Windows. |
+| `Orkeon:Tools:Chat:Accounts:<nom>:Auth:CertificatePathEnvVar` | Le chemin du fichier PEM, certificat et clé, de l'application chat. Son dossier est monté en interne et en lecture seule au démarrage, et doit être un dossier à lui. | L'environnement du processus, puis les variables de l'utilisateur sous Windows. |
+| `Orkeon:Tools:Chat:Accounts:<nom>:Auth:ClientSecretEnvVar` | Le secret client de l'application chat. | L'environnement du processus, puis les variables de l'utilisateur sous Windows. |
+| `Orkeon:Tools:Chat:Accounts:<nom>:Auth:FederatedTokenFileEnvVar` | Le chemin du fichier de jeton fédéré de l'application chat. Son dossier est monté en interne et en lecture seule au démarrage, et doit être un dossier à lui. | L'environnement du processus, puis les variables de l'utilisateur sous Windows. |
+| `Orkeon:Tools:Chat:Accounts:<nom>:Webhook:UrlEnvVar` | L'adresse du webhook Workflows. | L'environnement du processus, puis les variables de l'utilisateur sous Windows. |
 | `Orkeon:Tools:Drive:Accounts:<nom>:Auth:ClientSecretEnvVar` | Le secret client OAuth du compte Google Drive. | L'environnement du processus, puis les variables de l'utilisateur sous Windows. |
 | `Orkeon:TypeSafe:ApiKeyEnvVar` | La clé du modèle de décision TypeSafe ; la clé nomme `TYPESAFE_API_KEY` quand rien ne la règle. | L'environnement du processus, puis les variables de l'utilisateur sous Windows. |
 | `Orkeon:Liquid:ApiKeyEnvVar` | La clé du modèle de décision Liquid ; la clé nomme `LIQUID_API_KEY` quand rien ne la règle. | L'environnement du processus, puis les variables de l'utilisateur sous Windows. |
@@ -2744,6 +2827,7 @@ une valeur : le secret reste hors du fichier. `orkeon settings <clé>` décrit c
 | `Orkeon:Embeddings:ApiKeyEnvVar` | La clé d'API du provider d'embeddings `mistral`, `azure-openai` ou `gemini`, lue quand `Orkeon:Embeddings:ApiKey` n'est pas réglée. | L'environnement du processus. |
 | `Orkeon:Rag:WebFallback:ApiKeyEnvVar` | La clé de la recherche web sur laquelle le RAG correctif se replie ; vide, aucune clé n'est envoyée. | L'environnement du processus. |
 | `Orkeon:Host:Discord:TokenEnvironmentVariable` | Le jeton de bot du canal Discord ; la clé nomme `ORKEON_DISCORD_TOKEN` quand rien ne la règle. | L'environnement du processus. |
+| `Orkeon:Host:Teams:SecretEnvironmentVariable` | Le secret client de l'application du bot du canal Teams ; la clé nomme `ORKEON_TEAMS_APP_SECRET` quand rien ne la règle. | L'environnement du processus. |
 | `Orkeon:Tools:Bridge:TokenEnvVar` | Le jeton que l'exécution envoie au pont d'outils ; la clé nomme `ORKEON_BRIDGE_TOKEN` quand rien ne la règle. | L'environnement du processus. |
 | `Orkeon:Bridge:TokenEnvVar` | Le jeton que le serveur du pont d'outils attend de ses appelants ; la clé nomme `ORKEON_BRIDGE_TOKEN` quand rien ne la règle. | L'environnement du processus. |
 

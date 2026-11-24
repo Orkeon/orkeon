@@ -106,8 +106,8 @@ dotnet test Orkeon.sln --no-build --filter "Category!=Integration&Category!=Slow
 
 ## Structure du projet
 
-La solution compte **51 projets src répartis en 14 zones** et **35 projets de tests**.
-Trente-trois projets src ont un projet de tests miroir ; `tests/e2e` et `tests/shared`
+La solution compte **52 projets src répartis en 14 zones** et **36 projets de tests**.
+Trente-quatre projets src ont un projet de tests miroir ; `tests/e2e` et `tests/shared`
 forment les deux autres. Dix-huit projets src n'ont volontairement pas de miroir : les cinq
 satellites `Orkeon.Constants.*` et `Orkeon.Rag.Onnx.Model` ne portent que des constantes et
 des ressources embarquées, `Orkeon.Analysis.Abstractions` est exercé via
@@ -116,7 +116,7 @@ des ressources embarquées, `Orkeon.Analysis.Abstractions` est exercé via
 ```
 src/
 ├── core/        # Orkeon.Domain, Orkeon.Application, Orkeon.Infrastructure (cœur Clean Architecture)
-├── tools/       # 11 packs d'outils : Abstractions, Analysis (RaggableTree), Code, Data, Drive,
+├── tools/       # 12 packs d'outils : Abstractions, Analysis (RaggableTree), Chat, Code, Data, Drive,
 │                #   Email, Embeddings.Local, EventHub, FileSystem, Rag, Web
 ├── rag/         # Sous-système RAG : Rag.Abstractions, Rag, Rag.Onnx, Rag.Onnx.Model
 ├── analysis/    # Moteur RaggableTree : Analysis.Abstractions, Analysis
@@ -380,7 +380,10 @@ demandent pas davantage, **la surface fonctionnelle ne grandit pas** :
   ([ADR-012](docs/fr/adr/ADR-012-email-tool-family.md)). La famille drive
   (`Orkeon.Tools.Drive`, onze outils pour Google Drive et OneDrive) est la
   troisième, actée par le propriétaire le 2026-10-17, pour la même raison
-  ([ADR-013](docs/fr/adr/ADR-013-drive-tool-family.md)). Le pont d'outils
+  ([ADR-013](docs/fr/adr/ADR-013-drive-tool-family.md)). L'outil `firefox` est la
+  quatrième. La famille chat (`Orkeon.Tools.Chat`, Microsoft Teams d'abord,
+  dix outils) est la cinquième, actée par le propriétaire le 2026-11-23
+  ([ADR-021](docs/fr/adr/ADR-021-chat-tool-family.md)). Le pont d'outils
   (`orkeon bridge serve`, [ADR-019](docs/fr/adr/ADR-019-tool-bridge.md))
   n'ajoute aucun outil : il exécute sur une autre machine les outils intégrés
   qui existent, et un outil n'est pas intégré parce que le pont pourrait le

@@ -7,6 +7,78 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — chat tools: Microsoft Teams (#446)
+
+- The `chat_*` family (`Orkeon.Tools.Chat`, packed in `Orkeon.Tools`): `chat_accounts`, `chat_list`, `chat_read`,
+  `chat_members`, `chat_send`, `chat_search`, `chat_edit`, `chat_delete`, `chat_react` and `chat_meetings`: ten tools,
+  which bring the built-in tool classes to 134, over Microsoft Graph in plain HTTP. Accounts, rights and places live under
+  `Orkeon:Tools:Chat`; `Read:AllowedPlaces` and `Send:AllowedPlaces` are closed when empty, and a channel is read only
+  when `Auth:AdminGranted` names `ChannelMessages`, its members listed when it names `ChannelMembers`. A
+  `user:*@<domain>` entry matches a home address the directory establishes, and no one else. `AddOrkeonChatTools(configuration)` is inert until an account is
+  declared. Tested offline, not run on a real tenant ([guide](docs/guides/chat.md),
+  [ADR-021](docs/adr/ADR-021-chat-tool-family.md)).
+- `chat_search` (Read), `chat_edit`, `chat_delete` and `chat_react` (Execute). Search reaches only the places allowed for reading, checks each hit's place by ids and
+  reads the text from that place; its window is bounded (5 requests of 25 hits, 40 places). Edit and delete act on
+  messages the account itself sent, in `Send:AllowedPlaces`; in a channel they need `ChannelEdit` and `ChannelMessages`
+  in `Auth:AdminGranted`; delete is a soft delete; edit works in the worldwide cloud only and refuses a message with
+  attachments, images or a quote. `chat_react` works in chats only. Edits, deletions and reactions count in `Send:MaxPerHour`
+  and in the pace of a place. Sign-in: `Edit` and `Delete` also ask `Team.ReadBasic.All`, `Channel.ReadBasic.All` and
+  `User.ReadBasic.All` (and `ChannelMessage.Read.All` with `ChannelMessages`); `React` asks `ChatMessage.Send` and
+  `User.ReadBasic.All`. `chat_search` is in `TrustedTools`. Not run on a real tenant.
+- `chat_meetings` (Read) lists the
+  transcripts of a Teams meeting and reads the text of one, `[hh:mm:ss] speaker: words`, a page at a time. It needs the
+  right `Meetings` and `AdminGranted: ["Meetings"]` (`OnlineMeetings.Read` and `OnlineMeetingTranscript.Read.All`, asked
+  only then, else `ConsentMissing` before any request), and `Read` when the meeting is named by `place`. Exactly one of
+  `join_link` (https, the host of the account's cloud) and `place` (`chat:<id>`); the meeting's chat must be in
+  `Read:AllowedPlaces`, a link whose chat Graph does not tell is refused, channel meetings are refused. The whole text is
+  screened on each page and withheld whole under `WithholdRejected`. The calendar is not read; only meetings the signed-in
+  user organises or Graph returns under `me/onlineMeetings`; transcripts expire. `chat_meetings` is in `TrustedTools`.
+  Not run on a real tenant.
+- A `TeamsWebhook` chat account posts into one place through a Workflows webhook, with no sign-in: `Webhook:UrlEnvVar`
+  names the variable of its address, `Rights` is `Send`, and `chat_send` takes no `place` there. Not tried on a real
+  workflow.
+- A Teams chat account can be an application that only reads: `Auth:Method` `ClientCredentials` with exactly one of
+  `Auth:CertificatePathEnvVar`, `Auth:FederatedTokenFileEnvVar` and `Auth:ClientSecretEnvVar`, a named tenant, named
+  places (`*`, `user:` and a team by its name are refused) and a token kept in memory alone. `chat_meetings` reads there
+  by `place` alone, under the organizer the chat tells. `Send:AllowedPlaces`, `Send:MaxPerHour` and `Meetings` without
+  `Read` are refused there. Not tried on a real tenant.
+- The certificate or federated token file of such an account is read through the VFS: the host mounts its folder as an
+  internal, read-only mount under the new reserved root `/credential-files`, in the runners and in `orkeon-repl`, and
+  the file must sit in a folder of its own (otherwise the host warns at start and the account cannot sign in). No user
+  mount may claim `/credential-files`. New public members: `AddOrkeonChatCredentialFiles(fileSystem, virtualRoot)`,
+  which a host of your own that calls `AddOrkeonChatTools` must also call (without it only `Auth:ClientSecretEnvVar`
+  works), and `RunnerVirtualRoots.CredentialFiles`. The file is no longer read with raw `System.IO`.
+- `orkeon chat accounts`, `login` (the browser, or `--device-code`), `logout` and `check`. With `--events jsonl`, `login`
+  and `check` write one event per line, of the kinds of `Orkeon.Constants.Protocol.ChatEventKinds`. `logout` of a webhook
+  or application account succeeds with no `/credentials` root.
+- `ConfigurationKeys.ToolsChat`, and `Orkeon:Tools:Chat` among the `SettingsSections`.
+- A run keeps one credentials directory for the e-mail, drive and chat accounts. When the families name different
+  ones in `CredentialsDirectory`, e-mail's wins, then drive's, and the others are said to be ignored.
+- The shared OAuth client takes the flow at the sign-in, token revocation, a client assertion and
+  `OAuthSettings.Prompt`; left null, `Prompt` keeps the Google parameters of before. E-mail and drive accounts sign in
+  as they did.
+- Teams as a chat channel of `orkeon-host`: `Orkeon:Host:Teams` (off by default) listens for a Teams bot's messages, beside Discord or alone: a thread is a run, the
+  room picks the crew, `AllowedUserIds` (Entra object ids) gates messages and the `/status` and `/stop` text commands, and
+  replies go in the thread. Every activity's bearer token is validated before its body is read (signature, issuer, audience,
+  lifetime, `serviceurl`, channel endorsement, tenant), and the bot's token goes to the validated service only. A final
+  reply is retried on a connection failure, a transient sign-in failure and HTTP 412, 429, 502, 503 and 504. HTML in an
+  answer is escaped outside code, and Markdown images become plain links.
+- Several chat channels of `orkeon-host` run in one service, each with its own allow list, routes and default crew.
+- `ORKEON_TEAMS_APP_SECRET` (`EnvironmentVariableNames.TeamsAppSecret`) is the variable the client secret is read from,
+  unless `Orkeon:Host:Teams:SecretEnvironmentVariable` names another.
+
+### Security
+
+- The Markdown link and HTML comment patterns of the prompt-injection screen run in bounded time: they were cubic and
+  quadratic in the length of the text. It affects RAG, e-mail and drive as well as chat.
+
+### Fixed
+
+- An identity provider that answers `temporarily_unavailable` or `server_error` is a server failure of `OAuth2Client`
+  (`OAuthFailure.ServerError`, to be tried later), no longer a refused sign-in: e-mail and drive accounts too.
+- `IFileSystemService.TryGetEntryAsync` reads a relative symbolic link target from the link's own folder, no longer
+  from the process working directory, which gave a wrong `LinkTarget`.
+
 ## [1.4.0] - 2026-11-23
 
 A minor release: it adds public members (`PublicAPI.Shipped.txt` grows), so it is not a patch. It also carries

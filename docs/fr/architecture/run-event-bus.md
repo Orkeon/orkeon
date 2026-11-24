@@ -170,7 +170,7 @@ un seul `IRunEventSink` (`Orkeon.Application.Runs`, expérimental `ORKEXP007`), 
 chaque événement une fois (`seq`, `ts`, l'identité du run) et le remet à chaque destination : toutes tiennent les mêmes lignes.
 
 - **`StdoutJsonLinesRunEventSink`** (la CLI) : le flux de `orkeon run --events jsonl`. Ses octets sont figés par un
-  test golden (`StdoutEventContractGoldenTests`). Les autres verbes qui streament (`forge`, `email`, `drive`,
+  test golden (`StdoutEventContractGoldenTests`). Les autres verbes qui streament (`forge`, `email`, `drive`, `chat`,
   `usecases`) gardent leur propre writer, qui partage le code de l'enveloppe et l'observateur d'appels de modèle.
 - **`JsonLinesFileRunEventSink`** (`Orkeon.Hosting`) : `<run id>.jsonl` et un `index.jsonl` sous le montage `/runs`, par le VFS,
   un writer sérialisé par run.

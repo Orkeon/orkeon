@@ -5,7 +5,7 @@
 **Périmètre** : `orkeon-host` — le daemon qui héberge des crews, la passerelle qui permet de les atteindre depuis un canal de chat, et le serveur A2A qui permet à d'autres agents de les lancer.
 **Public** : qui installe et exploite Orkeon sur un serveur.
 
-Lancé depuis un terminal ou embarqué dans un programme, Orkeon suppose un humain devant un écran, sur la même machine, le temps d'un processus. Le host de service lève les trois hypothèses ; le canal Discord donne le premier endroit où l'on peut lui parler depuis là où l'on est déjà.
+Lancé depuis un terminal ou embarqué dans un programme, Orkeon suppose un humain devant un écran, sur la même machine, le temps d'un processus. Le host de service lève les trois hypothèses ; les canaux Discord et Microsoft Teams donnent des endroits où l'on peut lui parler depuis là où l'on est déjà.
 
 ---
 
@@ -112,7 +112,7 @@ l'autre. Un crew sans `Mounts` garde les mounts de boot, inchangés.
 
 Deux choses à savoir avant de s'en servir. Entrer un scope **remplace** le jeu de mounts au lieu
 de fusionner avec lui, donc le registre composé reporte les mounts du boot — les internes (`/llm-logs`,
-`/sandbox`, `/credentials`) et ceux que voit l'agent, moins tout chemin que les mounts propres du crew revendiquent — sans cela, la journalisation des échanges et les bacs à sable de code tomberaient
+`/sandbox`, `/credentials`, `/credential-files`) et ceux que voit l'agent, moins tout chemin que les mounts propres du crew revendiquent — sans cela, la journalisation des échanges et les bacs à sable de code tomberaient
 pour toute la durée du run, et le contrôle qui les empêche de gagner une seconde adresse joignable
 par l'agent tomberait avec eux. Un dossier accordé est une entrée du démon : il est lisible où qu'il soit, sans
 `--allow-external-mounts`. Au démarrage, un dossier accordé à une crew mal formé ou absent refuse le démarrage avec `78`
@@ -126,7 +126,7 @@ La configuration est **validée au démarrage** : aucune crew sous `Orkeon:Host:
 
 Le démarrage refuse aussi une référence `${NOM}` ou `%NOM%` dans un réglage que l'hôte transmet tel qu'il est écrit, en nommant le chemin et jamais la valeur, avec le code 78 et avant la connexion d'un serveur MCP : Orkeon ne développe jamais une variable ([la liste](../reference/configuration.md#une-référence-de-variable-nest-jamais-développée)).
 
-Toute la séquence qui précède le démarrage passe sous cette barrière : la configuration d'amorçage du démon, ses propres sections — `Orkeon:Host` avec son `A2A`, `Orkeon:Host:Discord`, et la section `A2A` —, **lues une fois, au démarrage**, et l'hôte des runners lui-même. Chaque refus tient en une ligne qui nomme la clé — ou le fichier, avec la ligne et la position de ce que son JSON a de faux — sur stderr et, sous le SCM de Windows, dans le journal d'événements Application.
+Toute la séquence qui précède le démarrage passe sous cette barrière : la configuration d'amorçage du démon, ses propres sections — `Orkeon:Host` avec son `A2A`, `Orkeon:Host:Discord`, `Orkeon:Host:Teams`, et la section `A2A` —, **lues une fois, au démarrage**, et l'hôte des runners lui-même. Chaque refus tient en une ligne qui nomme la clé — ou le fichier, avec la ligne et la position de ce que son JSON a de faux — sur stderr et, sous le SCM de Windows, dans le journal d'événements Application.
 
 Les crews sont lues **une seule fois**, au démarrage : ni balayage de dossier, ni rechargement. Ajouter une crew, c'est modifier le fichier et redémarrer.
 
@@ -175,16 +175,46 @@ Un message devient un run dans un ordre fixe : **autoriser, router, accuser réc
 
 Les messages **à l'intérieur d'un fil**, écrits par des personnes : un message posté dans un canal ordinaire est ignoré, tout comme chaque message d'un bot. Le client se connecte avec les intents `Guilds`, `GuildMessages` et `MessageContent` — `MessageContent` est un intent privilégié, à activer pour le bot dans le portail développeur de Discord, faute de quoi chaque message arrive vide. `AllowedUserIds` est le seul contrôle d'accès : `GuildIds` choisit où les slash-commands sont enregistrées, il ne restreint pas qui peut parler au bot.
 
+### Le canal Microsoft Teams
+
+`Orkeon:Host:Teams` (éteint par défaut) tourne à côté de Discord ou seul ; chaque canal a sa liste d'autorisation, ses routes et sa crew par défaut. Teams appelle le bot, donc ce canal **écoute** : `POST /api/messages` sur son propre préfixe.
+
+```json
+"Orkeon": {
+  "Host": {
+    "Teams": {
+      "Enabled": true,
+      "AppId": "11111111-2222-3333-4444-555555555555",
+      "TenantId": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+      "SecretEnvironmentVariable": "ORKEON_TEAMS_APP_SECRET",
+      "AllowedUserIds": [ "99999999-8888-7777-6666-555555555555" ],
+      "Prefix": "http://localhost:3978/",
+      "Routes": [ { "Channel": "19:abc123@thread.tacv2", "Crew": "veille" } ]
+    }
+  }
+}
+```
+
+**Ce que vous préparez chez Microsoft.** Une inscription d'application mono-tenant avec un secret client, un Azure Bot qui l'utilise, avec le canal Microsoft Teams activé et `https://<votre hôte>/api/messages` comme point de terminaison de messagerie, et une application Teams portant le bot, installée dans l'équipe ou la conversation. `AllowedUserIds` contient des **identifiants d'objet** Entra. `Routes` est une liste parce qu'un identifiant de canal Teams contient `:`, qu'une clé de configuration ne peut pas porter ; `Channel` est l'identifiant seul, sans le `;messageid=…` d'un fil.
+
+**TLS se termine devant le host.** Microsoft n'appelle qu'en HTTPS. Placez devant le préfixe de boucle locale un reverse proxy qui tient le certificat et ne relayez que `/api/messages`, avec `Host: localhost:3978` — l'écouteur ne répond qu'au nom d'hôte de son préfixe. En conteneur, ou quand le proxy garde le `Host` d'origine, utilisez `http://+:3978/` ; le démarrage avertit alors que seul le proxy doit atteindre ce port. Un préfixe `https://` n'est accepté que sous Windows, avec un certificat lié au port (`netsh http add sslcert`). Un préfixe qui ne peut pas être pris refuse le démarrage. L'écouteur borne les requêtes simultanées (64) et le temps que met un corps (10 secondes), pas les connexions ni leurs en-têtes : laissez le proxy les limiter.
+
+**Chaque requête est prouvée avant que son corps soit lu.** Le jeton porteur doit être signé (RS256) par une clé des métadonnées OpenID du Bot Framework, émis par `https://api.botframework.com`, pour `AppId`, dans sa durée de vie (cinq minutes de tolérance), et porter une seule claim `serviceurl` ; sinon `401`. Les clés de signature sont lues à une adresse fixe, gardées douze heures et crues vingt-quatre au plus ; sans clé, rien n'est accepté (`503`). Viennent ensuite le type de contenu et la taille (256 Ko), puis le corps est tenu à ce que dit le jeton : le même `serviceUrl`, une clé de signature habilitée pour `msteams`, et `TenantId` — sinon `403`. Rien ne débraye ces contrôles.
+
+**Les réponses ne vont qu'au service validé.** La claim `serviceurl` doit être en `https` sur un hôte que Microsoft publie pour Teams, ou sur un hôte nommé par `ServiceHosts` ; les redirections ne sont pas suivies. Le jeton du bot est obtenu par les identifiants client, gardé jusqu'à peu avant son expiration, et ni lui ni le secret ne sont journalisés. Les clouds nationaux (GCC High, DoD, 21Vianet) ont d'autres émetteurs et d'autres adresses de connexion et ne sont pas pris en charge.
+
+**Un fil est un run** ici aussi : dans un canal d'équipe, le fil ; dans une conversation personnelle ou de groupe, la conversation entière. Dans un canal, Teams ne livre que les messages qui **mentionnent le bot** (sauf si l'application a reçu davantage), et la mention est retirée. Un message sans identifiant d'objet Entra, d'un autre bot, ou vide est ignoré ; une activité livrée deux fois tourne une fois. La requête reçoit sa réponse aussitôt, et le run continue. Les réponses sont coupées à 20 000 caractères. Le HTML d'une réponse est échappé hors du code : `List<string>` s'affiche tel quel et aucune balise d'image n'est rendue ; une image Markdown devient un simple lien. Une réponse finale est retentée quand la connexion échoue, quand la connexion du bot à son service d'identité échoue pour une raison passagère, et sur HTTP 412, 429, 502, 503 et 504.
+
 ### Commandes
 
-`/status` et `/stop` sont des **slash-commands enregistrées** — le client Discord les autocomplète, et la réponse est **éphémère** : un coup d'œil au statut ou un refus regarde celui qui invoque, pas une ligne de plus dans le thread de tout le monde. Elles sont enregistrées à la connexion : globalement quand `GuildIds` est vide (aucune configuration, mais Discord met les commandes globales en cache jusqu'à une heure), ou par serveur nommé (disponibles immédiatement — la boucle de dev). La passerelle ne parse pas le texte des messages pour elles : un `/stop` littéral tapé comme texte est un prompt comme un autre.
+`/status` et `/stop` sont, sur Discord, des **slash-commands enregistrées** — le client Discord les autocomplète, et la réponse est **éphémère** : un coup d'œil au statut ou un refus regarde celui qui invoque, pas une ligne de plus dans le thread de tout le monde. Elles sont enregistrées à la connexion : globalement quand `GuildIds` est vide (aucune configuration, mais Discord met les commandes globales en cache jusqu'à une heure), ou par serveur nommé (disponibles immédiatement — la boucle de dev). Sur Discord, la passerelle ne parse pas le texte des messages pour elles : un `/stop` littéral tapé comme texte est un prompt comme un autre. Sur Teams, un message qui est `/status` ou `/stop` et rien d'autre (la mention à part) est la commande, avec la réponse dans le fil ; il n'y a pas de bouton Stop.
 
 | Commande | Effet |
 |---|---|
 | `/status` | Ce que cette conversation exécute, et depuis quand. |
 | `/stop` | Arrête le run de cette conversation. Le **bouton Stop** est la même invocation avec un autre doigt — même contrôle d'allow-list, même réponse. |
 
-Les deux chemins sont gardés par `AllowedUserIds`. Bouton compris : un clic de quelqu'un hors liste est refusé en éphémère au lieu d'arrêter le run.
+Chaque chemin est gardé par le `AllowedUserIds` de son canal. Bouton compris : un clic de quelqu'un hors liste est refusé en éphémère au lieu d'arrêter le run.
 
 ---
 
@@ -353,11 +383,11 @@ préfixe et `Orkeon:Host:A2A:Port`.
 
 ## 7. Ce qui est livré, et ce qui ne l'est pas
 
-**Livré** : le host et son cycle de vie, le registre de crews avec isolation par run et plafond de concurrence, les ports de la passerelle, l'autorisation par liste, le routage thread-est-run, le répondeur throttlé, le canal Discord avec les slash-commands enregistrées `/status` et `/stop` et le bouton d'arrêt — un seul chemin autorisé pour les trois — et le serveur A2A opt-in, une compétence par crew exposée.
+**Livré** : le host et son cycle de vie, le registre de crews avec isolation par run et plafond de concurrence, les ports de la passerelle, l'autorisation par liste, le routage thread-est-run, le répondeur throttlé, le canal Discord avec les slash-commands enregistrées `/status` et `/stop` et le bouton d'arrêt — un seul chemin autorisé pour les trois —, le canal Microsoft Teams, et le serveur A2A opt-in, une compétence par crew exposée.
 
-**Non livré**, et sous-entendu nulle part : un ordonnanceur, le rechargement à chaud de la configuration, l'ajout ou le retrait de crews hébergées pendant que le démon tourne, tout canal de chat autre que Discord, et toute surface HTTP au-delà du serveur A2A et de l'[API du host](../reference/host-api.md) (désactivée par défaut : sondes de santé, routes de run et `POST /runs/{id}/input`) — ni enregistrement de tâche A2A (`GET /a2a/tasks/{id}` répond `501`). Une fonction des runners reste aussi hors du daemon : l'outil `semantic_search` n'est pas enregistré (les serveurs MCP de la section `MCP` sont connectés au démarrage, comme pour un run — voir [Intégration MCP](mcp.md)). Les ports sont écrits de sorte que le protocole JSONL du bus d'événements en soit une implémentation légitime — le modèle ne se referme pas sur le chat — mais ce canal-là n'est pas écrit.
+**Non livré**, et sous-entendu nulle part : un ordonnanceur, le rechargement à chaud de la configuration, l'ajout ou le retrait de crews hébergées pendant que le démon tourne, tout canal de chat autre que Discord et Teams, et toute surface HTTP au-delà du point d'entrée Teams, du serveur A2A et de l'[API du host](../reference/host-api.md) (désactivée par défaut : sondes de santé, routes de run et `POST /runs/{id}/input`) — ni enregistrement de tâche A2A (`GET /a2a/tasks/{id}` répond `501`). Une fonction des runners reste aussi hors du daemon : l'outil `semantic_search` n'est pas enregistré (les serveurs MCP de la section `MCP` sont connectés au démarrage, comme pour un run — voir [Intégration MCP](mcp.md)). Les ports sont écrits de sorte que le protocole JSONL du bus d'événements en soit une implémentation légitime — le modèle ne se referme pas sur le chat — mais ce canal-là n'est pas écrit.
 
-**Une chose ne peut pas être vérifiée en CI** : le critère de succès de la spec elle-même — lancer une crew depuis un vrai fil Discord, voir la progression, l'interrompre par bouton, avec le service en daemon systemd. Cela exige un compte Discord et un serveur, donc une action propriétaire. Ce que la CI tient, c'est tout ce qui borde la socket : la traduction des messages, les deux limites de la plateforme, l'autorisation, le routage, le throttling et l'isolation.
+**Une chose ne peut pas être vérifiée en CI** : le critère de succès de la spec elle-même — lancer une crew depuis un vrai fil Discord, voir la progression, l'interrompre par bouton, avec le service en daemon systemd. Cela exige un compte Discord et un serveur, donc une action propriétaire. Le canal Teams en est au même point : il a été essayé contre des formes relevées et des clés générées, jamais contre un vrai tenant. Ce que la CI tient, c'est tout ce qui borde la socket : la traduction des messages, les deux limites de la plateforme, l'autorisation, le routage, le throttling et l'isolation.
 
 ---
 

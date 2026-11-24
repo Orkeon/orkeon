@@ -1,0 +1,41 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+
+    <PackageId>Orkeon.Tools.Chat</PackageId>
+    <!-- Shipped inside the `Orkeon.Tools` umbrella package (src/packaging/Orkeon.Tools) — no standalone nupkg. -->
+    <IsPackable>false</IsPackable>
+    <Description>Chat agent tools for Orkeon: Microsoft Teams through Microsoft Graph, over plain HTTP, with OAuth2 sign-in, per-account rights and allowed places.</Description>
+    <PackageTags>AI;Agents;LLM;Orkeon;Tools;Chat;Teams;MicrosoftTeams;Graph</PackageTags>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Orkeon.Tools.Chat.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\constants\Orkeon.Constants.Configuration\Orkeon.Constants.Configuration.csproj" />
+    <ProjectReference Include="..\..\core\Orkeon.Domain\Orkeon.Domain.csproj" />
+    <ProjectReference Include="..\Orkeon.Tools.Abstractions\Orkeon.Tools.Abstractions.csproj" />
+    <!-- The prompt-injection detector screens every message an agent reads (ADR-013). -->
+    <ProjectReference Include="..\..\rag\Orkeon.Rag\Orkeon.Rag.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="HtmlAgilityPack" />
+    <PackageReference Include="Markdig" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
+    <PackageReference Include="Microsoft.Extensions.Http" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
+    <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
+
+</Project>

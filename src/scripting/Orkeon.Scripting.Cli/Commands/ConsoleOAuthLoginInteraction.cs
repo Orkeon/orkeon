@@ -4,10 +4,10 @@ using Orkeon.Tools.Email.Administration;
 namespace Orkeon.Scripting.Cli.Commands;
 
 /// <summary>
-/// The terminal side of an interactive OAuth sign-in, shared by <c>orkeon email login</c> and
-/// <c>orkeon drive login</c>: the same conversation, naming the kind of account it signs in.
+/// The terminal side of an interactive OAuth sign-in, shared by <c>orkeon email login</c>,
+/// <c>orkeon drive login</c> and <c>orkeon chat login</c>: the same conversation, naming the kind of account it signs in.
 /// </summary>
-/// <param name="family">How the sentences name the account: <c>e-mail</c>, <c>drive</c>.</param>
+/// <param name="family">How the sentences name the account: <c>e-mail</c>, <c>drive</c>, <c>chat</c>.</param>
 /// <param name="console">The terminal the conversation is held on.</param>
 internal sealed class ConsoleOAuthLoginInteraction(string family, IRunnerConsole console) : IEmailLoginInteraction
 {

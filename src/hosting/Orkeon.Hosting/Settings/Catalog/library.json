@@ -354,6 +354,13 @@
       "description": "The caller's side of the tool bridge, section `Orkeon:Tools:Bridge`: the tools of this Orkeon that run on another machine. Nothing is bridged while `Address` is unset or `Allow` is empty."
     },
     {
+      "path": "Orkeon:Tools:Chat",
+      "category": "tools",
+      "hosts": [],
+      "registration": "AddOrkeonChatTools",
+      "description": "The `Orkeon:Tools:Chat` section, bound by `ChatOptionsBinder`. Nothing here is validated at bind time, and binding never throws: an account is checked when a tool or a command first uses it, so a broken chat section never breaks a crew that opens no chat."
+    },
+    {
       "path": "Orkeon:Tools:Drive",
       "category": "tools",
       "hosts": [],
@@ -2566,8 +2573,8 @@
       "path": "Security:ToolResults:TrustedTools",
       "section": "Security:ToolResults",
       "type": "list of string",
-      "default": ["email_accounts", "email_create_folder", "email_delete", "email_draft", "email_folders", "email_mark", "email_move", "email_parser", "email_read", "email_rename_folder", "email_save_attachment", "email_search", "email_send", "drive_read"],
-      "description": "Tools whose results bypass sanitization. Defaults to the `email_*` tools, which screen what they read with `PromptInjectionDocumentValidator` and mark it untrusted themselves (ADR-012), and to `drive_read`, which does the same with a file's text (ADR-013) — tagging them again would stack two envelopes. The other `drive_*` tools return names and metadata they do not screen, and stay sanitized. Entries from configuration are added to these."
+      "default": ["email_accounts", "email_create_folder", "email_delete", "email_draft", "email_folders", "email_mark", "email_move", "email_parser", "email_read", "email_rename_folder", "email_save_attachment", "email_search", "email_send", "drive_read", "chat_list", "chat_meetings", "chat_members", "chat_read", "chat_search"],
+      "description": "Tools whose results bypass sanitization. Defaults to the `email_*` tools, which screen what they read with `PromptInjectionDocumentValidator` and mark it untrusted themselves (ADR-012), and to `drive_read`, which does the same with a file's text (ADR-013), and to `chat_list`, `chat_meetings`, `chat_members`, `chat_read` and `chat_search`, which screen the names and messages they return (ADR-021) — tagging them again would stack two envelopes. The other `drive_*` tools return names and metadata they do not screen, and stay sanitized. Entries from configuration are added to these."
     },
     {
       "path": "Security:Url:AllowedDomains",
@@ -3026,6 +3033,136 @@
       "type": "string",
       "default": "ORKEON_BRIDGE_TOKEN",
       "description": "The environment variable that holds the token; never the token itself."
+    },
+    {
+      "path": "Orkeon:Tools:Chat:Accounts:<name>:Auth:AdminGranted",
+      "section": "Orkeon:Tools:Chat",
+      "type": "list of string",
+      "default": [],
+      "description": "What the tenant administrator has consented to for the application: `ChannelMessages`, `ChannelEdit`, `Meetings`, `ChannelMembers`. Each adds its scope to the next sign-in."
+    },
+    {
+      "path": "Orkeon:Tools:Chat:Accounts:<name>:Auth:CertificatePathEnvVar",
+      "section": "Orkeon:Tools:Chat",
+      "type": "string",
+      "description": "Name of the environment variable holding the path of a PEM file with the certificate and its key, for `ClientCredentials`."
+    },
+    {
+      "path": "Orkeon:Tools:Chat:Accounts:<name>:Auth:ClientId",
+      "section": "Orkeon:Tools:Chat",
+      "type": "string",
+      "description": "The id of your Microsoft Entra application."
+    },
+    {
+      "path": "Orkeon:Tools:Chat:Accounts:<name>:Auth:ClientSecretEnvVar",
+      "section": "Orkeon:Tools:Chat",
+      "type": "string",
+      "description": "Name of the environment variable holding the client secret, for `ClientCredentials`."
+    },
+    {
+      "path": "Orkeon:Tools:Chat:Accounts:<name>:Auth:FederatedTokenFileEnvVar",
+      "section": "Orkeon:Tools:Chat",
+      "type": "string",
+      "description": "Name of the environment variable holding the path of a federated token file, for `ClientCredentials`."
+    },
+    {
+      "path": "Orkeon:Tools:Chat:Accounts:<name>:Auth:Method",
+      "section": "Orkeon:Tools:Chat",
+      "type": "enum",
+      "values": [
+        "OAuth2",
+        "ClientCredentials"
+      ],
+      "description": "`OAuth2` (default): a user signs in. `ClientCredentials`: an application signs in as itself, to read alone."
+    },
+    {
+      "path": "Orkeon:Tools:Chat:Accounts:<name>:Auth:Tenant",
+      "section": "Orkeon:Tools:Chat",
+      "type": "string",
+      "description": "The tenant id or domain; `organizations` when unset. Mandatory for `ClientCredentials`."
+    },
+    {
+      "path": "Orkeon:Tools:Chat:Accounts:<name>:Cloud",
+      "section": "Orkeon:Tools:Chat",
+      "type": "enum",
+      "values": [
+        "Global",
+        "UsGov",
+        "UsGovDoD",
+        "China"
+      ],
+      "description": "The Microsoft cloud: `Global` (default), `UsGov` or `UsGovDoD`; `China` is refused. Not read for a `TeamsWebhook`."
+    },
+    {
+      "path": "Orkeon:Tools:Chat:Accounts:<name>:Provider",
+      "section": "Orkeon:Tools:Chat",
+      "type": "enum",
+      "values": [
+        "Teams",
+        "TeamsWebhook"
+      ],
+      "description": "`Teams`, or `TeamsWebhook` to post into one place with no sign-in. Mandatory."
+    },
+    {
+      "path": "Orkeon:Tools:Chat:Accounts:<name>:Read:AllowedPlaces",
+      "section": "Orkeon:Tools:Chat",
+      "type": "list of string",
+      "default": [],
+      "description": "The places an agent may read. Empty means none."
+    },
+    {
+      "path": "Orkeon:Tools:Chat:Accounts:<name>:Rights",
+      "section": "Orkeon:Tools:Chat",
+      "type": "enum",
+      "default": "None",
+      "values": [
+        "None",
+        "Read",
+        "Send",
+        "Edit",
+        "Delete",
+        "React",
+        "Meetings"
+      ],
+      "description": "What an agent may do, e.g. `\"Read, Send\"`. Mandatory."
+    },
+    {
+      "path": "Orkeon:Tools:Chat:Accounts:<name>:Send:AllowedPlaces",
+      "section": "Orkeon:Tools:Chat",
+      "type": "list of string",
+      "default": [],
+      "description": "The places an agent may post in. Empty means none."
+    },
+    {
+      "path": "Orkeon:Tools:Chat:Accounts:<name>:Send:MaxPerHour",
+      "section": "Orkeon:Tools:Chat",
+      "type": "integer",
+      "description": "The most posts, edits, deletions and reactions, together, the account attempts in an hour, in this process. Unset sets no cap."
+    },
+    {
+      "path": "Orkeon:Tools:Chat:Accounts:<name>:Webhook:UrlEnvVar",
+      "section": "Orkeon:Tools:Chat",
+      "type": "string",
+      "description": "Name of the environment variable holding the address of the Workflows webhook, never the address itself."
+    },
+    {
+      "path": "Orkeon:Tools:Chat:CredentialsDirectory",
+      "section": "Orkeon:Tools:Chat",
+      "type": "string",
+      "description": "Physical directory holding the OAuth tokens, for a host whose per-user settings directory is not the right one (a service account). Read by the host, not by the tools."
+    },
+    {
+      "path": "Orkeon:Tools:Chat:DefaultAccount",
+      "section": "Orkeon:Tools:Chat",
+      "type": "string",
+      "description": "The account a call uses when it names none. Optional with a single account."
+    },
+    {
+      "path": "Orkeon:Tools:Chat:Screening:WithholdRejected",
+      "section": "Orkeon:Tools:Chat",
+      "type": "boolean",
+      "default": false,
+      "description": "When true, a message the prompt-injection detector rejects has its text withheld. Off by default, as for e-mail: the detector flags; rights and places bound an agent."
     },
     {
       "path": "Orkeon:Tools:Drive:Accounts:<name>:Auth:ClientId",

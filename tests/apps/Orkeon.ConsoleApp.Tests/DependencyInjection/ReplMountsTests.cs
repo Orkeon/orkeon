@@ -147,19 +147,19 @@ public sealed class ReplMountsTests : IDisposable
             case "a --mount on /sandbox":
                 args = ["--mount", $"{d}:/sandbox:rw"];
                 expected = "ERROR: '/sandbox' is a virtual root reserved by the runner: this command mounts it for itself "
-                    + "(reserved here: /sandbox, /credentials). Give this mount another virtual name.";
+                    + "(reserved here: /sandbox, /credentials, /credential-files). Give this mount another virtual name.";
                 break;
             case "a /credentials an ORKEON_ variable declares":
                 (variable, value) = ("ORKEON_Orkeon__FileSystem__Mounts__0", $"{d}:/credentials:rw");
                 args = [];
                 expected = "ERROR: '/credentials' is a virtual root reserved by the runner: this command mounts it for itself "
-                    + "(reserved here: /sandbox, /credentials). Give this mount another virtual name.";
+                    + "(reserved here: /sandbox, /credentials, /credential-files). Give this mount another virtual name.";
                 break;
             case "a /cli-commands a bare variable declares beside --commands-dir":
                 (variable, value) = ("Orkeon__FileSystem__Mounts__0", $"{d}:/cli-commands:ro");
                 args = ["--commands-dir", e];
                 expected = "ERROR: '/cli-commands' is a virtual root reserved by the runner: this command mounts it for itself "
-                    + "(reserved here: /sandbox, /cli-commands, /credentials). Give this mount another virtual name.";
+                    + "(reserved here: /sandbox, /cli-commands, /credentials, /credential-files). Give this mount another virtual name.";
                 break;
             case "two different --mount on one root":
                 args = ["--mount", $"{d}:/x:ro", "--mount", $"{e}:/x:rw"];
@@ -197,6 +197,51 @@ public sealed class ReplMountsTests : IDisposable
         Assert.Equal(ReplStartup.RefusedExitCode, launch.ExitCode);
         Assert.NotEmpty(_reported);
         Assert.Equal(expected, _reported[0]);
+    }
+
+    /// <summary>#446 - the REPL reads the credential file of a chat application account as a runner does.</summary>
+    [Fact]
+    public async Task The_credential_file_of_a_chat_application_account_is_read_through_an_internal_mount()
+    {
+        var variable = "ORKEON_TEST_CHAT_FILE_" + Guid.NewGuid().ToString("N");
+        var keys = Folder("keys");
+        await File.WriteAllTextAsync(Path.Combine(keys, "token"), "jwt.a.b", TestContext.Current.CancellationToken);
+        var settings = Path.Combine(_root, "chat.json");
+        await File.WriteAllTextAsync(settings, $$"""
+            { "RaggableTree": { "Enabled": false }, "Orkeon": { "Tools": { "Chat": { "Accounts": { "ops": {
+              "Provider": "Teams", "Rights": "Read",
+              "Auth": { "Method": "ClientCredentials", "ClientId": "client-id", "Tenant": "contoso.example", "FederatedTokenFileEnvVar": "{{variable}}" },
+              "Read": { "AllowedPlaces": [ "chat:19:weekly@thread.v2" ] } } } } } } }
+            """, TestContext.Current.CancellationToken);
+        Environment.SetEnvironmentVariable(variable, Path.Combine(keys, "token"));
+        try
+        {
+            var launch = Start("--settings", settings);
+
+            using var host = launch.Host;
+            Assert.NotNull(host);
+            var mount = Assert.Single(MountsByRoot(host).Values, m => m.VirtualPath.StartsWith("/credential-files/", StringComparison.Ordinal));
+            Assert.Equal((keys, MountVisibility.Internal), (mount.BasePath, mount.Visibility));
+            Assert.False(Reads(host, mount.VirtualPath + "/token"));
+            var accounts = await host.Services.GetRequiredService<Orkeon.Tools.Chat.Administration.ChatAccountAdministration>()
+                .ListAsync(TestContext.Current.CancellationToken);
+            Assert.Null(Assert.Single(accounts).CredentialProblem);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable(variable, null);
+        }
+    }
+
+    [Fact]
+    public void A_mount_on_the_credential_files_root_is_refused()
+    {
+        var d = Folder("d");
+
+        var launch = Start("--mount", $"{d}:/credential-files/mine:ro", "--allow-external-mounts");
+
+        Assert.Null(launch.Host);
+        Assert.Contains(_reported, line => line.Contains("'/credential-files' is a virtual root reserved by the runner", StringComparison.Ordinal));
     }
 
     /// <summary><c>/cli-commands</c> is the REPL's only while it mounts a <c>--commands-dir</c> there.</summary>

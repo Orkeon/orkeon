@@ -5,7 +5,7 @@
 **Scope**: `orkeon-host` — the daemon that hosts crews, the gateway that lets people reach them from a chat channel, and the A2A server that lets other agents run them.
 **Audience**: whoever installs and operates Orkeon on a server.
 
-Run from a terminal or embedded in a program, Orkeon assumes a human in front of a screen, on the same machine, for the length of one process. The service host lifts all three assumptions; the Discord channel gives the first place people can talk to it from somewhere they already are.
+Run from a terminal or embedded in a program, Orkeon assumes a human in front of a screen, on the same machine, for the length of one process. The service host lifts all three assumptions; the Discord and Microsoft Teams channels give places people can talk to it from somewhere they already are.
 
 ---
 
@@ -111,7 +111,7 @@ the boot mounts, unchanged.
 
 Two things worth knowing before you use it. Entering a scope **replaces** the mount set rather
 than merging with it, so the composed registry carries the boot mounts forward — the Internal ones (`/llm-logs`,
-`/sandbox`, `/credentials`) and the agent-facing ones, minus any path the crew's own mounts claim — without that, exchange logging and the code sandboxes would fail for the
+`/sandbox`, `/credentials`, `/credential-files`) and the agent-facing ones, minus any path the crew's own mounts claim — without that, exchange logging and the code sandboxes would fail for the
 length of the run, and the check that stops either gaining a second, agent-reachable address would
 go with them. A granted folder is an entry of the daemon: it is readable wherever it lies, without
 `--allow-external-mounts`. At start, a folder granted to a crew that is malformed or missing refuses the start with `78`
@@ -125,7 +125,7 @@ The configuration is **validated at start**: no crew under `Orkeon:Host:Crews`, 
 
 The start also refuses a `${NAME}` or `%NAME%` reference in a setting the host passes as written, naming the path and never the value, with exit 78 and before any MCP server connects: Orkeon never expands a variable ([the list](../reference/configuration.md#a-variable-reference-is-never-expanded)).
 
-The whole sequence that precedes the start runs under that barrier: the configuration the daemon boots from, its own sections — `Orkeon:Host` with its `A2A`, `Orkeon:Host:Discord`, and the `A2A` section —, **read once, at start**, and the runner host itself. Each refusal is one line naming the key — or the file, with the line and the position of what its JSON gets wrong — on stderr and, under the Windows SCM, in the Application event log.
+The whole sequence that precedes the start runs under that barrier: the configuration the daemon boots from, its own sections — `Orkeon:Host` with its `A2A`, `Orkeon:Host:Discord`, `Orkeon:Host:Teams`, and the `A2A` section —, **read once, at start**, and the runner host itself. Each refusal is one line naming the key — or the file, with the line and the position of what its JSON gets wrong — on stderr and, under the Windows SCM, in the Application event log.
 
 Crews are read **once**, at start: there is no directory scan and no reload. Adding a crew is an edit of the file and a restart.
 
@@ -174,16 +174,46 @@ A message becomes a run in a fixed order: **authorize, route, acknowledge, work.
 
 Messages **inside a thread**, from people: a message posted in a plain channel is ignored, and so is every message from a bot. The client connects with the `Guilds`, `GuildMessages` and `MessageContent` intents — `MessageContent` is a privileged intent, to be switched on for the bot in the Discord developer portal, or every message arrives empty. `AllowedUserIds` is the only access control: `GuildIds` chooses where the slash commands are registered, it does not restrict who may talk to the bot.
 
+### The Microsoft Teams channel
+
+`Orkeon:Host:Teams` (off by default) runs beside Discord or alone; each channel has its own allow list, routes and default crew. Teams calls the bot, so this channel **listens**: `POST /api/messages` on its own prefix.
+
+```json
+"Orkeon": {
+  "Host": {
+    "Teams": {
+      "Enabled": true,
+      "AppId": "11111111-2222-3333-4444-555555555555",
+      "TenantId": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+      "SecretEnvironmentVariable": "ORKEON_TEAMS_APP_SECRET",
+      "AllowedUserIds": [ "99999999-8888-7777-6666-555555555555" ],
+      "Prefix": "http://localhost:3978/",
+      "Routes": [ { "Channel": "19:abc123@thread.tacv2", "Crew": "veille" } ]
+    }
+  }
+}
+```
+
+**What you set up at Microsoft.** A single-tenant application registration with a client secret, an Azure Bot using it with the Microsoft Teams channel enabled and `https://<your host>/api/messages` as messaging endpoint, and a Teams app carrying the bot, installed in the team or the chat. `AllowedUserIds` are Entra **object ids**. `Routes` is a list because a Teams channel id contains `:`, which a configuration key cannot hold; `Channel` is the id alone, without the `;messageid=…` of a thread.
+
+**TLS ends in front of the host.** Microsoft calls over HTTPS only. Put a reverse proxy that holds the certificate in front of the loopback prefix and forward `/api/messages` alone, with `Host: localhost:3978` — the listener answers only the host name of its prefix. In a container, or when the proxy keeps the original `Host`, use `http://+:3978/`; the start then warns that only the proxy may reach that port. An `https://` prefix is accepted under Windows alone, with a certificate bound to the port (`netsh http add sslcert`). A prefix that cannot be bound refuses the start. The listener bounds the concurrent requests (64) and the time a body takes (10 seconds), not the connections or their headers: let the proxy limit those.
+
+**Every request is proven before its body is read.** The bearer token must be signed (RS256) by a key of the Bot Framework's OpenID metadata, issued by `https://api.botframework.com`, for `AppId`, within its lifetime (five minutes of skew), and carry one `serviceurl` claim; otherwise `401`. Signing keys are read from a fixed address, cached twelve hours and trusted twenty-four at most; without keys nothing is accepted (`503`). Then the content type and the size (256 KB) are checked, and the body is held to the token: the same `serviceUrl`, a signing key endorsed for `msteams`, and `TenantId` — otherwise `403`. Nothing turns these checks off.
+
+**Replies go to the validated service only.** The `serviceurl` claim must be `https` on a host Microsoft publishes for Teams, or one named by `ServiceHosts`; redirects are not followed. The bot's own token is obtained with the client credentials, cached until shortly before it expires, and neither it nor the secret is logged. The national clouds (GCC High, DoD, 21Vianet) use other issuers and sign-in addresses and are not supported.
+
+**A thread is a run** here too: in a team's channel, the thread; in a personal or group chat, the whole chat. In a channel Teams delivers only the messages that **mention the bot** (unless the app was granted more), and the mention is removed. A message without an Entra object id, from another bot, or empty is ignored; an activity delivered twice runs once. The request is answered at once, and the run goes on. Answers are cut to 20,000 characters. HTML in an answer is escaped outside code, so `List<string>` shows literally and no image tag is rendered; a Markdown image becomes a plain link. A final reply is retried when the connection fails, when the bot's sign-in fails for a transient reason, and on HTTP 412, 429, 502, 503 and 504.
+
 ### Commands
 
-`/status` and `/stop` are **registered slash commands** — Discord's client autocompletes them, and the reply is **ephemeral**: a status poke or a refusal is the invoker's business, not one more line in everyone's thread. They are registered at connect time: globally when `GuildIds` is empty (no configuration, but Discord caches global commands for up to an hour), or per named guild (immediately available — the dev loop). The gateway does not parse message text for them: a literal `/stop` typed as plain text is a prompt like any other.
+`/status` and `/stop` are, on Discord, **registered slash commands** — Discord's client autocompletes them, and the reply is **ephemeral**: a status poke or a refusal is the invoker's business, not one more line in everyone's thread. They are registered at connect time: globally when `GuildIds` is empty (no configuration, but Discord caches global commands for up to an hour), or per named guild (immediately available — the dev loop). On Discord the gateway does not parse message text for them: a literal `/stop` typed as plain text is a prompt like any other. On Teams, a message that is `/status` or `/stop` and nothing else (the mention aside) is the command, answered in the thread; there is no stop button.
 
 | Command | Effect |
 |---|---|
 | `/status` | What this conversation is running, and since when. |
 | `/stop` | Stops this conversation's run. The **Stop button** is the same invocation with a different finger — same allow-list check, same wording back. |
 
-Both paths are gated by `AllowedUserIds`. That includes the button: a click from someone off the list is refused ephemerally instead of stopping the run.
+Every path is gated by the `AllowedUserIds` of its channel. That includes the button: a click from someone off the list is refused ephemerally instead of stopping the run.
 
 ---
 
@@ -349,11 +379,11 @@ process holds, a port under 1024 without the privilege — names the prefix and
 
 ## 7. What ships, and what does not
 
-**Ships**: the host and its lifetime, the crew registry with per-run isolation and a concurrency ceiling, the gateway ports, the allow-list authorizer, thread-is-run routing, the throttled responder, the Discord channel with registered `/status` and `/stop` slash commands and the stop button — one authorized path for all three — and the opt-in A2A server, one skill per exposed crew.
+**Ships**: the host and its lifetime, the crew registry with per-run isolation and a concurrency ceiling, the gateway ports, the allow-list authorizer, thread-is-run routing, the throttled responder, the Discord channel with registered `/status` and `/stop` slash commands and the stop button — one authorized path for all three —, the Microsoft Teams channel, and the opt-in A2A server, one skill per exposed crew.
 
-**Does not ship**, and is not implied anywhere: a scheduler, hot configuration reload, adding or removing hosted crews while the daemon runs, every chat channel other than Discord, and any HTTP surface beyond the A2A server and the [host API](../reference/host-api.md) (off by default: health probes, the run routes and `POST /runs/{id}/input`) — no A2A task records (`GET /a2a/tasks/{id}` answers `501`). One runner feature stays out of the daemon too: the `semantic_search` tool is not registered (the MCP servers of the `MCP` section are connected at startup, like a run's — see [MCP integration](mcp.md)). The gateway ports are shaped so the run event bus's JSONL protocol is a legitimate implementation of the same contract — the model is not closed around chat — but that channel is not written.
+**Does not ship**, and is not implied anywhere: a scheduler, hot configuration reload, adding or removing hosted crews while the daemon runs, every chat channel other than Discord and Teams, and any HTTP surface beyond the Teams endpoint, the A2A server and the [host API](../reference/host-api.md) (off by default: health probes, the run routes and `POST /runs/{id}/input`) — no A2A task records (`GET /a2a/tasks/{id}` answers `501`). One runner feature stays out of the daemon too: the `semantic_search` tool is not registered (the MCP servers of the `MCP` section are connected at startup, like a run's — see [MCP integration](mcp.md)). The gateway ports are shaped so the run event bus's JSONL protocol is a legitimate implementation of the same contract — the model is not closed around chat — but that channel is not written.
 
-**One thing cannot be verified in CI**: the specification's own acceptance criterion — launching a crew from a real Discord thread, watching it progress, stopping it by button, with the service running as a systemd daemon. It needs a Discord account and a server, which is an owner action. What CI does hold is everything either side of the socket: the message translation, the two platform limits, authorization, routing, throttling and isolation.
+**One thing cannot be verified in CI**: the specification's own acceptance criterion — launching a crew from a real Discord thread, watching it progress, stopping it by button, with the service running as a systemd daemon. It needs a Discord account and a server, which is an owner action. The Teams channel is in the same place: it has been tried against recorded shapes and generated keys, never against a real tenant. What CI does hold is everything either side of the socket: the message translation, the two platform limits, authorization, routing, throttling and isolation.
 
 ---
 

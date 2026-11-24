@@ -14,6 +14,7 @@
             "src/constants/Orkeon.Constants.Cli/bin/Release/net10.0/Orkeon.Constants.Cli.dll",
             "src/tools/Orkeon.Tools.Abstractions/bin/Release/net10.0/Orkeon.Tools.Abstractions.dll",
             "src/tools/Orkeon.Tools.Analysis/bin/Release/net10.0/Orkeon.Tools.Analysis.dll",
+            "src/tools/Orkeon.Tools.Chat/bin/Release/net10.0/Orkeon.Tools.Chat.dll",
             "src/tools/Orkeon.Tools.Code/bin/Release/net10.0/Orkeon.Tools.Code.dll",
             "src/tools/Orkeon.Tools.Data/bin/Release/net10.0/Orkeon.Tools.Data.dll",
             "src/tools/Orkeon.Tools.Drive/bin/Release/net10.0/Orkeon.Tools.Drive.dll",

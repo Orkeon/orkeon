@@ -119,7 +119,7 @@ var task = new CrewTaskBuilder()
 
 Un Tool est une capacité concrète mise à disposition d'un agent. L'interface `IBaseTool` expose un `Name`, une `Description`, un `Schema` (JSON schema des paramètres), et deux méthodes d'exécution : `CallAsync` (protocole structuré via `ToolCallRequest`/`ToolCallResponse`) et `ExecuteAsync` (mode legacy string).
 
-Les outils sont organisés en familles — `Orkeon.Tools.FileSystem`, `.Data`, `.Web`, `.Code`, `.Email`, `.Drive`, `.EventHub`, `.Rag`, `.Analysis` — livrées ensemble dans le paquet NuGet `Orkeon.Tools` ; chaque famille a sa propre extension d'enregistrement — `AddOrkeonFileSystemTools()`, …, `AddOrkeonDriveTools(configuration)`, …, `AddRaggableTreeTools()` (voir [Bootstrap](./bootstrap.md)) et la liste complète est l'[inventaire des outils](../tools/inventory.md). Pour donner une boîte aux lettres aux agents (la famille `.Email` : Gmail, Outlook.com, votre propre serveur IMAP/POP3/SMTP), commencez par [Donner une boîte aux lettres à vos agents](./give-your-agents-a-mailbox.md).
+Les outils sont organisés en familles — `Orkeon.Tools.FileSystem`, `.Data`, `.Web`, `.Code`, `.Email`, `.Drive`, `.Chat`, `.EventHub`, `.Rag`, `.Analysis` — livrées ensemble dans le paquet NuGet `Orkeon.Tools` ; chaque famille a sa propre extension d'enregistrement — `AddOrkeonFileSystemTools()`, …, `AddOrkeonDriveTools(configuration)`, …, `AddRaggableTreeTools()` (voir [Bootstrap](./bootstrap.md)) et la liste complète est l'[inventaire des outils](../tools/inventory.md). Pour donner une boîte aux lettres aux agents (la famille `.Email` : Gmail, Outlook.com, votre propre serveur IMAP/POP3/SMTP), commencez par [Donner une boîte aux lettres à vos agents](./give-your-agents-a-mailbox.md).
 
 ### Crew (`Orkeon.Domain.Crew.Crew`)
 
@@ -275,7 +275,7 @@ Les agents collaborent par la délégation : les outils `AskQuestionTool` et `De
 
 ```
 Orkeon.sln
-├── src/                            # 51 projets, 14 zones
+├── src/                            # 52 projets, 14 zones
 │   ├── core/
 │   │   ├── Orkeon.Domain/          # Entités, value objects, interfaces, événements
 │   │   ├── Orkeon.Application/     # CQRS, services, orchestration, ports
@@ -283,6 +283,7 @@ Orkeon.sln
 │   ├── tools/                      # 11 packs d'outils
 │   │   ├── Orkeon.Tools.Abstractions/     # Classes de base des outils
 │   │   ├── Orkeon.Tools.Analysis/         # Outils agents RaggableTree (29)
+│   │   ├── Orkeon.Tools.Chat/             # Outils chat (Microsoft Teams)
 │   │   ├── Orkeon.Tools.Code/             # Outils code (ShellCommand)
 │   │   ├── Orkeon.Tools.Data/             # Outils données (CSV, PDF, JSON, SQL, MongoDB…)
 │   │   ├── Orkeon.Tools.Drive/            # Outils Google Drive et OneDrive
@@ -305,7 +306,7 @@ Orkeon.sln
 │   ├── packaging/                  # Projets d'empaquetage NuGet (Orkeon, Orkeon.Tools, 7 enveloppes optionnelles et Orkeon.Templates)
 │   └── apps/
 │       └── Orkeon.ConsoleApp/      # REPL interactif (`orkeon-repl`)
-├── tests/                          # 35 projets (miroirs de src + e2e, shared)
+├── tests/                          # 36 projets (miroirs de src + e2e, shared)
 ├── examples/                       # 104 exemples numérotés en 9 catégories, plus des vitrines
 └── docs/                           # Documentation (EN + miroir docs/fr)
 ```

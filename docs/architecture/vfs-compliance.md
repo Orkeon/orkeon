@@ -287,20 +287,30 @@ both shapes).
 A runner mounts a few roots for itself as **internal** mounts (`Orkeon:FileSystem:InternalMounts`,
 `MountVisibility.Internal`): `/llm-logs` (the `--llm-log` exchange files), `/sandbox` (where the
 code sandboxes stage what they run), `/state` (the checkpoint store), `/runs` (the run history),
-`/llm-mock` and `/llm-cassette` (`--llm-mock`, `--llm-record`/`--llm-replay`) and `/credentials` (the OAuth tokens of the e-mail and drive accounts —
-mounted only when an OAuth account of either family is declared). The registry refuses an internal mount to every
+`/llm-mock` and `/llm-cassette` (`--llm-mock`, `--llm-record`/`--llm-replay`), `/credentials` (the OAuth tokens of the e-mail, drive and chat accounts —
+mounted only when an OAuth account of one of these families is declared) and `/credential-files` (the folder of each
+certificate or federated token file of a chat application account, mounted **read-only**, one subfolder per folder,
+`/credential-files/<16 hex of the SHA-256 of the directory path>`, only when such an account is declared; the REPL mounts it too). The registry refuses an internal mount to every
 ordinary caller and reports it like a path that does not exist, so no agent-facing tool can reach
 or even name one ([ADR-008](../adr/ADR-008-virtual-paths-are-the-only-currency.md)). The few
 components that must write there ask DI for `PrivilegedFileSystemAccess` by name: the exchange
-logger, the code sandboxes and the token stores (`FileSystemEmailTokenStore` and
-`FileSystemDriveTokenStore`, which the runner host registers over `/credentials/email` and
-`/credentials/drive`). They still go through the VFS. The only raw
+logger, the code sandboxes and the token stores (`FileSystemEmailTokenStore`,
+`FileSystemDriveTokenStore` and `FileSystemChatTokenStore`, which the runner host registers over
+`/credentials/email`, `/credentials/drive` and `/credentials/chat`) and `ChatCredentialFile`, which reads the
+certificate or federated token file of a chat application account under `/credential-files`, again for each token. They still go through the VFS. The only raw
 `System.IO` on that path is the runner creating the physical `credentials` directory and its
-`email` and `drive` subdirectories (owner-only on Unix) before any mount exists — `Hosting/Runner*` bootstrap,
+`email`, `drive` and `chat` subdirectories (owner-only on Unix), and checking that the folder of a credential file exists, before any mount exists — `Hosting/Runner*` bootstrap,
 an already-ratified `EXCEPTION-BOOTSTRAP` scope, not a new category. `orkeon run` refuses a user
 mount claiming one of these roots (`EnsureReservedRootsAreFree`, `/state` and `/runs` included);
 every other entry point refuses the roots it reserves for itself (`/crew` and `/sandbox` for
-`--list-tools` and `mcp serve`), and all of them refuse `/credentials`, whatever the accounts.
+`--list-tools` and `mcp serve`), and all of them refuse `/credentials` and `/credential-files` (or any path under them), whatever the accounts.
+
+An internal mount closes its physical folder to the agents, whatever other mount holds it. So the folder
+of a credential file must be a folder of its own: when it is the working directory, a folder mounted for
+the agents or a folder that holds one, the host does not mount it, warns at start ("Keep it in a folder of
+its own.") and that account cannot sign in. The whole folder is mounted, read-only, and only privileged
+components reach its other files. Links are followed inside it (the Kubernetes projected-token layout
+`token -> ..data/token` works); a link that leaves the folder is refused.
 
 ## Per-scope mounts (ambient mount override)
 
@@ -337,7 +347,7 @@ two crews each granted `/output` over different folders is exactly what one flat
 express.
 
 Both halves of the boot set have to survive, for different reasons. The **Internal** ones
-(`RunnerVirtualRoots`: `/llm-logs`, `/sandbox`, `/state`, `/runs`, `/credentials`, …) are a confidentiality matter: dropping them stops
+(`RunnerVirtualRoots`: `/llm-logs`, `/sandbox`, `/state`, `/runs`, `/credentials`, `/credential-files`, …) are a confidentiality matter: dropping them stops
 exchange logging, both code sandboxes and the e-mail token store resolving, and it drops
 `IsUnderInternalMountUnsafe`, the check that stops any of them gaining a second, agent-reachable
 address through one of the execution's own mounts. The **agent-facing** ones are just as load-bearing: `orkeon-host` mounts each hosted

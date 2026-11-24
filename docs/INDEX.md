@@ -43,6 +43,14 @@ Giving agents a mailbox is one of the most requested features: the tutorial gets
 | [`orkeon drive` commands](./reference/cli.md#orkeon-drive) | `accounts`, `check` (find the root folder and list it), `login` / `logout` — options and exit codes |
 | [ADR-013 — the drive tool family](./adr/ADR-013-drive-tool-family.md) | Why a tool family rather than a VFS mount, and the OAuth layer the two cloud families share |
 
+### Chat
+
+| File | Description |
+|------|-------------|
+| [Chat tools](./guides/chat.md) | Give agents Microsoft Teams: registering the Entra application, `orkeon chat login` in the browser or with `--device-code`, rights and scopes, places closed by default, administrator consent, what a message may and may not do to an agent |
+| [`orkeon chat` commands](./reference/cli.md#orkeon-chat) | `accounts`, `check` (what the account can do, right by right), `login` / `logout` — options and exit codes |
+| [ADR-021 — the chat tool family](./adr/ADR-021-chat-tool-family.md) | Why tools named after the function, and why places are closed by default |
+
 ### Architecture
 
 | File | Description |
@@ -54,7 +62,7 @@ Giving agents a mailbox is one of the most requested features: the tutorial gets
 | [Events, CQRS and observability](./architecture/domain-events.md) | 23 domain events — the tasks' and agents' as a run goes, the crew's at the end of each kickoff, and by the CQRS commands —, the CQRS pipeline, 2 observation surfaces (`ICrewExecutionHook`, `ICallbackHandler` with a step per tool call) |
 | [EventHub and crew lifecycle](./architecture/event-hub-and-crew-lifecycle.md) | Reference specification for inter-agent and inter-crew messaging (EventHub) and crew sleep/wake — Application ports, the in-memory adapter and its five middleware stages (the shipped hosts wire only the ACL), the agent tools; SQLite persistence and sleep/wake are specified, not built yet |
 | [The host API and the health probes](./reference/host-api.md) | `orkeon-host`'s HTTP surface, off by default: `/healthz` and `/readyz` (what each checks, systemd, Docker and Kubernetes), `POST /runs` with idempotency keys, run listing, SSE and NDJSON events with resume, cancel; authentication shared with A2A |
-| [The service host and the chat gateway](./architecture/service-host.md) | `orkeon-host`: hosting crews as a daemon (systemd, Windows service, container), per-run isolation, and the Discord gateway with its allow list, thread-is-run routing and stop button |
+| [The service host and the chat gateway](./architecture/service-host.md) | `orkeon-host`: hosting crews as a daemon (systemd, Windows service, container), per-run isolation, and the Discord and Microsoft Teams gateway with its allow list, thread-is-run routing and stop command |
 | [The run event bus](./architecture/run-event-bus.md) | `orkeon run --events jsonl`: the versioned protocol another program reads, the commands it can send back, and the `client://` seat it gets at the run's hub |
 | [Security, resilience and plugins](./architecture/security.md) | Defense in depth: the security layers, from tool to audit; Polly policies, checkpointing, plugin system |
 | [VFS compliance](./architecture/vfs-compliance.md) | VFS-only principle (all I/O via `IFileSystemService`): `Orkeon.Compliance.Vfs` Roslyn analyzer, 7 diagnostics, exempted scopes, migration exit criteria |
@@ -88,7 +96,7 @@ Giving agents a mailbox is one of the most requested features: the tutorial gets
 
 | File | Description |
 |------|-------------|
-| [Tool inventory](./tools/inventory.md) | 124 tools by category with their call parameters, YAML resolution (strict/lenient), DI registration, availability per host, identified gaps |
+| [Tool inventory](./tools/inventory.md) | 134 tools by category with their call parameters, YAML resolution (strict/lenient), DI registration, availability per host, identified gaps |
 | [Creating a new tool](./tools/new-tool-pattern.md) | Typed pipeline, FieldSchema/ReturnSchema attributes, composition pattern, registration |
 
 ### Guides
@@ -115,7 +123,7 @@ Giving agents a mailbox is one of the most requested features: the tutorial gets
 |------|-------------|
 | [Scripting DSL reference](./reference/scripting-dsl.md) | Every `.ork.ts` builder and method, with the column that exists nowhere else: which of the two shapes honours it. Plus the known gaps between the typings and the runtime |
 | [Examples catalog](./reference/examples-catalog.md) | Editorial map of `examples/` (9 business categories + RAG/RaggableTree/scripting showcases); the generated `examples/INDEX.md` is the authoritative inventory |
-| [`orkeon` CLI reference](./reference/cli.md) | Every command (`run`, `init`, `llm`, `rag`, `forge`, `usecases`, `email`, `drive`, `doctor`, `settings`, `typings`, `mcp`, `quickstart`, `eval`, `runs`) with options and examples, plus `orkeon-repl` |
+| [`orkeon` CLI reference](./reference/cli.md) | Every command (`run`, `init`, `llm`, `rag`, `forge`, `usecases`, `email`, `drive`, `chat`, `doctor`, `settings`, `typings`, `mcp`, `quickstart`, `eval`, `runs`) with options and examples, plus `orkeon-repl` |
 | [Configuration reference](./reference/configuration.md) | The single map of the settings (`Llm`, `Orkeon:*`, `MCP`…): sources and precedence, then every key by category — one line per key, with its type, its default and the hosts that read it |
 | [Limits and constraints](./reference/limitations.md) | Known constraints of the current version, including what ships but is not wired yet |
 | [A2A conformance matrix](./reference/a2a-conformance.md) | Honest position vs the A2A v1.0 spec: operations, data model, bindings, security — what interoperates and what does not |

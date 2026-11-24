@@ -39,6 +39,7 @@
     "Orkeon:Guardian",
     "Orkeon:Host",
     "Orkeon:Host:Discord",
+    "Orkeon:Host:Teams",
     "Orkeon:HumanInput",
     "Orkeon:Kev",
     "Orkeon:LanceDb",
@@ -60,6 +61,7 @@
     "Orkeon:Sqlite",
     "Orkeon:TokenCounter",
     "Orkeon:Tools:Bridge",
+    "Orkeon:Tools:Chat",
     "Orkeon:Tools:Drive",
     "Orkeon:Tools:Email",
     "Orkeon:Tools:Firefox",
@@ -96,6 +98,12 @@
       "category": "service-host-and-a2a",
       "hosts": [],
       "description": "The Discord channel's configuration. **The token is named, never written.** `DiscordChannelOptions.TokenEnvironmentVariable` holds the *name* of an environment variable; the value never touches the configuration file, a commit or a container image layer. The LLM providers already follow this rule, and a bot token — which can read every message a server sends — does not get an exception."
+    },
+    {
+      "path": "Orkeon:Host:Teams",
+      "category": "service-host-and-a2a",
+      "hosts": [],
+      "description": "The Microsoft Teams channel's configuration (#446). **The secret is named, never written.** `TeamsChannelOptions.SecretEnvironmentVariable` holds the *name* of an environment variable, as the Discord channel's token does."
     }
   ],
   "settings": [
@@ -361,6 +369,82 @@
       "type": "string",
       "default": "ORKEON_DISCORD_TOKEN",
       "description": "Name of the environment variable holding the bot token."
+    },
+    {
+      "path": "Orkeon:Host:Teams:AllowedUserIds",
+      "section": "Orkeon:Host:Teams",
+      "type": "list of string",
+      "default": [],
+      "description": "Entra object ids of the people allowed to talk to the bot. **Empty denies everyone**, and an enabled channel refuses the start."
+    },
+    {
+      "path": "Orkeon:Host:Teams:AppId",
+      "section": "Orkeon:Host:Teams",
+      "type": "string",
+      "default": "",
+      "description": "The bot's application (client) id: the audience every incoming token must carry."
+    },
+    {
+      "path": "Orkeon:Host:Teams:DefaultCrew",
+      "section": "Orkeon:Host:Teams",
+      "type": "string",
+      "description": "The crew a room without a route reaches. Unset, it is the first crew declared under `Orkeon:Host:Crews`; set, it must name one of them."
+    },
+    {
+      "path": "Orkeon:Host:Teams:Enabled",
+      "section": "Orkeon:Host:Teams",
+      "type": "boolean",
+      "default": false,
+      "description": "Whether the channel is switched on. Off unless a deployment says otherwise."
+    },
+    {
+      "path": "Orkeon:Host:Teams:Prefix",
+      "section": "Orkeon:Host:Teams",
+      "type": "string",
+      "default": "http://localhost:3978/",
+      "description": "The listener's prefix: scheme, host, port and a closing slash. The channel answers `POST /api/messages` there; Microsoft must reach it over HTTPS, through a reverse proxy that terminates TLS in front of it."
+    },
+    {
+      "path": "Orkeon:Host:Teams:ProgressInterval",
+      "section": "Orkeon:Host:Teams",
+      "type": "duration",
+      "default": "00:00:05",
+      "description": "How long progress updates are spaced out. Teams limits what a bot posts in one conversation."
+    },
+    {
+      "path": "Orkeon:Host:Teams:Routes:<i>:Channel",
+      "section": "Orkeon:Host:Teams",
+      "type": "string",
+      "default": "",
+      "description": "The Teams channel (or chat) id, as Teams writes it: `19:…@thread.tacv2`."
+    },
+    {
+      "path": "Orkeon:Host:Teams:Routes:<i>:Crew",
+      "section": "Orkeon:Host:Teams",
+      "type": "string",
+      "default": "",
+      "description": "The hosted crew a thread opened in that channel starts."
+    },
+    {
+      "path": "Orkeon:Host:Teams:SecretEnvironmentVariable",
+      "section": "Orkeon:Host:Teams",
+      "type": "string",
+      "default": "ORKEON_TEAMS_APP_SECRET",
+      "description": "Name of the environment variable holding the application's client secret."
+    },
+    {
+      "path": "Orkeon:Host:Teams:ServiceHosts",
+      "section": "Orkeon:Host:Teams",
+      "type": "list of string",
+      "default": [],
+      "description": "Hosts of the Bot Connector service replies may go to, beside the ones Microsoft publishes for Teams (`smba.trafficmanager.net`, `smba.infra.gcc.teams.microsoft.com`). An activity naming another host is refused, whatever its token says."
+    },
+    {
+      "path": "Orkeon:Host:Teams:TenantId",
+      "section": "Orkeon:Host:Teams",
+      "type": "string",
+      "default": "",
+      "description": "The Entra tenant the bot is registered in (single-tenant). An activity of another tenant is refused."
     }
   ]
 }

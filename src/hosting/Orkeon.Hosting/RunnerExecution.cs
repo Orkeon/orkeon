@@ -436,6 +436,10 @@ public static partial class RunnerExecution
         reserved = reserved.Contains(RunnerVirtualRoots.Credentials, StringComparer.Ordinal)
             ? reserved
             : [.. reserved, RunnerVirtualRoots.Credentials];
+        // /credential-files likewise: the credential files of the chat application accounts (#446).
+        reserved = reserved.Contains(RunnerVirtualRoots.CredentialFiles, StringComparer.Ordinal)
+            ? reserved
+            : [.. reserved, RunnerVirtualRoots.CredentialFiles];
 
         foreach (var mountString in userMounts.Concat(RunnerSettings.ReadDeclaredMounts(configuration)))
         {
@@ -453,7 +457,8 @@ public static partial class RunnerExecution
             }
 
             var clash = reserved.FirstOrDefault(r =>
-                string.Equals(virtualPath.TrimEnd('/'), r, StringComparison.Ordinal));
+                string.Equals(virtualPath.TrimEnd('/'), r, StringComparison.Ordinal))
+                ?? (virtualPath.StartsWith(RunnerVirtualRoots.CredentialFiles + "/", StringComparison.Ordinal) ? RunnerVirtualRoots.CredentialFiles : null);
             if (clash is null)
                 continue;
 

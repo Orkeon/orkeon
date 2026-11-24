@@ -74,3 +74,7 @@ toujours `IBaseTool` directement), et `Tools.Abstractions` ne référence toujou
 ## Amendement (2026-10-29)
 
 `Orkeon.Tools.Drive` ([ADR-013](./ADR-013-drive-tool-family.md)) a rejoint la famille après la note ci-dessus : `src/tools/` compte maintenant **onze** projets, `Tools.Abstractions` et dix familles, et chaque famille référence `Tools.Abstractions`.
+
+## Amendement (2026-11-23)
+
+`Orkeon.Tools.Chat` ([ADR-021](./ADR-021-chat-tool-family.md)) a rejoint la famille : `src/tools/` compte maintenant **douze** projets, `Tools.Abstractions` et onze familles, et chaque famille référence `Tools.Abstractions`.

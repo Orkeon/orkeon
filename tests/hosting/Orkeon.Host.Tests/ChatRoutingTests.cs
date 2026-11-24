@@ -124,6 +124,7 @@ public sealed class ChatRoutingTests
         {
             using var service = new ChatChannelService(
                 Options.Create(options),
+                Options.Create(new TeamsChannelOptions()),
                 new ScriptedRunner(),
                 new CrewHostRegistry(Options.Create(new OrkeonHostOptions { Crews = [Triage, Billing] })),
                 NullLoggerFactory.Instance,

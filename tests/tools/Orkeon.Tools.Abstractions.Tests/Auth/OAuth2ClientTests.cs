@@ -1,6 +1,7 @@
 using System.Net;
 using System.Security.Cryptography;
 using System.Text;
+using System.Web;
 using Orkeon.Tools.Abstractions.Auth;
 using Orkeon.Tests.Shared.Timing;
 
@@ -239,7 +240,8 @@ public sealed class OAuth2ClientTests : IDisposable
     [InlineData("interaction_required", "LoginRequired")]
     [InlineData("invalid_client", "LoginRequired")]
     [InlineData("unauthorized_client", "LoginRequired")]
-    [InlineData("temporarily_unavailable", "AuthenticationFailed")]
+    [InlineData("invalid_scope", "AuthenticationFailed")]
+    [InlineData("temporarily_unavailable", "ServerError")]
     public async Task Should_ask_for_a_new_sign_in_only_When_the_grant_itself_is_refused(string error, string code)
     {
         _handler.Enqueue(new FakeHttpResponse(HttpStatusCode.BadRequest, $$"""{"error":"{{error}}","error_description":"AADSTS70008"}"""));
@@ -344,6 +346,28 @@ public sealed class OAuth2ClientTests : IDisposable
         Assert.Equal("offline", query["access_type"]);
         Assert.Equal("consent", query["prompt"]);
         Assert.Equal("someone@gmail.com", query["login_hint"]);
+    }
+
+    [Fact]
+    public void Should_send_the_declared_prompt_alone_without_access_type()
+    {
+        var settings = Microsoft with { Prompt = "select_account" };
+
+        var query = HttpUtility.ParseQueryString(OAuth2Client.BuildAuthorizationUri(settings, new Uri("http://127.0.0.1:1234/"), PkceSession.Create(), null).Query);
+
+        Assert.Equal("select_account", query["prompt"]);
+        Assert.Null(query["access_type"]);
+    }
+
+    [Fact]
+    public void Should_keep_consent_and_offline_access_When_no_prompt_is_declared()
+    {
+        Assert.Null(Microsoft.Prompt);
+
+        var query = HttpUtility.ParseQueryString(OAuth2Client.BuildAuthorizationUri(Microsoft, new Uri("http://127.0.0.1:1234/"), PkceSession.Create(), null).Query);
+
+        Assert.Equal("consent", query["prompt"]);
+        Assert.Equal("offline", query["access_type"]);
     }
 
     [Fact]

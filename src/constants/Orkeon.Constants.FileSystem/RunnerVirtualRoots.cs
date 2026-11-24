@@ -105,9 +105,17 @@ public static class RunnerVirtualRoots
     public const string Credentials = "/credentials";
 
     /// <summary>
+    /// Where the runner reads the credential files an operator names by an environment variable — the
+    /// certificate or the federated token of a chat account that signs in as an application. The folder of
+    /// each file is an <b>internal</b>, read-only mount under this root, made only when such a file is
+    /// declared: no agent-facing tool resolves it, nor the same folder by another mount (ADR-008).
+    /// </summary>
+    public const string CredentialFiles = "/credential-files";
+
+    /// <summary>
     /// The roots a runner mounts on its own behalf — every run, or (<see cref="Credentials"/>)
     /// whenever the settings need them — for a caller that has to refuse a user mount claiming
     /// one. A set, not five comparisons: an omission is what the pairwise drift test could not see.
     /// </summary>
-    public static IReadOnlyList<string> All { get; } = [Crew, Script, LlmLogs, LlmMock, LlmCassette, Sandbox, Credentials];
+    public static IReadOnlyList<string> All { get; } = [Crew, Script, LlmLogs, LlmMock, LlmCassette, Sandbox, Credentials, CredentialFiles];
 }

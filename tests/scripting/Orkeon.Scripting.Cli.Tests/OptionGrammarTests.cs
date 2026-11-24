@@ -305,6 +305,14 @@ public sealed class OptionGrammarTests
             Row<DriveLoginCommandOptions>(),
             Row<DriveLogoutCommandOptions>("pro"),
             Row<DriveCheckCommandOptions>("pro", "--events", "jsonl", "--settings", "s.json"),
+            Row<ChatAccountsCommandOptions>("--json", "-s", "a.json"),
+            Row<ChatAccountsCommandOptions>("--settings=a.json"),
+            Row<ChatLoginCommandOptions>("pro", "--device-code", "--events", "jsonl"),
+            Row<ChatLoginCommandOptions>("pro", "--events=jsonl"),
+            Row<ChatLoginCommandOptions>(),
+            Row<ChatLogoutCommandOptions>("pro"),
+            Row<ChatCheckCommandOptions>(),
+            Row<ChatCheckCommandOptions>("pro", "--events", "jsonl", "--settings", "s.json"),
             Row<UseCasesSearchOptions>("summarize my emails every morning"),
             Row<UseCasesSearchOptions>("je veux", "un résumé", "--top", "3", "--lang", "fr"),
             Row<UseCasesListOptions>("--category", "finance-trading", "--process", "parallel"),
@@ -330,6 +338,7 @@ public sealed class OptionGrammarTests
         (typeof(EvalCompareOptions), ["a.json", "b.json", "extra"]),
         (typeof(EmailLoginCommandOptions), ["hotmail", "extra"]),
         (typeof(DriveCheckCommandOptions), ["pro", "extra"]),
+        (typeof(ChatCheckCommandOptions), ["pro", "extra"]),
         (typeof(UseCasesShowOptions), ["03-email-pipeline", "extra"]),
     ];
 

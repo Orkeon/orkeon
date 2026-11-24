@@ -14,6 +14,7 @@ public class ProtocolEventKindsTests
     [
         typeof(RunEventKinds),
         typeof(DriveEventKinds),
+        typeof(ChatEventKinds),
         typeof(EmailEventKinds),
         typeof(UseCaseEventKinds),
     ];
@@ -31,6 +32,7 @@ public class ProtocolEventKindsTests
 
     [Theory]
     [InlineData(typeof(DriveEventKinds))]
+    [InlineData(typeof(ChatEventKinds))]
     [InlineData(typeof(EmailEventKinds))]
     public void ShouldKeepEachVerbListInsideAll_WhenTheCatalogueSplitsByVerb(Type catalogue)
     {

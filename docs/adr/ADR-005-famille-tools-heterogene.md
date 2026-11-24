@@ -68,3 +68,7 @@ detector; `Tools.Embeddings.Local` matches the "abstractions-only" profile
 ## Amendment (2026-11-06)
 
 `Tools.Web` references the concrete `Orkeon.Analysis` as well: the `firefox` tool reads a page as a semantic graph, in an `InMemoryRaggableStore` of its own per page (never the code index of the host), and the projection of a page outline lives in `Orkeon.Analysis` (`PageOutlineMapper`), beside the other mappers, because the mutators of a graph node are internal to it. `Orkeon.Analysis` is already part of the `Orkeon` package: the closure of the packages is unchanged.
+
+## Amendment (2026-11-23)
+
+`Tools.Chat` ([ADR-021](./ADR-021-chat-tool-family.md)) references `Domain`, `Tools.Abstractions`, `Orkeon.Constants.Configuration` and the concrete `Orkeon.Rag` (the prompt-injection detector), so it reaches `Application` transitively through `Orkeon.Rag`, like `Tools.Drive`.

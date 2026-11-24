@@ -302,21 +302,32 @@ Un runner monte pour lui-même quelques racines en montages **internes**
 (`Orkeon:FileSystem:InternalMounts`, `MountVisibility.Internal`) : `/llm-logs` (les fichiers
 d'échanges de `--llm-log`), `/sandbox` (où les sandboxes de code déposent ce qu'elles exécutent),
 `/state` (le magasin de checkpoints), `/runs` (l'historique des runs), `/llm-mock` et
-`/llm-cassette` (`--llm-mock`, `--llm-record`/`--llm-replay`) et `/credentials` (les jetons OAuth des comptes e-mail et drive — montée seulement quand un compte OAuth
-de l'une des deux familles est déclaré). Le registre refuse un montage interne à tout appelant ordinaire et le signale comme
+`/llm-cassette` (`--llm-mock`, `--llm-record`/`--llm-replay`), `/credentials` (les jetons OAuth des comptes e-mail, drive et chat — montée seulement quand un compte OAuth
+de l'une de ces familles est déclaré) et `/credential-files` (le dossier de chaque fichier de certificat ou de jeton fédéré
+d'un compte chat d'application, monté en **lecture seule**, un sous-dossier par dossier,
+`/credential-files/<16 hex du SHA-256 du chemin du dossier>`, seulement quand un tel compte est déclaré ; le REPL le monte aussi). Le registre refuse un montage interne à tout appelant ordinaire et le signale comme
 un chemin inexistant : aucun outil destiné aux agents ne peut l'atteindre ni même le nommer
 ([ADR-008](../adr/ADR-008-virtual-paths-are-the-only-currency.md)). Les quelques composants qui
 doivent y écrire demandent `PrivilegedFileSystemAccess` à la DI, par son nom : l'enregistreur des
-échanges, les sandboxes de code et les magasins de jetons (`FileSystemEmailTokenStore` et
-`FileSystemDriveTokenStore`, que l'hôte des runners enregistre sur `/credentials/email` et
-`/credentials/drive`). Ils passent toujours par le VFS. Le seul
+échanges, les sandboxes de code et les magasins de jetons (`FileSystemEmailTokenStore`,
+`FileSystemDriveTokenStore` et `FileSystemChatTokenStore`, que l'hôte des runners enregistre sur
+`/credentials/email`, `/credentials/drive` et `/credentials/chat`) et `ChatCredentialFile`, qui lit le fichier
+de certificat ou de jeton fédéré d'un compte chat d'application sous `/credential-files`, de nouveau pour chaque jeton. Ils passent toujours par le VFS. Le seul
 `System.IO` brut sur ce chemin est la création, par le runner, du répertoire physique
-`credentials` et de ses sous-répertoires `email` et `drive` (réservés au propriétaire sous Unix) avant
+`credentials` et de ses sous-répertoires `email`, `drive` et `chat` (réservés au propriétaire sous Unix), et la vérification que le dossier d'un fichier d'identifiant existe, avant
 qu'aucun montage n'existe — du bootstrap `Hosting/Runner*`, une portée `EXCEPTION-BOOTSTRAP` déjà
 ratifiée, pas une nouvelle catégorie. `orkeon run` refuse un montage utilisateur qui revendique
 l'une de ces racines (`EnsureReservedRootsAreFree`, `/state` et `/runs` compris) ; chaque autre
 point d'entrée refuse les racines qu'il se réserve (`/crew` et `/sandbox` pour `--list-tools` et
-`mcp serve`), et tous refusent `/credentials`, quels que soient les comptes.
+`mcp serve`), et tous refusent `/credentials` et `/credential-files` (ou tout chemin dessous), quels que soient les comptes.
+
+Un montage interne ferme son dossier physique aux agents, quel que soit l'autre montage qui le tient. Le
+dossier d'un fichier d'identifiant doit donc être un dossier à lui : s'il est le répertoire de travail, un
+dossier monté pour les agents ou un dossier qui en contient un, l'hôte ne le monte pas, avertit au démarrage
+(« Keep it in a folder of its own. ») et ce compte ne peut pas se connecter. Le dossier entier est monté, en
+lecture seule, et seuls les composants privilégiés atteignent ses autres fichiers. Les liens sont suivis à
+l'intérieur (la disposition des jetons projetés de Kubernetes `token -> ..data/token` marche) ; un lien qui
+sort du dossier est refusé.
 
 ## Mounts par scope (surcharge ambiante des mounts)
 
@@ -354,7 +365,7 @@ du mécanisme, puisque deux crews recevant chacun `/output` sur des dossiers dif
 précisément ce qu'un registre plat ne sait pas exprimer.
 
 Les deux moitiés du jeu de boot doivent survivre, pour des raisons différentes. Les mounts
-**internes** (`RunnerVirtualRoots` : `/llm-logs`, `/sandbox`, `/state`, `/runs`, `/credentials`, …) relèvent de la confidentialité : les
+**internes** (`RunnerVirtualRoots` : `/llm-logs`, `/sandbox`, `/state`, `/runs`, `/credentials`, `/credential-files`, …) relèvent de la confidentialité : les
 perdre arrête la journalisation des échanges, les deux sandboxes de code et le magasin de jetons
 e-mail, et fait tomber `IsUnderInternalMountUnsafe`, le contrôle qui empêche l'un d'eux de gagner
 une seconde adresse atteignable par un agent via un mount de l'exécution. Les mounts **agent-facing** portent tout

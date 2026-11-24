@@ -121,21 +121,20 @@ public sealed partial class PromptInjectionDocumentValidator : IDataValidator
     [GeneratedRegex(@"aria-hidden\s*=\s*[""']?true", RegexOptions.IgnoreCase)]
     private static partial Regex AriaHiddenPattern();
 
-    [GeneratedRegex(@"<!--(.*?)-->", RegexOptions.Singleline)]
-    private static partial Regex HtmlCommentPattern();
-
     // ------------------------------------------------------------------
     // Exfiltration vectors
     // ------------------------------------------------------------------
 
-    // Markdown image: auto-loaded by any renderer (zero-click exfiltration) when
-    // the URL carries a long query payload.
-    [GeneratedRegex(@"!\[[^\]]{0,200}\]\(\s*https?://[^)\s]{1,500}\?[^)\s]{32,}\)")]
-    private static partial Regex MarkdownImageExfilPattern();
+    // The head of a Markdown image or link. What follows the scheme is read by MarkdownTargets, in
+    // linear time: as one pattern, backtracking over an unclosed URL is cubic, and the content is hostile.
+    [GeneratedRegex(@"!\[[^\]]{0,200}\]\(\s*https?://")]
+    private static partial Regex MarkdownImageHeadPattern();
 
-    // Markdown link whose query string is stuffed with percent-encoded data.
-    [GeneratedRegex(@"\[[^\]]{0,200}\]\(\s*https?://[^)\s]*(%[0-9A-Fa-f]{2}){6,}[^)\s]*\)")]
-    private static partial Regex MarkdownLinkEncodedPattern();
+    [GeneratedRegex(@"\[[^\]]{0,200}\]\(\s*https?://")]
+    private static partial Regex MarkdownLinkHeadPattern();
+
+    [GeneratedRegex(@"(?:%[0-9A-Fa-f]{2}){6,}")]
+    private static partial Regex PercentEncodedRunPattern();
 
     [GeneratedRegex(@"data:[\w/+.\-]+;base64,[A-Za-z0-9+/=]{40,}", RegexOptions.IgnoreCase)]
     private static partial Regex DataUriPattern();
@@ -154,7 +153,16 @@ public sealed partial class PromptInjectionDocumentValidator : IDataValidator
     [GeneratedRegex(@"\\u[0-9a-fA-F]{4}(\\u[0-9a-fA-F]{4}){3,}", RegexOptions.None)]
     private static partial Regex UnicodeEscapePattern();
 
-    private sealed record DetectionRule(string Id, string Description, double Weight, Regex Pattern);
+    /// <summary>A stretch of the content a rule matched.</summary>
+    private readonly record struct Found(int Index, int Length);
+
+    private sealed record DetectionRule(string Id, string Description, double Weight, Func<string, List<Found>> Find)
+    {
+        public DetectionRule(string id, string description, double weight, Regex pattern)
+            : this(id, description, weight, content => pattern.Matches(content).Select(match => new Found(match.Index, match.Length)).ToList())
+        {
+        }
+    }
 
     private static readonly DetectionRule[] DetectionRules =
     [
@@ -185,8 +193,8 @@ public sealed partial class PromptInjectionDocumentValidator : IDataValidator
         new("aria-hidden", "aria-hidden markup", 0.25, AriaHiddenPattern()),
 
         // Exfiltration vectors
-        new("md-image-exfil", "Auto-loading markdown image with encoded query payload", 0.35, MarkdownImageExfilPattern()),
-        new("md-link-encoded", "Markdown link with percent-encoded payload", 0.25, MarkdownLinkEncodedPattern()),
+        new("md-image-exfil", "Auto-loading markdown image with encoded query payload", 0.35, FindImageExfiltrations),
+        new("md-link-encoded", "Markdown link with percent-encoded payload", 0.25, FindEncodedLinks),
         new("data-uri", "Base64 data URI", 0.3, DataUriPattern()),
 
         // Medium-risk patterns (weight 0.25 each)
@@ -222,7 +230,7 @@ public sealed partial class PromptInjectionDocumentValidator : IDataValidator
 
         foreach (var rule in DetectionRules)
         {
-            var matches = rule.Pattern.Matches(content);
+            var matches = rule.Find(content);
             if (matches.Count == 0)
             {
                 continue;
@@ -231,7 +239,7 @@ public sealed partial class PromptInjectionDocumentValidator : IDataValidator
             reasons.Add($"{rule.Description} ({matches.Count} occurrence(s))");
             totalScore += rule.Weight * matches.Count;
 
-            foreach (Match match in matches)
+            foreach (var match in matches)
             {
                 spans.Add(CreateSpan(rule.Id, rule.Description, content, match.Index, match.Length));
             }
@@ -298,16 +306,87 @@ public sealed partial class PromptInjectionDocumentValidator : IDataValidator
         return Task.FromResult(result);
     }
 
+    /// <summary>Markdown images (auto-loaded by any renderer) whose URL carries a long query payload.</summary>
+    private static List<Found> FindImageExfiltrations(string content) => MarkdownTargets(content, MarkdownImageHeadPattern(), static (text, start, end, _) =>
+    {
+        // The first '?' leaves the longest query: no later one does better. The bounds are the ones the rule always had.
+        const int maxBeforeQuery = 500;
+        const int minQuery = 32;
+        if (end - start < 2)
+            return false;
+        var query = text.IndexOf('?', start + 1, Math.Min(maxBeforeQuery, end - start - 1));
+        return query >= 0 && end - query - 1 >= minQuery;
+    });
+
+    /// <summary>Markdown links whose URL is stuffed with percent-encoded data.</summary>
+    private static List<Found> FindEncodedLinks(string content) =>
+        MarkdownTargets(content, MarkdownLinkHeadPattern(), static (_, start, _, lastEncoded) => lastEncoded >= start);
+
+    /// <summary>
+    /// The images or links that <paramref name="head"/> opens, whose closed target <paramref name="matches"/> accepts
+    /// (content, start, end, start of the last percent-encoded run up to the end). Each run of URL characters is read once.
+    /// </summary>
+    private static List<Found> MarkdownTargets(string content, Regex head, Func<string, int, int, int, bool> matches)
+    {
+        var found = new List<Found>();
+        var end = -1;
+        var lastEncoded = -1;
+        var match = head.Match(content);
+        while (match.Success)
+        {
+            var start = match.Index + match.Length;
+            if (end < start)
+            {
+                end = start;
+                while (end < content.Length && content[end] != ')' && !char.IsWhiteSpace(content[end]))
+                    end++;
+                lastEncoded = -1;
+                foreach (var run in PercentEncodedRunPattern().EnumerateMatches(content.AsSpan(start, end - start)))
+                    lastEncoded = start + run.Index;
+            }
+
+            var next = match.Index + 1;
+            if (end < content.Length && content[end] == ')' && matches(content, start, end, lastEncoded))
+            {
+                found.Add(new Found(match.Index, end + 1 - match.Index));
+                next = end + 1;
+            }
+
+            match = head.Match(content, next);
+        }
+
+        return found;
+    }
+
+    /// <summary>The closed HTML comments: one search for the end each, so an unclosed one ends the reading.</summary>
+    private static List<Found> FindHtmlComments(string content)
+    {
+        const string open = "<!--";
+        const string close = "-->";
+        var found = new List<Found>();
+        for (var at = 0; (at = content.IndexOf(open, at, StringComparison.Ordinal)) >= 0;)
+        {
+            var end = content.IndexOf(close, at + open.Length, StringComparison.Ordinal);
+            if (end < 0)
+                break;
+            end += close.Length;
+            found.Add(new Found(at, end - at));
+            at = end;
+        }
+
+        return found;
+    }
+
     private static double ScoreMassiveHtmlComments(string content, List<string> reasons, List<InjectionSpan> spans)
     {
-        var comments = HtmlCommentPattern().Matches(content);
+        var comments = FindHtmlComments(content);
         if (comments.Count == 0)
         {
             return 0.0;
         }
 
         var totalLength = 0;
-        foreach (Match comment in comments)
+        foreach (var comment in comments)
         {
             totalLength += comment.Length;
         }
@@ -319,7 +398,7 @@ public sealed partial class PromptInjectionDocumentValidator : IDataValidator
         }
 
         reasons.Add($"{MassiveCommentDescription} ({comments.Count} comment(s), {totalLength} chars, {ratio:P0} of content)");
-        foreach (Match comment in comments)
+        foreach (var comment in comments)
         {
             spans.Add(CreateSpan(MassiveCommentRuleId, MassiveCommentDescription, content, comment.Index, comment.Length));
         }

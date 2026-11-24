@@ -30,11 +30,12 @@
     dependency on `Orkeon` is a lower bound (docs/reference/publication-matrix.md): every tag packs the
     lineup at one version, but a consumer may pair versions. So BinderRefusal's members are added,
     never changed or removed - the rule ADR-013 already lives by for the OAuth layer that
-    Orkeon.Tools.Abstractions shares with the same two families.
+    Orkeon.Tools.Abstractions shares with the same families.
   -->
   <ItemGroup>
     <InternalsVisibleTo Include="Orkeon.Hosting" />
     <InternalsVisibleTo Include="Orkeon.Hosting.Tests" />
+    <InternalsVisibleTo Include="Orkeon.Tools.Chat" />
     <InternalsVisibleTo Include="Orkeon.Tools.Email" />
     <InternalsVisibleTo Include="Orkeon.Tools.Drive" />
   </ItemGroup>

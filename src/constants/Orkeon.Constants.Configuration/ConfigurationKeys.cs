@@ -65,6 +65,13 @@ public static class ConfigurationKeys
     public const string ToolsDrive = "Orkeon:Tools:Drive";
 
     /// <summary>
+    /// Root of the chat tool family's settings (Microsoft Teams): its accounts, their rights, the
+    /// places they may use and the credentials directory. Bound by <c>AddOrkeonChatTools</c>, read
+    /// by the runner host to decide whether the OAuth token store needs a mount.
+    /// </summary>
+    public const string ToolsChat = "Orkeon:Tools:Chat";
+
+    /// <summary>
     /// The context window a session budgets against. Read by the token-budget tool and by the
     /// console's fidelity wiring, which live in projects that do not share a layer.
     /// </summary>

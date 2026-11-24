@@ -88,6 +88,7 @@ public static class SettingsSections
         "Orkeon:Kev",
         "Orkeon:Tools",
         "Orkeon:Tools:Bridge",
+        "Orkeon:Tools:Chat",
         "Orkeon:Tools:Drive",
         "Orkeon:Tools:Email",
         "Orkeon:Tools:Firefox",

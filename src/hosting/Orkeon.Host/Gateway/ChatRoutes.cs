@@ -6,7 +6,7 @@ namespace Orkeon.Host.Gateway;
 /// Which hosted crew a chat room reaches (GAP-11).
 /// <para>
 /// A room is where a conversation is opened — on Discord, the channel a thread belongs to.
-/// <c>Orkeon:Host:Discord:Routes</c> maps a room to a crew; every other room reaches the
+/// <c>Orkeon:Host:Discord:Routes</c> (or <c>Orkeon:Host:Teams:Routes</c>) maps a room to a crew; every other room reaches the
 /// default crew — <c>DefaultCrew</c>, or the first declared. Until this, every message went
 /// to the first crew: the others were hosted, bounded, and unreachable. One room, one crew is
 /// the mapping a person can predict without being told: <c>#billing</c> answers billing.
@@ -55,34 +55,59 @@ internal sealed class ChatRoutes
     public static ChatRoutes From(DiscordChannelOptions options, IReadOnlyList<HostedCrewOptions> crews)
     {
         ArgumentNullException.ThrowIfNull(options);
+        return From("Discord", options.DefaultCrew, options.Routes.Select(r => (r.Key, r.Value)), crews, room =>
+            ulong.TryParse(room, NumberStyles.None, CultureInfo.InvariantCulture, out _)
+                ? null
+                : $"Discord:Routes has the key '{room}', which is not a Discord channel id (a number). "
+                    + "Route a channel by its id: enable Developer Mode in Discord, then right-click the channel → Copy Channel ID.");
+    }
+
+    /// <summary>The same, for the Teams channel: its routes are a list, a room named by its Teams id.</summary>
+    /// <exception cref="HostConfigurationException">The configuration is refused.</exception>
+    public static ChatRoutes From(TeamsChannelOptions options, IReadOnlyList<HostedCrewOptions> crews)
+    {
+        ArgumentNullException.ThrowIfNull(options);
+        return From("Teams", options.DefaultCrew, options.Routes.Select(r => (r.Channel, r.Crew)), crews, room =>
+            room.Contains(':', StringComparison.Ordinal) && !room.Contains(';', StringComparison.Ordinal)
+                ? null
+                : $"Teams:Routes names the channel '{room}', which is not a Teams channel id such as '19:…@thread.tacv2'.");
+    }
+
+    private static ChatRoutes From(
+        string channel,
+        string? defaultCrewName,
+        IEnumerable<(string Room, string Crew)> routes,
+        IReadOnlyList<HostedCrewOptions> crews,
+        Func<string, string?> refusalOf)
+    {
         ArgumentNullException.ThrowIfNull(crews);
         if (crews.Count == 0)
             throw new HostConfigurationException(
-                $"The Discord channel is enabled but no crew is configured under '{OrkeonHostOptions.SectionName}:Crews'.");
+                $"The {channel} channel is enabled but no crew is configured under '{OrkeonHostOptions.SectionName}:Crews'.");
 
         string? Declared(string name) =>
             crews.FirstOrDefault(c => string.Equals(c.Name, name, StringComparison.OrdinalIgnoreCase))?.Name;
 
         var defaultCrew = crews[0].Name;
-        if (!string.IsNullOrWhiteSpace(options.DefaultCrew))
+        if (!string.IsNullOrWhiteSpace(defaultCrewName))
         {
-            defaultCrew = Declared(options.DefaultCrew)
+            defaultCrew = Declared(defaultCrewName)
                 ?? throw new HostConfigurationException(
-                    $"Discord:DefaultCrew names '{options.DefaultCrew}', which is not a crew declared under "
+                    $"{channel}:DefaultCrew names '{defaultCrewName}', which is not a crew declared under "
                     + $"'{OrkeonHostOptions.SectionName}:Crews' ({Names(crews)}).");
         }
 
         var byRoom = new Dictionary<string, string>(StringComparer.Ordinal);
-        foreach (var (room, crew) in options.Routes)
+        foreach (var (room, crew) in routes)
         {
-            if (!ulong.TryParse(room, NumberStyles.None, CultureInfo.InvariantCulture, out _))
-                throw new HostConfigurationException(
-                    $"Discord:Routes has the key '{room}', which is not a Discord channel id (a number). "
-                    + "Route a channel by its id: enable Developer Mode in Discord, then right-click the channel → Copy Channel ID.");
+            if (refusalOf(room) is { } refusal)
+                throw new HostConfigurationException(refusal);
+            if (byRoom.ContainsKey(room))
+                throw new HostConfigurationException($"{channel}:Routes names the channel '{room}' twice.");
 
             byRoom[room] = Declared(crew)
                 ?? throw new HostConfigurationException(
-                    $"Discord:Routes sends channel '{room}' to '{crew}', which is not a crew declared under "
+                    $"{channel}:Routes sends channel '{room}' to '{crew}', which is not a crew declared under "
                     + $"'{OrkeonHostOptions.SectionName}:Crews' ({Names(crews)}).");
         }
 

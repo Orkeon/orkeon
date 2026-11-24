@@ -82,6 +82,31 @@ internal sealed class OAuth2Client
             new("client_id", settings.ClientId),
             new("client_secret", clientSecret),
         };
+        return await PostClientCredentialsAsync(settings, form, clientSecret, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Obtains an access token for the client itself, authenticated by a JWT assertion instead of a
+    /// secret (client credentials grant with RFC 7523 section 2.2 client authentication).
+    /// </summary>
+    public async Task<OAuthTokenSet> RequestClientCredentialsAsync(OAuthSettings settings, OAuthClientAssertion assertion, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(settings);
+        ArgumentNullException.ThrowIfNull(assertion);
+        var token = assertion.CreateToken(settings, _time.GetUtcNow());
+        var form = new List<KeyValuePair<string, string>>
+        {
+            new("grant_type", "client_credentials"),
+            new("client_id", settings.ClientId),
+            new("client_assertion_type", "urn:ietf:params:oauth:client-assertion-type:jwt-bearer"),
+            new("client_assertion", token),
+        };
+        return await PostClientCredentialsAsync(settings, form, token, cancellationToken).ConfigureAwait(false);
+    }
+
+    private async Task<OAuthTokenSet> PostClientCredentialsAsync(
+        OAuthSettings settings, List<KeyValuePair<string, string>> form, string credential, CancellationToken cancellationToken)
+    {
         if (settings.Scopes.Count > 0)
             form.Add(new("scope", string.Join(' ', settings.Scopes)));
         if (!string.IsNullOrEmpty(settings.Audience))
@@ -91,9 +116,9 @@ internal sealed class OAuth2Client
         var root = document.RootElement;
         if (TryReadError(root, out var error, out var description))
         {
-            // A provider may echo what it was sent: the secret is never repeated.
-            throw new OAuthException(OAuthFailure.AuthenticationFailed,
-                OAuthRedaction.Redact($"The client credentials grant was refused: {error} {description}".Trim(), clientSecret));
+            // A provider may echo what it was sent: the credential is never repeated.
+            throw new OAuthException(FailureOf(error, OAuthFailure.AuthenticationFailed),
+                OAuthRedaction.Redact($"The client credentials grant was refused: {error} {description}".Trim(), credential));
         }
 
         return ReadTokens(root, previousRefreshToken: null, settings.Scopes);
@@ -118,7 +143,7 @@ internal sealed class OAuth2Client
 
         var root = document.RootElement;
         if (TryReadError(root, out var error, out var description))
-            throw new OAuthException(OAuthFailure.AuthenticationFailed, $"The device authorization was refused: {error} {description}".Trim());
+            throw new OAuthException(FailureOf(error, OAuthFailure.AuthenticationFailed), $"The device authorization was refused: {error} {description}".Trim());
 
         var verification = ReadString(root, "verification_uri") ?? ReadString(root, "verification_url");
         if (ReadString(root, "device_code") is not { } deviceCode
@@ -170,7 +195,7 @@ internal sealed class OAuth2Client
                     interval += SlowDownStep;
                     continue;
                 default:
-                    throw new OAuthException(OAuthFailure.LoginRequired, OAuthRedaction.Redact($"The sign-in did not complete: {error} {description}".Trim(), clientSecret, grant.DeviceCode));
+                    throw new OAuthException(FailureOf(error, OAuthFailure.LoginRequired), OAuthRedaction.Redact($"The sign-in did not complete: {error} {description}".Trim(), clientSecret, grant.DeviceCode));
             }
         }
 
@@ -195,9 +220,17 @@ internal sealed class OAuth2Client
             new("code_challenge", session.Challenge),
             new("code_challenge_method", "S256"),
             new("state", session.State),
-            new("access_type", "offline"),
-            new("prompt", "consent"),
         };
+        if (settings.Prompt is { } prompt)
+        {
+            query.Add(new("prompt", prompt));
+        }
+        else
+        {
+            query.Add(new("access_type", "offline"));
+            query.Add(new("prompt", "consent"));
+        }
+
         if (!string.IsNullOrWhiteSpace(loginHint))
             query.Add(new("login_hint", loginHint));
 
@@ -225,7 +258,7 @@ internal sealed class OAuth2Client
         using var document = await PostAsync(settings.TokenEndpoint, form, cancellationToken).ConfigureAwait(false);
         var root = document.RootElement;
         if (TryReadError(root, out var error, out var description))
-            throw new OAuthException(OAuthFailure.AuthenticationFailed, $"The authorization code was refused: {error} {description}".Trim());
+            throw new OAuthException(FailureOf(error, OAuthFailure.AuthenticationFailed), $"The authorization code was refused: {error} {description}".Trim());
         return ReadTokens(root, previousRefreshToken: null, settings.Scopes);
     }
 
@@ -250,11 +283,45 @@ internal sealed class OAuth2Client
         {
             var code = error is "invalid_grant" or "interaction_required" or "invalid_client" or "unauthorized_client"
                 ? OAuthFailure.LoginRequired
-                : OAuthFailure.AuthenticationFailed;
+                : FailureOf(error, OAuthFailure.AuthenticationFailed);
             throw new OAuthException(code, OAuthRedaction.Redact($"The token refresh was refused: {error} {description}".Trim(), clientSecret, refreshToken));
         }
 
         return ReadTokens(root, refreshToken, settings.Scopes);
+    }
+
+    /// <summary>
+    /// Revokes <paramref name="refreshToken"/> (RFC 7009). Returns false, and sends nothing, when the
+    /// provider has no revocation endpoint; true when the provider accepted the revocation, which the
+    /// RFC has it do for a token it no longer knows too. A refusal throws.
+    /// </summary>
+    public async Task<bool> RevokeAsync(
+        OAuthSettings settings, string? clientSecret, string refreshToken, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(settings);
+        ArgumentException.ThrowIfNullOrEmpty(refreshToken);
+        if (settings.RevocationEndpoint is not { } endpoint)
+            return false;
+
+        var form = new List<KeyValuePair<string, string>>
+        {
+            new("token", refreshToken),
+            new("token_type_hint", "refresh_token"),
+            new("client_id", settings.ClientId),
+        };
+        AddSecret(form, clientSecret);
+
+        using var response = await SendAsync(endpoint, form, cancellationToken).ConfigureAwait(false);
+        // The body of a success means nothing (RFC 7009 section 2.2), and is often empty.
+        if (response.IsSuccessStatusCode)
+            return true;
+
+        using var document = await ReadJsonAsync(endpoint, response, cancellationToken).ConfigureAwait(false);
+        if (!TryReadError(document.RootElement, out var error, out var description))
+            error = $"HTTP {((int)response.StatusCode).ToString(CultureInfo.InvariantCulture)}";
+        var failure = (int)response.StatusCode >= 500 ? OAuthFailure.ServerError : OAuthFailure.AuthenticationFailed;
+        throw new OAuthException(failure,
+            OAuthRedaction.Redact($"The token revocation was refused: {error} {description}".Trim(), clientSecret, refreshToken));
     }
 
     private static void AddSecret(List<KeyValuePair<string, string>> form, string? clientSecret)
@@ -265,11 +332,16 @@ internal sealed class OAuth2Client
 
     private async Task<JsonDocument> PostAsync(Uri endpoint, IEnumerable<KeyValuePair<string, string>> form, CancellationToken cancellationToken)
     {
+        using var response = await SendAsync(endpoint, form, cancellationToken).ConfigureAwait(false);
+        return await ReadJsonAsync(endpoint, response, cancellationToken).ConfigureAwait(false);
+    }
+
+    private async Task<HttpResponseMessage> SendAsync(Uri endpoint, IEnumerable<KeyValuePair<string, string>> form, CancellationToken cancellationToken)
+    {
         using var content = new FormUrlEncodedContent(form);
-        HttpResponseMessage response;
         try
         {
-            response = await _http.PostAsync(endpoint, content, cancellationToken).ConfigureAwait(false);
+            return await _http.PostAsync(endpoint, content, cancellationToken).ConfigureAwait(false);
         }
         catch (HttpRequestException ex)
         {
@@ -280,19 +352,19 @@ internal sealed class OAuth2Client
             // The HTTP client's own timeout, not a cancellation by the caller.
             throw new OAuthException(OAuthFailure.ServerError, $"The identity provider at {endpoint.Host} did not answer in time; retry later.", ex);
         }
+    }
 
-        using (response)
+    private static async Task<JsonDocument> ReadJsonAsync(Uri endpoint, HttpResponseMessage response, CancellationToken cancellationToken)
+    {
+        var body = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+        try
         {
-            var body = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
-            try
-            {
-                return JsonDocument.Parse(string.IsNullOrWhiteSpace(body) ? "{}" : body);
-            }
-            catch (JsonException ex)
-            {
-                var status = ((int)response.StatusCode).ToString(CultureInfo.InvariantCulture);
-                throw new OAuthException(OAuthFailure.ServerError, $"The identity provider at {endpoint.Host} answered HTTP {status} without JSON.", ex);
-            }
+            return JsonDocument.Parse(string.IsNullOrWhiteSpace(body) ? "{}" : body);
+        }
+        catch (JsonException ex)
+        {
+            var status = ((int)response.StatusCode).ToString(CultureInfo.InvariantCulture);
+            throw new OAuthException(OAuthFailure.ServerError, $"The identity provider at {endpoint.Host} answered HTTP {status} without JSON.", ex);
         }
     }
 
@@ -314,6 +386,10 @@ internal sealed class OAuth2Client
         };
     }
 
+    /// <summary>What an error answer means: a provider that says it is at fault refused nothing (RFC 6749, section 4.1.2.1).</summary>
+    private static OAuthFailure FailureOf(string error, OAuthFailure refusal) =>
+        error is "temporarily_unavailable" or "server_error" ? OAuthFailure.ServerError : refusal;
+
     private static bool TryReadError(JsonElement root, out string error, out string description)
     {
         error = ReadString(root, "error") ?? string.Empty;
@@ -321,10 +397,20 @@ internal sealed class OAuth2Client
         return error.Length > 0;
     }
 
-    private static string? ReadString(JsonElement root, string name) =>
-        root.ValueKind == JsonValueKind.Object && root.TryGetProperty(name, out var value) && value.ValueKind == JsonValueKind.String
-            ? value.GetString()
-            : null;
+    private static string? ReadString(JsonElement root, string name)
+    {
+        if (root.ValueKind != JsonValueKind.Object || !root.TryGetProperty(name, out var value) || value.ValueKind != JsonValueKind.String)
+            return null;
+        try
+        {
+            return value.GetString();
+        }
+        catch (InvalidOperationException)
+        {
+            // JSON may escape half a character, which is no text.
+            return null;
+        }
+    }
 
     private static int? ReadInt(JsonElement root, string name)
     {

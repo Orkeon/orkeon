@@ -170,7 +170,7 @@ The observers of a run (`RunEventObserver`, `ObservedTool`, `RunEventsLlmCallObs
 once (`seq`, `ts`, the run identity) and hands it to every destination, so every destination holds the same lines:
 
 - **`StdoutJsonLinesRunEventSink`** (the CLI): the stream of `orkeon run --events jsonl`. Its bytes are pinned by a
-  golden test (`StdoutEventContractGoldenTests`). The other streaming verbs (`forge`, `email`, `drive`, `usecases`)
+  golden test (`StdoutEventContractGoldenTests`). The other streaming verbs (`forge`, `email`, `drive`, `chat`, `usecases`)
   keep their own writer, which shares the envelope code and the model-call observer.
 - **`JsonLinesFileRunEventSink`** (`Orkeon.Hosting`): `<run id>.jsonl` and an `index.jsonl` under the `/runs` mount, through the
   VFS, one serialized writer per run.

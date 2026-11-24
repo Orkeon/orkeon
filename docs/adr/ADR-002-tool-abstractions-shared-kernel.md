@@ -72,3 +72,7 @@ directly), and `Tools.Abstractions` still references `Orkeon.Domain` alone.
 ## Amendment (2026-10-29)
 
 `Orkeon.Tools.Drive` ([ADR-013](./ADR-013-drive-tool-family.md)) joined the family after the note above: `src/tools/` now holds **eleven** projects, `Tools.Abstractions` and ten families, and each family references `Tools.Abstractions`.
+
+## Amendment (2026-11-23)
+
+`Orkeon.Tools.Chat` ([ADR-021](./ADR-021-chat-tool-family.md)) joined the family: `src/tools/` now holds **twelve** projects, `Tools.Abstractions` and eleven families, and each family references `Tools.Abstractions`.

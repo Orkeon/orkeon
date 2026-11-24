@@ -145,8 +145,8 @@ refusals on the same file, one `runner-settings` row each. What is refused:
   number); an enumeration written as a number (`Orkeon:Guardian:Llm:FailMode: "1"`, which the binder
   would take as `Open`), in a value, a list or a dictionary, or written as a comma list where it takes one
   name — the refusal names its members, never the value. Every enumeration is written by its name, in
-  any case; a `[Flags]` one (an e-mail or drive account's `Rights`) as a comma list of names. On an e-mail
-  or drive account, a number, or a comma list where the enumeration takes one name (`Incoming:Security`,
+  any case; a `[Flags]` one (an e-mail, drive or chat account's `Rights`) as a comma list of names. On an e-mail,
+  drive or chat account, a number, or a comma list where the enumeration takes one name (`Incoming:Security`,
   `Provider`), makes the account misconfigured, and its problem names the key and the members, never the
   value (`Rights holds a number where EmailRights takes names: write one or more of …`), every name the key
   takes listed, `None` of a `[Flags]` enumeration included. No refusal of a closed list repeats the value,
@@ -216,13 +216,13 @@ closed list, and what it means.
 | [RAG](#rag) | [`Orkeon:Rag`](#orkeonrag), [`Orkeon:Rag:Ingestion`](#orkeonragingestion), [`Orkeon:Rag:QueryRouting`](#orkeonragqueryrouting), [`Orkeon:Rag:Retrieval:Hybrid`](#orkeonragretrievalhybrid), [`Orkeon:Rag:WebFallback`](#orkeonragwebfallback) | 34 |
 | [Files and sandbox](#files-and-sandbox) | [`Orkeon:CodeSandbox`](#orkeoncodesandbox), [`Orkeon:CodeSandbox:Docker`](#orkeoncodesandboxdocker), [`Orkeon:FileSystem`](#orkeonfilesystem), [`Orkeon:Sandbox`](#orkeonsandbox), [`PathSecurity`](#pathsecurity) | 33 |
 | [Security](#security) | [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:Guardian`](#orkeonguardian), [`Orkeon:Security:PermissionGate`](#orkeonsecuritypermissiongate), [`Secrets`](#secrets), [`Security:Audit`](#securityaudit), [`Security:Prompt`](#securityprompt), [`Security:ToolResults`](#securitytoolresults), [`Security:Url`](#securityurl), [`Security:Vault`](#securityvault) | 40 |
-| [Tools](#tools) | [`BRAVE_API_KEY`](#brave_api_key), [`MCP`](#mcp), [`MCP:Server`](#mcpserver), [`Orkeon:Bridge`](#orkeonbridge), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Tools:Bridge`](#orkeontoolsbridge), [`Orkeon:Tools:Drive`](#orkeontoolsdrive), [`Orkeon:Tools:Email`](#orkeontoolsemail), [`Orkeon:Tools:Firefox`](#orkeontoolsfirefox), [`Orkeon:Tools:GitHub`](#orkeontoolsgithub), [`Orkeon:Tools:ResultLimits`](#orkeontoolsresultlimits), [`Orkeon:Tools:Shell`](#orkeontoolsshell), [`Plugins`](#plugins), [`RaggableTree`](#raggabletree) | 131 |
+| [Tools](#tools) | [`BRAVE_API_KEY`](#brave_api_key), [`MCP`](#mcp), [`MCP:Server`](#mcpserver), [`Orkeon:Bridge`](#orkeonbridge), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Tools:Bridge`](#orkeontoolsbridge), [`Orkeon:Tools:Chat`](#orkeontoolschat), [`Orkeon:Tools:Drive`](#orkeontoolsdrive), [`Orkeon:Tools:Email`](#orkeontoolsemail), [`Orkeon:Tools:Firefox`](#orkeontoolsfirefox), [`Orkeon:Tools:GitHub`](#orkeontoolsgithub), [`Orkeon:Tools:ResultLimits`](#orkeontoolsresultlimits), [`Orkeon:Tools:Shell`](#orkeontoolsshell), [`Plugins`](#plugins), [`RaggableTree`](#raggabletree) | 148 |
 | [Orchestration and persistence](#orchestration-and-persistence) | [`Orkeon:Checkpointing`](#orkeoncheckpointing), [`Orkeon:Compaction`](#orkeoncompaction), [`Orkeon:Compaction:Prune`](#orkeoncompactionprune), [`Orkeon:Consensus`](#orkeonconsensus), [`Orkeon:CrewFactory`](#orkeoncrewfactory), [`Orkeon:ExecutionState:Persistence`](#orkeonexecutionstatepersistence), [`Orkeon:HumanInput`](#orkeonhumaninput), [`Orkeon:RunHistory`](#orkeonrunhistory), [`Orkeon:Skills`](#orkeonskills) | 39 |
 | [Scripts and console](#scripts-and-console) | [`Orkeon:Cli:ConsoleStreaming`](#orkeoncliconsolestreaming), [`Orkeon:Cli:Memory`](#orkeonclimemory), [`Orkeon:Cli:ScriptCommands`](#orkeoncliscriptcommands), [`Orkeon:Cli:ScriptHost`](#orkeoncliscripthost), [`Orkeon:Cli:Session`](#orkeonclisession), [`Orkeon:Cli:Tui`](#orkeonclitui), [`Orkeon:Scripting:AgentInstances`](#orkeonscriptingagentinstances), [`Orkeon:Scripting:AgentMemory`](#orkeonscriptingagentmemory), [`Orkeon:Scripting:Limits`](#orkeonscriptinglimits), [`Orkeon:Scripting:Toolchain`](#orkeonscriptingtoolchain) | 35 |
-| [Service host and A2A](#service-host-and-a2a) | [`A2A`](#a2a), [`A2A:Security`](#a2asecurity), [`A2A:Security:AzureAD`](#a2asecurityazuread), [`A2A:Security:Oidc`](#a2asecurityoidc), [`Orkeon:Host`](#orkeonhost), [`Orkeon:Host:Discord`](#orkeonhostdiscord) | 59 |
+| [Service host and A2A](#service-host-and-a2a) | [`A2A`](#a2a), [`A2A:Security`](#a2asecurity), [`A2A:Security:AzureAD`](#a2asecurityazuread), [`A2A:Security:Oidc`](#a2asecurityoidc), [`Orkeon:Host`](#orkeonhost), [`Orkeon:Host:Discord`](#orkeonhostdiscord), [`Orkeon:Host:Teams`](#orkeonhostteams) | 70 |
 | [Observability](#observability) | [`Logging`](#logging), [`Orkeon:Monitoring`](#orkeonmonitoring), [`Telemetry`](#telemetry) | 8 |
 
-88 sections, 574 keys. Read by no shipped binary, only by a host written in C# (6): [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting), [`Orkeon:VectorSearch`](#orkeonvectorsearch), [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Monitoring`](#orkeonmonitoring).
+90 sections, 602 keys. Read by no shipped binary, only by a host written in C# (6): [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting), [`Orkeon:VectorSearch`](#orkeonvectorsearch), [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Monitoring`](#orkeonmonitoring).
 <!-- /settings-index -->
 
 How to read a table:
@@ -470,16 +470,17 @@ covers is not the one read, so it is not judged. The settings judged, from
 | Settings | Correction stated |
 |---|---|
 | `Llm:ApiKey`, `Llm:Profiles:<name>:ApiKey`, `Orkeon:Embeddings:ApiKey` | write `"ApiKeyEnvVar": "<NAME>"` instead |
-| `Llm:ApiKeyEnvVar`, `Llm:Profiles:<name>:ApiKeyEnvVar`, `Orkeon:Rag:WebFallback:ApiKeyEnvVar`, `Orkeon:Embeddings:ApiKeyEnvVar`, `Orkeon:Host:Discord:TokenEnvironmentVariable`, `Orkeon:Tools:Bridge:TokenEnvVar`, `Orkeon:Bridge:TokenEnvVar`, `A2A:Security:ApiKeySecretNames:<i>`, `Orkeon:Encryption:SecretName`, `Orkeon:Tools:GitHub:TokenVariable` | write the name alone, without `${` and `}` |
+| `Llm:ApiKeyEnvVar`, `Llm:Profiles:<name>:ApiKeyEnvVar`, `Orkeon:Rag:WebFallback:ApiKeyEnvVar`, `Orkeon:Embeddings:ApiKeyEnvVar`, `Orkeon:Host:Discord:TokenEnvironmentVariable`, `Orkeon:Host:Teams:SecretEnvironmentVariable`, `Orkeon:Tools:Bridge:TokenEnvVar`, `Orkeon:Bridge:TokenEnvVar`, `A2A:Security:ApiKeySecretNames:<i>`, `Orkeon:Encryption:SecretName`, `Orkeon:Tools:GitHub:TokenVariable` | write the name alone, without `${` and `}` |
 | `MCP:Servers:<id>:Command`, `:Args:<i>`, `:Url`; `Llm:AgentCli:Command`; `Orkeon:Redis:ConnectionString`, `Orkeon:Sqlite:ConnectionString`; `RaggableTree:Embedding:ApiKey`, `Orkeon:Pinecone:ApiKey`, `Orkeon:LanceDb:ApiKey`; `Llm:BaseUrl`, `Llm:Profiles:<name>:BaseUrl`, `RaggableTree:Embedding:BaseUrl`, `Orkeon:ChromaDb:BaseUrl`, `Orkeon:Pinecone:Host`, `Orkeon:LanceDb:Endpoint`, `Orkeon:Embeddings:Endpoint`, `Orkeon:Rag:WebFallback:Endpoint`, `Telemetry:OtlpEndpoint`; `Security:Vault:AzureKeyVaultUri`, `A2A:Security:AzureAD:Authority`, `A2A:Security:Oidc:Authority`; `Orkeon:Tools:GitHub:Token` | write the value, or keep it out of the file through the environment layer `ORKEON_<path with __>` |
 | `MCP:Servers:<id>:Env:<name>` | remove the entry: the server inherits the environment Orkeon runs in, set the variable there |
 | `Secrets:<name>` | remove the entry and set `ORKEON_<name>`, which the secret chain reads first |
 | `BRAVE_API_KEY` | remove the entry, Orkeon reads the variable |
 
 An e-mail account holding a reference in `Incoming:Host`, `Outgoing:Host`, `Auth:PasswordEnvVar` or
-`Auth:ClientSecretEnvVar`, or a drive account holding one in `Auth:ClientSecretEnvVar`, is not a
+`Auth:ClientSecretEnvVar`, or a drive account holding one in `Auth:ClientSecretEnvVar`, or a chat account holding one in
+`Auth:ClientId` or `Auth:Tenant`, is not a
 start refusal: the account is set aside, with its problem ([e-mail guide](../guides/email.md),
-[drive guide](../guides/drive.md)).
+[drive guide](../guides/drive.md), [chat guide](../guides/chat.md)).
 
 ### Named profiles (`Llm:Profiles`)
 
@@ -1454,8 +1455,8 @@ prompt — see [Security](../architecture/security.md).
 ### `Security:ToolResults`
 
 Tool-result screening: `Policy` is `Warn` by default — tagged as data and reported —, `Block`
-withholds High/Critical, `None` passes everything; `TrustedTools` are added to the `email_*`
-defaults. The length bound is not configured here but under `Orkeon:Tools:ResultLimits`
+withholds High/Critical, `None` passes everything; `TrustedTools` are added to the
+defaults: the `email_*` tools, `drive_read`, `chat_list`, `chat_meetings`, `chat_members`, `chat_read` and `chat_search`. The length bound is not configured here but under `Orkeon:Tools:ResultLimits`
 (below). Bound by `AddOrkeonInfrastructure()` and applied to every tool result by
 `IToolInvocationPipeline`.
 
@@ -1465,7 +1466,7 @@ defaults. The length bound is not configured here but under `Orkeon:Tools:Result
 | Key | Type | Default | Values | Meaning |
 |---|---|---|---|---|
 | `Policy` | enum | `"Warn"` | `None`, `Warn`, `Block` | The policy applied to a successful tool result. Default `Warn`: the result reaches the model tagged as data and any injection pattern is logged and audited. `Block` withholds a result carrying a High or Critical pattern (the model is told so); `None` passes results untouched and untagged. |
-| `TrustedTools` | list of string | `["email_accounts", "email_create_folder", "email_delete", "email_draft", "email_folders", "email_mark", "email_move", "email_parser", "email_read", "email_rename_folder", "email_save_attachment", "email_search", "email_send", "drive_read"]` |  | Tools whose results bypass sanitization. Defaults to the `email_*` tools, which screen what they read with `PromptInjectionDocumentValidator` and mark it untrusted themselves (ADR-012), and to `drive_read`, which does the same with a file's text (ADR-013) — tagging them again would stack two envelopes. The other `drive_*` tools return names and metadata they do not screen, and stay sanitized. Entries from configuration are added to these. |
+| `TrustedTools` | list of string | `["email_accounts", "email_create_folder", "email_delete", "email_draft", "email_folders", "email_mark", "email_move", "email_parser", "email_read", "email_rename_folder", "email_save_attachment", "email_search", "email_send", "drive_read", "chat_list", "chat_meetings", "chat_members", "chat_read", "chat_search"]` |  | Tools whose results bypass sanitization. Defaults to the `email_*` tools, which screen what they read with `PromptInjectionDocumentValidator` and mark it untrusted themselves (ADR-012), and to `drive_read`, which does the same with a file's text (ADR-013), and to `chat_list`, `chat_meetings`, `chat_members`, `chat_read` and `chat_search`, which screen the names and messages they return (ADR-021) — tagging them again would stack two envelopes. The other `drive_*` tools return names and metadata they do not screen, and stay sanitized. Entries from configuration are added to these. |
 <!-- /settings -->
 
 ### `Security:Url`
@@ -1575,8 +1576,8 @@ A result past its bound is cut and ends with a notice, `N chars omitted. …`, n
 dropped. `shell_command`, its stream cap and `job_tail` read the same bound, and so does the cut
 `ctx.llm.act` falls back on when no pipeline applies one. A tool that has already cut its own output
 (`shell_command` with its notice) flags the result as already bounded, and the pipeline does not cut
-it a second time. The `ResultBudget` of the Drive and
-Email tools is a separate bound, out of this setting.
+it a second time. The `ResultBudget` of the Drive,
+Email and Chat tools is a separate bound, out of this setting.
 
 <!-- settings:Orkeon:Tools:ResultLimits -->
 **Read by**: `orkeon`, `orkeon-host`, `orkeon-repl`.
@@ -1704,6 +1705,56 @@ never copied into the process; the process environment alone on Linux and macOS.
 | `CredentialsDirectory` | string | — |  | Physical directory holding the OAuth tokens, for a host whose per-user settings directory is not the right one (a service account). Read by the host, not by the tools. |
 | `DefaultAccount` | string | — |  | The account a call uses when it names none. Optional with a single account. |
 | `Screening:WithholdRejected` | boolean | `false` |  | When true, a message the prompt-injection detector rejects has its body withheld. Off by default: the detector was tuned on web pages, and newsletters trip it. |
+<!-- /settings -->
+
+### `Orkeon:Tools:Chat`
+
+Bound by `AddOrkeonChatTools(configuration)` and validated lazily, as the drive section is: an account
+is validated the first time a tool or an `orkeon chat` command uses it, every problem reported at
+once, and a value that cannot be read sets that one account aside instead of failing the host. No key
+holds a secret: a user account signs in through a public client, which has none, and a webhook's address or an
+application's credential (a certificate, a federated token or a client secret) is named by its variable. Walkthroughs and the tools:
+[Chat tools](../guides/chat.md).
+
+- **`DefaultAccount`** — the account a call that names none uses (optional with a single account).
+- **`CredentialsDirectory`** — the physical directory whose `chat` subdirectory holds the OAuth
+  tokens; default: `credentials` next to the per-user settings file. The runner keeps one credentials
+  directory: when `Orkeon:Tools:Email` or `Orkeon:Tools:Drive` names another one, the e-mail one wins,
+  then the drive one, and the runner says so at start.
+- **`Screening:WithholdRejected`** — withhold the text of a message the prompt-injection screen
+  rejects (default `false`: flag only).
+- **`Accounts:<name>`** — one account. `Provider` (`Teams` or `TeamsWebhook`), `Rights` and, for `Teams`, `Auth:ClientId` are
+  **mandatory**; a `Teams` account of `Auth:Method` `ClientCredentials` is an application that only reads, with a named
+  tenant and one credential; a `TeamsWebhook` takes `Rights` `Send`, `Webhook:UrlEnvVar` and `Send:MaxPerHour`
+  alone; the rights the tools use are `Read`, `Send`, `Edit`, `Delete`, `React` and `Meetings`. An empty
+  `Read:AllowedPlaces` reads nowhere, an empty `Send:AllowedPlaces` posts, edits, deletes and reacts
+  nowhere, and `Auth:AdminGranted` opens the reading of channels (`ChannelMessages`), their members
+  (`ChannelMembers`), editing and deleting in them (`ChannelEdit`, with `ChannelMessages`) and
+  `chat_meetings` (`Meetings`). `Send:MaxPerHour` counts posts, edits, deletions and reactions
+  together. `chat_search` and `chat_meetings` are in `TrustedTools`: they screen what they return, like `chat_read`.
+
+<!-- settings:Orkeon:Tools:Chat -->
+**Read by**: `orkeon`, `orkeon-host`, `orkeon-repl`.
+
+| Key | Type | Default | Values | Meaning |
+|---|---|---|---|---|
+| `Accounts:<name>:Auth:AdminGranted` | list of string | `[]` |  | What the tenant administrator has consented to for the application: `ChannelMessages`, `ChannelEdit`, `Meetings`, `ChannelMembers`. Each adds its scope to the next sign-in. |
+| `Accounts:<name>:Auth:CertificatePathEnvVar` | string | — |  | Name of the environment variable holding the path of a PEM file with the certificate and its key, for `ClientCredentials`. |
+| `Accounts:<name>:Auth:ClientId` | string | — |  | The id of your Microsoft Entra application. |
+| `Accounts:<name>:Auth:ClientSecretEnvVar` | string | — |  | Name of the environment variable holding the client secret, for `ClientCredentials`. |
+| `Accounts:<name>:Auth:FederatedTokenFileEnvVar` | string | — |  | Name of the environment variable holding the path of a federated token file, for `ClientCredentials`. |
+| `Accounts:<name>:Auth:Method` | enum | — | `OAuth2`, `ClientCredentials` | `OAuth2` (default): a user signs in. `ClientCredentials`: an application signs in as itself, to read alone. |
+| `Accounts:<name>:Auth:Tenant` | string | — |  | The tenant id or domain; `organizations` when unset. Mandatory for `ClientCredentials`. |
+| `Accounts:<name>:Cloud` | enum | — | `Global`, `UsGov`, `UsGovDoD`, `China` | The Microsoft cloud: `Global` (default), `UsGov` or `UsGovDoD`; `China` is refused. Not read for a `TeamsWebhook`. |
+| `Accounts:<name>:Provider` | enum | — | `Teams`, `TeamsWebhook` | `Teams`, or `TeamsWebhook` to post into one place with no sign-in. Mandatory. |
+| `Accounts:<name>:Read:AllowedPlaces` | list of string | `[]` |  | The places an agent may read. Empty means none. |
+| `Accounts:<name>:Rights` | enum | `"None"` | `None`, `Read`, `Send`, `Edit`, `Delete`, `React`, `Meetings` | What an agent may do, e.g. `"Read, Send"`. Mandatory. |
+| `Accounts:<name>:Send:AllowedPlaces` | list of string | `[]` |  | The places an agent may post in. Empty means none. |
+| `Accounts:<name>:Send:MaxPerHour` | integer | — |  | The most posts, edits, deletions and reactions, together, the account attempts in an hour, in this process. Unset sets no cap. |
+| `Accounts:<name>:Webhook:UrlEnvVar` | string | — |  | Name of the environment variable holding the address of the Workflows webhook, never the address itself. |
+| `CredentialsDirectory` | string | — |  | Physical directory holding the OAuth tokens, for a host whose per-user settings directory is not the right one (a service account). Read by the host, not by the tools. |
+| `DefaultAccount` | string | — |  | The account a call uses when it names none. Optional with a single account. |
+| `Screening:WithholdRejected` | boolean | `false` |  | When true, a message the prompt-injection detector rejects has its text withheld. Off by default, as for e-mail: the detector flags; rights and places bound an agent. |
 <!-- /settings -->
 
 ### `Orkeon:Tools:Drive`
@@ -2448,6 +2499,31 @@ crew when unset. A route to an undeclared crew, a route key that is not a channe
 | `TokenEnvironmentVariable` | string | `"ORKEON_DISCORD_TOKEN"` | Name of the environment variable holding the bot token. |
 <!-- /settings -->
 
+### `Orkeon:Host:Teams`
+
+The Microsoft Teams channel ([what to set up](../architecture/service-host.md#the-microsoft-teams-channel)). `Routes` is a
+list of `{ "Channel", "Crew" }`, since a Teams channel id contains `:`; `DefaultCrew` is the crew an unrouted channel
+reaches. An empty `AllowedUserIds`, an id that is not a GUID, an unset secret, a prefix that cannot be bound or a route that
+cannot be honoured refuses the start.
+
+<!-- settings:Orkeon:Host:Teams -->
+**Read by**: `orkeon-host`.
+
+| Key | Type | Default | Meaning |
+|---|---|---|---|
+| `AllowedUserIds` | list of string | `[]` | Entra object ids of the people allowed to talk to the bot. **Empty denies everyone**, and an enabled channel refuses the start. |
+| `AppId` | string | `""` | The bot's application (client) id: the audience every incoming token must carry. |
+| `DefaultCrew` | string | — | The crew a room without a route reaches. Unset, it is the first crew declared under `Orkeon:Host:Crews`; set, it must name one of them. |
+| `Enabled` | boolean | `false` | Whether the channel is switched on. Off unless a deployment says otherwise. |
+| `Prefix` | string | `"http://localhost:3978/"` | The listener's prefix: scheme, host, port and a closing slash. The channel answers `POST /api/messages` there; Microsoft must reach it over HTTPS, through a reverse proxy that terminates TLS in front of it. |
+| `ProgressInterval` | duration | `"00:00:05"` | How long progress updates are spaced out. Teams limits what a bot posts in one conversation. |
+| `Routes:<i>:Channel` | string | `""` | The Teams channel (or chat) id, as Teams writes it: `19:…@thread.tacv2`. |
+| `Routes:<i>:Crew` | string | `""` | The hosted crew a thread opened in that channel starts. |
+| `SecretEnvironmentVariable` | string | `"ORKEON_TEAMS_APP_SECRET"` | Name of the environment variable holding the application's client secret. |
+| `ServiceHosts` | list of string | `[]` | Hosts of the Bot Connector service replies may go to, beside the ones Microsoft publishes for Teams (`smba.trafficmanager.net`, `smba.infra.gcc.teams.microsoft.com`). An activity naming another host is refused, whatever its token says. |
+| `TenantId` | string | `""` | The Entra tenant the bot is registered in (single-tenant). An activity of another tenant is refused. |
+<!-- /settings -->
+
 ### `A2A`
 
 A2A server and client; `EnableServer` also registers the hosted service that starts the server
@@ -2613,6 +2689,7 @@ variable itself. The list is the one the code carries — a test holds this tabl
 | `ORKEON_LLM_API_KEY` | `orkeon` | an API key | The variable `orkeon llm probe` and `orkeon llm models` read the key from when `--api-key-env` names no other. |
 | `BRAVE_API_KEY` | `orkeon`, `orkeon-host` | a Brave Search API key | Registers the `brave_search` tool. It is read as a configuration key first, so the settings file and `ORKEON_BRAVE_API_KEY` give it too. |
 | `ORKEON_DISCORD_TOKEN` | `orkeon-host` | a Discord bot token | The token of the Discord channel: the default of `Orkeon:Host:Discord:TokenEnvironmentVariable`, which may name another variable. |
+| `ORKEON_TEAMS_APP_SECRET` | `orkeon-host` | a client secret | The client secret of the Teams channel's bot application: the default of `Orkeon:Host:Teams:SecretEnvironmentVariable`, which may name another variable. |
 | `OLLAMA_BASE_URL` | `orkeon`, `orkeon-host`, `orkeon-repl` | the address of an Ollama server | The address the Ollama provider uses when it is given none: `Llm:BaseUrl` wins over it, and `http://localhost:11434` is what remains without either. |
 | `TUI_DRIVER` | `orkeon-repl` | `windows`, `dotnet` or `ansi` | The Terminal.Gui driver of the text interfaces, for diagnosis. Unset: `windows` under Windows, `dotnet` elsewhere — `ansi` draws nothing under WSL and in many container terminals. |
 | `TUI_DIAG` | `orkeon-repl` | `1` | The split-pane console writes `[tui-diag]` lines on stderr while it starts: the terminal, the driver chosen. |
@@ -2654,6 +2731,10 @@ value: the secret stays out of the file. `orkeon settings <key>` describes each.
 | `Llm:Profiles:<name>:ApiKeyEnvVar` | The API key of that profile, read the same way. | The process environment, then the user's own variables under Windows. |
 | `Orkeon:Tools:Email:Accounts:<name>:Auth:PasswordEnvVar` | The password, or app password, of the e-mail account. | The process environment, then the user's own variables under Windows. |
 | `Orkeon:Tools:Email:Accounts:<name>:Auth:ClientSecretEnvVar` | The OAuth client secret of the e-mail account. | The process environment, then the user's own variables under Windows. |
+| `Orkeon:Tools:Chat:Accounts:<name>:Auth:CertificatePathEnvVar` | The path of the PEM file, certificate and key, of the chat application. Its folder is mounted internal and read-only at start, and must be a folder of its own. | The process environment, then the user's own variables under Windows. |
+| `Orkeon:Tools:Chat:Accounts:<name>:Auth:ClientSecretEnvVar` | The client secret of the chat application. | The process environment, then the user's own variables under Windows. |
+| `Orkeon:Tools:Chat:Accounts:<name>:Auth:FederatedTokenFileEnvVar` | The path of the federated token file of the chat application. Its folder is mounted internal and read-only at start, and must be a folder of its own. | The process environment, then the user's own variables under Windows. |
+| `Orkeon:Tools:Chat:Accounts:<name>:Webhook:UrlEnvVar` | The address of the Workflows webhook. | The process environment, then the user's own variables under Windows. |
 | `Orkeon:Tools:Drive:Accounts:<name>:Auth:ClientSecretEnvVar` | The OAuth client secret of the Google Drive account. | The process environment, then the user's own variables under Windows. |
 | `Orkeon:TypeSafe:ApiKeyEnvVar` | The key of the TypeSafe decision model; the key names `TYPESAFE_API_KEY` when nothing sets it. | The process environment, then the user's own variables under Windows. |
 | `Orkeon:Liquid:ApiKeyEnvVar` | The key of the Liquid decision model; the key names `LIQUID_API_KEY` when nothing sets it. | The process environment, then the user's own variables under Windows. |
@@ -2661,6 +2742,7 @@ value: the secret stays out of the file. `orkeon settings <key>` describes each.
 | `Orkeon:Embeddings:ApiKeyEnvVar` | The API key of the `mistral`, `azure-openai` or `gemini` embedding provider, read when no `Orkeon:Embeddings:ApiKey` is set. | The process environment. |
 | `Orkeon:Rag:WebFallback:ApiKeyEnvVar` | The key of the web search the corrective RAG falls back to; empty, no key is sent. | The process environment. |
 | `Orkeon:Host:Discord:TokenEnvironmentVariable` | The bot token of the Discord channel; the key names `ORKEON_DISCORD_TOKEN` when nothing sets it. | The process environment. |
+| `Orkeon:Host:Teams:SecretEnvironmentVariable` | The client secret of the Teams channel's bot application; the key names `ORKEON_TEAMS_APP_SECRET` when nothing sets it. | The process environment. |
 | `Orkeon:Tools:Bridge:TokenEnvVar` | The token the run sends to the tool bridge; the key names `ORKEON_BRIDGE_TOKEN` when nothing sets it. | The process environment. |
 | `Orkeon:Bridge:TokenEnvVar` | The token the tool bridge server expects from its callers; the key names `ORKEON_BRIDGE_TOKEN` when nothing sets it. | The process environment. |
 
