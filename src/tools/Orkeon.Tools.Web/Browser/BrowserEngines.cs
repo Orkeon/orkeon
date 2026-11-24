@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Logging;
+using Orkeon.Tools.Web.Chromium;
 using Orkeon.Tools.Web.Firefox;
 
 namespace Orkeon.Tools.Web.Browser;
@@ -10,6 +11,9 @@ internal static class BrowserEngines
         new(StringComparer.OrdinalIgnoreCase)
         {
             [FirefoxEngine.EngineId] = static (options, logger) => new FirefoxEngine(options, logger),
+            [ChromiumVariant.Chrome.Id] = static (options, logger) => new ChromiumEngine(ChromiumVariant.Chrome, options, logger),
+            [ChromiumVariant.Edge.Id] = static (options, logger) => new ChromiumEngine(ChromiumVariant.Edge, options, logger),
+            [ChromiumVariant.Brave.Id] = static (options, logger) => new ChromiumEngine(ChromiumVariant.Brave, options, logger),
         };
 
     /// <summary>The engine the options name.</summary>

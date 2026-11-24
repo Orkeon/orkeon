@@ -51,15 +51,15 @@ jobs:
         # trees below is used by this job (dotnet lives in /usr/share/dotnet, and
         # the runner's actions ship their own Node in externals/). The runner's
         # Firefox (/usr/lib/firefox, behind the /usr/bin/firefox link) stays: the
-        # `firefox` tool's integration suite drives it (#294 - the 2026-11-07 run
-        # removed it and the seven Firefox tests failed on a dangling link).
+        # `browser` tool's integration suite drives it (#294 - the 2026-11-07 run
+        # removed it and the seven Firefox tests failed on a dangling link). Its Chrome
+        # (/opt/google/chrome) stays for the same reason (#441).
         run: |
           echo "Before:"; df -h / | tail -1
           sudo rm -rf /usr/local/lib/android /opt/ghc /usr/local/.ghcup /usr/share/swift \
             /opt/hostedtoolcache /usr/lib/jvm /usr/lib/google-cloud-sdk /opt/az /usr/share/az_* \
             /usr/share/miniconda /usr/local/julia* /usr/local/lib/node_modules \
-            /usr/local/share/powershell /opt/microsoft/powershell /usr/local/share/chromium \
-            /opt/google/chrome
+            /usr/local/share/powershell /opt/microsoft/powershell /usr/local/share/chromium
           sudo docker image prune --all --force >/dev/null 2>&1 || true
           sudo apt-get clean >/dev/null 2>&1 || true
           echo "After:"; df -h / | tail -1
@@ -103,15 +103,16 @@ jobs:
           bwrap --unshare-all --die-with-parent --new-session --ro-bind / / \
             --proc /proc --dev /dev --tmpfs /tmp -- true
           echo "bubblewrap confines a process on this runner."
-      # The Firefox suite (tests/tools/Orkeon.Tools.Web.Tests/Firefox/FirefoxToolIntegrationTests.cs)
-      # SKIPS when the launcher finds no Firefox, so a runner image that drops the browser
+      # The Firefox and Chrome suites (tests/tools/Orkeon.Tools.Web.Tests/Browser/BrowserToolIntegrationTests.cs)
+      # SKIP when the engine finds no browser, so a runner image that drops the browser
       # would make a green night that never drove it. The probe runs the binary itself:
       # a link left without its target (what the disk cleanup above used to do) fails here,
       # not seven tests further down.
-      - name: Check that Firefox starts
+      - name: Check that Firefox and Chrome start
         run: |
           firefox --version
-          echo "Firefox starts on this runner: the firefox tool's integration suite will run."
+          google-chrome --version
+          echo "Both start on this runner: the browser tool's integration suites will run."
       # The Slow filter below also selects TemplatesPackTests (FWK-26, tests/e2e): it packs the
       # lineup and the Orkeon.Templates package, installs the latter into a throw-away `dotnet new`
       # hive, and builds each generated project on the local feed.

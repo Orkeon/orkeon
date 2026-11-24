@@ -45,7 +45,7 @@ public sealed class FirefoxEngineTests : IDisposable
     public void Should_FallBackToHeadless_OnlyWhen_ADisplayIsNeededAndNoneIsSet(
         bool configured, bool needsDisplay, string? display, string? wayland, bool expected)
     {
-        var headless = FirefoxEngine.ResolveHeadless(configured, needsDisplay, name => name switch
+        var headless = BrowserHost.ResolveHeadless(configured, needsDisplay, name => name switch
         {
             "DISPLAY" => display,
             "WAYLAND_DISPLAY" => wayland,
@@ -61,7 +61,7 @@ public sealed class FirefoxEngineTests : IDisposable
         var path = string.Join(Path.PathSeparator, "relative/bin", "/opt/a", "/opt/b");
         var onB = Path.Combine("/opt/b", "firefox");
 
-        var found = FirefoxEngine.Locate(null, path, ["/known/firefox"], file => file == onB || file == "/known/firefox", windows: false);
+        var found = BrowserHost.Locate(null, ["firefox"], path, ["/known/firefox"], file => file == onB || file == "/known/firefox", windows: false);
 
         Assert.Equal(onB, found);
     }
@@ -69,7 +69,7 @@ public sealed class FirefoxEngineTests : IDisposable
     [Fact]
     public void Should_FallBackToAKnownFolder_When_ThePathHoldsNoFirefox()
     {
-        var found = FirefoxEngine.Locate(null, "/opt/a", ["/missing/firefox", "/known/firefox"], file => file == "/known/firefox", windows: false);
+        var found = BrowserHost.Locate(null, ["firefox"], "/opt/a", ["/missing/firefox", "/known/firefox"], file => file == "/known/firefox", windows: false);
 
         Assert.Equal("/known/firefox", found);
     }
@@ -79,8 +79,8 @@ public sealed class FirefoxEngineTests : IDisposable
     {
         var configured = Path.Combine("/opt", "nightly", "firefox");
 
-        Assert.Equal(configured, FirefoxEngine.Locate(configured, "/opt/a", ["/known/firefox"], file => file == configured, windows: false));
-        Assert.Null(FirefoxEngine.Locate(configured, "/opt/a", ["/known/firefox"], file => file == "/known/firefox", windows: false));
+        Assert.Equal(configured, BrowserHost.Locate(configured, ["firefox"], "/opt/a", ["/known/firefox"], file => file == configured, windows: false));
+        Assert.Null(BrowserHost.Locate(configured, ["firefox"], "/opt/a", ["/known/firefox"], file => file == "/known/firefox", windows: false));
     }
 
     [Fact]
@@ -88,8 +88,8 @@ public sealed class FirefoxEngineTests : IDisposable
     {
         var onA = Path.Combine("/opt/a", "firefox-esr");
 
-        Assert.Equal(onA, FirefoxEngine.Locate("firefox-esr", "/opt/a", ["/known/firefox"], file => file == onA, windows: false));
-        Assert.Null(FirefoxEngine.Locate("firefox-esr", "/opt/a", ["/known/firefox"], file => file == "/known/firefox", windows: false));
+        Assert.Equal(onA, BrowserHost.Locate("firefox-esr", ["firefox"], "/opt/a", ["/known/firefox"], file => file == onA, windows: false));
+        Assert.Null(BrowserHost.Locate("firefox-esr", ["firefox"], "/opt/a", ["/known/firefox"], file => file == "/known/firefox", windows: false));
     }
 
     [Fact]
@@ -97,7 +97,7 @@ public sealed class FirefoxEngineTests : IDisposable
     {
         var onA = Path.Combine("/opt/a", "firefox.exe");
 
-        Assert.Equal(onA, FirefoxEngine.Locate(null, "/opt/a", [], file => file == onA, windows: true));
+        Assert.Equal(onA, BrowserHost.Locate(null, ["firefox"], "/opt/a", [], file => file == onA, windows: true));
     }
 
     [Fact]

@@ -9,25 +9,27 @@ using Orkeon.Domain.Tools.Protocol;
 using Orkeon.Tests.Shared.FileSystem;
 using Orkeon.Tests.Shared.Network;
 using Orkeon.Tests.Shared.Timing;
+using Orkeon.Tools.Web.Browser;
+using Orkeon.Tools.Web.Chromium;
 using Orkeon.Tools.Web.Firefox;
 using Orkeon.Tools.Web.Tests.Doubles;
 
-namespace Orkeon.Tools.Web.Tests.Firefox;
+namespace Orkeon.Tools.Web.Tests.Browser;
 
 /// <summary>
-/// The <c>firefox</c> tool on the Firefox of the machine, headless, against pages served on the
-/// loopback: what the unit tests assume of the browser (the events it sends, the dialogs, the tabs)
-/// is checked here. Skipped where Firefox is not installed.
+/// The <c>browser</c> tool on a browser of the machine, headless, against pages served on the loopback:
+/// what the unit tests assume of the browser (the events it sends, the dialogs, the tabs) is checked here,
+/// the same for every engine. Skipped where the browser is not installed; <c>ORKEON_TEST_BROWSER_CHROME</c>
+/// (and <c>_EDGE</c>, <c>_BRAVE</c>, <c>_FIREFOX</c>) names the program of another one.
 /// </summary>
-[Trait("Category", "Integration")]
-public sealed class FirefoxToolIntegrationTests : IDisposable
+public abstract class BrowserToolIntegrationTests : IDisposable
 {
     private const string HomePage = """
         <!doctype html>
         <html><head><meta charset="utf-8"><title>Orkeon test page</title></head><body>
         <nav aria-label="Main"><a href="second">Second page</a> <a href="third" target="_blank">Third page</a></nav>
         <h1>Welcome</h1>
-        <p>This page is served to a real Firefox.</p>
+        <p>This page is served to a real browser.</p>
         <h2>Greeting</h2>
         <form id="form"><label for="who">Name</label> <input id="who" type="text">
         <button type="button" id="greet">Greet</button></form>
@@ -50,23 +52,51 @@ public sealed class FirefoxToolIntegrationTests : IDisposable
     private readonly FakeEphemeralCollectionSearch _search = new();
     // The start is bounded by a hang guard, not the product's default: a cold start on a loaded
     // runner outlasted 30 s (#379), and no test here is about how long Firefox takes to start.
-    private readonly FirefoxToolOptions _options = new()
+    private readonly FirefoxToolOptions _options;
+
+    private protected BrowserToolIntegrationTests(string engine) => _options = new FirefoxToolOptions
     {
+        Engine = engine,
+        ExecutablePath = Environment.GetEnvironmentVariable("ORKEON_TEST_BROWSER_" + engine.ToUpperInvariant()),
         Headless = true,
         StartupTimeoutSeconds = (int)HangGuards.ProcessStart.TotalSeconds,
     };
+
+    /// <summary>Whether the browser is on this machine.</summary>
+    private protected abstract bool IsInstalled(FirefoxToolOptions options);
+
+    /// <summary>Where this machine's browser can read a profile folder.</summary>
+    private protected abstract string ProfileRoot { get; }
+
+    /// <summary>A file the browser writes in the folder of its profile.</summary>
+    private protected abstract string ProfileFile { get; }
+
+    /// <summary>Puts in a new profile folder what keeps its first run quiet.</summary>
+    private protected virtual void Prepare(string folder)
+    {
+    }
 
     private static CancellationToken Ct => TestContext.Current.CancellationToken;
 
     private string Home => _server.BaseAddress.ToString();
 
-    public void Dispose() => _server.Dispose();
+    public void Dispose()
+    {
+        Dispose(disposing: true);
+        GC.SuppressFinalize(this);
+    }
+
+    protected virtual void Dispose(bool disposing)
+    {
+        if (disposing)
+            _server.Dispose();
+    }
 
     private FirefoxTool Tool()
     {
         Assert.SkipUnless(
-            new FirefoxEngine(_options).LocateOnHost() is not null,
-            "Firefox is not installed on this machine.");
+            IsInstalled(_options),
+            $"The browser of the engine '{_options.Engine}' is not installed on this machine.");
         return new FirefoxTool(_options, _files, new AllowAllUrlValidator(), _search);
     }
 
@@ -76,7 +106,7 @@ public sealed class FirefoxToolIntegrationTests : IDisposable
         foreach (var (name, value) in arguments)
             parameters[name] = value;
 
-        var response = await tool.CallAsync(new ToolCallRequest(ToolName: "firefox", Parameters: parameters), Ct);
+        var response = await tool.CallAsync(new ToolCallRequest(ToolName: "browser", Parameters: parameters), Ct);
         Assert.True(response.Success, response.Error);
         return Assert.IsType<JsonObject>(JsonSerializer.SerializeToNode(response.Result));
     }
@@ -103,6 +133,7 @@ public sealed class FirefoxToolIntegrationTests : IDisposable
 
         Assert.Equal(Home, Text(page, "url"));
         Assert.Equal("Orkeon test page", Text(page, "title"));
+        Assert.Equal(_options.Engine, Text(page, "engine"));
         var lines = Lines(page);
         Assert.Contains("section h1 Welcome", lines);
         Assert.Contains("section h2 Greeting", lines);
@@ -225,7 +256,7 @@ public sealed class FirefoxToolIntegrationTests : IDisposable
 
             await CallAsync(tool, "close");
             Assert.True(Directory.Exists(folder));
-            Assert.True(File.Exists(Path.Combine(folder, "prefs.js")));
+            Assert.True(File.Exists(Path.Combine(folder, ProfileFile)));
         }
         finally
         {
@@ -236,7 +267,7 @@ public sealed class FirefoxToolIntegrationTests : IDisposable
     [Fact]
     public async Task Should_ShareOneBrowserOnTheProfileBetweenRuns_EachOnItsOwnTabs()
     {
-        // Firefox locks a profile: two runs on one named profile succeed together only in one browser.
+        // A browser locks its profile: two runs on one named profile succeed together only in one browser.
         var folder = NamedProfileFolder();
         try
         {
@@ -275,11 +306,11 @@ public sealed class FirefoxToolIntegrationTests : IDisposable
     }
 
     /// <summary>A profile folder of its own, with the preferences of a quiet first run, where the snap can read it.</summary>
-    private static string NamedProfileFolder()
+    private string NamedProfileFolder()
     {
-        var folder = Path.Combine(FirefoxProfile.ResolveRoot(null), "named-" + Guid.NewGuid().ToString("N"));
+        var folder = Path.Combine(ProfileRoot, "named-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(folder);
-        File.WriteAllText(Path.Combine(folder, "user.js"), FirefoxProfile.Preferences);
+        Prepare(folder);
         return folder;
     }
 
@@ -289,7 +320,7 @@ public sealed class FirefoxToolIntegrationTests : IDisposable
         foreach (var (name, value) in arguments)
             parameters[name] = value;
 
-        var response = await tool.CallAsync(new ToolCallRequest(ToolName: "firefox", Parameters: parameters), Ct);
+        var response = await tool.CallAsync(new ToolCallRequest(ToolName: "browser", Parameters: parameters), Ct);
         return Assert.IsType<JsonObject>(JsonSerializer.SerializeToNode(response.Result));
     }
 
@@ -353,4 +384,40 @@ public sealed class FirefoxToolIntegrationTests : IDisposable
             }
         }
     }
+}
+
+[Trait("Category", "Integration")]
+public sealed class FirefoxToolIntegrationTests() : BrowserToolIntegrationTests(FirefoxEngine.EngineId)
+{
+    private protected override string ProfileRoot => FirefoxProfile.ResolveRoot(null);
+
+    private protected override string ProfileFile => "prefs.js";
+
+    private protected override bool IsInstalled(FirefoxToolOptions options) => new FirefoxEngine(options).LocateOnHost() is not null;
+
+    private protected override void Prepare(string folder) =>
+        File.WriteAllText(Path.Combine(folder, "user.js"), FirefoxProfile.Preferences);
+}
+
+[Trait("Category", "Integration")]
+public sealed class ChromeToolIntegrationTests() : ChromiumToolIntegrationTests(ChromiumVariant.Chrome);
+
+[Trait("Category", "Integration")]
+public sealed class EdgeToolIntegrationTests() : ChromiumToolIntegrationTests(ChromiumVariant.Edge);
+
+[Trait("Category", "Integration")]
+public sealed class BraveToolIntegrationTests() : ChromiumToolIntegrationTests(ChromiumVariant.Brave);
+
+public abstract class ChromiumToolIntegrationTests : BrowserToolIntegrationTests
+{
+    private readonly ChromiumVariant _variant;
+
+    private protected ChromiumToolIntegrationTests(ChromiumVariant variant)
+        : base(variant.Id) => _variant = variant;
+
+    private protected override string ProfileRoot => ChromiumProfile.ResolveRoot(_variant, null);
+
+    private protected override string ProfileFile => "Local State";
+
+    private protected override bool IsInstalled(FirefoxToolOptions options) => new ChromiumEngine(_variant, options).LocateOnHost() is not null;
 }
