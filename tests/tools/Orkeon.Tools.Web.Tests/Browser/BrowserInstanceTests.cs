@@ -1,3 +1,4 @@
+using Orkeon.Tools.Web.Browser;
 using Microsoft.Extensions.Logging;
 using Orkeon.Tests.Shared.Doubles;
 using Orkeon.Tests.Shared.Timing;
@@ -5,13 +6,13 @@ using Orkeon.Tools.Web.Firefox;
 using Orkeon.Tools.Web.Firefox.BiDi;
 using Orkeon.Tools.Web.Tests.Doubles;
 
-namespace Orkeon.Tools.Web.Tests.Firefox;
+namespace Orkeon.Tools.Web.Tests.Browser;
 
 /// <summary>
 /// The start of a browser: <c>session.new</c> waits the start's timeout (#437), and a browser that leaves
 /// it unanswered is started again once (#335).
 /// </summary>
-public class FirefoxBrowserTests : FirefoxSessionTestBase
+public class BrowserInstanceTests : BrowserSessionTestBase
 {
     // Two timeouts apart: each test lets pass the one its command waits.
     private static readonly FirefoxToolOptions Options = new() { StartupTimeoutSeconds = 90, CommandTimeoutSeconds = 30 };
@@ -23,9 +24,9 @@ public class FirefoxBrowserTests : FirefoxSessionTestBase
     private readonly ManualTimeProvider _clock = new();
     private readonly RecordingLogger _logger = new();
 
-    private Task<FirefoxBrowser> OpenBrowserAsync(FirefoxToolOptions? options = null) =>
-        FirefoxBrowser.OpenAsync(
-            Launcher, FirefoxProfileChoice.Disposable, options ?? Options,
+    private Task<BrowserInstance> OpenBrowserAsync(FirefoxToolOptions? options = null) =>
+        BrowserInstance.OpenAsync(
+            Launcher, BrowserProfileChoice.Disposable, options ?? Options,
             Timings with { Clock = _clock, CloseWait = TimeSpan.Zero }, _logger, Ct);
 
     /// <summary>
@@ -49,7 +50,7 @@ public class FirefoxBrowserTests : FirefoxSessionTestBase
     }
 
     /// <summary>The start, bounded: a start that never ends fails the test instead of hanging the run.</summary>
-    private static Task<FirefoxBrowser> Bounded(Task<FirefoxBrowser> opening) => opening.WaitAsync(Polling.DefaultTimeout);
+    private static Task<BrowserInstance> Bounded(Task<BrowserInstance> opening) => opening.WaitAsync(Polling.DefaultTimeout);
 
     [Fact]
     public async Task Should_WaitTheStartupTimeoutForTheSession_When_ItIsLongerThanTheCommandTimeout()
@@ -133,7 +134,7 @@ public class FirefoxBrowserTests : FirefoxSessionTestBase
 
         Assert.Equal(BiDiException.Timeout, error.Code);
         Assert.Contains("started again", error.Message, StringComparison.Ordinal);
-        Assert.Equal(FirefoxBrowser.StartAttempts, Launcher.Browsers.Count);
+        Assert.Equal(BrowserInstance.StartAttempts, Launcher.Browsers.Count);
         Assert.All(Launcher.Browsers, browser => Assert.True(browser.Disposed));
     }
 

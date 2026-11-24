@@ -1,17 +1,22 @@
-> 🇫🇷 [Version française](../fr/guides/firefox.md)
+> 🇫🇷 [Version française](../fr/guides/browser.md)
 
-# The `firefox` tool
+# The `browser` tool
 
 > **See also**: [Tool inventory](../tools/inventory.md) ·
-> [Configuration reference](../reference/configuration.md#orkeontoolsfirefox) ·
+> [Configuration reference](../reference/configuration.md#orkeontoolsbrowser) ·
 > [RaggableTree](../architecture/raggable-tree.md) · [Known limitations](../reference/limitations.md) ·
 > [Back to index](../INDEX.md)
 
-`firefox` gives an agent a browser: the Firefox installed on the machine, driven over
+`browser` gives an agent a browser: the one installed on the machine — Firefox, the only engine built so far —, driven over
 [WebDriver BiDi](https://w3c.github.io/webdriver-bidi/) on a WebSocket. No driver binary, no
 vendor package, no browser download. The agent opens a page, reads it as an outline of sections,
 links and controls, clicks, types, presses keys, searches the page by meaning, runs a script and
-saves a screenshot. Pages run their JavaScript: what `web_scrape` cannot see, `firefox` can.
+saves a screenshot. Pages run their JavaScript: what `web_scrape` cannot see, `browser` can.
+
+> The tool was named `firefox`, its section `Orkeon:Tools:Firefox`. Both still work and are deprecated: `firefox` is a
+> second name of the same tool, over the same browsers, and the former section is read when `Orkeon:Tools:Browser` is
+> absent (both set is refused). They go at the next major version
+> ([ADR-022](../adr/ADR-022-browser-tool-engines.md)).
 
 - **One browser per agent run.** Firefox starts at the run's first action, keeps its pages
   from one action to the next, and closes with the run. Agents running side by side have their
@@ -39,7 +44,7 @@ agents:
   researcher:
     role: "Researcher"
     goal: "Find and summarise sources on the web"
-    tools: [firefox]
+    tools: [browser]
 ```
 
 Firefox must be installed on the host (`firefox` on the PATH, or `ExecutablePath`). The tool is
@@ -72,7 +77,7 @@ reading actions pass in `plan` mode, `screenshot` is an edit, the others are exe
 | `close_tab` | `tab` | Execute | Closes a tab, the current one by default; the last tab is never closed (`close` is for that) |
 | `close` | `profile` | Execute | Closes the run's browser; the next action starts a new one. Outside any run, under `Lifetime: host`, closes the host's browser of `profile`, the default's without (`profile` counts there only) |
 
-Every answer carries the action, `url` and `title` of the page shown, `tab`, the handle of the
+Every answer carries the action, `engine` (the engine the host runs), `url` and `title` of the page shown, `tab`, the handle of the
 tab the actions drive now, and `profile`, the one the browser runs with. `dialogs` comes with
 it when the page opened `alert`, `confirm` or `prompt` boxes during the action: what they said,
 dismissed so the page never freezes (a `beforeunload` question is accepted: leaving was what the
@@ -98,7 +103,7 @@ the tab driven moves the agent to the one before it.
 second reading of a page. The ids stay valid while the page does not change: typing into a field
 then clicking a button needs no new snapshot. After a navigation, or when an action changed the
 page, an old id is refused with the reason, and the agent calls `snapshot` again. A listing is
-cut at `MaxNodes` (`Orkeon:Tools:Firefox`, 40 by default, 200 at most): `truncated` and
+cut at `MaxNodes` (`Orkeon:Tools:Browser`, 40 by default, 200 at most): `truncated` and
 `total_nodes` say so, and `offset` reads the next part.
 
 ### A typical flow
@@ -114,7 +119,7 @@ screenshot save_to_path=/output/docs.png         → saved_path
 ```
 
 `search` sends the text of each section of the page to the embedding provider as an inline
-source of an ephemeral collection named after the page (prefix `firefox`): a page read twice is
+source of an ephemeral collection named after the page (prefix `browser`): a page read twice is
 embedded once. Each hit names the section's node, so the agent reads or clicks what the search
 found: that is the link between the RAG subsystem and the page graph.
 
@@ -141,13 +146,13 @@ A browser starts on one of three kinds of profile, and the answer's `profile` sa
   Firefox holds open is refused: close that Firefox, or use another profile.
 - **A profile folder**, by its path: the same, for a profile `profiles.ini` does not list.
 
-Who chooses: `Orkeon:Tools:Firefox:Profile` names the profile a browser starts on when the
+Who chooses: `Orkeon:Tools:Browser:Profile` names the profile a browser starts on when the
 agent names none. An agent may name `disposable`, that profile, or one of `AllowedProfiles` —
 nothing else. `DeniedProfiles` wins over all of them: a profile listed there starts no browser,
 whoever asks. Names are compared without regard to case.
 
 ```json
-"Orkeon": { "Tools": { "Firefox": {
+"Orkeon": { "Tools": { "Browser": {
   "Profile": "agent-work",
   "AllowedProfiles": ["agent-reviews"],
   "DeniedProfiles": ["default", "default-release"]
@@ -182,7 +187,7 @@ still sees tabs of its own, which close with the run, and the window stays open 
 on a blank tab; should the user close that tab, the next run opens one of its own.
 
 ```json
-{ "Orkeon": { "Tools": { "Firefox": { "Lifetime": "host" } } } }
+{ "Orkeon": { "Tools": { "Browser": { "Lifetime": "host" } } } }
 ```
 
 Inside a run, `close` closes the run's browser, as always — or, when the run has not used one
@@ -193,10 +198,11 @@ and that are more than ten minutes old: what a host killed with its browsers lef
 
 ## Settings
 
-`Orkeon:Tools:Firefox` — see the [configuration reference](../reference/configuration.md#orkeontoolsfirefox):
-`ExecutablePath`, `Headless`, `Profile`, `AllowedProfiles`, `DeniedProfiles`, `SharedInstance`,
+`Orkeon:Tools:Browser` — see the [configuration reference](../reference/configuration.md#orkeontoolsbrowser):
+`Engine`, `ExecutablePath`, `Headless`, `Profile`, `AllowedProfiles`, `DeniedProfiles`, `SharedInstance`,
 `Lifetime`, `ProfileRoot`, `StartupTimeoutSeconds`, `CommandTimeoutSeconds`, `MaxNodes`,
-`MaxTextLength`. When Firefox is a snap, the default profile root is `~/snap/firefox/common/orkeon/profiles`: a
+`MaxTextLength`. `Engine` picks the browser (`firefox`, the default, is the only one built); an unknown one is
+refused, and nothing falls back to Firefox. The host chooses it, never the agent. When Firefox is a snap, the default profile root is `~/snap/firefox/common/orkeon/profiles`: a
 snap cannot read the system's temp folder.
 
 Firefox announces its remote protocol early in its start and answers the first command,

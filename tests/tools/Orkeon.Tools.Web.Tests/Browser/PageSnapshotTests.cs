@@ -1,10 +1,11 @@
+using Orkeon.Tools.Web.Browser;
 using System.Collections.Immutable;
 using Orkeon.Analysis.Abstractions;
 using Orkeon.Analysis.Abstractions.DTOs.Queries;
 using Orkeon.Tests.Shared.FileSystem;
 using Orkeon.Tools.Web.Firefox;
 
-namespace Orkeon.Tools.Web.Tests.Firefox;
+namespace Orkeon.Tools.Web.Tests.Browser;
 
 public class PageSnapshotTests
 {

@@ -1,3 +1,4 @@
+using Orkeon.Tools.Web.Browser;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
@@ -190,7 +191,7 @@ internal sealed class FirefoxProfile
             throw new FirefoxException($"The browser's profile folder could not be created ({ex.Message}).", ex);
         }
 
-        return new FirefoxProfile(FirefoxProfileChoice.DisposableName, directory, disposable: true);
+        return new FirefoxProfile(BrowserProfileChoice.DisposableName, directory, disposable: true);
     }
 
     /// <summary>
@@ -292,7 +293,7 @@ internal sealed class FirefoxProfile
 
     private static string? Matches(string? sectionName, string? path, bool relative, string iniFolder, string name)
     {
-        if (sectionName is null || path is null || !FirefoxProfileChoice.Is(sectionName, name))
+        if (sectionName is null || path is null || !BrowserProfileChoice.Is(sectionName, name))
             return null;
         return relative ? Path.GetFullPath(Path.Combine(iniFolder, path)) : Path.GetFullPath(path);
     }

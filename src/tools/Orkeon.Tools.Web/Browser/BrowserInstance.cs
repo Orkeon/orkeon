@@ -1,32 +1,35 @@
+using Orkeon.Tools.Web.Firefox;
 using System.Diagnostics.CodeAnalysis;
 using System.Text.Json.Nodes;
 using Microsoft.Extensions.Logging;
 using Orkeon.Tools.Web.Firefox.BiDi;
 
-namespace Orkeon.Tools.Web.Firefox;
+namespace Orkeon.Tools.Web.Browser;
 
 /// <summary>
-/// One running Firefox: its process, its WebDriver BiDi channel, and the sessions attached to it. A
+/// One running browser: its process, its WebDriver BiDi channel, and the sessions attached to it. A
 /// session drives tabs of its own in the browser; the browser hands the events of the channel to every
 /// session, and closes once the last session has left it - or hands itself to <see cref="Released"/>
 /// when an owner keeps it between sessions.
 /// </summary>
-internal sealed partial class FirefoxBrowser : IAsyncDisposable
+internal sealed partial class BrowserInstance : IAsyncDisposable
 {
     /// <summary>How many browsers a start launches, at most, when the first leaves its session unanswered.</summary>
     internal const int StartAttempts = 2;
 
-    private readonly IFirefoxBrowser _process;
+    private readonly string _engine;
+    private readonly IBrowserProcess _process;
     private readonly BiDiConnection _connection;
-    private readonly FirefoxSessionTimings _timings;
+    private readonly BrowserSessionTimings _timings;
     private readonly Lock _sync = new();
-    private readonly List<FirefoxSession> _sessions = [];
+    private readonly List<BrowserSession> _sessions = [];
     private string? _firstTab;
     private bool _closing;
     private int _disposed;
 
-    private FirefoxBrowser(IFirefoxBrowser process, BiDiConnection connection, FirefoxSessionTimings timings)
+    private BrowserInstance(string engine, IBrowserProcess process, BiDiConnection connection, BrowserSessionTimings timings)
     {
+        _engine = engine;
         _process = process;
         _connection = connection;
         _timings = timings;
@@ -39,17 +42,17 @@ internal sealed partial class FirefoxBrowser : IAsyncDisposable
     public bool Headless => _process.Headless;
 
     /// <summary>The profile the browser runs with.</summary>
-    public FirefoxProfileChoice Profile => _process.Profile;
+    public BrowserProfileChoice Profile => _process.Profile;
 
     /// <summary>
     /// What happens when the last session leaves: the browser closes, unless an owner set this to decide
     /// (a shared browser). The owner answers <c>true</c> when it closed the browser, <c>false</c> when it
     /// keeps it open: the session then closes its own tabs.
     /// </summary>
-    public Func<FirefoxBrowser, ValueTask<bool>>? Released { get; set; }
+    public Func<BrowserInstance, ValueTask<bool>>? Released { get; set; }
 
     /// <summary>How long a session waits for a page to react.</summary>
-    public FirefoxSessionTimings Timings => _timings;
+    public BrowserSessionTimings Timings => _timings;
 
     /// <summary>How many sessions drive tabs in the browser now.</summary>
     public int SessionCount
@@ -67,24 +70,24 @@ internal sealed partial class FirefoxBrowser : IAsyncDisposable
     /// has loaded: the session is given the larger of the start's timeout and a command's. A browser that leaves it
     /// unanswered is killed, its profile removed, and a new one started once: a second silence fails the start.
     /// </summary>
-    /// <exception cref="FirefoxException">Firefox is not installed, did not start, or the profile is missing or held.</exception>
+    /// <exception cref="FirefoxException">The browser is not installed, did not start, or the profile is missing or held.</exception>
     /// <exception cref="BiDiException">The browser refused the session, or two browsers in a row left it unanswered.</exception>
     [SuppressMessage("Reliability", "CA2000", Justification = "The connection is handed to the browser returned, which disposes it; a start that fails disposes the browser.")]
-    public static async Task<FirefoxBrowser> OpenAsync(
-        IFirefoxLauncher launcher, FirefoxProfileChoice profile, FirefoxToolOptions options, FirefoxSessionTimings? timings, ILogger? logger,
+    public static async Task<BrowserInstance> OpenAsync(
+        IBrowserEngine engine, BrowserProfileChoice profile, FirefoxToolOptions options, BrowserSessionTimings? timings, ILogger? logger,
         CancellationToken cancellationToken)
     {
-        ArgumentNullException.ThrowIfNull(launcher);
+        ArgumentNullException.ThrowIfNull(engine);
         ArgumentNullException.ThrowIfNull(profile);
         ArgumentNullException.ThrowIfNull(options);
 
-        timings ??= FirefoxSessionTimings.Default;
+        timings ??= BrowserSessionTimings.Default;
         var sessionTimeoutSeconds = Math.Max(options.StartupTimeoutSeconds, options.CommandTimeoutSeconds);
         for (var attempt = 1; ; attempt++)
         {
-            var process = await launcher.LaunchAsync(profile, cancellationToken).ConfigureAwait(false);
+            var process = await engine.LaunchAsync(profile, cancellationToken).ConfigureAwait(false);
             var connection = new BiDiConnection(process.Transport, TimeSpan.FromSeconds(options.CommandTimeoutSeconds), logger, timings.Clock);
-            var browser = new FirefoxBrowser(process, connection, timings);
+            var browser = new BrowserInstance(engine.DisplayName, process, connection, timings);
             try
             {
                 try
@@ -96,7 +99,7 @@ internal sealed partial class FirefoxBrowser : IAsyncDisposable
                     // Seen once on a CI runner (#335): Firefox announced its endpoint, took the connection,
                     // and never answered the session. A fresh process and profile get past it.
                     if (logger is not null)
-                        LogSessionUnanswered(logger, sessionTimeoutSeconds);
+                        LogSessionUnanswered(logger, engine.DisplayName, sessionTimeoutSeconds);
                     await browser.DisposeAsync().ConfigureAwait(false);
                     continue;
                 }
@@ -104,7 +107,7 @@ internal sealed partial class FirefoxBrowser : IAsyncDisposable
                 {
                     throw new BiDiException(
                         BiDiException.Timeout,
-                        $"'session.new' got no answer within {sessionTimeoutSeconds} s, from Firefox started again after the first one did not answer either.",
+                        $"'session.new' got no answer within {sessionTimeoutSeconds} s, from {engine.DisplayName} started again after the first one did not answer either.",
                         ex);
                 }
 
@@ -134,7 +137,7 @@ internal sealed partial class FirefoxBrowser : IAsyncDisposable
     }
 
     /// <summary>
-    /// The tab Firefox opened at start, or the blank one that kept the window, handed to the first
+    /// The tab the browser opened at start, or the blank one that kept the window, handed to the first
     /// session that asks; <c>null</c> after that, or once the user closed it.
     /// </summary>
     public string? TakeFirstTab()
@@ -195,7 +198,7 @@ internal sealed partial class FirefoxBrowser : IAsyncDisposable
 
     /// <summary>Registers a session: it receives the events of the channel from now on.</summary>
     /// <exception cref="FirefoxException">The browser is closing: its last session left, or it was disposed.</exception>
-    public void Attach(FirefoxSession session)
+    public void Attach(BrowserSession session)
     {
         lock (_sync)
         {
@@ -210,7 +213,7 @@ internal sealed partial class FirefoxBrowser : IAsyncDisposable
     /// <see cref="Released"/>, and gets <c>true</c> when its tabs went with the browser; <c>false</c> when
     /// the browser stays and the session closes its tabs itself. A session that never attached changes nothing.
     /// </summary>
-    public async ValueTask<bool> ReleaseAsync(FirefoxSession session)
+    public async ValueTask<bool> ReleaseAsync(BrowserSession session)
     {
         bool last;
         lock (_sync)
@@ -268,7 +271,7 @@ internal sealed partial class FirefoxBrowser : IAsyncDisposable
         var contexts = (tree["contexts"] as JsonArray)?.OfType<JsonObject>().ToList() ?? [];
         var blank = contexts.FirstOrDefault(context => context["url"]?.GetValue<string>() == "about:blank");
         _firstTab = (blank ?? contexts.FirstOrDefault())?["context"]?.GetValue<string>()
-            ?? throw new FirefoxException("Firefox started without a tab to drive.");
+            ?? throw new FirefoxException($"{_engine} started without a tab to drive.");
 
         _connection.EventReceived = OnEvent;
         await SendAsync("session.subscribe", new JsonObject
@@ -280,7 +283,7 @@ internal sealed partial class FirefoxBrowser : IAsyncDisposable
     /// <summary>Runs on the receive loop of the connection: every session sees every event, and never waits for a command.</summary>
     private void OnEvent(string method, JsonObject parameters)
     {
-        FirefoxSession[] sessions;
+        BrowserSession[] sessions;
         lock (_sync)
         {
             // The tab kept for the next session, closed by the user: that session opens one of its own.
@@ -293,6 +296,6 @@ internal sealed partial class FirefoxBrowser : IAsyncDisposable
     }
 
     [LoggerMessage(Level = LogLevel.Warning,
-        Message = "Firefox did not answer 'session.new' within {TimeoutSeconds} s: the firefox tool kills it, removes its profile and starts it again once.")]
-    private static partial void LogSessionUnanswered(ILogger logger, int timeoutSeconds);
+        Message = "{Engine} did not answer 'session.new' within {TimeoutSeconds} s: the browser tool kills it, removes its profile and starts it again once.")]
+    private static partial void LogSessionUnanswered(ILogger logger, string engine, int timeoutSeconds);
 }

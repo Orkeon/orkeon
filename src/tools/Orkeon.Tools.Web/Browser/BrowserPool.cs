@@ -1,9 +1,10 @@
+using Orkeon.Tools.Web.Firefox;
 using System.Diagnostics.CodeAnalysis;
 using Microsoft.Extensions.Logging;
 using Orkeon.Domain.FileSystem;
 using Orkeon.Tools.Web.Firefox.BiDi;
 
-namespace Orkeon.Tools.Web.Firefox;
+namespace Orkeon.Tools.Web.Browser;
 
 /// <summary>
 /// The shared browsers of a host (<c>SharedInstance</c>): one per profile, started when the first
@@ -11,23 +12,23 @@ namespace Orkeon.Tools.Web.Firefox;
 /// blank tab of its own, when the host keeps its browsers (<c>Lifetime: host</c>). Every attach and every
 /// release goes through one lock, so a session never joins a browser that is closing.
 /// </summary>
-internal sealed class FirefoxBrowserPool : IAsyncDisposable
+internal sealed class BrowserPool : IAsyncDisposable
 {
-    private readonly IFirefoxLauncher _launcher;
+    private readonly IBrowserEngine _engine;
     private readonly FirefoxToolOptions _options;
     private readonly IFileSystemService _fileSystem;
-    private readonly FirefoxSessionTimings? _timings;
+    private readonly BrowserSessionTimings? _timings;
     private readonly ILogger? _logger;
     private readonly bool _keepIdle;
     private readonly Lock _sync = new();
-    private readonly Dictionary<string, Task<FirefoxBrowser>> _browsers = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, Task<BrowserInstance>> _browsers = new(StringComparer.OrdinalIgnoreCase);
     private bool _disposed;
 
-    public FirefoxBrowserPool(
-        IFirefoxLauncher launcher, FirefoxToolOptions options, IFileSystemService fileSystem,
-        ILogger? logger, FirefoxSessionTimings? timings, bool keepIdle = false)
+    public BrowserPool(
+        IBrowserEngine engine, FirefoxToolOptions options, IFileSystemService fileSystem,
+        ILogger? logger, BrowserSessionTimings? timings, bool keepIdle = false)
     {
-        _launcher = launcher;
+        _engine = engine;
         _options = options;
         _fileSystem = fileSystem;
         _logger = logger;
@@ -49,14 +50,14 @@ internal sealed class FirefoxBrowserPool : IAsyncDisposable
     public bool KeepsIdle => _keepIdle;
 
     /// <summary>Opens a session on the shared browser of <paramref name="profile"/>, started first when needed.</summary>
-    /// <exception cref="FirefoxException">Firefox is not installed, did not start, or the profile is missing or held.</exception>
-    public async Task<FirefoxSession> AttachAsync(FirefoxProfileChoice profile, CancellationToken cancellationToken)
+    /// <exception cref="FirefoxException">The browser is not installed, did not start, or the profile is missing or held.</exception>
+    public async Task<BrowserSession> AttachAsync(BrowserProfileChoice profile, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(profile);
         while (true)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            Task<FirefoxBrowser> starting;
+            Task<BrowserInstance> starting;
             lock (_sync)
             {
                 ObjectDisposedException.ThrowIf(_disposed, this);
@@ -67,7 +68,7 @@ internal sealed class FirefoxBrowserPool : IAsyncDisposable
                 }
             }
 
-            FirefoxBrowser browser;
+            BrowserInstance browser;
             try
             {
                 browser = await starting.WaitAsync(cancellationToken).ConfigureAwait(false);
@@ -82,11 +83,11 @@ internal sealed class FirefoxBrowserPool : IAsyncDisposable
                 throw;
             }
 
-            FirefoxSession? session = null;
+            BrowserSession? session = null;
             lock (_sync)
             {
                 if (_browsers.TryGetValue(profile.Name, out var current) && ReferenceEquals(current, starting) && browser.IsAlive)
-                    session = FirefoxSession.Attach(browser, _options, _fileSystem, _logger);
+                    session = BrowserSession.Attach(browser, _options, _fileSystem, _logger);
             }
 
             if (session is not null)
@@ -103,10 +104,10 @@ internal sealed class FirefoxBrowserPool : IAsyncDisposable
     }
 
     /// <summary>Closes the browser of <paramref name="profile"/>, whatever drives it; <c>false</c> when none runs.</summary>
-    public async Task<bool> CloseAsync(FirefoxProfileChoice profile)
+    public async Task<bool> CloseAsync(BrowserProfileChoice profile)
     {
         ArgumentNullException.ThrowIfNull(profile);
-        Task<FirefoxBrowser>? starting;
+        Task<BrowserInstance>? starting;
         lock (_sync)
         {
             if (!_browsers.Remove(profile.Name, out starting))
@@ -129,7 +130,7 @@ internal sealed class FirefoxBrowserPool : IAsyncDisposable
     /// <summary>Closes every shared browser; a session still attached fails with its browser.</summary>
     public async ValueTask DisposeAsync()
     {
-        List<Task<FirefoxBrowser>> browsers;
+        List<Task<BrowserInstance>> browsers;
         lock (_sync)
         {
             if (_disposed)
@@ -154,10 +155,10 @@ internal sealed class FirefoxBrowserPool : IAsyncDisposable
     }
 
     [SuppressMessage("Reliability", "CA2000", Justification = "The browser lives in the pool until its last session leaves, then Released disposes it.")]
-    private async Task<FirefoxBrowser> StartAsync(FirefoxProfileChoice profile)
+    private async Task<BrowserInstance> StartAsync(BrowserProfileChoice profile)
     {
         // Started under no caller's token: a run that gives up waiting leaves the browser to the next one.
-        var browser = await FirefoxBrowser.OpenAsync(_launcher, profile, _options, _timings, _logger, CancellationToken.None).ConfigureAwait(false);
+        var browser = await BrowserInstance.OpenAsync(_engine, profile, _options, _timings, _logger, CancellationToken.None).ConfigureAwait(false);
         browser.Released = ReleaseAsync;
         return browser;
     }
@@ -166,7 +167,7 @@ internal sealed class FirefoxBrowserPool : IAsyncDisposable
     /// Runs when the last session of a browser leaves: closed unless a session joined meanwhile - or,
     /// when the host keeps its browsers, left open on a blank tab for the next run.
     /// </summary>
-    private async ValueTask<bool> ReleaseAsync(FirefoxBrowser browser)
+    private async ValueTask<bool> ReleaseAsync(BrowserInstance browser)
     {
         bool close;
         lock (_sync)
@@ -202,7 +203,7 @@ internal sealed class FirefoxBrowserPool : IAsyncDisposable
         return false;
     }
 
-    private void Forget(string key, Task<FirefoxBrowser> starting)
+    private void Forget(string key, Task<BrowserInstance> starting)
     {
         lock (_sync)
         {

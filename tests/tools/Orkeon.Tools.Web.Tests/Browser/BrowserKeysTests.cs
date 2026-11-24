@@ -1,8 +1,9 @@
+using Orkeon.Tools.Web.Browser;
 using Orkeon.Tools.Web.Firefox;
 
-namespace Orkeon.Tools.Web.Tests.Firefox;
+namespace Orkeon.Tools.Web.Tests.Browser;
 
-public class FirefoxKeysTests
+public class BrowserKeysTests
 {
     [Theory]
     [InlineData("Enter", new[] { "" })]
@@ -21,7 +22,7 @@ public class FirefoxKeysTests
     [InlineData("Meta+ArrowLeft", new[] { "", "" })]
     public void Should_ReadAKeyOrAChord(string key, string[] expected)
     {
-        Assert.True(FirefoxKeys.TryParse(key, out var chord));
+        Assert.True(BrowserKeys.TryParse(key, out var chord));
         Assert.Equal(expected, chord);
     }
 
@@ -34,13 +35,13 @@ public class FirefoxKeysTests
     [InlineData("a+Control")]
     public void Should_RefuseWhatIsNotAKey(string? key)
     {
-        Assert.False(FirefoxKeys.TryParse(key, out var chord));
+        Assert.False(BrowserKeys.TryParse(key, out var chord));
         Assert.Null(chord);
     }
 
     [Fact]
     public void Should_TypeOneKeyPerCharacter_WithEnterForALineFeed()
     {
-        Assert.Equal(["a", "é", "\U0001F600", "", "", "b"], FirefoxKeys.Typing("aé\U0001F600\r\n\tb"));
+        Assert.Equal(["a", "é", "\U0001F600", "", "", "b"], BrowserKeys.Typing("aé\U0001F600\r\n\tb"));
     }
 }

@@ -61,7 +61,7 @@ internal sealed partial class ToolBridgeScratch : IDisposable
     /// (<see cref="Directory.CreateTempSubdirectory"/>); an existing folder is never reused. The bridge's path validator
     /// must allow it, as it allows the sandbox's session folder: <see cref="ToolBridgeStartup.RegisterServing"/> adds it
     /// to <c>PathSecurity:AdditionalAllowedDirectories</c> for the life of the process; without it a tool that writes
-    /// through the file system (the screenshot of <c>firefox</c>) is refused with "Path is outside the allowed workspace
+    /// through the file system (the screenshot of <c>browser</c>) is refused with "Path is outside the allowed workspace
     /// directory".
     /// </summary>
     public static string Parent

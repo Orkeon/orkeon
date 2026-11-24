@@ -1,3 +1,4 @@
+using Orkeon.Tools.Web.Firefox;
 using System.Collections.Immutable;
 using System.Globalization;
 using System.Text.Json;
@@ -9,7 +10,7 @@ using Orkeon.Analysis.Adapters;
 using Orkeon.Analysis.Core;
 using Orkeon.Domain.FileSystem;
 
-namespace Orkeon.Tools.Web.Firefox;
+namespace Orkeon.Tools.Web.Browser;
 
 /// <summary>
 /// One reading of the page: its outline as a semantic graph, in a store of its own, and for each node

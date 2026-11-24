@@ -270,7 +270,7 @@ Absent, nothing changes: the mounts (and the `working_root`, if any) alone confi
 ### The file system in the prompt
 
 An agent with a file-system tool (`IBaseTool.UsesFileSystem`: the file, search, RAG, attachment tools,
-`email_parser`, `image_generation`, `firefox`, `index_codebase`, `incremental_reindex`, `list_mounts`,
+`email_parser`, `image_generation`, `browser`, `index_codebase`, `incremental_reindex`, `list_mounts`,
 `shell_command`) gets a `## File system` section in its system prompt: its scope's entries, else the
 run's agent-facing mounts (internal ones never), each with its rights and sub-path overrides, sorted by
 virtual path so the prompt is the same from run to run; then its working root, or the directory relative

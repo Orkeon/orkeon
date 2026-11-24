@@ -380,7 +380,7 @@ demandent pas davantage, **la surface fonctionnelle ne grandit pas** :
   ([ADR-012](docs/fr/adr/ADR-012-email-tool-family.md)). La famille drive
   (`Orkeon.Tools.Drive`, onze outils pour Google Drive et OneDrive) est la
   troisième, actée par le propriétaire le 2026-10-17, pour la même raison
-  ([ADR-013](docs/fr/adr/ADR-013-drive-tool-family.md)). L'outil `firefox` est la
+  ([ADR-013](docs/fr/adr/ADR-013-drive-tool-family.md)). L'outil `browser` est la
   quatrième. La famille chat (`Orkeon.Tools.Chat`, Microsoft Teams d'abord,
   dix outils) est la cinquième, actée par le propriétaire le 2026-11-23
   ([ADR-021](docs/fr/adr/ADR-021-chat-tool-family.md)). Le pont d'outils

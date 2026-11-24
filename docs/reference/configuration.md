@@ -139,7 +139,7 @@ refusals on the same file, one `runner-settings` row each. What is refused:
   path without its value, which may be a secret written in the wrong place — except at the lists
   whose reader splits one comma-separated value, the form an environment variable writes:
   `Llm:AvailableModels`, `Llm:ModelCapabilities:<id>:ReasoningEfforts`,
-  `Llm:Profiles:<name>:Fallback`, `Orkeon:Tools:Firefox:AllowedProfiles` and `:DeniedProfiles`
+  `Llm:Profiles:<name>:Fallback`, `Orkeon:Tools:Browser:AllowedProfiles` and `:DeniedProfiles`
   (`Llm__AvailableModels=gpt-4o,claude`); inside a list or a dictionary, an entry the binder would drop because it cannot
   convert it (a decision profile whose `FailClosed` is `"maybe"`, a stage whose threshold is no
   number); an enumeration written as a number (`Orkeon:Guardian:Llm:FailMode: "1"`, which the binder
@@ -154,9 +154,9 @@ refusals on the same file, one `runner-settings` row each. What is refused:
   `RaggableTree:Embedding:Provider`, `Orkeon:Embeddings:Provider`), `Llm:Replay:Mode`, `CallMode`, a model's
   `Thinking`, a decision stage's `Kind`, `Phase` and `Steps` name the key and the accepted names
   (`Logging:LogLevel:Default is not a log level: write one of Trace, Debug, Information, Warning, Error, Critical, None.`);
-  only the guardian's `Phases` quotes the names it refused, to show the typo. `Orkeon:Tools:Firefox:Lifetime`
+  only the guardian's `Phases` quotes the names it refused, to show the typo. `Orkeon:Tools:Browser:Lifetime`
   and `Orkeon:Scripting:Toolchain:TypeCheck` take a name only wherever they are read, outside a host this
-  check walks included (`Orkeon:Tools:Firefox:Lifetime is not a browser lifetime: write one of Run, Host.`).
+  check walks included (`Orkeon:Tools:Browser:Lifetime is not a browser lifetime: write one of Run, Host.`).
   Outside a host `RunnerHost` builds, the enumerations of an options class a library binds
   (`Orkeon:Checkpointing:Store`, `Orkeon:HumanInput:Pause`, `MCP:Servers:<name>:Transport`,
   `Orkeon:RunHistory:Store`, `Orkeon:Rag:WebFallback:SuspiciousAction`) keep the binder's parse. A value quoted in a refusal is written in the invariant culture (`1.5`, never `1,5`), and
@@ -216,13 +216,13 @@ closed list, and what it means.
 | [RAG](#rag) | [`Orkeon:Rag`](#orkeonrag), [`Orkeon:Rag:Ingestion`](#orkeonragingestion), [`Orkeon:Rag:QueryRouting`](#orkeonragqueryrouting), [`Orkeon:Rag:Retrieval:Hybrid`](#orkeonragretrievalhybrid), [`Orkeon:Rag:WebFallback`](#orkeonragwebfallback) | 34 |
 | [Files and sandbox](#files-and-sandbox) | [`Orkeon:CodeSandbox`](#orkeoncodesandbox), [`Orkeon:CodeSandbox:Docker`](#orkeoncodesandboxdocker), [`Orkeon:FileSystem`](#orkeonfilesystem), [`Orkeon:Sandbox`](#orkeonsandbox), [`PathSecurity`](#pathsecurity) | 33 |
 | [Security](#security) | [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:Guardian`](#orkeonguardian), [`Orkeon:Security:PermissionGate`](#orkeonsecuritypermissiongate), [`Secrets`](#secrets), [`Security:Audit`](#securityaudit), [`Security:Prompt`](#securityprompt), [`Security:ToolResults`](#securitytoolresults), [`Security:Url`](#securityurl), [`Security:Vault`](#securityvault) | 40 |
-| [Tools](#tools) | [`BRAVE_API_KEY`](#brave_api_key), [`MCP`](#mcp), [`MCP:Server`](#mcpserver), [`Orkeon:Bridge`](#orkeonbridge), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Tools:Bridge`](#orkeontoolsbridge), [`Orkeon:Tools:Chat`](#orkeontoolschat), [`Orkeon:Tools:Drive`](#orkeontoolsdrive), [`Orkeon:Tools:Email`](#orkeontoolsemail), [`Orkeon:Tools:Firefox`](#orkeontoolsfirefox), [`Orkeon:Tools:GitHub`](#orkeontoolsgithub), [`Orkeon:Tools:ResultLimits`](#orkeontoolsresultlimits), [`Orkeon:Tools:Shell`](#orkeontoolsshell), [`Plugins`](#plugins), [`RaggableTree`](#raggabletree) | 148 |
+| [Tools](#tools) | [`BRAVE_API_KEY`](#brave_api_key), [`MCP`](#mcp), [`MCP:Server`](#mcpserver), [`Orkeon:Bridge`](#orkeonbridge), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Tools:Bridge`](#orkeontoolsbridge), [`Orkeon:Tools:Browser`](#orkeontoolsbrowser), [`Orkeon:Tools:Chat`](#orkeontoolschat), [`Orkeon:Tools:Drive`](#orkeontoolsdrive), [`Orkeon:Tools:Email`](#orkeontoolsemail), [`Orkeon:Tools:Firefox`](#orkeontoolsfirefox), [`Orkeon:Tools:GitHub`](#orkeontoolsgithub), [`Orkeon:Tools:ResultLimits`](#orkeontoolsresultlimits), [`Orkeon:Tools:Shell`](#orkeontoolsshell), [`Plugins`](#plugins), [`RaggableTree`](#raggabletree) | 162 |
 | [Orchestration and persistence](#orchestration-and-persistence) | [`Orkeon:Checkpointing`](#orkeoncheckpointing), [`Orkeon:Compaction`](#orkeoncompaction), [`Orkeon:Compaction:Prune`](#orkeoncompactionprune), [`Orkeon:Consensus`](#orkeonconsensus), [`Orkeon:CrewFactory`](#orkeoncrewfactory), [`Orkeon:ExecutionState:Persistence`](#orkeonexecutionstatepersistence), [`Orkeon:HumanInput`](#orkeonhumaninput), [`Orkeon:RunHistory`](#orkeonrunhistory), [`Orkeon:Skills`](#orkeonskills) | 39 |
 | [Scripts and console](#scripts-and-console) | [`Orkeon:Cli:ConsoleStreaming`](#orkeoncliconsolestreaming), [`Orkeon:Cli:Memory`](#orkeonclimemory), [`Orkeon:Cli:ScriptCommands`](#orkeoncliscriptcommands), [`Orkeon:Cli:ScriptHost`](#orkeoncliscripthost), [`Orkeon:Cli:Session`](#orkeonclisession), [`Orkeon:Cli:Tui`](#orkeonclitui), [`Orkeon:Scripting:AgentInstances`](#orkeonscriptingagentinstances), [`Orkeon:Scripting:AgentMemory`](#orkeonscriptingagentmemory), [`Orkeon:Scripting:Limits`](#orkeonscriptinglimits), [`Orkeon:Scripting:Toolchain`](#orkeonscriptingtoolchain) | 35 |
 | [Service host and A2A](#service-host-and-a2a) | [`A2A`](#a2a), [`A2A:Security`](#a2asecurity), [`A2A:Security:AzureAD`](#a2asecurityazuread), [`A2A:Security:Oidc`](#a2asecurityoidc), [`Orkeon:Host`](#orkeonhost), [`Orkeon:Host:Discord`](#orkeonhostdiscord), [`Orkeon:Host:Teams`](#orkeonhostteams) | 70 |
 | [Observability](#observability) | [`Logging`](#logging), [`Orkeon:Monitoring`](#orkeonmonitoring), [`Telemetry`](#telemetry) | 8 |
 
-90 sections, 602 keys. Read by no shipped binary, only by a host written in C# (6): [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting), [`Orkeon:VectorSearch`](#orkeonvectorsearch), [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Monitoring`](#orkeonmonitoring).
+91 sections, 616 keys. Read by no shipped binary, only by a host written in C# (6): [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting), [`Orkeon:VectorSearch`](#orkeonvectorsearch), [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Monitoring`](#orkeonmonitoring).
 <!-- /settings-index -->
 
 How to read a table:
@@ -1707,6 +1707,35 @@ never copied into the process; the process environment alone on Linux and macOS.
 | `Screening:WithholdRejected` | boolean | `false` |  | When true, a message the prompt-injection detector rejects has its body withheld. Off by default: the detector was tuned on web pages, and newsletters trip it. |
 <!-- /settings -->
 
+### `Orkeon:Tools:Browser`
+
+Read once by `AddOrkeonWebTools` when the `browser` tool is registered. The tool drives a Firefox of
+its own over WebDriver BiDi: the browser starts at the first action of an agent run, with a profile
+folder no other browser uses, keeps its page from one action to the next, and closes with the run —
+the profile is removed then. Firefox itself is not shipped: it is the one installed on the machine.
+The window is visible unless `Headless` is `true` or the machine has no display. What the tool does
+not do is listed in [Known limitations](limitations.md).
+
+<!-- settings:Orkeon:Tools:Browser -->
+**Read by**: `orkeon`, `orkeon-host`, `orkeon-repl`.
+
+| Key | Type | Default | Values | Meaning |
+|---|---|---|---|---|
+| `AllowedProfiles` | list of string | `[]` |  | The profiles an agent may name with the `profile` argument, beside `disposable` and `Profile`. Empty: an agent names no other profile. A name in `DeniedProfiles` stays refused. |
+| `CommandTimeoutSeconds` | integer | `30` |  | Seconds one browser command (a page load, a script, a click) is given to answer. |
+| `DeniedProfiles` | list of string | `[]` |  | The profiles no browser ever starts with, whether an agent names one or `Profile` does: the operator's own profiles, for instance. |
+| `Engine` | string | `"firefox"` |  | The browser the host drives: `firefox` (the default). Case ignored; any other value is refused. |
+| `ExecutablePath` | string | — |  | Path of the Firefox program, or its name on the PATH. Not set: `firefox` on the PATH, then the usual install folder of the platform. |
+| `Headless` | boolean | `false` |  | `true` starts Firefox without a window. The default shows the window; under Linux with neither `DISPLAY` nor `WAYLAND_DISPLAY` the browser starts headless anyway, and a warning says so. |
+| `Lifetime` | enum | `"Run"` | `Run`, `Host` | How long a browser lives: `Run` (the default) closes it with the agent run that started it; `Host` keeps it open, with its tabs and its profile, from one run to the next, one browser per profile, until `close`, the user closes the window, or the host stops. Case ignored. |
+| `MaxNodes` | integer | `40` |  | Most nodes one `snapshot` or `find` answer lists; the rest is read with `offset`. |
+| `MaxTextLength` | integer | `3000` |  | Most characters of page text one `read` answer carries. |
+| `Profile` | string | — |  | The profile a browser starts with when the agent names none: `disposable` (the default, a fresh folder removed when the browser closes), the name of a profile of the Firefox installed on the host (`profiles.ini`), or the path of a profile folder. A named profile is used in place, with its cookies and sessions, and never removed; a profile another Firefox holds open is refused. |
+| `ProfileRoot` | string | — |  | Folder under which each browser gets its own profile folder, removed when the browser closes. Not set: `~/snap/firefox/common/orkeon/profiles` when Firefox is a snap (a snap cannot read the system's temp folder), else `orkeon-firefox` under the system's temp folder. |
+| `SharedInstance` | boolean | `false` |  | `true` shares one browser per profile between the agent runs of the host: each run drives tabs of its own in it, and the browser closes when the last run leaves it, unless `Lifetime` is `Host`. The default gives each run a browser of its own. |
+| `StartupTimeoutSeconds` | integer | `30` |  | Seconds Firefox is given to open its remote protocol; its session, which it answers once its first window has loaded, then waits the larger of this and `CommandTimeoutSeconds`. |
+<!-- /settings -->
+
 ### `Orkeon:Tools:Chat`
 
 Bound by `AddOrkeonChatTools(configuration)` and validated lazily, as the drive section is: an account
@@ -1818,12 +1847,8 @@ token. The token is masked (`***`) in the tool's errors and logs.
 
 ### `Orkeon:Tools:Firefox`
 
-Read once by `AddOrkeonWebTools` when the `firefox` tool is registered. The tool drives a Firefox of
-its own over WebDriver BiDi: the browser starts at the first action of an agent run, with a profile
-folder no other browser uses, keeps its page from one action to the next, and closes with the run —
-the profile is removed then. Firefox itself is not shipped: it is the one installed on the machine.
-The window is visible unless `Headless` is `true` or the machine has no display. What the tool does
-not do is listed in [Known limitations](limitations.md).
+The former name of [`Orkeon:Tools:Browser`](#orkeontoolsbrowser), deprecated and removed at the next major version: read,
+with the Firefox engine only (`Engine` is not read here), when `Orkeon:Tools:Browser` is absent. Both set is refused.
 
 <!-- settings:Orkeon:Tools:Firefox -->
 **Read by**: `orkeon`, `orkeon-host`, `orkeon-repl`.
@@ -1833,6 +1858,7 @@ not do is listed in [Known limitations](limitations.md).
 | `AllowedProfiles` | list of string | `[]` |  | The profiles an agent may name with the `profile` argument, beside `disposable` and `Profile`. Empty: an agent names no other profile. A name in `DeniedProfiles` stays refused. |
 | `CommandTimeoutSeconds` | integer | `30` |  | Seconds one browser command (a page load, a script, a click) is given to answer. |
 | `DeniedProfiles` | list of string | `[]` |  | The profiles no browser ever starts with, whether an agent names one or `Profile` does: the operator's own profiles, for instance. |
+| `Engine` | string | `"firefox"` |  | The browser the host drives: `firefox` (the default). Case ignored; any other value is refused. |
 | `ExecutablePath` | string | — |  | Path of the Firefox program, or its name on the PATH. Not set: `firefox` on the PATH, then the usual install folder of the platform. |
 | `Headless` | boolean | `false` |  | `true` starts Firefox without a window. The default shows the window; under Linux with neither `DISPLAY` nor `WAYLAND_DISPLAY` the browser starts headless anyway, and a warning says so. |
 | `Lifetime` | enum | `"Run"` | `Run`, `Host` | How long a browser lives: `Run` (the default) closes it with the agent run that started it; `Host` keeps it open, with its tabs and its profile, from one run to the next, one browser per profile, until `close`, the user closes the window, or the host stops. Case ignored. |

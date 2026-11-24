@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — the `firefox` tool is `browser` (#440)
+
+- The browser tool is `browser`, and its section `Orkeon:Tools:Browser`: the host picks the engine with `Engine`
+  (`firefox`, the default and the only one built), and an unknown engine is refused. Every answer carries `engine`.
+  `FirefoxToolOptions.Engine`, `FirefoxToolOptions.BrowserSectionName` and `FirefoxResponse.Engine` are new
+  ([guide](docs/guides/browser.md), [ADR-022](docs/adr/ADR-022-browser-tool-engines.md)).
+- **Deprecated**, removed at the next major version: the name `firefox`, a second name of the same tool over the same
+  browsers, and the section `Orkeon:Tools:Firefox`, read when `Orkeon:Tools:Browser` is absent. Both sections set is
+  refused, and `Engine` is not read in the former one.
+- The `search` action names its collections `browser-…` instead of `firefox-…`: a page embedded before is embedded once
+  more. A tool bridge carries names: a crew on `browser` needs `browser` in the `Allow` of both sides.
+
 ### Added — chat tools: Microsoft Teams (#446)
 
 - The `chat_*` family (`Orkeon.Tools.Chat`, packed in `Orkeon.Tools`): `chat_accounts`, `chat_list`, `chat_read`,

@@ -1,13 +1,14 @@
+using Orkeon.Tools.Web.Firefox;
 using Microsoft.Extensions.Logging;
 using Orkeon.Domain.Execution;
 using Orkeon.Domain.FileSystem;
 using Orkeon.Tools.Abstractions.Base;
 
-namespace Orkeon.Tools.Web.Firefox;
+namespace Orkeon.Tools.Web.Browser;
 
 /// <summary>
 /// Gives each action its browser session. By default (<see cref="FirefoxBrowserLifetime.Run"/>) the
-/// session lives in the run's <see cref="AgentRunScope"/>: Firefox starts at the run's first action, the
+/// session lives in the run's <see cref="AgentRunScope"/>: the browser starts at the run's first action, the
 /// next ones find the page where the last left it, and the session closes with the run. Agents running
 /// side by side have their own scopes, hence their own sessions: a browser each by default, tabs of their
 /// own in one shared browser per profile with <c>SharedInstance</c>. With
@@ -27,42 +28,45 @@ namespace Orkeon.Tools.Web.Firefox;
 /// replaced only once it has gone.</item>
 /// </list>
 /// </remarks>
-internal sealed class FirefoxSessionManager : IDisposable
+internal sealed class BrowserSessionManager : IDisposable
 {
     private static readonly SlotKey s_key = new();
     private static readonly BindingKey s_bindingKey = new();
 
-    private readonly IFirefoxLauncher _launcher;
+    private readonly IBrowserEngine _engine;
     private readonly FirefoxToolOptions _options;
     private readonly IFileSystemService _fileSystem;
-    private readonly FirefoxSessionTimings? _timings;
+    private readonly BrowserSessionTimings? _timings;
     private readonly ILogger? _logger;
-    private readonly FirefoxBrowserPool? _pool;
-    private readonly Dictionary<string, FirefoxSessionSlot>? _host;
+    private readonly BrowserPool? _pool;
+    private readonly Dictionary<string, BrowserSessionSlot>? _host;
     private readonly Lock _sync = new();
     private bool _disposed;
 
-    public FirefoxSessionManager(
-        IFirefoxLauncher launcher, FirefoxToolOptions options, IFileSystemService fileSystem,
-        ILogger? logger = null, FirefoxSessionTimings? timings = null)
+    public BrowserSessionManager(
+        IBrowserEngine engine, FirefoxToolOptions options, IFileSystemService fileSystem,
+        ILogger? logger = null, BrowserSessionTimings? timings = null)
     {
-        ArgumentNullException.ThrowIfNull(launcher);
+        ArgumentNullException.ThrowIfNull(engine);
         ArgumentNullException.ThrowIfNull(options);
         ArgumentNullException.ThrowIfNull(fileSystem);
-        _launcher = launcher;
+        _engine = engine;
         _options = options;
         _fileSystem = fileSystem;
         _logger = logger;
         _timings = timings;
         var hostLifetime = options.Lifetime == FirefoxBrowserLifetime.Host;
         if (options.SharedInstance)
-            _pool = new FirefoxBrowserPool(launcher, options, fileSystem, logger, timings, keepIdle: hostLifetime);
+            _pool = new BrowserPool(engine, options, fileSystem, logger, timings, keepIdle: hostLifetime);
         else if (hostLifetime)
-            _host = new Dictionary<string, FirefoxSessionSlot>(StringComparer.OrdinalIgnoreCase);
+            _host = new Dictionary<string, BrowserSessionSlot>(StringComparer.OrdinalIgnoreCase);
     }
 
+    /// <summary>The engine every browser of the manager is started with.</summary>
+    public IBrowserEngine Engine => _engine;
+
     /// <summary>The shared browsers now running; <c>null</c> when each run, or the host, has its own.</summary>
-    public FirefoxBrowserPool? Pool => _pool;
+    public BrowserPool? Pool => _pool;
 
     /// <summary>How many browsers the host keeps between runs (<c>Lifetime: host</c> without <c>SharedInstance</c>).</summary>
     public int HostBrowserCount
@@ -79,9 +83,9 @@ internal sealed class FirefoxSessionManager : IDisposable
     /// <paramref name="profile"/>. When <paramref name="named"/>, the agent asked for that profile: a
     /// session already open on another one refuses.
     /// </summary>
-    /// <exception cref="FirefoxException">Firefox is not installed, did not start, or the profile is missing, held, or not the run's.</exception>
+    /// <exception cref="FirefoxException">The browser is not installed, did not start, or the profile is missing, held, or not the run's.</exception>
     public async Task<T> UseAsync<T>(
-        FirefoxProfileChoice profile, bool named, Func<FirefoxSession, CancellationToken, Task<T>> operation, CancellationToken cancellationToken)
+        BrowserProfileChoice profile, bool named, Func<BrowserSession, CancellationToken, Task<T>> operation, CancellationToken cancellationToken)
         where T : class
     {
         ArgumentNullException.ThrowIfNull(profile);
@@ -95,7 +99,7 @@ internal sealed class FirefoxSessionManager : IDisposable
             try
             {
                 var kept = await HostSlotOf(target).UseAsync(target, named: false, OpenAsync, operation, cancellationToken).ConfigureAwait(false);
-                return kept ?? throw new ObjectDisposedException(nameof(FirefoxSessionManager));
+                return kept ?? throw new ObjectDisposedException(nameof(BrowserSessionManager));
             }
             finally
             {
@@ -123,14 +127,14 @@ internal sealed class FirefoxSessionManager : IDisposable
     /// a run that has not used the browser yet addresses the host's browser of <paramref name="profile"/>.
     /// </summary>
     /// <exception cref="FirefoxException">Under the host's lifetime, <paramref name="named"/> names a profile other than the run's while the run's browser is open.</exception>
-    public async Task<bool> CloseAsync(FirefoxProfileChoice profile, bool named, CancellationToken cancellationToken)
+    public async Task<bool> CloseAsync(BrowserProfileChoice profile, bool named, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(profile);
 
         if (_host is not null)
         {
             var target = BindingOf()?.Unbind(profile, named, IsOpen) ?? profile;
-            FirefoxSessionSlot? kept;
+            BrowserSessionSlot? kept;
             lock (_sync)
                 _host.TryGetValue(target.Name, out kept);
             return kept is not null && await kept.CloseAsync(cancellationToken).ConfigureAwait(false);
@@ -147,7 +151,7 @@ internal sealed class FirefoxSessionManager : IDisposable
     /// <summary>Closes the browsers of the host - shared, or kept between runs; a run's own browser closes with the run.</summary>
     public void Dispose()
     {
-        List<FirefoxSessionSlot> kept = [];
+        List<BrowserSessionSlot> kept = [];
         lock (_sync)
         {
             if (_disposed)
@@ -172,19 +176,19 @@ internal sealed class FirefoxSessionManager : IDisposable
             closing.AsTask().GetAwaiter().GetResult();
     }
 
-    private Task<FirefoxSession> OpenAsync(FirefoxProfileChoice profile, CancellationToken cancellationToken) =>
+    private Task<BrowserSession> OpenAsync(BrowserProfileChoice profile, CancellationToken cancellationToken) =>
         _pool is null
-            ? FirefoxSession.OpenAsync(_launcher, profile, _options, _fileSystem, _timings, _logger, cancellationToken)
+            ? BrowserSession.OpenAsync(_engine, profile, _options, _fileSystem, _timings, _logger, cancellationToken)
             : _pool.AttachAsync(profile, cancellationToken);
 
-    private FirefoxSessionSlot HostSlotOf(FirefoxProfileChoice profile)
+    private BrowserSessionSlot HostSlotOf(BrowserProfileChoice profile)
     {
         lock (_sync)
         {
             ObjectDisposedException.ThrowIf(_disposed, this);
             if (!_host!.TryGetValue(profile.Name, out var slot))
             {
-                slot = new FirefoxSessionSlot(keepOnFailure: true);
+                slot = new BrowserSessionSlot(keepOnFailure: true);
                 _host[profile.Name] = slot;
             }
 
@@ -192,13 +196,13 @@ internal sealed class FirefoxSessionManager : IDisposable
         }
     }
 
-    private bool IsOpen(FirefoxProfileChoice profile)
+    private bool IsOpen(BrowserProfileChoice profile)
     {
         lock (_sync)
             return _host!.TryGetValue(profile.Name, out var slot) && slot.IsOpen;
     }
 
-    private static FirefoxSessionSlot? SlotOf() => ResourceOf(s_key, static () => new FirefoxSessionSlot());
+    private static BrowserSessionSlot? SlotOf() => ResourceOf(s_key, static () => new BrowserSessionSlot());
 
     private static FirefoxRunBinding? BindingOf() => ResourceOf(s_bindingKey, static () => new FirefoxRunBinding());
 
@@ -234,7 +238,7 @@ internal sealed class FirefoxSessionManager : IDisposable
     private sealed class FirefoxRunBinding : IAsyncDisposable
     {
         private readonly Lock _sync = new();
-        private FirefoxProfileChoice? _profile;
+        private BrowserProfileChoice? _profile;
         private int _inFlight;
 
         /// <summary>
@@ -245,7 +249,7 @@ internal sealed class FirefoxSessionManager : IDisposable
         /// with <see cref="Release"/>.
         /// </summary>
         /// <exception cref="FirefoxException">Another profile was named while the run's browser is open.</exception>
-        public FirefoxProfileChoice Bind(FirefoxProfileChoice profile, bool named, Func<FirefoxProfileChoice, bool> isOpen)
+        public BrowserProfileChoice Bind(BrowserProfileChoice profile, bool named, Func<BrowserProfileChoice, bool> isOpen)
         {
             lock (_sync)
             {
@@ -276,7 +280,7 @@ internal sealed class FirefoxSessionManager : IDisposable
 
         /// <summary>The profile <c>close</c> addresses - the run's, else <paramref name="profile"/> - the run unbound from it.</summary>
         /// <exception cref="FirefoxException">Another profile was named while the run's browser is open.</exception>
-        public FirefoxProfileChoice Unbind(FirefoxProfileChoice profile, bool named, Func<FirefoxProfileChoice, bool> isOpen)
+        public BrowserProfileChoice Unbind(BrowserProfileChoice profile, bool named, Func<BrowserProfileChoice, bool> isOpen)
         {
             lock (_sync)
             {
@@ -291,7 +295,7 @@ internal sealed class FirefoxSessionManager : IDisposable
 
         public ValueTask DisposeAsync() => ValueTask.CompletedTask;
 
-        private static FirefoxException Refusal(FirefoxProfileChoice bound, FirefoxProfileChoice asked) =>
+        private static FirefoxException Refusal(BrowserProfileChoice bound, BrowserProfileChoice asked) =>
             new($"The browser of this run runs with the profile '{bound}': close it before opening one with '{asked}'.");
     }
 }

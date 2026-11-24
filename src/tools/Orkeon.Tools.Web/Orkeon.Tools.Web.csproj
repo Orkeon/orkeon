@@ -29,7 +29,7 @@
   </ItemGroup>
   <ItemGroup>
     <!-- The script the firefox tool runs in the page to read its outline. -->
-    <EmbeddedResource Include="Firefox\page-outline.js" LogicalName="Orkeon.Tools.Web.Firefox.page-outline.js" />
+    <EmbeddedResource Include="Browser\page-outline.js" LogicalName="Orkeon.Tools.Web.Browser.page-outline.js" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="HtmlAgilityPack" />

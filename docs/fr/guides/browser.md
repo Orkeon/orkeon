@@ -1,18 +1,23 @@
-> 🇬🇧 [English version](../../guides/firefox.md)
+> 🇬🇧 [English version](../../guides/browser.md)
 
-# L'outil `firefox`
+# L'outil `browser`
 
 > **Voir aussi** : [Inventaire des outils](../tools/inventory.md) ·
-> [Référence de configuration](../reference/configuration.md#orkeontoolsfirefox) ·
+> [Référence de configuration](../reference/configuration.md#orkeontoolsbrowser) ·
 > [RaggableTree](../architecture/raggable-tree.md) · [Limitations connues](../reference/limitations.md) ·
 > [Retour à l'index](../INDEX.md)
 
-`firefox` donne un navigateur à un agent : le Firefox installé sur la machine, piloté par
+`browser` donne un navigateur à un agent : celui installé sur la machine — Firefox, le seul moteur construit à ce jour —, piloté par
 [WebDriver BiDi](https://w3c.github.io/webdriver-bidi/) sur un WebSocket. Aucun binaire de
 pilote, aucun paquet d'éditeur, aucun téléchargement de navigateur. L'agent ouvre une page, la lit
 comme un plan de sections, de liens et de contrôles, clique, saisit, presse des touches, cherche
 dans la page par le sens, exécute un script et enregistre une capture d'écran. Les pages exécutent
-leur JavaScript : ce que `web_scrape` ne voit pas, `firefox` le voit.
+leur JavaScript : ce que `web_scrape` ne voit pas, `browser` le voit.
+
+> L'outil s'appelait `firefox`, sa section `Orkeon:Tools:Firefox`. Les deux marchent encore et sont dépréciés :
+> `firefox` est un second nom du même outil, sur les mêmes navigateurs, et l'ancienne section est lue quand
+> `Orkeon:Tools:Browser` est absente (les deux présentes, c'est refusé). Ils partent à la prochaine majeure
+> ([ADR-022](../adr/ADR-022-browser-tool-engines.md)).
 
 - **Un navigateur par exécution d'agent.** Firefox démarre à la première action de l'exécution,
   garde ses pages d'une action à la suivante et se ferme avec l'exécution. Des agents qui
@@ -44,7 +49,7 @@ agents:
   researcher:
     role: "Researcher"
     goal: "Trouver et résumer des sources sur le web"
-    tools: [firefox]
+    tools: [browser]
 ```
 
 Firefox doit être installé sur l'hôte (`firefox` sur le PATH, ou `ExecutablePath`). L'outil est
@@ -78,7 +83,7 @@ exécutions.
 | `close_tab` | `tab` | Execute | Ferme un onglet, le courant par défaut ; le dernier onglet n'est jamais fermé (`close` est là pour ça) |
 | `close` | `profile` | Execute | Ferme le navigateur de l'exécution ; l'action suivante en démarre un nouveau. Hors de toute exécution, sous `Lifetime: host`, ferme le navigateur de l'hôte du profil `profile`, celui du profil par défaut sans (`profile` ne compte que là) |
 
-Chaque réponse porte l'action, l'`url` et le `title` de la page affichée, `tab`, la poignée de
+Chaque réponse porte l'action, `engine` (le moteur que l'hôte fait tourner), l'`url` et le `title` de la page affichée, `tab`, la poignée de
 l'onglet que les actions pilotent désormais, et `profile`, celui avec lequel le navigateur
 tourne. `dialogs` l'accompagne quand la page a ouvert des boîtes `alert`, `confirm` ou `prompt`
 pendant l'action : ce qu'elles disaient, fermées pour que la page ne se fige jamais (une question
@@ -104,7 +109,7 @@ n'est jamais listé, lu ni fermé. `close_tab` sur l'onglet piloté ramène l'ag
 de la deuxième lecture d'une page. Les identifiants restent valides tant que la page ne change
 pas : saisir dans un champ puis cliquer un bouton ne demande pas de nouveau snapshot. Après une
 navigation, ou quand une action a changé la page, un ancien identifiant est refusé avec la
-raison, et l'agent rappelle `snapshot`. Une liste est coupée à `MaxNodes` (`Orkeon:Tools:Firefox`,
+raison, et l'agent rappelle `snapshot`. Une liste est coupée à `MaxNodes` (`Orkeon:Tools:Browser`,
 40 par défaut, 200 au plus) : `truncated` et `total_nodes` le disent, et `offset` lit la suite.
 
 ### Un enchaînement typique
@@ -120,7 +125,7 @@ screenshot save_to_path=/output/docs.png         → saved_path
 ```
 
 `search` envoie le texte de chaque section de la page au fournisseur d'embeddings comme source
-en ligne d'une collection éphémère nommée d'après la page (préfixe `firefox`) : une page lue deux
+en ligne d'une collection éphémère nommée d'après la page (préfixe `browser`) : une page lue deux
 fois n'est embarquée qu'une fois. Chaque résultat nomme le nœud de la section, et l'agent lit ou
 clique ce que la recherche a trouvé : c'est le lien entre le sous-système RAG et le graphe de la
 page.
@@ -152,14 +157,14 @@ Un navigateur démarre sur l'un de trois genres de profil, et le `profile` de la
 - **Un dossier de profil**, par son chemin : la même chose, pour un profil que `profiles.ini` ne
   liste pas.
 
-Qui choisit : `Orkeon:Tools:Firefox:Profile` nomme le profil sur lequel un navigateur démarre
+Qui choisit : `Orkeon:Tools:Browser:Profile` nomme le profil sur lequel un navigateur démarre
 quand l'agent n'en nomme aucun. Un agent peut nommer `disposable`, ce profil, ou l'un de
 `AllowedProfiles` — rien d'autre. `DeniedProfiles` l'emporte sur tous : un profil qui y figure ne
 démarre aucun navigateur, qui que ce soit qui le demande. Les noms sont comparés sans égard à la
 casse.
 
 ```json
-"Orkeon": { "Tools": { "Firefox": {
+"Orkeon": { "Tools": { "Browser": {
   "Profile": "agent-work",
   "AllowedProfiles": ["agent-reviews"],
   "DeniedProfiles": ["default", "default-release"]
@@ -199,7 +204,7 @@ et la fenêtre reste ouverte pour la suivante sur un onglet vierge ; si l'utilis
 onglet, l'exécution suivante en ouvre un à elle.
 
 ```json
-{ "Orkeon": { "Tools": { "Firefox": { "Lifetime": "host" } } } }
+{ "Orkeon": { "Tools": { "Browser": { "Lifetime": "host" } } } }
 ```
 
 Dans une exécution, `close` ferme le navigateur de l'exécution, comme toujours — ou, quand
@@ -211,10 +216,11 @@ qu'un hôte tué avec ses navigateurs a laissé derrière lui.
 
 ## Réglages
 
-`Orkeon:Tools:Firefox` — voir la [référence de configuration](../reference/configuration.md#orkeontoolsfirefox) :
-`ExecutablePath`, `Headless`, `Profile`, `AllowedProfiles`, `DeniedProfiles`, `SharedInstance`,
+`Orkeon:Tools:Browser` — voir la [référence de configuration](../reference/configuration.md#orkeontoolsbrowser) :
+`Engine`, `ExecutablePath`, `Headless`, `Profile`, `AllowedProfiles`, `DeniedProfiles`, `SharedInstance`,
 `Lifetime`, `ProfileRoot`, `StartupTimeoutSeconds`, `CommandTimeoutSeconds`, `MaxNodes`,
-`MaxTextLength`. Quand Firefox est un snap, la racine de profil par défaut est
+`MaxTextLength`. `Engine` choisit le navigateur (`firefox`, le défaut, est le seul construit) ; un inconnu est
+refusé, et rien ne se replie sur Firefox. C'est l'hôte qui le choisit, jamais l'agent. Quand Firefox est un snap, la racine de profil par défaut est
 `~/snap/firefox/common/orkeon/profiles` : un snap ne lit pas le dossier temporaire du système.
 
 Firefox annonce son protocole distant tôt dans son démarrage et ne répond à la première commande,

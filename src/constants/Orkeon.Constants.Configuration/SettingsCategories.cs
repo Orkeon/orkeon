@@ -141,6 +141,7 @@ public static class SettingsCategories
             ["Orkeon:Tools:Chat"] = Tools,
             ["Orkeon:Tools:Drive"] = Tools,
             ["Orkeon:Tools:GitHub"] = Tools,
+            ["Orkeon:Tools:Browser"] = Tools,
             ["Orkeon:Tools:Firefox"] = Tools,
             ["Orkeon:Tools:Bridge"] = Tools,
             ["Orkeon:Bridge"] = Tools,

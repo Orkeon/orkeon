@@ -54,6 +54,7 @@
     "Orkeon:Sqlite",
     "Orkeon:TokenCounter",
     "Orkeon:Tools:Bridge",
+    "Orkeon:Tools:Browser",
     "Orkeon:Tools:Chat",
     "Orkeon:Tools:Drive",
     "Orkeon:Tools:Email",

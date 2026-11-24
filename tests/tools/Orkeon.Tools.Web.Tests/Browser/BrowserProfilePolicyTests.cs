@@ -1,17 +1,19 @@
+using Orkeon.Tools.Web.Tests.Doubles;
+using Orkeon.Tools.Web.Browser;
 using Orkeon.Tools.Web.Firefox;
 
-namespace Orkeon.Tools.Web.Tests.Firefox;
+namespace Orkeon.Tools.Web.Tests.Browser;
 
-public class FirefoxProfilePolicyTests
+public class BrowserProfilePolicyTests
 {
-    private static FirefoxProfilePolicy Policy(string? profile = null, string[]? allowed = null, string[]? denied = null)
+    private static BrowserProfilePolicy Policy(string? profile = null, string[]? allowed = null, string[]? denied = null)
     {
         var options = new FirefoxToolOptions { Profile = profile };
         foreach (var name in allowed ?? [])
             options.AllowedProfiles.Add(name);
         foreach (var name in denied ?? [])
             options.DeniedProfiles.Add(name);
-        return new FirefoxProfilePolicy(options);
+        return new BrowserProfilePolicy(options);
     }
 
     [Fact]
@@ -36,6 +38,18 @@ public class FirefoxProfilePolicyTests
     }
 
     [Fact]
+    public void Should_RefuseANamedProfile_When_TheEngineHasNone()
+    {
+        var engine = new FakeBrowserEngine { DisplayName = "Safari", Capabilities = new() { NamedProfiles = false } };
+        var policy = new BrowserProfilePolicy(new FirefoxToolOptions { AllowedProfiles = { "work" } }, engine);
+
+        var refused = Assert.Throws<FirefoxException>(() => policy.Resolve("work"));
+
+        Assert.Equal("'work' was refused: Safari runs on a disposable profile only.", refused.Message);
+        Assert.True(policy.Resolve(null).IsDisposable);
+    }
+
+    [Fact]
     public void Should_RefuseAProfileTheHostDoesNotList_AndNameTheOnesItDoes()
     {
         var policy = Policy(profile: "work", allowed: ["research"]);
@@ -43,9 +57,9 @@ public class FirefoxProfilePolicyTests
         var error = Assert.Throws<FirefoxException>(() => policy.Resolve("default"));
         var research = policy.Resolve("RESEARCH");
 
-        Assert.Equal("'default' is not a profile this host lets an agent name (Orkeon:Tools:Firefox:AllowedProfiles): disposable, work, research.", error.Message);
+        Assert.Equal("'default' is not a profile this host lets an agent name (Orkeon:Tools:Browser:AllowedProfiles): disposable, work, research.", error.Message);
         Assert.Equal("RESEARCH", research.Name);
-        Assert.True(research.Same(new FirefoxProfileChoice("research")));
+        Assert.True(research.Same(new BrowserProfileChoice("research")));
     }
 
     [Fact]
@@ -56,7 +70,7 @@ public class FirefoxProfilePolicyTests
         var asDefault = Assert.Throws<FirefoxException>(() => policy.Resolve(null));
         var asAllowed = Assert.Throws<FirefoxException>(() => policy.Resolve("work"));
 
-        Assert.Equal("'default' is a profile this host forbids (Orkeon:Tools:Firefox:DeniedProfiles).", asDefault.Message);
+        Assert.Equal("'default' is a profile this host forbids (Orkeon:Tools:Browser:DeniedProfiles).", asDefault.Message);
         Assert.Contains("'work' is a profile this host forbids", asAllowed.Message, StringComparison.Ordinal);
         Assert.True(policy.Resolve("disposable").IsDisposable);
     }

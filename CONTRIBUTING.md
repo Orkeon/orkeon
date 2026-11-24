@@ -363,7 +363,7 @@ ask for more, **the functional surface does not grow**:
   was asked ([ADR-012](docs/adr/ADR-012-email-tool-family.md)). The drive
   family (`Orkeon.Tools.Drive`, eleven tools for Google Drive and OneDrive)
   is the third, decided by the owner on 2026-10-17, for the same reason
-  ([ADR-013](docs/adr/ADR-013-drive-tool-family.md)). The `firefox` tool is
+  ([ADR-013](docs/adr/ADR-013-drive-tool-family.md)). The `browser` tool is
   the fourth. The chat family (`Orkeon.Tools.Chat`, Microsoft Teams first,
   ten tools) is the fifth, decided by the owner on 2026-11-23
   ([ADR-021](docs/adr/ADR-021-chat-tool-family.md)). The tool bridge

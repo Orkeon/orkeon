@@ -30,8 +30,8 @@
   items:
     - name: Drive tools — Google Drive and OneDrive
       href: guides/drive.md
-    - name: The firefox tool
-      href: guides/firefox.md
+    - name: The browser tool
+      href: guides/browser.md
     - name: Orkeon in a container, the browser on the desktop
       href: guides/tool-bridge.md
     - name: orkeon drive commands

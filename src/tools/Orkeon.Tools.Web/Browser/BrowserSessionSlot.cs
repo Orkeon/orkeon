@@ -1,20 +1,21 @@
+using Orkeon.Tools.Web.Firefox;
 using System.Diagnostics.CodeAnalysis;
 using Orkeon.Tools.Abstractions.Base;
 
-namespace Orkeon.Tools.Web.Firefox;
+namespace Orkeon.Tools.Web.Browser;
 
 /// <summary>
 /// One browser session and the gate its actions go through, one at a time. A run's slot is registered in
 /// the run's scope, which disposes it when the run ends; a host's slot (<c>Lifetime: host</c>) is one per
 /// profile, disposed with the host. It holds at most one live session at a time, replaced after a reset.
 /// </summary>
-internal sealed class FirefoxSessionSlot : IAsyncDisposable
+internal sealed class BrowserSessionSlot : IAsyncDisposable
 {
     [SuppressMessage("Usage", "CA2213:Disposable fields should be disposed", Justification = "An action may still be queued on the gate when the slot ends; a SemaphoreSlim without AvailableWaitHandle holds no unmanaged resource.")]
     private readonly SemaphoreSlim _gate;
     private readonly Lock _sync;
     private readonly bool _keepOnFailure;
-    private FirefoxSession? _session;
+    private BrowserSession? _session;
     private bool _disposed;
 
     /// <summary>Creates an empty slot.</summary>
@@ -22,7 +23,7 @@ internal sealed class FirefoxSessionSlot : IAsyncDisposable
     /// <c>true</c> keeps the session when an action fails or is cancelled, as long as its browser is there
     /// (the host's browser outlives the actions); <c>false</c> closes it, and the next action starts afresh.
     /// </param>
-    public FirefoxSessionSlot(bool keepOnFailure = false)
+    public BrowserSessionSlot(bool keepOnFailure = false)
     {
         _gate = new SemaphoreSlim(1, 1);
         _sync = new Lock();
@@ -47,18 +48,18 @@ internal sealed class FirefoxSessionSlot : IAsyncDisposable
     /// needed; null when the slot has ended. When <paramref name="named"/>, the caller asked for
     /// <paramref name="profile"/>: a session already open on another one refuses.
     /// </summary>
-    /// <exception cref="FirefoxException">Firefox is not installed, did not start, or the profile is missing, held, or not the session's.</exception>
+    /// <exception cref="FirefoxException">The browser is not installed, did not start, or the profile is missing, held, or not the session's.</exception>
     public async Task<T?> UseAsync<T>(
-        FirefoxProfileChoice profile, bool named,
-        Func<FirefoxProfileChoice, CancellationToken, Task<FirefoxSession>> open,
-        Func<FirefoxSession, CancellationToken, Task<T>> operation,
+        BrowserProfileChoice profile, bool named,
+        Func<BrowserProfileChoice, CancellationToken, Task<BrowserSession>> open,
+        Func<BrowserSession, CancellationToken, Task<T>> operation,
         CancellationToken cancellationToken)
         where T : class
     {
         await _gate.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
-            FirefoxSession? session;
+            BrowserSession? session;
             lock (_sync)
             {
                 if (_disposed)
@@ -129,7 +130,7 @@ internal sealed class FirefoxSessionSlot : IAsyncDisposable
         await _gate.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
-            FirefoxSession? session;
+            BrowserSession? session;
             lock (_sync)
                 session = _session;
             if (session is null)
@@ -148,7 +149,7 @@ internal sealed class FirefoxSessionSlot : IAsyncDisposable
     /// <summary>Ends the slot and its session; an action still running fails with the browser.</summary>
     public async ValueTask DisposeAsync()
     {
-        FirefoxSession? session;
+        BrowserSession? session;
         lock (_sync)
         {
             _disposed = true;
@@ -160,7 +161,7 @@ internal sealed class FirefoxSessionSlot : IAsyncDisposable
             await session.DisposeAsync().ConfigureAwait(false);
     }
 
-    private async Task ResetAsync(FirefoxSession session)
+    private async Task ResetAsync(BrowserSession session)
     {
         lock (_sync)
         {

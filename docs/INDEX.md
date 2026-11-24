@@ -38,7 +38,7 @@ Giving agents a mailbox is one of the most requested features: the tutorial gets
 | File | Description |
 |------|-------------|
 | [Drive tools](./guides/drive.md) | Give agents a Google Drive or a OneDrive: registering the OAuth application, `orkeon drive login`, rights, the root folder an agent cannot leave, the closed share allow-list, what the token never reaches |
-| [The `firefox` tool](./guides/firefox.md) | Give agents the Firefox of the machine, over WebDriver BiDi: one browser per run, or one the host keeps between runs, the page as a graph of sections, links and controls, node ids for click and type, `search` by meaning, what the URL policy checks and what never goes through the tool |
+| [The `browser` tool](./guides/browser.md) | Give agents the Firefox of the machine, over WebDriver BiDi: one browser per run, or one the host keeps between runs, the page as a graph of sections, links and controls, node ids for click and type, `search` by meaning, what the URL policy checks and what never goes through the tool |
 | [Orkeon in a container, the browser on the desktop](./guides/tool-bridge.md) | The tool bridge: `orkeon bridge serve` on your machine runs the tools both sides select for an Orkeon in a container, the caller keeping its own gate and guardian; reaching it from a Linux engine (`--network host`), Docker Desktop and a Windows URL reservation, runs and heartbeat, files at the caller's paths |
 | [`orkeon drive` commands](./reference/cli.md#orkeon-drive) | `accounts`, `check` (find the root folder and list it), `login` / `logout` — options and exit codes |
 | [ADR-013 — the drive tool family](./adr/ADR-013-drive-tool-family.md) | Why a tool family rather than a VFS mount, and the OAuth layer the two cloud families share |

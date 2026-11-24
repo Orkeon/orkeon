@@ -16,6 +16,7 @@ using Orkeon.Rag.Abstractions.Models;
 using Orkeon.Rag.Loaders;
 using Orkeon.Tools.Abstractions.Base;
 using Orkeon.Tools.Abstractions.Security;
+using Orkeon.Tools.Web.Browser;
 using Orkeon.Tools.Web.Firefox;
 
 namespace Orkeon.Tools.Web;
@@ -102,6 +103,10 @@ public sealed record FirefoxResponse : IBoundedToolResponse
     /// <summary>Gets why the action failed.</summary>
     [ReturnSchema(Description = "Why the action failed")]
     public string? Error { get; init; }
+
+    /// <summary>Gets the browser engine that answered.</summary>
+    [ReturnSchema(Description = "The browser engine the host runs: firefox")]
+    public string Engine { get; init; } = "";
 
     /// <summary>Gets the address of the page shown after the action.</summary>
     [ReturnSchema(Description = "Address of the page shown after the action")]
@@ -222,19 +227,25 @@ public sealed record FirefoxHit
 }
 
 /// <summary>
-/// Drives a Firefox of its own: opens pages, reads them as a semantic graph whose node ids are the
+/// Drives a browser of its own, the engine the host chose: opens pages, reads them as a semantic graph whose node ids are the
 /// handles to click and type, runs scripts and captures the screen. One browser per agent run, started
 /// at the first action and closed with the run.
 /// </summary>
-[ToolContract("firefox",
-    Name = "firefox",
-    Description = "Drive a Firefox browser: open a page (navigate), read it as an outline of sections, links and controls (snapshot, find, read), " +
+[ToolContract("browser",
+    Name = "browser",
+    Description = "Drive the web browser of the host: open a page (navigate), read it as an outline of sections, links and controls (snapshot, find, read), " +
         "find its sections by meaning (search), then act on a node by its id (click, type), press keys, run a script (evaluate) or save a screenshot. " +
         "Tabs of its own are opened, listed, switched and closed (new_tab, tabs, switch_tab, close_tab). " +
         "The browser stays open between calls of the same run, or from one run to the next when the host keeps it; close ends it.",
     Category = "Web Operations")]
 public sealed partial class FirefoxTool : ToolBase<FirefoxRequest, FirefoxResponse>
 {
+    /// <summary>The name of the tool, and the prefix of its search collections whatever name it answers to.</summary>
+    internal const string ToolName = "browser";
+
+    /// <summary>The deprecated second name of the tool, removed at the next major version.</summary>
+    internal const string DeprecatedName = "firefox";
+
     internal const string Navigate = "navigate";
     internal const string Back = "back";
     internal const string Snapshot = "snapshot";
@@ -286,16 +297,17 @@ public sealed partial class FirefoxTool : ToolBase<FirefoxRequest, FirefoxRespon
         ["control"] = UniversalNodeKind.Control,
     };
 
-    private readonly FirefoxSessionManager _sessions;
+    private readonly BrowserSessionManager _sessions;
     private readonly bool _ownsSessions;
+    private readonly bool _deprecatedName;
     private readonly FirefoxToolOptions _options;
-    private readonly FirefoxProfilePolicy _profiles;
+    private readonly BrowserProfilePolicy _profiles;
     private readonly IFileSystemService _fileSystem;
     private readonly IUrlValidator? _urlValidator;
     private readonly IEphemeralCollectionSearch? _search;
 
-    /// <summary>Initializes a new instance of <see cref="FirefoxTool"/> that starts the Firefox installed on the host.</summary>
-    /// <param name="options">Where Firefox is, whether it shows a window, and the limits of an answer.</param>
+    /// <summary>Initializes a new instance of <see cref="FirefoxTool"/> that starts the browser installed on the host.</summary>
+    /// <param name="options">Which browser, where it is, whether it shows a window, and the limits of an answer.</param>
     /// <param name="fileSystem">The virtual file system screenshots are written through.</param>
     /// <param name="urlValidator">The policy of the addresses the browser may open; the fail-closed default guard when <see langword="null"/>.</param>
     /// <param name="search">The semantic search of the RAG subsystem; without it every action works but <c>search</c>.</param>
@@ -303,28 +315,30 @@ public sealed partial class FirefoxTool : ToolBase<FirefoxRequest, FirefoxRespon
     public FirefoxTool(
         FirefoxToolOptions options, IFileSystemService fileSystem, IUrlValidator? urlValidator = null,
         IEphemeralCollectionSearch? search = null, ILogger? logger = null)
-        : this(new FirefoxProcessLauncher(options, logger), options, fileSystem, urlValidator, search, logger)
+        : this(BrowserEngines.Create(options, logger), options, fileSystem, urlValidator, search, logger)
     {
     }
 
     internal FirefoxTool(
-        IFirefoxLauncher launcher, FirefoxToolOptions options, IFileSystemService fileSystem,
+        IBrowserEngine engine, FirefoxToolOptions options, IFileSystemService fileSystem,
         IUrlValidator? urlValidator = null, IEphemeralCollectionSearch? search = null,
-        ILogger? logger = null, FirefoxSessionTimings? timings = null)
-        : this(new FirefoxSessionManager(launcher, options, fileSystem, logger, timings), ownsSessions: true, options, fileSystem, urlValidator, search, logger)
+        ILogger? logger = null, BrowserSessionTimings? timings = null)
+        : this(new BrowserSessionManager(engine, options, fileSystem, logger, timings), ownsSessions: true, options, fileSystem, urlValidator, search, logger)
     {
     }
 
     /// <summary>A tool over the browsers of <paramref name="sessions"/>, which the container registers once and closes with the host.</summary>
     internal FirefoxTool(
-        FirefoxSessionManager sessions, FirefoxToolOptions options, IFileSystemService fileSystem,
-        IUrlValidator? urlValidator = null, IEphemeralCollectionSearch? search = null, ILogger? logger = null)
+        BrowserSessionManager sessions, FirefoxToolOptions options, IFileSystemService fileSystem,
+        IUrlValidator? urlValidator = null, IEphemeralCollectionSearch? search = null, ILogger? logger = null,
+        bool deprecatedName = false)
         : this(sessions, ownsSessions: false, options, fileSystem, urlValidator, search, logger)
     {
+        _deprecatedName = deprecatedName;
     }
 
     private FirefoxTool(
-        FirefoxSessionManager sessions, bool ownsSessions, FirefoxToolOptions options, IFileSystemService fileSystem,
+        BrowserSessionManager sessions, bool ownsSessions, FirefoxToolOptions options, IFileSystemService fileSystem,
         IUrlValidator? urlValidator, IEphemeralCollectionSearch? search, ILogger? logger)
         : base(logger)
     {
@@ -337,11 +351,19 @@ public sealed partial class FirefoxTool : ToolBase<FirefoxRequest, FirefoxRespon
         _fileSystem = fileSystem;
         _urlValidator = urlValidator;
         _search = search;
-        _profiles = new FirefoxProfilePolicy(options);
+        _profiles = new BrowserProfilePolicy(options, sessions.Engine);
     }
 
+    /// <inheritdoc/>
+    public override string Name => _deprecatedName ? DeprecatedName : base.Name;
+
+    /// <inheritdoc/>
+    public override string Description => _deprecatedName
+        ? $"Deprecated name of the {ToolName} tool: use {ToolName}. {base.Description}"
+        : base.Description;
+
     /// <summary>The browsers this tool drives: its own, or the host's when the container handed them.</summary>
-    internal FirefoxSessionManager Sessions => _sessions;
+    internal BrowserSessionManager Sessions => _sessions;
 
     /// <inheritdoc/>
     protected override void Dispose(bool disposing)
@@ -423,7 +445,7 @@ public sealed partial class FirefoxTool : ToolBase<FirefoxRequest, FirefoxRespon
     {
         if (string.IsNullOrEmpty(key))
             return "key is required for action 'press'";
-        return FirefoxKeys.TryParse(key, out _) ? null : $"'{key}' is not a key. {FirefoxKeys.Names}";
+        return BrowserKeys.TryParse(key, out _) ? null : $"'{key}' is not a key. {BrowserKeys.Names}";
     }
 
     private static string? ValidateKind(string? kind)
@@ -437,10 +459,16 @@ public sealed partial class FirefoxTool : ToolBase<FirefoxRequest, FirefoxRespon
     protected override async Task<FirefoxResponse> ExecuteTypedAsync(FirefoxRequest request, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(request);
+        var response = await ExecuteActionAsync(request, cancellationToken).ConfigureAwait(false);
+        return response with { Engine = _sessions.Engine.Id };
+    }
+
+    private async Task<FirefoxResponse> ExecuteActionAsync(FirefoxRequest request, CancellationToken cancellationToken)
+    {
         var action = Canonical(request.Action) ?? request.Action;
         try
         {
-            // Refused before any browser starts: a profile the host forbids costs no Firefox.
+            // Refused before any browser starts: a profile the host forbids costs no browser.
             var profile = _profiles.Resolve(request.Profile);
             var named = !string.IsNullOrWhiteSpace(request.Profile);
             if (action == Close)
@@ -451,7 +479,7 @@ public sealed partial class FirefoxTool : ToolBase<FirefoxRequest, FirefoxRespon
 
             if (action is Navigate or NewTab && !string.IsNullOrWhiteSpace(request.Url))
             {
-                // Refused before any browser starts, as well: an address the policy forbids costs no Firefox.
+                // Refused before any browser starts, as well: an address the policy forbids costs no browser.
                 var url = request.Url.Trim();
                 if (await RefusalAsync(url, cancellationToken).ConfigureAwait(false) is { } refusal)
                     throw new FirefoxException($"'{url}' was not opened: {refusal}.");
@@ -486,7 +514,7 @@ public sealed partial class FirefoxTool : ToolBase<FirefoxRequest, FirefoxRespon
     }
 
     private async Task<FirefoxResponse> RunAsync(
-        FirefoxSession session, string action, FirefoxRequest request, CancellationToken cancellationToken)
+        BrowserSession session, string action, FirefoxRequest request, CancellationToken cancellationToken)
     {
         // What the browser shows was left there by an earlier action - or by the page itself, since: it
         // is checked before anything is read from it or done in it.
@@ -523,8 +551,8 @@ public sealed partial class FirefoxTool : ToolBase<FirefoxRequest, FirefoxRespon
                 state = null;
                 break;
             case Press:
-                if (!FirefoxKeys.TryParse(request.Key, out var chord))
-                    throw new FirefoxException($"'{request.Key}' is not a key. {FirefoxKeys.Names}");
+                if (!BrowserKeys.TryParse(request.Key, out var chord))
+                    throw new FirefoxException($"'{request.Key}' is not a key. {BrowserKeys.Names}");
                 await session.PressAsync(chord, cancellationToken).ConfigureAwait(false);
                 state = null;
                 break;
@@ -565,7 +593,7 @@ public sealed partial class FirefoxTool : ToolBase<FirefoxRequest, FirefoxRespon
         };
     }
 
-    private static async Task<IReadOnlyList<FirefoxTabInfo>> TabsAsync(FirefoxSession session, CancellationToken cancellationToken) =>
+    private static async Task<IReadOnlyList<FirefoxTabInfo>> TabsAsync(BrowserSession session, CancellationToken cancellationToken) =>
         [.. (await session.ListTabsAsync(cancellationToken).ConfigureAwait(false))
             .Select(tab => new FirefoxTabInfo { Id = tab.Handle, Url = tab.Url, Title = tab.Title, Current = tab.Current })];
 
@@ -573,7 +601,7 @@ public sealed partial class FirefoxTool : ToolBase<FirefoxRequest, FirefoxRespon
     /// The page the browser shows, once its address passed the policy. A page that does not is left
     /// for a blank one, and the action fails.
     /// </summary>
-    private async Task<PageState> GuardAsync(FirefoxSession session, CancellationToken cancellationToken)
+    private async Task<PageState> GuardAsync(BrowserSession session, CancellationToken cancellationToken)
     {
         var state = await session.ReadStateAsync(cancellationToken).ConfigureAwait(false);
         if (string.Equals(state.Url, session.CheckedUrl, StringComparison.Ordinal))
@@ -609,11 +637,11 @@ public sealed partial class FirefoxTool : ToolBase<FirefoxRequest, FirefoxRespon
     }
 
     /// <summary>The snapshot the node ids of a request refer to.</summary>
-    private static PageSnapshot Known(FirefoxSession session) =>
+    private static PageSnapshot Known(BrowserSession session) =>
         session.Page ?? throw new FirefoxException("The page changed since it was last read: call snapshot, then use the node ids it returns.");
 
     /// <summary>The snapshot of what the browser shows now: the last one while nothing was done since, a new one otherwise.</summary>
-    private static async Task<PageSnapshot> CurrentAsync(FirefoxSession session, CancellationToken cancellationToken) =>
+    private static async Task<PageSnapshot> CurrentAsync(BrowserSession session, CancellationToken cancellationToken) =>
         session.PageIsCurrent ? session.Page! : await session.SnapshotAsync(cancellationToken).ConfigureAwait(false);
 
     /// <summary>
@@ -621,7 +649,7 @@ public sealed partial class FirefoxTool : ToolBase<FirefoxRequest, FirefoxRespon
     /// reads the page again, except to give the next part of the listing it just gave.
     /// </summary>
     private async Task<FirefoxResponse> ListAsync(
-        FirefoxSession session, FirefoxRequest request, bool fresh, CancellationToken cancellationToken)
+        BrowserSession session, FirefoxRequest request, bool fresh, CancellationToken cancellationToken)
     {
         var under = string.IsNullOrWhiteSpace(request.NodeId) ? null : request.NodeId.Trim();
         var offset = request.Offset ?? 0;
@@ -638,7 +666,7 @@ public sealed partial class FirefoxTool : ToolBase<FirefoxRequest, FirefoxRespon
             ? [kind]
             : [.. s_kinds.Values];
         var found = await page.Store.QueryAsync(
-            new NodeQuery { Kinds = [.. kinds], Take = FirefoxSession.MaxElements + 1 }, cancellationToken).ConfigureAwait(false);
+            new NodeQuery { Kinds = [.. kinds], Take = BrowserSession.MaxElements + 1 }, cancellationToken).ConfigureAwait(false);
 
         var name = string.IsNullOrWhiteSpace(request.Name) ? null : request.Name.Trim();
         var matching = found
@@ -658,7 +686,7 @@ public sealed partial class FirefoxTool : ToolBase<FirefoxRequest, FirefoxRespon
     }
 
     /// <summary>The text of the page, or of one node with the nodes it holds.</summary>
-    private async Task<FirefoxResponse> ReadAsync(FirefoxSession session, FirefoxRequest request, CancellationToken cancellationToken)
+    private async Task<FirefoxResponse> ReadAsync(BrowserSession session, FirefoxRequest request, CancellationToken cancellationToken)
     {
         var offset = request.Offset ?? 0;
         if (string.IsNullOrWhiteSpace(request.NodeId))
@@ -688,7 +716,7 @@ public sealed partial class FirefoxTool : ToolBase<FirefoxRequest, FirefoxRespon
     /// of an ephemeral RAG collection, named by the position of its element: a hit gives back the node
     /// of the graph to read or to look under.
     /// </summary>
-    private async Task<FirefoxResponse> SearchAsync(FirefoxSession session, FirefoxRequest request, CancellationToken cancellationToken)
+    private async Task<FirefoxResponse> SearchAsync(BrowserSession session, FirefoxRequest request, CancellationToken cancellationToken)
     {
         if (_search is null)
             throw new FirefoxException("search needs the RAG subsystem, which this host does not provide: use find and read instead.");
@@ -707,7 +735,7 @@ public sealed partial class FirefoxTool : ToolBase<FirefoxRequest, FirefoxRespon
                     Sources = sources,
                     Query = request.Query!.Trim(),
                     TopK = Candidates,
-                    CollectionPrefix = Name,
+                    CollectionPrefix = ToolName,
                 },
                 cancellationToken).ConfigureAwait(false);
         }
@@ -778,11 +806,11 @@ public sealed partial class FirefoxTool : ToolBase<FirefoxRequest, FirefoxRespon
             .Add(InlineTextLoader.MetadataOptionPrefix + ElementKey, element),
     };
 
-    [LoggerMessage(Level = LogLevel.Warning, Message = "firefox: the search of the page failed")]
+    [LoggerMessage(Level = LogLevel.Warning, Message = "browser: the search of the page failed")]
     private static partial void LogSearchFailed(ILogger logger, Exception exception);
 
     /// <summary>Writes the image of the visible part of the page through the virtual file system.</summary>
-    private async Task<FirefoxResponse> CaptureAsync(FirefoxSession session, string saveToPath, CancellationToken cancellationToken)
+    private async Task<FirefoxResponse> CaptureAsync(BrowserSession session, string saveToPath, CancellationToken cancellationToken)
     {
         // Checked before the capture: a path the agent may not write costs no screenshot.
         var target = _fileSystem.ResolveAndValidate(saveToPath, FileAccessRights.Write);

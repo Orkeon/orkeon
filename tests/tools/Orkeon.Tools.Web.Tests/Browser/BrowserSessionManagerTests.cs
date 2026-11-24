@@ -1,28 +1,29 @@
+using Orkeon.Tools.Web.Browser;
 using Orkeon.Domain.Execution;
 using Orkeon.Tests.Shared.Timing;
 using Orkeon.Tools.Web.Firefox;
 
-namespace Orkeon.Tools.Web.Tests.Firefox;
+namespace Orkeon.Tools.Web.Tests.Browser;
 
-public class FirefoxSessionManagerTests : FirefoxSessionTestBase
+public class BrowserSessionManagerTests : BrowserSessionTestBase
 {
-    private static Task<FirefoxSession> Same(FirefoxSession session, CancellationToken cancellationToken) => Task.FromResult(session);
+    private static Task<BrowserSession> Same(BrowserSession session, CancellationToken cancellationToken) => Task.FromResult(session);
 
     [Fact]
     public async Task Should_StartOneBrowserPerRun_AndCloseItWithTheRun()
     {
         using var manager = Manager();
-        FirefoxSession first, second;
+        BrowserSession first, second;
 
         await using (AgentRunScope.Begin("agent-1"))
         {
-            first = await manager.UseAsync(FirefoxProfileChoice.Disposable, false, Same, Ct);
-            await manager.UseAsync(FirefoxProfileChoice.Disposable, false, async (session, ct) =>
+            first = await manager.UseAsync(BrowserProfileChoice.Disposable, false, Same, Ct);
+            await manager.UseAsync(BrowserProfileChoice.Disposable, false, async (session, ct) =>
             {
                 await session.NavigateAsync(Home, ct);
                 return "done";
             }, Ct);
-            second = await manager.UseAsync(FirefoxProfileChoice.Disposable, false, Same, Ct);
+            second = await manager.UseAsync(BrowserProfileChoice.Disposable, false, Same, Ct);
 
             Assert.Equal(Home, (await second.ReadStateAsync(Ct)).Url);
             Assert.False(Launcher.Last.Disposed);
@@ -40,7 +41,7 @@ public class FirefoxSessionManagerTests : FirefoxSessionTestBase
         using var manager = Manager();
 
         await using (AgentRunScope.Begin("agent-1"))
-            Assert.False(await manager.CloseAsync(FirefoxProfileChoice.Disposable, false, Ct));
+            Assert.False(await manager.CloseAsync(BrowserProfileChoice.Disposable, false, Ct));
 
         Assert.Empty(Launcher.Browsers);
     }
@@ -52,11 +53,11 @@ public class FirefoxSessionManagerTests : FirefoxSessionTestBase
         var bothIn = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var entered = 0;
 
-        async Task<FirefoxSession> RunAsync(string agent)
+        async Task<BrowserSession> RunAsync(string agent)
         {
             await using (AgentRunScope.Begin(agent))
             {
-                return await manager.UseAsync(FirefoxProfileChoice.Disposable, false, async (session, ct) =>
+                return await manager.UseAsync(BrowserProfileChoice.Disposable, false, async (session, ct) =>
                 {
                     // Both runs hold their browser at once: neither waits for the other.
                     if (Interlocked.Increment(ref entered) == 2) bothIn.TrySetResult();
@@ -83,14 +84,14 @@ public class FirefoxSessionManagerTests : FirefoxSessionTestBase
 
         await using (AgentRunScope.Begin("agent-1"))
         {
-            var first = manager.UseAsync(FirefoxProfileChoice.Disposable, false, async (session, ct) =>
+            var first = manager.UseAsync(BrowserProfileChoice.Disposable, false, async (session, ct) =>
             {
                 firstIn.TrySetResult();
                 await release.Task.WaitAsync(ct);
                 return "first";
             }, Ct);
             await firstIn.Task.WaitAsync(Ct);
-            var second = manager.UseAsync(FirefoxProfileChoice.Disposable, false, (session, ct) =>
+            var second = manager.UseAsync(BrowserProfileChoice.Disposable, false, (session, ct) =>
             {
                 Volatile.Write(ref secondIn, true);
                 return Task.FromResult("second");
@@ -110,13 +111,13 @@ public class FirefoxSessionManagerTests : FirefoxSessionTestBase
     {
         using var manager = Manager();
 
-        var first = await manager.UseAsync(FirefoxProfileChoice.Disposable, false, Same, Ct);
-        var second = await manager.UseAsync(FirefoxProfileChoice.Disposable, false, Same, Ct);
+        var first = await manager.UseAsync(BrowserProfileChoice.Disposable, false, Same, Ct);
+        var second = await manager.UseAsync(BrowserProfileChoice.Disposable, false, Same, Ct);
 
         Assert.NotSame(first, second);
         Assert.Equal(2, Launcher.Browsers.Count);
         Assert.All(Launcher.Browsers, browser => Assert.True(browser.Disposed));
-        Assert.False(await manager.CloseAsync(FirefoxProfileChoice.Disposable, false, Ct));
+        Assert.False(await manager.CloseAsync(BrowserProfileChoice.Disposable, false, Ct));
     }
 
     [Fact]
@@ -124,7 +125,7 @@ public class FirefoxSessionManagerTests : FirefoxSessionTestBase
     {
         using var manager = Manager();
         var runEnded = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        Task<FirefoxSession> late;
+        Task<BrowserSession> late;
 
         await using (AgentRunScope.Begin("agent-1"))
         {
@@ -132,7 +133,7 @@ public class FirefoxSessionManagerTests : FirefoxSessionTestBase
             late = Task.Run(async () =>
             {
                 await runEnded.Task.WaitAsync(Ct);
-                return await manager.UseAsync(FirefoxProfileChoice.Disposable, false, Same, Ct);
+                return await manager.UseAsync(BrowserProfileChoice.Disposable, false, Same, Ct);
             }, Ct);
         }
 
@@ -150,10 +151,10 @@ public class FirefoxSessionManagerTests : FirefoxSessionTestBase
 
         await using (AgentRunScope.Begin("agent-1"))
         {
-            var first = await manager.UseAsync(FirefoxProfileChoice.Disposable, false, Same, Ct);
-            await Assert.ThrowsAsync<FirefoxException>(() => manager.UseAsync<string>(FirefoxProfileChoice.Disposable, false, 
+            var first = await manager.UseAsync(BrowserProfileChoice.Disposable, false, Same, Ct);
+            await Assert.ThrowsAsync<FirefoxException>(() => manager.UseAsync<string>(BrowserProfileChoice.Disposable, false, 
                 (_, _) => throw new FirefoxException("The node is no longer in the page."), Ct));
-            var second = await manager.UseAsync(FirefoxProfileChoice.Disposable, false, Same, Ct);
+            var second = await manager.UseAsync(BrowserProfileChoice.Disposable, false, Same, Ct);
 
             Assert.Same(first, second);
             Assert.True(second.IsAlive);
@@ -171,14 +172,14 @@ public class FirefoxSessionManagerTests : FirefoxSessionTestBase
 
         await using (AgentRunScope.Begin("agent-1"))
         {
-            var first = await manager.UseAsync(FirefoxProfileChoice.Disposable, false, Same, Ct);
-            await Assert.ThrowsAnyAsync<Exception>(() => manager.UseAsync<string>(FirefoxProfileChoice.Disposable, false, 
+            var first = await manager.UseAsync(BrowserProfileChoice.Disposable, false, Same, Ct);
+            await Assert.ThrowsAnyAsync<Exception>(() => manager.UseAsync<string>(BrowserProfileChoice.Disposable, false, 
                 (_, _) => throw (cancelled ? new OperationCanceledException() : new InvalidOperationException("a bug")), Ct));
 
             Assert.False(first.IsAlive);
             Assert.True(Launcher.Browsers[0].Disposed);
 
-            var second = await manager.UseAsync(FirefoxProfileChoice.Disposable, false, Same, Ct);
+            var second = await manager.UseAsync(BrowserProfileChoice.Disposable, false, Same, Ct);
 
             Assert.NotSame(first, second);
             Assert.True(second.IsAlive);
@@ -193,11 +194,11 @@ public class FirefoxSessionManagerTests : FirefoxSessionTestBase
 
         await using (AgentRunScope.Begin("agent-1"))
         {
-            var first = await manager.UseAsync(FirefoxProfileChoice.Disposable, false, Same, Ct);
+            var first = await manager.UseAsync(BrowserProfileChoice.Disposable, false, Same, Ct);
             Launcher.Last.Wire.Close();
             await Polling.WaitUntilAsync(() => !first.IsAlive);
 
-            var second = await manager.UseAsync(FirefoxProfileChoice.Disposable, false, Same, Ct);
+            var second = await manager.UseAsync(BrowserProfileChoice.Disposable, false, Same, Ct);
 
             Assert.NotSame(first, second);
             Assert.True(second.IsAlive);
@@ -213,7 +214,7 @@ public class FirefoxSessionManagerTests : FirefoxSessionTestBase
 
         await using (AgentRunScope.Begin("agent-1"))
         {
-            await Assert.ThrowsAsync<FirefoxException>(() => manager.UseAsync<string>(FirefoxProfileChoice.Disposable, false, async (session, _) =>
+            await Assert.ThrowsAsync<FirefoxException>(() => manager.UseAsync<string>(BrowserProfileChoice.Disposable, false, async (session, _) =>
             {
                 Launcher.Last.Wire.Close();
                 await Polling.WaitUntilAsync(() => !session.IsAlive);
@@ -221,7 +222,7 @@ public class FirefoxSessionManagerTests : FirefoxSessionTestBase
             }, Ct));
 
             Assert.True(Launcher.Browsers[0].Disposed);
-            await manager.UseAsync(FirefoxProfileChoice.Disposable, false, Same, Ct);
+            await manager.UseAsync(BrowserProfileChoice.Disposable, false, Same, Ct);
             Assert.Equal(2, Launcher.Browsers.Count);
         }
     }
@@ -233,13 +234,13 @@ public class FirefoxSessionManagerTests : FirefoxSessionTestBase
 
         await using (AgentRunScope.Begin("agent-1"))
         {
-            var first = await manager.UseAsync(FirefoxProfileChoice.Disposable, false, Same, Ct);
+            var first = await manager.UseAsync(BrowserProfileChoice.Disposable, false, Same, Ct);
 
-            Assert.True(await manager.CloseAsync(FirefoxProfileChoice.Disposable, false, Ct));
+            Assert.True(await manager.CloseAsync(BrowserProfileChoice.Disposable, false, Ct));
             Assert.True(Launcher.Browsers[0].Disposed);
-            Assert.False(await manager.CloseAsync(FirefoxProfileChoice.Disposable, false, Ct));
+            Assert.False(await manager.CloseAsync(BrowserProfileChoice.Disposable, false, Ct));
 
-            var second = await manager.UseAsync(FirefoxProfileChoice.Disposable, false, Same, Ct);
+            var second = await manager.UseAsync(BrowserProfileChoice.Disposable, false, Same, Ct);
 
             Assert.NotSame(first, second);
             Assert.Equal(2, Launcher.Browsers.Count);
@@ -254,9 +255,9 @@ public class FirefoxSessionManagerTests : FirefoxSessionTestBase
 
         await using (AgentRunScope.Begin("agent-1"))
         {
-            var error = await Assert.ThrowsAsync<FirefoxException>(() => manager.UseAsync(FirefoxProfileChoice.Disposable, false, Same, Ct));
+            var error = await Assert.ThrowsAsync<FirefoxException>(() => manager.UseAsync(BrowserProfileChoice.Disposable, false, Same, Ct));
             Launcher.LaunchFailure = null;
-            var session = await manager.UseAsync(FirefoxProfileChoice.Disposable, false, Same, Ct);
+            var session = await manager.UseAsync(BrowserProfileChoice.Disposable, false, Same, Ct);
 
             Assert.Contains("not found", error.Message, StringComparison.Ordinal);
             Assert.True(session.IsAlive);
@@ -269,15 +270,15 @@ public class FirefoxSessionManagerTests : FirefoxSessionTestBase
     public async Task Should_StartTheBrowserOnTheProfileAsked_AndRefuseAnotherOneUntilClose()
     {
         using var manager = Manager();
-        var work = new FirefoxProfileChoice("work");
+        var work = new BrowserProfileChoice("work");
         await using var run = AgentRunScope.Begin("agent-1");
 
         var first = await manager.UseAsync(work, true, Same, Ct);
-        var unnamed = await manager.UseAsync(FirefoxProfileChoice.Disposable, false, Same, Ct);
-        var same = await manager.UseAsync(new FirefoxProfileChoice("WORK"), true, Same, Ct);
-        var error = await Assert.ThrowsAsync<FirefoxException>(() => manager.UseAsync(FirefoxProfileChoice.Disposable, true, Same, Ct));
-        await manager.CloseAsync(FirefoxProfileChoice.Disposable, false, Ct);
-        var next = await manager.UseAsync(FirefoxProfileChoice.Disposable, true, Same, Ct);
+        var unnamed = await manager.UseAsync(BrowserProfileChoice.Disposable, false, Same, Ct);
+        var same = await manager.UseAsync(new BrowserProfileChoice("WORK"), true, Same, Ct);
+        var error = await Assert.ThrowsAsync<FirefoxException>(() => manager.UseAsync(BrowserProfileChoice.Disposable, true, Same, Ct));
+        await manager.CloseAsync(BrowserProfileChoice.Disposable, false, Ct);
+        var next = await manager.UseAsync(BrowserProfileChoice.Disposable, true, Same, Ct);
 
         Assert.Same(first, unnamed);
         Assert.Same(first, same);
@@ -290,8 +291,8 @@ public class FirefoxSessionManagerTests : FirefoxSessionTestBase
     public async Task Should_ShareOneBrowserPerProfileBetweenRuns_WhichClosesWithTheLastRun()
     {
         using var manager = Manager(new FirefoxToolOptions { SharedInstance = true });
-        var work = new FirefoxProfileChoice("work");
-        FirefoxSession? first = null;
+        var work = new BrowserProfileChoice("work");
+        BrowserSession? first = null;
         var firstAttached = new TaskCompletionSource();
         var secondRunEnded = new TaskCompletionSource();
 
@@ -299,7 +300,7 @@ public class FirefoxSessionManagerTests : FirefoxSessionTestBase
         var firstRun = Task.Run(async () =>
         {
             await using var run = AgentRunScope.Begin("agent-1");
-            first = await manager.UseAsync(FirefoxProfileChoice.Disposable, false, Same, Ct);
+            first = await manager.UseAsync(BrowserProfileChoice.Disposable, false, Same, Ct);
             firstAttached.SetResult();
             await secondRunEnded.Task;
 
@@ -313,9 +314,9 @@ public class FirefoxSessionManagerTests : FirefoxSessionTestBase
         {
             await firstAttached.Task;
             await using var run = AgentRunScope.Begin("agent-2");
-            var second = await manager.UseAsync(FirefoxProfileChoice.Disposable, false, Same, Ct);
+            var second = await manager.UseAsync(BrowserProfileChoice.Disposable, false, Same, Ct);
             await second.NavigateAsync(Docs, Ct);
-            Task<FirefoxSession> thirdRun;
+            Task<BrowserSession> thirdRun;
             using (ExecutionContext.SuppressFlow())
             {
                 thirdRun = Task.Run(async () =>
@@ -351,10 +352,10 @@ public class FirefoxSessionManagerTests : FirefoxSessionTestBase
         using var manager = Manager(new FirefoxToolOptions { SharedInstance = true });
         await using var run = AgentRunScope.Begin("agent-1");
 
-        var first = await manager.UseAsync(FirefoxProfileChoice.Disposable, false, Same, Ct);
+        var first = await manager.UseAsync(BrowserProfileChoice.Disposable, false, Same, Ct);
         Launcher.Browsers[0].Wire.Close();
         await Polling.WaitUntilAsync(() => !first.IsAlive);
-        var second = await manager.UseAsync(FirefoxProfileChoice.Disposable, false, Same, Ct);
+        var second = await manager.UseAsync(BrowserProfileChoice.Disposable, false, Same, Ct);
         manager.Dispose();
 
         Assert.NotSame(first.Browser, second.Browser);
@@ -368,7 +369,7 @@ public class FirefoxSessionManagerTests : FirefoxSessionTestBase
     {
         using var manager = Manager(new FirefoxToolOptions { SharedInstance = true });
 
-        var url = await manager.UseAsync(FirefoxProfileChoice.Disposable, false, async (session, ct) =>
+        var url = await manager.UseAsync(BrowserProfileChoice.Disposable, false, async (session, ct) =>
         {
             await session.NavigateAsync(Home, ct);
             return (await session.ReadStateAsync(ct)).Url;
@@ -383,11 +384,11 @@ public class FirefoxSessionManagerTests : FirefoxSessionTestBase
     public async Task Should_KeepTheHostsBrowserAcrossRuns_AndCloseItWithTheManager()
     {
         using var manager = Manager(new FirefoxToolOptions { Lifetime = FirefoxBrowserLifetime.Host });
-        FirefoxSession first, second;
+        BrowserSession first, second;
 
         await using (AgentRunScope.Begin("agent-1"))
         {
-            first = await manager.UseAsync(FirefoxProfileChoice.Disposable, false, async (session, ct) =>
+            first = await manager.UseAsync(BrowserProfileChoice.Disposable, false, async (session, ct) =>
             {
                 await session.NavigateAsync(Home, ct);
                 return session;
@@ -397,7 +398,7 @@ public class FirefoxSessionManagerTests : FirefoxSessionTestBase
         var browser = Assert.Single(Launcher.Browsers);
         Assert.False(browser.Disposed);
         await using (AgentRunScope.Begin("agent-2"))
-            second = await manager.UseAsync(FirefoxProfileChoice.Disposable, false, Same, Ct);
+            second = await manager.UseAsync(BrowserProfileChoice.Disposable, false, Same, Ct);
 
         Assert.Same(first, second);
         Assert.Equal(Home, (await second.ReadStateAsync(Ct)).Url);
@@ -417,8 +418,8 @@ public class FirefoxSessionManagerTests : FirefoxSessionTestBase
     {
         using var manager = Manager(new FirefoxToolOptions { Lifetime = FirefoxBrowserLifetime.Host });
 
-        var first = await manager.UseAsync(FirefoxProfileChoice.Disposable, false, Same, Ct);
-        var second = await manager.UseAsync(FirefoxProfileChoice.Disposable, false, Same, Ct);
+        var first = await manager.UseAsync(BrowserProfileChoice.Disposable, false, Same, Ct);
+        var second = await manager.UseAsync(BrowserProfileChoice.Disposable, false, Same, Ct);
 
         Assert.Same(first, second);
         Assert.True(second.IsAlive);
@@ -429,15 +430,15 @@ public class FirefoxSessionManagerTests : FirefoxSessionTestBase
     public async Task Should_BindARunToTheProfileOfItsFirstAction_UntilClose_When_TheHostKeepsTheBrowsers()
     {
         using var manager = Manager(new FirefoxToolOptions { Lifetime = FirefoxBrowserLifetime.Host });
-        var work = new FirefoxProfileChoice("work");
+        var work = new BrowserProfileChoice("work");
         await using var run = AgentRunScope.Begin("agent-1");
 
         var first = await manager.UseAsync(work, true, Same, Ct);
-        var unnamed = await manager.UseAsync(FirefoxProfileChoice.Disposable, false, Same, Ct);
-        var error = await Assert.ThrowsAsync<FirefoxException>(() => manager.UseAsync(FirefoxProfileChoice.Disposable, true, Same, Ct));
-        var closeOther = await Assert.ThrowsAsync<FirefoxException>(() => manager.CloseAsync(FirefoxProfileChoice.Disposable, true, Ct));
-        var closed = await manager.CloseAsync(FirefoxProfileChoice.Disposable, false, Ct);
-        var next = await manager.UseAsync(FirefoxProfileChoice.Disposable, false, Same, Ct);
+        var unnamed = await manager.UseAsync(BrowserProfileChoice.Disposable, false, Same, Ct);
+        var error = await Assert.ThrowsAsync<FirefoxException>(() => manager.UseAsync(BrowserProfileChoice.Disposable, true, Same, Ct));
+        var closeOther = await Assert.ThrowsAsync<FirefoxException>(() => manager.CloseAsync(BrowserProfileChoice.Disposable, true, Ct));
+        var closed = await manager.CloseAsync(BrowserProfileChoice.Disposable, false, Ct);
+        var next = await manager.UseAsync(BrowserProfileChoice.Disposable, false, Same, Ct);
 
         Assert.Same(first, unnamed);
         Assert.Equal("The browser of this run runs with the profile 'work': close it before opening one with 'disposable'.", error.Message);
@@ -454,10 +455,10 @@ public class FirefoxSessionManagerTests : FirefoxSessionTestBase
         using var manager = Manager(new FirefoxToolOptions { Lifetime = FirefoxBrowserLifetime.Host });
         await using var run = AgentRunScope.Begin("agent-1");
 
-        var first = await manager.UseAsync(FirefoxProfileChoice.Disposable, false, Same, Ct);
+        var first = await manager.UseAsync(BrowserProfileChoice.Disposable, false, Same, Ct);
         Launcher.Last.Wire.Close();
         await Polling.WaitUntilAsync(() => !first.IsAlive);
-        var second = await manager.UseAsync(new FirefoxProfileChoice("work"), true, Same, Ct);
+        var second = await manager.UseAsync(new BrowserProfileChoice("work"), true, Same, Ct);
         manager.Dispose();
 
         Assert.Equal("work", second.Browser.Profile.Name);
@@ -473,16 +474,16 @@ public class FirefoxSessionManagerTests : FirefoxSessionTestBase
         var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         await using var run = AgentRunScope.Begin("agent-1");
 
-        var first = manager.UseAsync(new FirefoxProfileChoice("work"), true, async (session, _) =>
+        var first = manager.UseAsync(new BrowserProfileChoice("work"), true, async (session, _) =>
         {
             entered.SetResult();
             await release.Task;
             return session;
         }, Ct);
         await entered.Task;
-        var error = await Assert.ThrowsAsync<FirefoxException>(() => manager.UseAsync(FirefoxProfileChoice.Disposable, true, Same, Ct));
+        var error = await Assert.ThrowsAsync<FirefoxException>(() => manager.UseAsync(BrowserProfileChoice.Disposable, true, Same, Ct));
         release.SetResult();
-        var after = await Assert.ThrowsAsync<FirefoxException>(() => manager.UseAsync(FirefoxProfileChoice.Disposable, true, Same, Ct));
+        var after = await Assert.ThrowsAsync<FirefoxException>(() => manager.UseAsync(BrowserProfileChoice.Disposable, true, Same, Ct));
 
         Assert.Equal("work", (await first).Browser.Profile.Name);
         Assert.Equal("The browser of this run runs with the profile 'work': close it before opening one with 'disposable'.", error.Message);
@@ -494,10 +495,10 @@ public class FirefoxSessionManagerTests : FirefoxSessionTestBase
     public async Task Should_OpenATabOfItsOwn_When_TheUserClosedTheTabThatKeptTheWindow()
     {
         using var manager = Manager(new FirefoxToolOptions { SharedInstance = true, Lifetime = FirefoxBrowserLifetime.Host });
-        FirefoxSession first;
+        BrowserSession first;
 
         await using (AgentRunScope.Begin("agent-1"))
-            first = await manager.UseAsync(FirefoxProfileChoice.Disposable, false, Same, Ct);
+            first = await manager.UseAsync(BrowserProfileChoice.Disposable, false, Same, Ct);
 
         var browser = Assert.Single(Launcher.Browsers);
         Assert.Equal(["tab-2"], browser.Tabs);
@@ -510,7 +511,7 @@ public class FirefoxSessionManagerTests : FirefoxSessionTestBase
         string[] tabsOfTheSecondRun = [];
         await using (AgentRunScope.Begin("agent-2"))
         {
-            await manager.UseAsync(FirefoxProfileChoice.Disposable, false, async (session, ct) =>
+            await manager.UseAsync(BrowserProfileChoice.Disposable, false, async (session, ct) =>
             {
                 await session.NavigateAsync(Home, ct);
                 tabsOfTheSecondRun = [.. browser.Tabs];
@@ -526,9 +527,9 @@ public class FirefoxSessionManagerTests : FirefoxSessionTestBase
     public async Task Should_CloseTheHostsBrowserOfTheProfileNamed_OutsideAnyRun()
     {
         using var manager = Manager(new FirefoxToolOptions { Lifetime = FirefoxBrowserLifetime.Host });
-        var work = new FirefoxProfileChoice("work");
+        var work = new BrowserProfileChoice("work");
         await manager.UseAsync(work, true, Same, Ct);
-        await manager.UseAsync(FirefoxProfileChoice.Disposable, false, Same, Ct);
+        await manager.UseAsync(BrowserProfileChoice.Disposable, false, Same, Ct);
 
         var closed = await manager.CloseAsync(work, true, Ct);
         var again = await manager.CloseAsync(work, true, Ct);
@@ -557,7 +558,7 @@ public class FirefoxSessionManagerTests : FirefoxSessionTestBase
         var first = Task.Run(async () =>
         {
             await using var run = AgentRunScope.Begin("agent-1");
-            return await manager.UseAsync(FirefoxProfileChoice.Disposable, false, async (session, ct) =>
+            return await manager.UseAsync(BrowserProfileChoice.Disposable, false, async (session, ct) =>
             {
                 firstIn.TrySetResult();
                 await release.Task.WaitAsync(ct);
@@ -570,7 +571,7 @@ public class FirefoxSessionManagerTests : FirefoxSessionTestBase
         {
             await using var run = AgentRunScope.Begin("agent-2");
             secondAsked.TrySetResult();
-            return await manager.UseAsync(FirefoxProfileChoice.Disposable, false, (session, ct) =>
+            return await manager.UseAsync(BrowserProfileChoice.Disposable, false, (session, ct) =>
             {
                 Log("second enters");
                 return Task.FromResult("second");
@@ -589,11 +590,11 @@ public class FirefoxSessionManagerTests : FirefoxSessionTestBase
     public async Task Should_KeepTheSharedWindowOpenForTheNextRun_When_TheHostKeepsTheBrowsers()
     {
         using var manager = Manager(new FirefoxToolOptions { SharedInstance = true, Lifetime = FirefoxBrowserLifetime.Host });
-        FirefoxSession first, second;
+        BrowserSession first, second;
 
         await using (AgentRunScope.Begin("agent-1"))
         {
-            first = await manager.UseAsync(FirefoxProfileChoice.Disposable, false, async (session, ct) =>
+            first = await manager.UseAsync(BrowserProfileChoice.Disposable, false, async (session, ct) =>
             {
                 await session.NewTabAsync(ct);
                 return session;
@@ -609,14 +610,14 @@ public class FirefoxSessionManagerTests : FirefoxSessionTestBase
         string[] tabsOfTheSecondRun = [];
         await using (AgentRunScope.Begin("agent-2"))
         {
-            second = await manager.UseAsync(FirefoxProfileChoice.Disposable, false, (session, _) =>
+            second = await manager.UseAsync(BrowserProfileChoice.Disposable, false, (session, _) =>
             {
                 tabsOfTheSecondRun = [.. browser.Tabs];
                 return Task.FromResult(session);
             }, Ct);
         }
 
-        var closed = await manager.CloseAsync(FirefoxProfileChoice.Disposable, false, Ct);
+        var closed = await manager.CloseAsync(BrowserProfileChoice.Disposable, false, Ct);
 
         Assert.NotSame(first, second);
         Assert.Same(first.Browser, second.Browser);
@@ -632,11 +633,11 @@ public class FirefoxSessionManagerTests : FirefoxSessionTestBase
     {
         using var manager = Manager(new FirefoxToolOptions { Lifetime = FirefoxBrowserLifetime.Host });
 
-        var first = await manager.UseAsync(FirefoxProfileChoice.Disposable, false, Same, Ct);
+        var first = await manager.UseAsync(BrowserProfileChoice.Disposable, false, Same, Ct);
         Launcher.Last.Wire.Close();
         await Polling.WaitUntilAsync(() => !first.IsAlive);
         var before = manager.HostBrowserCount;
-        var second = await manager.UseAsync(FirefoxProfileChoice.Disposable, false, Same, Ct);
+        var second = await manager.UseAsync(BrowserProfileChoice.Disposable, false, Same, Ct);
 
         Assert.Equal(0, before);
         Assert.NotSame(first, second);
@@ -652,12 +653,12 @@ public class FirefoxSessionManagerTests : FirefoxSessionTestBase
         using var cancelled = new CancellationTokenSource();
         await cancelled.CancelAsync();
 
-        var first = await manager.UseAsync(FirefoxProfileChoice.Disposable, false, Same, Ct);
-        await Assert.ThrowsAsync<InvalidOperationException>(() => manager.UseAsync<FirefoxSession>(
-            FirefoxProfileChoice.Disposable, false, (_, _) => throw new InvalidOperationException("the page is odd"), Ct));
-        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => manager.UseAsync<FirefoxSession>(
-            FirefoxProfileChoice.Disposable, false, (_, ct) => Task.FromCanceled<FirefoxSession>(ct), cancelled.Token));
-        var next = await manager.UseAsync(FirefoxProfileChoice.Disposable, false, Same, Ct);
+        var first = await manager.UseAsync(BrowserProfileChoice.Disposable, false, Same, Ct);
+        await Assert.ThrowsAsync<InvalidOperationException>(() => manager.UseAsync<BrowserSession>(
+            BrowserProfileChoice.Disposable, false, (_, _) => throw new InvalidOperationException("the page is odd"), Ct));
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => manager.UseAsync<BrowserSession>(
+            BrowserProfileChoice.Disposable, false, (_, ct) => Task.FromCanceled<BrowserSession>(ct), cancelled.Token));
+        var next = await manager.UseAsync(BrowserProfileChoice.Disposable, false, Same, Ct);
 
         Assert.Same(first, next);
         Assert.True(next.IsAlive);
@@ -668,15 +669,15 @@ public class FirefoxSessionManagerTests : FirefoxSessionTestBase
     public async Task Should_LetARunCloseAnotherProfile_When_TheHostsBrowserOfItsOwnHasGone()
     {
         using var manager = Manager(new FirefoxToolOptions { Lifetime = FirefoxBrowserLifetime.Host });
-        var work = new FirefoxProfileChoice("work");
+        var work = new BrowserProfileChoice("work");
         await using var run = AgentRunScope.Begin("agent-1");
 
-        var bound = await manager.UseAsync(FirefoxProfileChoice.Disposable, false, Same, Ct);
+        var bound = await manager.UseAsync(BrowserProfileChoice.Disposable, false, Same, Ct);
         var closedWhileOpen = await Assert.ThrowsAsync<FirefoxException>(() => manager.CloseAsync(work, true, Ct));
         Launcher.Last.Wire.Close();
         await Polling.WaitUntilAsync(() => !bound.IsAlive);
         var closedAfter = await manager.CloseAsync(work, true, Ct);
-        var closedOwn = await manager.CloseAsync(FirefoxProfileChoice.Disposable, true, Ct);
+        var closedOwn = await manager.CloseAsync(BrowserProfileChoice.Disposable, true, Ct);
 
         Assert.Contains("'disposable'", closedWhileOpen.Message, StringComparison.Ordinal);
         Assert.False(closedAfter);
@@ -688,22 +689,22 @@ public class FirefoxSessionManagerTests : FirefoxSessionTestBase
     public async Task Should_KeepTheSharedWindow_When_ARunClosesItsBrowser_And_TheHostKeepsTheBrowsers()
     {
         using var manager = Manager(new FirefoxToolOptions { SharedInstance = true, Lifetime = FirefoxBrowserLifetime.Host });
-        FirefoxSession first, afterClose, other;
+        BrowserSession first, afterClose, other;
 
         await using (AgentRunScope.Begin("agent-1"))
         {
-            first = await manager.UseAsync(FirefoxProfileChoice.Disposable, false, async (session, ct) =>
+            first = await manager.UseAsync(BrowserProfileChoice.Disposable, false, async (session, ct) =>
             {
                 await session.NewTabAsync(ct);
                 return session;
             }, Ct);
-            var closed = await manager.CloseAsync(FirefoxProfileChoice.Disposable, false, Ct);
+            var closed = await manager.CloseAsync(BrowserProfileChoice.Disposable, false, Ct);
             Assert.True(closed);
-            afterClose = await manager.UseAsync(FirefoxProfileChoice.Disposable, false, Same, Ct);
+            afterClose = await manager.UseAsync(BrowserProfileChoice.Disposable, false, Same, Ct);
         }
 
         await using (AgentRunScope.Begin("agent-2"))
-            other = await manager.UseAsync(FirefoxProfileChoice.Disposable, false, Same, Ct);
+            other = await manager.UseAsync(BrowserProfileChoice.Disposable, false, Same, Ct);
 
         // close took the run's two tabs and left a blank one; each session leaving since left the next.
         var browser = Assert.Single(Launcher.Browsers);
@@ -720,12 +721,12 @@ public class FirefoxSessionManagerTests : FirefoxSessionTestBase
     public async Task Should_RefuseAnAction_When_TheManagerKeepingTheBrowsersHasEnded()
     {
         var manager = Manager(new FirefoxToolOptions { Lifetime = FirefoxBrowserLifetime.Host });
-        await manager.UseAsync(FirefoxProfileChoice.Disposable, false, Same, Ct);
+        await manager.UseAsync(BrowserProfileChoice.Disposable, false, Same, Ct);
 
         manager.Dispose();
 
-        await Assert.ThrowsAsync<ObjectDisposedException>(() => manager.UseAsync(FirefoxProfileChoice.Disposable, false, Same, Ct));
+        await Assert.ThrowsAsync<ObjectDisposedException>(() => manager.UseAsync(BrowserProfileChoice.Disposable, false, Same, Ct));
         Assert.True(Assert.Single(Launcher.Browsers).Disposed);
-        Assert.False(await manager.CloseAsync(FirefoxProfileChoice.Disposable, false, Ct));
+        Assert.False(await manager.CloseAsync(BrowserProfileChoice.Disposable, false, Ct));
     }
 }

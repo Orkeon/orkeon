@@ -1,23 +1,24 @@
+using Orkeon.Tools.Web.Browser;
 using Orkeon.Tests.Shared.FileSystem;
 using Orkeon.Tools.Web.Firefox;
 using Orkeon.Tools.Web.Tests.Doubles;
 
-namespace Orkeon.Tools.Web.Tests.Firefox;
+namespace Orkeon.Tools.Web.Tests.Browser;
 
 /// <summary>What the firefox tests share: a launcher of fake browsers and waits short enough for a unit test.</summary>
-public abstract class FirefoxSessionTestBase
+public abstract class BrowserSessionTestBase
 {
     internal const string Home = "https://example.test/";
     internal const string Docs = "https://example.test/docs";
 
-    internal static readonly FirefoxSessionTimings Timings = new()
+    internal static readonly BrowserSessionTimings Timings = new()
     {
         NavigationGrace = TimeSpan.Zero,
         TraversalWait = TimeSpan.FromMilliseconds(40),
         PollInterval = TimeSpan.FromMilliseconds(5),
     };
 
-    internal FakeFirefoxLauncher Launcher { get; } = new()
+    internal FakeBrowserEngine Launcher { get; } = new()
     {
         Configure = browser =>
         {
@@ -33,9 +34,9 @@ public abstract class FirefoxSessionTestBase
 
     internal static CancellationToken Ct => TestContext.Current.CancellationToken;
 
-    internal Task<FirefoxSession> OpenAsync(FirefoxToolOptions? options = null) =>
-        FirefoxSession.OpenAsync(Launcher, FirefoxProfileChoice.Disposable, options ?? new FirefoxToolOptions(), new FakeFileSystemService(), Timings, logger: null, Ct);
+    internal Task<BrowserSession> OpenAsync(FirefoxToolOptions? options = null) =>
+        BrowserSession.OpenAsync(Launcher, BrowserProfileChoice.Disposable, options ?? new FirefoxToolOptions(), new FakeFileSystemService(), Timings, logger: null, Ct);
 
-    internal FirefoxSessionManager Manager(FirefoxToolOptions? options = null) =>
+    internal BrowserSessionManager Manager(FirefoxToolOptions? options = null) =>
         new(Launcher, options ?? new FirefoxToolOptions(), new FakeFileSystemService(), logger: null, Timings);
 }

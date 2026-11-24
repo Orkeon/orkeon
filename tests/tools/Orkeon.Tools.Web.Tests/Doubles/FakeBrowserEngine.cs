@@ -1,41 +1,48 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using Orkeon.Tools.Web.Browser;
 using Orkeon.Tools.Web.Firefox;
 using Orkeon.Tools.Web.Firefox.BiDi;
 
 namespace Orkeon.Tools.Web.Tests.Doubles;
 
-/// <summary>Hands out <see cref="FakeFirefoxBrowser"/>s instead of starting Firefox, and keeps each one.</summary>
-internal sealed class FakeFirefoxLauncher : IFirefoxLauncher
+/// <summary>Hands out <see cref="FakeBrowserProcess"/>s instead of starting a browser, and keeps each one.</summary>
+internal sealed class FakeBrowserEngine : IBrowserEngine
 {
-    public List<FakeFirefoxBrowser> Browsers { get; } = [];
+    public List<FakeBrowserProcess> Browsers { get; } = [];
 
     /// <summary>Thrown by the next launches when set.</summary>
     public Exception? LaunchFailure { get; set; }
 
     /// <summary>Applied to each browser before it is handed out: its pages, its failures.</summary>
-    public Action<FakeFirefoxBrowser>? Configure { get; set; }
+    public Action<FakeBrowserProcess>? Configure { get; set; }
 
-    public FakeFirefoxBrowser Last => Browsers[^1];
+    public string Id { get; set; } = "firefox";
+
+    public string DisplayName { get; set; } = "Firefox";
+
+    public BrowserEngineCapabilities Capabilities { get; set; } = new();
+
+    public FakeBrowserProcess Last => Browsers[^1];
 
     /// <summary>The profile of each launch, in order.</summary>
     public List<string> Profiles { get; } = [];
 
-    public Task<IFirefoxBrowser> LaunchAsync(FirefoxProfileChoice profile, CancellationToken cancellationToken)
+    public Task<IBrowserProcess> LaunchAsync(BrowserProfileChoice profile, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
         lock (Browsers) Profiles.Add(profile.Name);
         if (LaunchFailure is not null)
             throw LaunchFailure;
 
-        var browser = new FakeFirefoxBrowser { Profile = profile };
+        var browser = new FakeBrowserProcess { Profile = profile };
         Configure?.Invoke(browser);
         lock (Browsers) Browsers.Add(browser);
-        return Task.FromResult<IFirefoxBrowser>(browser);
+        return Task.FromResult<IBrowserProcess>(browser);
     }
 }
 
-/// <summary>One page of a <see cref="FakeFirefoxBrowser"/>: what <c>page-outline.js</c> would read in it.</summary>
+/// <summary>One page of a <see cref="FakeBrowserProcess"/>: what <c>page-outline.js</c> would read in it.</summary>
 internal sealed class FakePage
 {
     public string Title { get; set; } = string.Empty;
@@ -76,7 +83,7 @@ internal sealed class FakePage
 /// serves the <see cref="Pages"/> it was given, keeps a history per tab, opens and closes tabs, and
 /// records every command in <see cref="Wire"/>.
 /// </summary>
-internal sealed class FakeFirefoxBrowser : IFirefoxBrowser
+internal sealed class FakeBrowserProcess : IBrowserProcess
 {
     public const string Tab = "tab-1";
 
@@ -85,7 +92,7 @@ internal sealed class FakeFirefoxBrowser : IFirefoxBrowser
     private int _navigations;
     private int _created = 1;
 
-    public FakeFirefoxBrowser()
+    public FakeBrowserProcess()
     {
         Wire.Handlers["session.new"] = _ => new JsonObject { ["sessionId"] = "s1", ["capabilities"] = new JsonObject { ["browserName"] = "firefox" } };
         Wire.Handlers["browsingContext.getTree"] = Tree;
@@ -110,7 +117,7 @@ internal sealed class FakeFirefoxBrowser : IFirefoxBrowser
 
     public bool Headless { get; set; }
 
-    public FirefoxProfileChoice Profile { get; set; } = FirefoxProfileChoice.Disposable;
+    public BrowserProfileChoice Profile { get; set; } = BrowserProfileChoice.Disposable;
 
     public bool Disposed { get; private set; }
 

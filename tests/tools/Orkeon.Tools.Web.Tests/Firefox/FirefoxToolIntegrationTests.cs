@@ -65,7 +65,7 @@ public sealed class FirefoxToolIntegrationTests : IDisposable
     private FirefoxTool Tool()
     {
         Assert.SkipUnless(
-            new FirefoxProcessLauncher(_options).LocateOnHost() is not null,
+            new FirefoxEngine(_options).LocateOnHost() is not null,
             "Firefox is not installed on this machine.");
         return new FirefoxTool(_options, _files, new AllowAllUrlValidator(), _search);
     }

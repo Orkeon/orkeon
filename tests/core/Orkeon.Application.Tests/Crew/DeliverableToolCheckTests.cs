@@ -180,6 +180,7 @@ public sealed class DeliverableToolCheckTests
     [InlineData("docx_writer", "/output/report.docx")]
     [InlineData("xlsx_writer", "/output/figures.xlsx")]
     [InlineData("image_generation", "/output/cover.png")]
+    [InlineData("browser", "/output/page.png")]
     [InlineData("firefox", "/output/page.png")]
     public void ShouldReportNothing_WhenABuiltInToolWritesTheDeliverableFormat(string tool, string path)
     {
@@ -358,7 +359,7 @@ public sealed class DeliverableToolCheckTests
     [Theory]
     [Trait("BR", "CH-392")]
     [InlineData("/output/report.docx", "docx_writer")]
-    [InlineData("/output/cover.png", "image_generation,firefox")]
+    [InlineData("/output/cover.png", "image_generation,browser,firefox")]
     [InlineData("/output/notes.md", "file_write")]
     [InlineData("/output/rapport.pdf", "")]
     public void ShouldListTheWritersOfAPath_FormatToolFirstAndNoFileWriteForABinary(string path, string expected)

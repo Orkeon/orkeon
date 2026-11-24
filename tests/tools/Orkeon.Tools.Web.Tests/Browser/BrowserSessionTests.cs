@@ -1,14 +1,15 @@
+using Orkeon.Tools.Web.Browser;
 using System.Text.Json.Nodes;
 using Orkeon.Tests.Shared.Timing;
 using Orkeon.Tools.Web.Firefox;
 using Orkeon.Tools.Web.Firefox.BiDi;
 using Orkeon.Tools.Web.Tests.Doubles;
 
-namespace Orkeon.Tools.Web.Tests.Firefox;
+namespace Orkeon.Tools.Web.Tests.Browser;
 
-public class FirefoxSessionTests : FirefoxSessionTestBase
+public class BrowserSessionTests : BrowserSessionTestBase
 {
-    private FakeFirefoxBrowser Browser => Launcher.Last;
+    private FakeBrowserProcess Browser => Launcher.Last;
 
     private FakeBiDiTransport Wire => Browser.Wire;
 
@@ -69,7 +70,7 @@ public class FirefoxSessionTests : FirefoxSessionTestBase
         var state = await session.ReadStateAsync(Ct);
 
         var sent = Assert.Single(Wire.ParamsOf("browsingContext.navigate"));
-        Assert.Equal(FakeFirefoxBrowser.Tab, sent["context"]!.GetValue<string>());
+        Assert.Equal(FakeBrowserProcess.Tab, sent["context"]!.GetValue<string>());
         Assert.Equal("https://example.test/old", sent["url"]!.GetValue<string>());
         Assert.Equal("complete", sent["wait"]!.GetValue<string>());
         Assert.Equal(new PageState(Home, "Example", Loaded: true), state);
@@ -102,10 +103,10 @@ public class FirefoxSessionTests : FirefoxSessionTestBase
         Assert.Equal("Example", first.Title);
         Assert.Equal("Welcome to the example.", first.Node("p1#page").SourceSnippet);
         Assert.Equal("Docs", first.Node("p1#1").Name);
-        Assert.Equal(FakeFirefoxBrowser.Reference(Home, 1), first.SharedId("p1#1"));
+        Assert.Equal(FakeBrowserProcess.Reference(Home, 1), first.SharedId("p1#1"));
         Assert.Equal(2, second.Generation);
         Assert.Same(second, session.Page);
-        Assert.Equal(FakeFirefoxBrowser.Reference(Home, 4), second.SharedId("p2#4"));
+        Assert.Equal(FakeBrowserProcess.Reference(Home, 4), second.SharedId("p2#4"));
         Assert.Contains("earlier reading", Assert.Throws<FirefoxException>(() => second.Node("p1#1")).Message, StringComparison.Ordinal);
     }
 
@@ -310,12 +311,12 @@ public class FirefoxSessionTests : FirefoxSessionTestBase
     public async Task Should_PressAChord_ReleasedInReverse()
     {
         await using var session = await OpenAsync();
-        Assert.True(FirefoxKeys.TryParse("Control+Shift+a", out var chord));
+        Assert.True(BrowserKeys.TryParse("Control+Shift+a", out var chord));
 
         await session.PressAsync(chord!, Ct);
 
         Assert.Equal(["down:", "down:", "down:a", "up:a", "up:", "up:"], Keys(LastKeys()));
-        Assert.Equal(FakeFirefoxBrowser.Tab, LastKeys()["context"]!.GetValue<string>());
+        Assert.Equal(FakeBrowserProcess.Tab, LastKeys()["context"]!.GetValue<string>());
     }
 
     [Fact]
@@ -330,7 +331,7 @@ public class FirefoxSessionTests : FirefoxSessionTestBase
         var sent = Wire.ParamsOf("script.evaluate").Single(p => p["expression"]!.GetValue<string>() == "[1, 'a']");
         Assert.True(sent["awaitPromise"]!.GetValue<bool>());
         Assert.True(sent["userActivation"]!.GetValue<bool>());
-        Assert.Equal(FakeFirefoxBrowser.Tab, sent["target"]!["context"]!.GetValue<string>());
+        Assert.Equal(FakeBrowserProcess.Tab, sent["target"]!["context"]!.GetValue<string>());
     }
 
     [Fact]
@@ -410,7 +411,7 @@ public class FirefoxSessionTests : FirefoxSessionTestBase
 
         var answer = Assert.Single(Wire.ParamsOf("browsingContext.handleUserPrompt"));
         Assert.False(answer["accept"]!.GetValue<bool>());
-        Assert.Equal(FakeFirefoxBrowser.Tab, answer["context"]!.GetValue<string>());
+        Assert.Equal(FakeBrowserProcess.Tab, answer["context"]!.GetValue<string>());
         Assert.Equal(["confirm: Delete everything?"], session.TakeDialogs());
         Assert.Empty(session.TakeDialogs());
     }
@@ -432,10 +433,10 @@ public class FirefoxSessionTests : FirefoxSessionTestBase
     {
         await using var session = await OpenAsync();
 
-        Browser.Emit("browsingContext.contextCreated", new JsonObject { ["context"] = "frame-1", ["parent"] = FakeFirefoxBrowser.Tab, ["originalOpener"] = FakeFirefoxBrowser.Tab });
+        Browser.Emit("browsingContext.contextCreated", new JsonObject { ["context"] = "frame-1", ["parent"] = FakeBrowserProcess.Tab, ["originalOpener"] = FakeBrowserProcess.Tab });
         Browser.OpenTab();
         Browser.OpenTab(opener: "tab-of-another-agent");
-        var opened = Browser.OpenTab(opener: FakeFirefoxBrowser.Tab);
+        var opened = Browser.OpenTab(opener: FakeBrowserProcess.Tab);
         // The answer to this command comes after the events on the channel: they were all read.
         await session.ReadStateAsync(Ct);
         await session.NavigateAsync(Docs, Ct);
@@ -525,9 +526,9 @@ public class FirefoxSessionTests : FirefoxSessionTestBase
     public async Task Should_ShareABrowserBetweenSessions_WhichClosesWithTheLast()
     {
         var options = new FirefoxToolOptions();
-        var browser = await FirefoxBrowser.OpenAsync(Launcher, FirefoxProfileChoice.Disposable, options, Timings, logger: null, Ct);
-        var first = await FirefoxSession.AttachAsync(browser, options, new Orkeon.Tests.Shared.FileSystem.FakeFileSystemService(), logger: null, Ct);
-        var second = await FirefoxSession.AttachAsync(browser, options, new Orkeon.Tests.Shared.FileSystem.FakeFileSystemService(), logger: null, Ct);
+        var browser = await BrowserInstance.OpenAsync(Launcher, BrowserProfileChoice.Disposable, options, Timings, logger: null, Ct);
+        var first = await BrowserSession.AttachAsync(browser, options, new Orkeon.Tests.Shared.FileSystem.FakeFileSystemService(), logger: null, Ct);
+        var second = await BrowserSession.AttachAsync(browser, options, new Orkeon.Tests.Shared.FileSystem.FakeFileSystemService(), logger: null, Ct);
         await first.NavigateAsync(Home, Ct);
         await second.NavigateAsync(Docs, Ct);
 

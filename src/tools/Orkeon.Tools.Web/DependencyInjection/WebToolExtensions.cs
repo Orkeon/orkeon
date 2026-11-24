@@ -32,7 +32,7 @@ public static class WebToolExtensions
     /// For Slack tools, use <see cref="AddOrkeonSlackTool"/> and <see cref="AddOrkeonSlackReadTool"/>.
     /// The GitHub tool's token is read once, when the tool is built, from
     /// <see cref="GitHubToolOptions.ResolveToken"/> (setting, then environment).
-    /// The Firefox tool starts no browser until an agent calls it; its <c>search</c> action goes
+    /// The browser tool starts no browser until an agent calls it; its <c>search</c> action goes
     /// through the ephemeral RAG search, registered here, and answers an error when the host has
     /// no RAG subsystem.
     /// </summary>
@@ -40,9 +40,10 @@ public static class WebToolExtensions
     {
         RegisterWebToolsHttpClient(services);
         services.DeclareSettingsShape(GitHubToolOptions.SectionName, typeof(GitHubToolOptions));
+        services.DeclareSettingsShape(FirefoxToolOptions.BrowserSectionName, typeof(FirefoxToolOptions));
         services.DeclareSettingsShape(FirefoxToolOptions.SectionName, typeof(FirefoxToolOptions));
 
-        // Shared ephemeral-collection search engine behind the firefox search action (TryAdd, idempotent).
+        // Shared ephemeral-collection search engine behind the browser search action (TryAdd, idempotent).
         services.AddOrkeonEphemeralSearch();
         services.AddTransient<IBaseTool>(CreateHttpApiTool);
         // WebScrapeTool: prefers the RAG-enabled ctor when IEmbeddingService and
@@ -54,10 +55,11 @@ public static class WebToolExtensions
         services.AddTransient<IBaseTool>(CreateScrapeElementTool);
         services.AddTransient<IBaseTool>(CreateGitHubTool);
         services.AddTransient<IBaseTool>(CreateImageGenerationTool);
-        // The browsers belong to the host, not to a tool instance: one manager for every firefox tool
+        // The browsers belong to the host, not to a tool instance: one manager for every browser tool
         // the container hands out, closed with the container (TryAdd, idempotent).
-        services.TryAddSingleton(CreateFirefoxSessions);
-        services.AddTransient<IBaseTool>(CreateFirefoxTool);
+        services.TryAddSingleton(CreateBrowserSessions);
+        services.AddTransient<IBaseTool>(sp => CreateBrowserTool(sp, deprecatedName: false));
+        services.AddTransient<IBaseTool>(sp => CreateBrowserTool(sp, deprecatedName: true));
         return services;
     }
 
@@ -158,28 +160,29 @@ public static class WebToolExtensions
             : new ScrapeElementTool(httpClient, logger);
     }
 
-    private static Firefox.FirefoxSessionManager CreateFirefoxSessions(IServiceProvider sp)
+    private static Browser.BrowserSessionManager CreateBrowserSessions(IServiceProvider sp)
     {
         var options = FirefoxToolOptions.From(sp.GetService<IConfiguration>());
         var logger = sp.GetService<Microsoft.Extensions.Logging.ILogger<FirefoxTool>>();
-        return new Firefox.FirefoxSessionManager(
-            new Firefox.FirefoxProcessLauncher(options, logger), options, FirefoxFileSystem(sp), logger);
+        return new Browser.BrowserSessionManager(
+            Browser.BrowserEngines.Create(options, logger), options, BrowserFileSystem(sp), logger);
     }
 
-    private static IBaseTool CreateFirefoxTool(IServiceProvider sp)
+    private static FirefoxTool CreateBrowserTool(IServiceProvider sp, bool deprecatedName)
     {
         // Tools are transient; the browsers are not: they belong to the agent run, or to the host
         // (Lifetime: host), whichever instance asks.
         return new FirefoxTool(
-            sp.GetRequiredService<Firefox.FirefoxSessionManager>(),
+            sp.GetRequiredService<Browser.BrowserSessionManager>(),
             FirefoxToolOptions.From(sp.GetService<IConfiguration>()),
-            FirefoxFileSystem(sp),
+            BrowserFileSystem(sp),
             sp.GetService<IUrlValidator>(),
             sp.GetService<IEphemeralCollectionSearch>(),
-            sp.GetService<Microsoft.Extensions.Logging.ILogger<FirefoxTool>>());
+            sp.GetService<Microsoft.Extensions.Logging.ILogger<FirefoxTool>>(),
+            deprecatedName);
     }
 
-    private static Orkeon.Domain.FileSystem.IFileSystemService FirefoxFileSystem(IServiceProvider sp) =>
+    private static Orkeon.Domain.FileSystem.IFileSystemService BrowserFileSystem(IServiceProvider sp) =>
         sp.GetService<Orkeon.Domain.FileSystem.IFileSystemService>()
             ?? throw new InvalidOperationException(
                 $"{nameof(FirefoxTool)} requires an {nameof(Orkeon.Domain.FileSystem.IFileSystemService)} to be registered.");

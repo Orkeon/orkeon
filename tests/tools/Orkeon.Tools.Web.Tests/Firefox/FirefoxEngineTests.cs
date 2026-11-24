@@ -1,10 +1,11 @@
 using Orkeon.Tests.Shared.Timing;
+using Orkeon.Tools.Web.Browser;
 using Orkeon.Tools.Web.Firefox;
 using Orkeon.Tools.Web.Tests.Doubles;
 
 namespace Orkeon.Tools.Web.Tests.Firefox;
 
-public sealed class FirefoxProcessLauncherTests : IDisposable
+public sealed class FirefoxEngineTests : IDisposable
 {
     private const string NoDisplay = "The stand-in browser is a shell script.";
 
@@ -17,7 +18,7 @@ public sealed class FirefoxProcessLauncherTests : IDisposable
     [Fact]
     public void Should_StartOnAFreePortWithItsOwnProfile_AndAWindow()
     {
-        var arguments = FirefoxProcessLauncher.BuildArguments("/profiles/p1", headless: false);
+        var arguments = FirefoxEngine.BuildArguments("/profiles/p1", headless: false);
 
         Assert.Equal(
             ["--remote-debugging-port", "0", "--profile", "/profiles/p1", "--no-remote", "--new-instance", "about:blank"],
@@ -27,7 +28,7 @@ public sealed class FirefoxProcessLauncherTests : IDisposable
     [Fact]
     public void Should_AddTheHeadlessFlag_When_Headless()
     {
-        var arguments = FirefoxProcessLauncher.BuildArguments("/profiles/p1", headless: true);
+        var arguments = FirefoxEngine.BuildArguments("/profiles/p1", headless: true);
 
         Assert.Contains("--headless", arguments);
         Assert.Equal("about:blank", arguments[^1]);
@@ -44,7 +45,7 @@ public sealed class FirefoxProcessLauncherTests : IDisposable
     public void Should_FallBackToHeadless_OnlyWhen_ADisplayIsNeededAndNoneIsSet(
         bool configured, bool needsDisplay, string? display, string? wayland, bool expected)
     {
-        var headless = FirefoxProcessLauncher.ResolveHeadless(configured, needsDisplay, name => name switch
+        var headless = FirefoxEngine.ResolveHeadless(configured, needsDisplay, name => name switch
         {
             "DISPLAY" => display,
             "WAYLAND_DISPLAY" => wayland,
@@ -60,7 +61,7 @@ public sealed class FirefoxProcessLauncherTests : IDisposable
         var path = string.Join(Path.PathSeparator, "relative/bin", "/opt/a", "/opt/b");
         var onB = Path.Combine("/opt/b", "firefox");
 
-        var found = FirefoxProcessLauncher.Locate(null, path, ["/known/firefox"], file => file == onB || file == "/known/firefox", windows: false);
+        var found = FirefoxEngine.Locate(null, path, ["/known/firefox"], file => file == onB || file == "/known/firefox", windows: false);
 
         Assert.Equal(onB, found);
     }
@@ -68,7 +69,7 @@ public sealed class FirefoxProcessLauncherTests : IDisposable
     [Fact]
     public void Should_FallBackToAKnownFolder_When_ThePathHoldsNoFirefox()
     {
-        var found = FirefoxProcessLauncher.Locate(null, "/opt/a", ["/missing/firefox", "/known/firefox"], file => file == "/known/firefox", windows: false);
+        var found = FirefoxEngine.Locate(null, "/opt/a", ["/missing/firefox", "/known/firefox"], file => file == "/known/firefox", windows: false);
 
         Assert.Equal("/known/firefox", found);
     }
@@ -78,8 +79,8 @@ public sealed class FirefoxProcessLauncherTests : IDisposable
     {
         var configured = Path.Combine("/opt", "nightly", "firefox");
 
-        Assert.Equal(configured, FirefoxProcessLauncher.Locate(configured, "/opt/a", ["/known/firefox"], file => file == configured, windows: false));
-        Assert.Null(FirefoxProcessLauncher.Locate(configured, "/opt/a", ["/known/firefox"], file => file == "/known/firefox", windows: false));
+        Assert.Equal(configured, FirefoxEngine.Locate(configured, "/opt/a", ["/known/firefox"], file => file == configured, windows: false));
+        Assert.Null(FirefoxEngine.Locate(configured, "/opt/a", ["/known/firefox"], file => file == "/known/firefox", windows: false));
     }
 
     [Fact]
@@ -87,8 +88,8 @@ public sealed class FirefoxProcessLauncherTests : IDisposable
     {
         var onA = Path.Combine("/opt/a", "firefox-esr");
 
-        Assert.Equal(onA, FirefoxProcessLauncher.Locate("firefox-esr", "/opt/a", ["/known/firefox"], file => file == onA, windows: false));
-        Assert.Null(FirefoxProcessLauncher.Locate("firefox-esr", "/opt/a", ["/known/firefox"], file => file == "/known/firefox", windows: false));
+        Assert.Equal(onA, FirefoxEngine.Locate("firefox-esr", "/opt/a", ["/known/firefox"], file => file == onA, windows: false));
+        Assert.Null(FirefoxEngine.Locate("firefox-esr", "/opt/a", ["/known/firefox"], file => file == "/known/firefox", windows: false));
     }
 
     [Fact]
@@ -96,21 +97,21 @@ public sealed class FirefoxProcessLauncherTests : IDisposable
     {
         var onA = Path.Combine("/opt/a", "firefox.exe");
 
-        Assert.Equal(onA, FirefoxProcessLauncher.Locate(null, "/opt/a", [], file => file == onA, windows: true));
+        Assert.Equal(onA, FirefoxEngine.Locate(null, "/opt/a", [], file => file == onA, windows: true));
     }
 
     [Fact]
     public async Task Should_SayFirefoxIsMissing_When_TheConfiguredProgramDoesNotExist()
     {
-        var launcher = new FirefoxProcessLauncher(new FirefoxToolOptions
+        var launcher = new FirefoxEngine(new FirefoxToolOptions
         {
             ExecutablePath = Path.Combine(_work.FullName, "absent", "firefox"),
             ProfileRoot = Profiles(),
         });
 
-        var error = await Assert.ThrowsAsync<FirefoxException>(() => launcher.LaunchAsync(FirefoxProfileChoice.Disposable, Ct));
+        var error = await Assert.ThrowsAsync<FirefoxException>(() => launcher.LaunchAsync(BrowserProfileChoice.Disposable, Ct));
 
-        Assert.Contains("Orkeon:Tools:Firefox:ExecutablePath", error.Message, StringComparison.Ordinal);
+        Assert.Contains("Orkeon:Tools:Browser:ExecutablePath", error.Message, StringComparison.Ordinal);
         Assert.False(Directory.Exists(Profiles()));
     }
 
@@ -127,13 +128,13 @@ public sealed class FirefoxProcessLauncherTests : IDisposable
             echo 'WebDriver BiDi listening on ws://{server.Endpoint.Authority}' >&2
             exec sleep 600
             """);
-        var launcher = new FirefoxProcessLauncher(
+        var launcher = new FirefoxEngine(
             new FirefoxToolOptions { ExecutablePath = browser, ProfileRoot = Profiles(), Headless = true })
         {
             ExitGrace = TimeSpan.FromMilliseconds(50),
         };
 
-        var running = await launcher.LaunchAsync(FirefoxProfileChoice.Disposable, Ct);
+        var running = await launcher.LaunchAsync(BrowserProfileChoice.Disposable, Ct);
         try
         {
             Assert.True(running.Headless);
@@ -164,9 +165,9 @@ public sealed class FirefoxProcessLauncherTests : IDisposable
             echo 'Error: no DISPLAY environment variable specified' >&2
             exit 3
             """);
-        var launcher = new FirefoxProcessLauncher(new FirefoxToolOptions { ExecutablePath = browser, ProfileRoot = Profiles() });
+        var launcher = new FirefoxEngine(new FirefoxToolOptions { ExecutablePath = browser, ProfileRoot = Profiles() });
 
-        var error = await Assert.ThrowsAsync<FirefoxException>(() => launcher.LaunchAsync(FirefoxProfileChoice.Disposable, Ct));
+        var error = await Assert.ThrowsAsync<FirefoxException>(() => launcher.LaunchAsync(BrowserProfileChoice.Disposable, Ct));
 
         Assert.Contains("exit code 3", error.Message, StringComparison.Ordinal);
         Assert.Contains("no DISPLAY environment variable specified", error.Message, StringComparison.Ordinal);
@@ -182,10 +183,10 @@ public sealed class FirefoxProcessLauncherTests : IDisposable
             echo "$$" > '{pidFile}'
             exec sleep 600
             """);
-        var launcher = new FirefoxProcessLauncher(
+        var launcher = new FirefoxEngine(
             new FirefoxToolOptions { ExecutablePath = browser, ProfileRoot = Profiles(), StartupTimeoutSeconds = 1 });
 
-        var error = await Assert.ThrowsAsync<FirefoxException>(() => launcher.LaunchAsync(FirefoxProfileChoice.Disposable, Ct));
+        var error = await Assert.ThrowsAsync<FirefoxException>(() => launcher.LaunchAsync(BrowserProfileChoice.Disposable, Ct));
 
         Assert.Contains("did not open its remote protocol", error.Message, StringComparison.Ordinal);
         var pid = int.Parse(await File.ReadAllTextAsync(pidFile, Ct), System.Globalization.CultureInfo.InvariantCulture);
@@ -202,9 +203,9 @@ public sealed class FirefoxProcessLauncherTests : IDisposable
             echo 'WebDriver BiDi listening on ws://{Orkeon.Tests.Shared.Network.LoopbackPorts.Host}:{refusing.Port}' >&2
             exec sleep 600
             """);
-        var launcher = new FirefoxProcessLauncher(new FirefoxToolOptions { ExecutablePath = browser, ProfileRoot = Profiles() });
+        var launcher = new FirefoxEngine(new FirefoxToolOptions { ExecutablePath = browser, ProfileRoot = Profiles() });
 
-        var error = await Assert.ThrowsAsync<FirefoxException>(() => launcher.LaunchAsync(FirefoxProfileChoice.Disposable, Ct));
+        var error = await Assert.ThrowsAsync<FirefoxException>(() => launcher.LaunchAsync(BrowserProfileChoice.Disposable, Ct));
 
         Assert.Contains("connection to Firefox", error.Message, StringComparison.Ordinal);
         Assert.Empty(Directory.GetDirectories(Profiles()));

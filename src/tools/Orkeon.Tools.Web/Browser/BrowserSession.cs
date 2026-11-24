@@ -1,3 +1,4 @@
+using Orkeon.Tools.Web.Firefox;
 using System.Collections.Concurrent;
 using System.Collections.Immutable;
 using System.Diagnostics;
@@ -9,12 +10,12 @@ using Microsoft.Extensions.Logging;
 using Orkeon.Domain.FileSystem;
 using Orkeon.Tools.Web.Firefox.BiDi;
 
-namespace Orkeon.Tools.Web.Firefox;
+namespace Orkeon.Tools.Web.Browser;
 
 /// <summary>How long a session waits for a page to react; shortened by tests.</summary>
-internal sealed record FirefoxSessionTimings
+internal sealed record BrowserSessionTimings
 {
-    public static FirefoxSessionTimings Default { get; } = new();
+    public static BrowserSessionTimings Default { get; } = new();
 
     /// <summary>After a click or a key, how long a navigation is given to start before the page is taken as unchanged.</summary>
     public TimeSpan NavigationGrace { get; init; } = TimeSpan.FromMilliseconds(250);
@@ -36,7 +37,7 @@ internal sealed record FirefoxSessionTimings
 internal sealed record PageState(string Url, string Title, bool Loaded);
 
 /// <summary>One tab of a session: the handle the agent knows it by, and the context id the browser does.</summary>
-internal sealed record FirefoxTab(string Handle, string Context);
+internal sealed record BrowserTab(string Handle, string Context);
 
 /// <summary>A tab as listed to the agent: its handle, where it is, and whether it is the one driven.</summary>
 internal sealed record TabState(string Handle, string Url, string Title, bool Current);
@@ -46,7 +47,7 @@ internal sealed record TabState(string Handle, string Url, string Title, bool Cu
 /// page an action leaves for, and the last snapshot of the page shown. One tab is driven at a time;
 /// the others keep their pages. Not thread-safe: its slot runs one action at a time.
 /// </summary>
-internal sealed partial class FirefoxSession : IAsyncDisposable
+internal sealed partial class BrowserSession : IAsyncDisposable
 {
     /// <summary>Most elements the outline of one page lists.</summary>
     internal const int MaxElements = 1000;
@@ -89,14 +90,14 @@ internal sealed partial class FirefoxSession : IAsyncDisposable
 
     private static readonly Lazy<string> s_outlineScript = new(LoadOutlineScript);
 
-    private readonly FirefoxBrowser _browser;
+    private readonly BrowserInstance _browser;
     private readonly IFileSystemService _fileSystem;
-    private readonly FirefoxSessionTimings _timings;
+    private readonly BrowserSessionTimings _timings;
     private readonly TimeSpan _commandTimeout;
     private readonly ILogger? _logger;
     private readonly ConcurrentQueue<string> _dialogs = new();
     private readonly Lock _navigation = new();
-    private readonly List<FirefoxTab> _tabs = [];
+    private readonly List<BrowserTab> _tabs = [];
     private int _tabCount;
     private string? _context;
     private string? _pendingNavigation;
@@ -108,7 +109,7 @@ internal sealed partial class FirefoxSession : IAsyncDisposable
     private int _disposed;
     private bool _pageIsCurrent;
 
-    private FirefoxSession(FirefoxBrowser browser, IFileSystemService fileSystem, TimeSpan commandTimeout, ILogger? logger)
+    private BrowserSession(BrowserInstance browser, IFileSystemService fileSystem, TimeSpan commandTimeout, ILogger? logger)
     {
         _browser = browser;
         _fileSystem = fileSystem;
@@ -121,7 +122,7 @@ internal sealed partial class FirefoxSession : IAsyncDisposable
     public bool IsAlive => _disposed == 0 && _browser.IsAlive;
 
     /// <summary>The browser the session drives tabs in.</summary>
-    public FirefoxBrowser Browser => _browser;
+    public BrowserInstance Browser => _browser;
 
     /// <summary>The handle of the tab driven now; <c>null</c> once every tab of the session was closed in the browser.</summary>
     public string? CurrentTab
@@ -155,16 +156,16 @@ internal sealed partial class FirefoxSession : IAsyncDisposable
     public string? CheckedUrl { get; set; }
 
     /// <summary>Starts a browser of its own on <paramref name="profile"/> and opens a session on the tab it shows.</summary>
-    /// <exception cref="FirefoxException">Firefox is not installed, did not start, or the profile is missing or held.</exception>
+    /// <exception cref="FirefoxException">The browser is not installed, did not start, or the profile is missing or held.</exception>
     /// <exception cref="BiDiException">The browser refused the session.</exception>
     [SuppressMessage("Reliability", "CA2000", Justification = "The browser is handed to the session returned, which closes it as its last session; an attach that fails disposes it.")]
-    public static async Task<FirefoxSession> OpenAsync(
-        IFirefoxLauncher launcher, FirefoxProfileChoice profile, FirefoxToolOptions options, IFileSystemService fileSystem,
-        FirefoxSessionTimings? timings, ILogger? logger, CancellationToken cancellationToken)
+    public static async Task<BrowserSession> OpenAsync(
+        IBrowserEngine engine, BrowserProfileChoice profile, FirefoxToolOptions options, IFileSystemService fileSystem,
+        BrowserSessionTimings? timings, ILogger? logger, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(options);
 
-        var browser = await FirefoxBrowser.OpenAsync(launcher, profile, options, timings, logger, cancellationToken).ConfigureAwait(false);
+        var browser = await BrowserInstance.OpenAsync(engine, profile, options, timings, logger, cancellationToken).ConfigureAwait(false);
         try
         {
             return await AttachAsync(browser, options, fileSystem, logger, cancellationToken).ConfigureAwait(false);
@@ -182,8 +183,8 @@ internal sealed partial class FirefoxSession : IAsyncDisposable
     /// </summary>
     /// <exception cref="FirefoxException">The browser is closing.</exception>
     /// <exception cref="BiDiException">The browser could not open a tab.</exception>
-    public static async Task<FirefoxSession> AttachAsync(
-        FirefoxBrowser browser, FirefoxToolOptions options, IFileSystemService fileSystem, ILogger? logger,
+    public static async Task<BrowserSession> AttachAsync(
+        BrowserInstance browser, FirefoxToolOptions options, IFileSystemService fileSystem, ILogger? logger,
         CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(browser);
@@ -198,13 +199,13 @@ internal sealed partial class FirefoxSession : IAsyncDisposable
     /// outside it.
     /// </summary>
     /// <exception cref="FirefoxException">The browser is closing.</exception>
-    public static FirefoxSession Attach(FirefoxBrowser browser, FirefoxToolOptions options, IFileSystemService fileSystem, ILogger? logger)
+    public static BrowserSession Attach(BrowserInstance browser, FirefoxToolOptions options, IFileSystemService fileSystem, ILogger? logger)
     {
         ArgumentNullException.ThrowIfNull(browser);
         ArgumentNullException.ThrowIfNull(options);
         ArgumentNullException.ThrowIfNull(fileSystem);
 
-        var session = new FirefoxSession(browser, fileSystem, TimeSpan.FromSeconds(options.CommandTimeoutSeconds), logger);
+        var session = new BrowserSession(browser, fileSystem, TimeSpan.FromSeconds(options.CommandTimeoutSeconds), logger);
         browser.Attach(session);
         return session;
     }
@@ -228,7 +229,7 @@ internal sealed partial class FirefoxSession : IAsyncDisposable
     /// <summary>The tabs of the session, where each is, and which one is driven.</summary>
     public async Task<IReadOnlyList<TabState>> ListTabsAsync(CancellationToken cancellationToken)
     {
-        FirefoxTab[] tabs;
+        BrowserTab[] tabs;
         string? current;
         lock (_navigation)
         {
@@ -273,7 +274,7 @@ internal sealed partial class FirefoxSession : IAsyncDisposable
     /// <exception cref="FirefoxException">No tab of the session has that handle, or it is the last one.</exception>
     public async Task CloseTabAsync(string? handle, CancellationToken cancellationToken)
     {
-        FirefoxTab tab;
+        BrowserTab tab;
         lock (_navigation)
         {
             tab = handle is null
@@ -400,12 +401,12 @@ internal sealed partial class FirefoxSession : IAsyncDisposable
     {
         var activity = Interlocked.Read(ref _activity);
         await ReachAsync(FocusScript, sharedId, cancellationToken).ConfigureAwait(false);
-        var keys = text.Length == 0 ? [FirefoxKeys.Backspace] : FirefoxKeys.Typing(text);
+        var keys = text.Length == 0 ? [BrowserKeys.Backspace] : BrowserKeys.Typing(text);
         await PressKeysAsync(keys.Select<string, IReadOnlyList<string>>(key => [key]), cancellationToken).ConfigureAwait(false);
         await SettleAsync(activity, changedFrom: null, cancellationToken).ConfigureAwait(false);
     }
 
-    /// <summary>Presses one key or chord (<see cref="FirefoxKeys.TryParse"/>) on the focused element.</summary>
+    /// <summary>Presses one key or chord (<see cref="BrowserKeys.TryParse"/>) on the focused element.</summary>
     public async Task PressAsync(IReadOnlyList<string> chord, CancellationToken cancellationToken)
     {
         var activity = Interlocked.Read(ref _activity);
@@ -472,7 +473,7 @@ internal sealed partial class FirefoxSession : IAsyncDisposable
         if (await _browser.ReleaseAsync(this).ConfigureAwait(false))
             return;
 
-        FirefoxTab[] tabs;
+        BrowserTab[] tabs;
         lock (_navigation)
         {
             tabs = [.. _tabs];
@@ -600,7 +601,7 @@ internal sealed partial class FirefoxSession : IAsyncDisposable
             return _tabs.Exists(tab => tab.Context == context);
     }
 
-    private FirefoxTab TabOf(string handle)
+    private BrowserTab TabOf(string handle)
     {
         lock (_navigation)
         {
@@ -615,7 +616,7 @@ internal sealed partial class FirefoxSession : IAsyncDisposable
         lock (_navigation)
         {
             var handle = $"t{++_tabCount}";
-            _tabs.Add(new FirefoxTab(handle, context));
+            _tabs.Add(new BrowserTab(handle, context));
             if (drive)
                 Drive(context);
             return handle;
@@ -668,8 +669,8 @@ internal sealed partial class FirefoxSession : IAsyncDisposable
 
     private static string LoadOutlineScript()
     {
-        const string name = "Orkeon.Tools.Web.Firefox.page-outline.js";
-        using var stream = typeof(FirefoxSession).Assembly.GetManifestResourceStream(name)
+        const string name = "Orkeon.Tools.Web.Browser.page-outline.js";
+        using var stream = typeof(BrowserSession).Assembly.GetManifestResourceStream(name)
             ?? throw new MissingManifestResourceException($"The embedded script '{name}' is missing.");
         using var reader = new StreamReader(stream);
         return reader.ReadToEnd();

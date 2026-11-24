@@ -3,13 +3,13 @@ using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Text;
 
-namespace Orkeon.Tools.Web.Firefox;
+namespace Orkeon.Tools.Web.Browser;
 
 /// <summary>
 /// The keys the firefox tool presses: a character, a named key (<c>Enter</c>, <c>ArrowDown</c>) or a
 /// chord (<c>Control+a</c>), in the code points WebDriver gives the keys that are not characters.
 /// </summary>
-internal static class FirefoxKeys
+internal static class BrowserKeys
 {
     public const string Enter = "";
     public const string Tab = "";

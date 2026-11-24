@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using Microsoft.Extensions.Logging;
 using Orkeon.Compliance.Vfs;
+using Orkeon.Tools.Web.Browser;
 using Orkeon.Tools.Web.Firefox.BiDi;
 
 namespace Orkeon.Tools.Web.Firefox;
@@ -11,15 +12,18 @@ namespace Orkeon.Tools.Web.Firefox;
 /// Starts Firefox as a child process with its own profile and a remote-debugging port the system picks,
 /// reads the WebDriver BiDi endpoint the browser announces on its standard error, and connects to it.
 /// </summary>
-internal sealed partial class FirefoxProcessLauncher : IFirefoxLauncher
+internal sealed partial class FirefoxEngine : IBrowserEngine
 {
     private const int ErrorTailLines = 5;
+
+    /// <summary>The value of <c>Engine</c> that names this engine.</summary>
+    public const string EngineId = "firefox";
 
     private readonly FirefoxToolOptions _options;
     private readonly ILogger? _logger;
     private readonly Func<string, string?> _readEnvironment;
 
-    public FirefoxProcessLauncher(
+    public FirefoxEngine(
         FirefoxToolOptions options, ILogger? logger = null, Func<string, string?>? readEnvironment = null)
     {
         ArgumentNullException.ThrowIfNull(options);
@@ -27,6 +31,15 @@ internal sealed partial class FirefoxProcessLauncher : IFirefoxLauncher
         _logger = logger;
         _readEnvironment = readEnvironment ?? Environment.GetEnvironmentVariable;
     }
+
+    /// <inheritdoc/>
+    public string Id => EngineId;
+
+    /// <inheritdoc/>
+    public string DisplayName => "Firefox";
+
+    /// <inheritdoc/>
+    public BrowserEngineCapabilities Capabilities { get; } = new();
 
     /// <summary>How long a browser asked to close is given to leave before it is killed.</summary>
     public TimeSpan ExitGrace { get; init; } = TimeSpan.FromSeconds(3);
@@ -93,13 +106,13 @@ internal sealed partial class FirefoxProcessLauncher : IFirefoxLauncher
     }
 
     [SuppressMessage("Reliability", "CA2000", Justification = "The process and the channel are handed to the browser returned, which ends them; a start that fails ends them in the catch below.")]
-    public async Task<IFirefoxBrowser> LaunchAsync(FirefoxProfileChoice profile, CancellationToken cancellationToken)
+    public async Task<IBrowserProcess> LaunchAsync(BrowserProfileChoice profile, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(profile);
         var executable = LocateOnHost()
             ?? throw new FirefoxException(string.IsNullOrWhiteSpace(_options.ExecutablePath)
-                ? $"Firefox was not found on this machine: install it, or set {FirefoxToolOptions.SectionName}:{nameof(FirefoxToolOptions.ExecutablePath)}."
-                : $"Firefox was not found at '{_options.ExecutablePath}' ({FirefoxToolOptions.SectionName}:{nameof(FirefoxToolOptions.ExecutablePath)}).");
+                ? $"Firefox was not found on this machine: install it, or set {_options.Section}:{nameof(FirefoxToolOptions.ExecutablePath)}."
+                : $"Firefox was not found at '{_options.ExecutablePath}' ({_options.Section}:{nameof(FirefoxToolOptions.ExecutablePath)}).");
 
         var headless = ResolveHeadless(_options.Headless, OperatingSystem.IsLinux() || OperatingSystem.IsFreeBSD(), _readEnvironment);
         if (headless && !_options.Headless && _logger is not null)
@@ -310,10 +323,10 @@ internal sealed partial class FirefoxProcessLauncher : IFirefoxLauncher
     }
 
     [LoggerMessage(Level = LogLevel.Warning,
-        Message = "The firefox tool starts its browser headless: this machine has no display (neither DISPLAY nor WAYLAND_DISPLAY is set).")]
+        Message = "The browser tool starts Firefox headless: this machine has no display (neither DISPLAY nor WAYLAND_DISPLAY is set).")]
     private static partial void LogHeadlessFallback(ILogger logger);
 
-    private sealed class Browser : IFirefoxBrowser
+    private sealed class Browser : IBrowserProcess
     {
         private readonly Process _process;
         private readonly FirefoxProfile _folder;
@@ -321,7 +334,7 @@ internal sealed partial class FirefoxProcessLauncher : IFirefoxLauncher
         private int _disposed;
 
         public Browser(
-            Process process, FirefoxProfile folder, FirefoxProfileChoice profile, IBiDiTransport transport, bool headless, TimeSpan exitGrace)
+            Process process, FirefoxProfile folder, BrowserProfileChoice profile, IBiDiTransport transport, bool headless, TimeSpan exitGrace)
         {
             _process = process;
             _folder = folder;
@@ -335,7 +348,7 @@ internal sealed partial class FirefoxProcessLauncher : IFirefoxLauncher
 
         public bool Headless { get; }
 
-        public FirefoxProfileChoice Profile { get; }
+        public BrowserProfileChoice Profile { get; }
 
         public async ValueTask DisposeAsync()
         {

@@ -586,7 +586,7 @@ file that was not written all the same ([the `tool_call` deliverable](#the-tool_
   `autonomous` crew. The warning comes only when **none** of them can write the file.
 - **An agent can write the file** when its toolbelt, its own tools plus the task's, holds a built-in tool
   that writes that path: `docx_writer` for a `.docx`, `xlsx_writer` for a `.xlsx`, `image_generation` for
-  a `.png`, `.jpg`, `.jpeg` or `.webp`, `firefox` (its screenshot) for a `.png`, and `file_write` for any
+  a `.png`, `.jpg`, `.jpeg` or `.webp`, `browser` (its screenshot) for a `.png`, and `file_write` for any
   text file, never a binary one. A path is binary when its extension, whatever its case, names an office
   document (`.docx`, `.xlsx`, `.pptx`, `.odt`, `.pdf`, `.epub` and their kin), an image, an
   archive, audio or video, a database or data file (`.sqlite`, `.db`, `.parquet`), a font or an
