@@ -609,7 +609,7 @@ même. `orkeon run --validate` l'imprime en une ligne `WARNING:` par tâche
   ne peut écrire le fichier.
 - **Un agent peut écrire le fichier** quand sa ceinture d'outils, ses outils plus ceux de la tâche, contient
   un outil intégré qui écrit ce chemin : `docx_writer` pour un `.docx`, `xlsx_writer` pour un `.xlsx`,
-  `image_generation` pour un `.png`, `.jpg`, `.jpeg` ou `.webp`, `firefox` (sa capture d'écran) pour un
+  `image_generation` pour un `.png`, `.jpg`, `.jpeg` ou `.webp`, `browser` (sa capture d'écran) pour un
   `.png`, et `file_write` pour tout fichier texte, jamais un fichier binaire. Un chemin est binaire quand
   son extension, quelle que soit sa casse, nomme un document bureautique (`.docx`, `.xlsx`, `.pptx`,
   `.odt`, `.pdf`, `.epub` et leurs voisins), une image, une archive, de l'audio ou de la vidéo, une

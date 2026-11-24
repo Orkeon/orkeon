@@ -81,3 +81,5 @@ docker/* text eol=lf
 #*.PDF   diff=astextplain
 #*.rtf   diff=astextplain
 #*.RTF   diff=astextplain
+# Third-party, byte for byte: ChromiumMapperTests checks its hash.
+src/tools/Orkeon.Tools.Web/Chromium/Mapper/mapperTab.js -text linguist-vendored

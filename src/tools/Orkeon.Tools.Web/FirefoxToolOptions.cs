@@ -2,42 +2,53 @@ using System.Collections.ObjectModel;
 using System.Globalization;
 using Microsoft.Extensions.Configuration;
 using Orkeon.Application.Configuration;
+using Orkeon.Tools.Web.Firefox;
 
 namespace Orkeon.Tools.Web;
 
 /// <summary>
-/// The `Orkeon:Tools:Firefox` section: how the `firefox` tool starts its browser and how much of a page
-/// one answer carries. Read once when the tool is registered.
+/// The `Orkeon:Tools:Browser` section: which browser the `browser` tool drives, how it starts and how much
+/// of a page one answer carries. The former `Orkeon:Tools:Firefox` section is read when it is absent. Read once when the tool is registered.
 /// </summary>
 public sealed class FirefoxToolOptions
 {
-    /// <summary>The configuration section the firefox tool reads.</summary>
+    /// <summary>The configuration section the browser tool reads.</summary>
+    public const string BrowserSectionName = "Orkeon:Tools:Browser";
+
+    /// <summary>The former name of <see cref="BrowserSectionName"/>, read when that section is absent.</summary>
     public const string SectionName = "Orkeon:Tools:Firefox";
 
+    /// <summary>The browser the host drives: `firefox` (the default), `chrome`, `edge`, `brave`, or `safari` on macOS. Case ignored; any other value is refused.</summary>
+    public string Engine { get; set; } = FirefoxEngine.EngineId;
+
+    /// <summary>The section the options were read from, which errors name.</summary>
+    internal string Section { get; private set; } = BrowserSectionName;
+
     /// <summary>
-    /// Path of the Firefox program, or its name on the PATH. Not set: `firefox` on the PATH, then the
-    /// usual install folder of the platform.
+    /// Path of the browser's program, or its name on the PATH. Not set: the engine's usual names on the
+    /// PATH, then the usual install folder of the platform.
     /// </summary>
     public string? ExecutablePath { get; set; }
 
     /// <summary>
-    /// `true` starts Firefox without a window. The default shows the window; under Linux with neither
-    /// `DISPLAY` nor `WAYLAND_DISPLAY` the browser starts headless anyway, and a warning says so.
+    /// `true` starts the browser without a window. The default shows the window; under Linux with neither
+    /// `DISPLAY` nor `WAYLAND_DISPLAY` the browser starts headless anyway, and a warning says so. Refused with `safari`, which has no such mode.
     /// </summary>
     public bool Headless { get; set; }
 
     /// <summary>
     /// Folder under which each browser gets its own profile folder, removed when the browser closes.
-    /// Not set: `~/snap/firefox/common/orkeon/profiles` when Firefox is a snap (a snap cannot read the
-    /// system's temp folder), else `orkeon-firefox` under the system's temp folder.
+    /// Not set: `~/snap/&lt;snap&gt;/common/orkeon/profiles` when the browser is a snap (a snap cannot read the
+    /// system's temp folder), else `orkeon-&lt;engine&gt;` under the system's temp folder.
     /// </summary>
     public string? ProfileRoot { get; set; }
 
     /// <summary>
     /// The profile a browser starts with when the agent names none: `disposable` (the default, a fresh
     /// folder removed when the browser closes), the name of a profile of the Firefox installed on the
-    /// host (`profiles.ini`), or the path of a profile folder. A named profile is used in place, with
-    /// its cookies and sessions, and never removed; a profile another Firefox holds open is refused.
+    /// host (`profiles.ini`), or the path of a profile folder — the only form a Chromium engine
+    /// takes, and never the user's own data folder. A named profile is used in place, with its cookies
+    /// and sessions, and never removed; a profile another browser holds open is refused.
     /// </summary>
     public string? Profile { get; set; }
 
@@ -69,7 +80,7 @@ public sealed class FirefoxToolOptions
     /// </summary>
     public FirefoxBrowserLifetime Lifetime { get; set; }
 
-    /// <summary>Seconds Firefox is given to open its remote protocol; its session, which it answers once its first window has loaded, then waits the larger of this and `CommandTimeoutSeconds`.</summary>
+    /// <summary>Seconds the browser is given to open its remote protocol; its session, which Firefox answers once its first window has loaded, then waits the larger of this and `CommandTimeoutSeconds`.</summary>
     public int StartupTimeoutSeconds { get; set; } = 30;
 
     /// <summary>Seconds one browser command (a page load, a script, a click) is given to answer.</summary>
@@ -90,9 +101,27 @@ public sealed class FirefoxToolOptions
     public static FirefoxToolOptions From(IConfiguration? configuration)
     {
         var options = new FirefoxToolOptions();
-        var section = configuration?.GetSection(SectionName);
-        if (section is null)
+        if (configuration is null)
             return options;
+
+        var section = configuration.GetSection(BrowserSectionName);
+        var legacy = configuration.GetSection(SectionName);
+        if (section.Exists() && legacy.Exists())
+        {
+            throw new InvalidOperationException(
+                $"{BrowserSectionName} and {SectionName} are both set: keep {BrowserSectionName}, the other one is its former name.");
+        }
+
+        if (legacy.Exists())
+        {
+            // The former section knows one engine: no key of it picks another.
+            section = legacy;
+            options.Section = SectionName;
+        }
+        else
+        {
+            options.Engine = Text(section[nameof(Engine)]) ?? options.Engine;
+        }
 
         options.ExecutablePath = Text(section[nameof(ExecutablePath)]);
         options.ProfileRoot = Text(section[nameof(ProfileRoot)]);
@@ -105,7 +134,7 @@ public sealed class FirefoxToolOptions
             options.Headless = headless;
         if (bool.TryParse(section[nameof(SharedInstance)], out var shared))
             options.SharedInstance = shared;
-        options.Lifetime = ReadLifetime(section, options.Lifetime);
+        options.Lifetime = ReadLifetime(section, options.Section, options.Lifetime);
         options.StartupTimeoutSeconds = Positive(section[nameof(StartupTimeoutSeconds)], options.StartupTimeoutSeconds);
         options.CommandTimeoutSeconds = Positive(section[nameof(CommandTimeoutSeconds)], options.CommandTimeoutSeconds);
         options.MaxNodes = Positive(section[nameof(MaxNodes)], options.MaxNodes);
@@ -118,7 +147,7 @@ public sealed class FirefoxToolOptions
     /// read <c>"1"</c> as <see cref="FirefoxBrowserLifetime.Host"/>, a browser kept across runs. Anything
     /// else is refused, naming the key and the members, never the value.
     /// </summary>
-    private static FirefoxBrowserLifetime ReadLifetime(IConfigurationSection section, FirefoxBrowserLifetime fallback)
+    private static FirefoxBrowserLifetime ReadLifetime(IConfigurationSection section, string sectionName, FirefoxBrowserLifetime fallback)
     {
         var value = Text(section[nameof(Lifetime)]);
         if (value is null)
@@ -129,7 +158,7 @@ public sealed class FirefoxToolOptions
         return name is not null
             ? Enum.Parse<FirefoxBrowserLifetime>(name)
             : throw new InvalidOperationException(
-                $"{SectionName}:{nameof(Lifetime)} is not a browser lifetime: write one of {string.Join(", ", names)}.");
+                $"{sectionName}:{nameof(Lifetime)} is not a browser lifetime: write one of {string.Join(", ", names)}.");
     }
 
     private static string? Text(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();

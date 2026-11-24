@@ -30,8 +30,8 @@
   items:
     - name: Outils drive — Google Drive et OneDrive
       href: guides/drive.md
-    - name: L'outil firefox
-      href: guides/firefox.md
+    - name: L'outil browser
+      href: guides/browser.md
     - name: Orkeon dans un conteneur, le navigateur sur le bureau
       href: guides/tool-bridge.md
     - name: Commandes orkeon drive
@@ -204,6 +204,8 @@
       href: adr/ADR-020-agent-cli-provider.md
     - name: ADR-021 — La famille d'outils chat
       href: adr/ADR-021-chat-tool-family.md
+    - name: ADR-022 — Un outil navigateur, plusieurs moteurs
+      href: adr/ADR-022-browser-tool-engines.md
     - name: ADR — Graphe sémantique RaggableTree
       href: architecture/raggable-tree-adr.md
 - name: Gabarits

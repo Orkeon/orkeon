@@ -1,9 +1,66 @@
+using Orkeon.Tools.Web.Firefox;
+using Orkeon.Tools.Web.Browser;
 using Microsoft.Extensions.Configuration;
 
 namespace Orkeon.Tools.Web.Tests.Firefox;
 
 public class FirefoxToolOptionsTests
 {
+    [Fact]
+    public void Should_ReadTheBrowserSection_AndNameItInRefusals()
+    {
+        var read = FirefoxToolOptions.From(Settings(("Orkeon:Tools:Browser:Engine", " Firefox "), ("Orkeon:Tools:Browser:MaxNodes", "7")));
+        var refused = Assert.Throws<InvalidOperationException>(() => FirefoxToolOptions.From(Settings(("Orkeon:Tools:Browser:Lifetime", "forever"))));
+
+        Assert.Equal("Firefox", read.Engine);
+        Assert.Equal(7, read.MaxNodes);
+        Assert.Equal("Orkeon:Tools:Browser", read.Section);
+        Assert.StartsWith("Orkeon:Tools:Browser:Lifetime is not a browser lifetime", refused.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Should_ReadTheFormerSection_WithTheFirefoxEngineOnly()
+    {
+        var options = FirefoxToolOptions.From(Settings(("Orkeon:Tools:Firefox:Engine", "chrome"), ("Orkeon:Tools:Firefox:MaxNodes", "7")));
+
+        Assert.Equal("firefox", options.Engine);
+        Assert.Equal(7, options.MaxNodes);
+        Assert.Equal("Orkeon:Tools:Firefox", options.Section);
+    }
+
+    [Fact]
+    public void Should_RefuseBothSections()
+    {
+        var refused = Assert.Throws<InvalidOperationException>(() => FirefoxToolOptions.From(Settings(
+            ("Orkeon:Tools:Browser:MaxNodes", "7"), ("Orkeon:Tools:Firefox:Headless", "true"))));
+
+        Assert.Equal("Orkeon:Tools:Browser and Orkeon:Tools:Firefox are both set: keep Orkeon:Tools:Browser, the other one is its former name.", refused.Message);
+    }
+
+    [Theory]
+    [InlineData("netscape")]
+    [InlineData("")]
+    public void Should_RefuseAnUnknownEngine_AndNeverFallBack(string engine)
+    {
+        var refused = Assert.Throws<InvalidOperationException>(() => BrowserEngines.Create(new FirefoxToolOptions { Engine = engine }, null));
+
+        Assert.Equal("Orkeon:Tools:Browser:Engine is not a browser engine: write one of firefox, chrome, edge, brave, safari.", refused.Message);
+        Assert.IsType<FirefoxEngine>(BrowserEngines.Create(new FirefoxToolOptions { Engine = " FIREFOX" }, null));
+    }
+
+    [Fact]
+    public void Should_RefuseHeadless_When_TheEngineHasNone()
+    {
+        var refused = Assert.Throws<InvalidOperationException>(
+            () => BrowserEngines.Create(new FirefoxToolOptions { Engine = "safari", Headless = true }, null));
+
+        Assert.Equal("Orkeon:Tools:Browser:Headless cannot be true with the engine safari: Safari has no headless mode.", refused.Message);
+        Assert.Equal("safari", BrowserEngines.Create(new FirefoxToolOptions { Engine = "safari" }, null).Id);
+    }
+
+    private static IConfiguration Settings(params (string Key, string Value)[] values) =>
+        new ConfigurationBuilder().AddInMemoryCollection(values.ToDictionary<(string Key, string Value), string, string?>(v => v.Key, v => v.Value)).Build();
+
     private static IConfiguration Configuration(params (string Key, string Value)[] keys) =>
         new ConfigurationBuilder()
             .AddInMemoryCollection(keys.Select(k =>

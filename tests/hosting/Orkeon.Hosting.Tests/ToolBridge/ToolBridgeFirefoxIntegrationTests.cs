@@ -67,8 +67,8 @@ public sealed class ToolBridgeFirefoxIntegrationTests : IDisposable
     {
         var (server, address) = await BridgeLoopback.StartServerAsync([_remote], ["*"], files: _bridgeFiles);
         var registry = new ToolRegistry([_local]);
-        var link = await BridgeLoopback.ConnectAsync(registry, BridgeLoopback.ClientOptions(address, "firefox"), fileSystem: _callerFiles);
-        return (server, link, (await registry.GetToolByNameAsync("firefox", Ct))!);
+        var link = await BridgeLoopback.ConnectAsync(registry, BridgeLoopback.ClientOptions(address, "browser"), fileSystem: _callerFiles);
+        return (server, link, (await registry.GetToolByNameAsync("browser", Ct))!);
     }
 
     private static async Task<JsonObject> CallAsync(IBaseTool tool, string action, params (string Name, object? Value)[] arguments)
@@ -76,7 +76,7 @@ public sealed class ToolBridgeFirefoxIntegrationTests : IDisposable
         var parameters = new Dictionary<string, object?> { ["action"] = action };
         foreach (var (name, value) in arguments)
             parameters[name] = value;
-        var response = await tool.CallAsync(new ToolCallRequest("firefox", parameters), Ct);
+        var response = await tool.CallAsync(new ToolCallRequest("browser", parameters), Ct);
         Assert.SkipWhen(response.Error?.Contains("Firefox was not found", StringComparison.Ordinal) == true, "Firefox is not installed on this machine.");
         Assert.True(response.Success, response.Error);
         return Assert.IsType<JsonObject>(JsonSerializer.SerializeToNode(response.Result));

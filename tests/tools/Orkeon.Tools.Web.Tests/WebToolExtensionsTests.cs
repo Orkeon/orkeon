@@ -35,7 +35,7 @@ public class WebToolExtensionsTests
     }
 
     [Fact]
-    public void AddOrkeonWebTools_HandsEveryFirefoxToolTheBrowsersOfTheHost()
+    public void AddOrkeonWebTools_HandsEveryBrowserToolTheBrowsersOfTheHost_WhateverItsName()
     {
         var services = new ServiceCollection();
         services.AddSingleton<IFileSystemService>(new FakeFileSystemService());
@@ -44,15 +44,19 @@ public class WebToolExtensionsTests
         using var sp = services.BuildServiceProvider();
 
         // A crew resolves the tools each time it loads: the browsers must not start over with them.
-        var first = sp.GetServices<IBaseTool>().OfType<FirefoxTool>().Single();
-        var second = sp.GetServices<IBaseTool>().OfType<FirefoxTool>().Single();
+        var first = sp.GetServices<IBaseTool>().OfType<FirefoxTool>().ToList();
+        var second = sp.GetServices<IBaseTool>().OfType<FirefoxTool>().ToList();
 
-        Assert.NotSame(first, second);
-        Assert.Same(first.Sessions, second.Sessions);
+        // Two names, one set of browsers: the deprecated one never starts a second browser on a profile.
+        Assert.Equal(["browser", "firefox"], first.Select(tool => tool.Name));
+        Assert.Equal(["browser", "firefox"], first.Select(tool => tool.Schema.Name));
+        Assert.StartsWith("Deprecated name of the browser tool: use browser.", first[1].Description, StringComparison.Ordinal);
+        Assert.NotSame(first[0], second[0]);
+        Assert.Single(first.Concat(second).Select(tool => tool.Sessions).Distinct());
     }
 
     [Fact]
-    public async Task AddOrkeonWebTools_RegistersFirefox_WhichRefusesALoopbackPageBeforeAnyBrowserStarts()
+    public async Task AddOrkeonWebTools_RegistersTheBrowser_WhichRefusesALoopbackPageBeforeAnyBrowserStarts()
     {
         var services = new ServiceCollection();
         services.AddSingleton<IFileSystemService>(new FakeFileSystemService());
@@ -60,16 +64,16 @@ public class WebToolExtensionsTests
         services.AddOrkeonWebTools();
         using var sp = services.BuildServiceProvider();
 
-        var firefox = sp.GetServices<IBaseTool>().OfType<FirefoxTool>().Single();
-        var refused = await firefox.CallAsync(
+        var browser = sp.GetServices<IBaseTool>().OfType<FirefoxTool>().First();
+        var refused = await browser.CallAsync(
             new Orkeon.Domain.Tools.Protocol.ToolCallRequest(
-                ToolName: "firefox",
+                ToolName: "browser",
                 Parameters: new Dictionary<string, object?> { ["action"] = "navigate", ["url"] = "http://127.0.0.1:9/" }),
             TestContext.Current.CancellationToken);
 
         // Registered and built without a browser, a display or the RAG subsystem; with no URL policy
         // registered the fail-closed guard applies, and refuses a loopback address before Firefox starts.
-        Assert.Equal("firefox", firefox.Name);
+        Assert.Equal("browser", browser.Name);
         Assert.False(refused.Success);
         Assert.Contains("was not opened", refused.Error, StringComparison.Ordinal);
     }

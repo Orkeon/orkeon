@@ -42,7 +42,8 @@ internal static class SettingsSampleFile
     /// <c>Llm</c> written, even at its default, and the host has a default model — it stops saying
     /// that none is configured and stops running on the echo provider; <c>Orkeon:TypeSafe</c>
     /// or <c>Orkeon:Liquid</c> present, even empty, and the host registers that decision provider;
-    /// <c>Orkeon:Kev</c> present without <c>Orkeon:Decision:Provider</c> warns at every start.
+    /// <c>Orkeon:Kev</c> present without <c>Orkeon:Decision:Provider</c> warns at every start;
+    /// <c>Orkeon:Tools:Firefox</c> beside <c>Orkeon:Tools:Browser</c> is refused.
     /// </summary>
     internal static IReadOnlyDictionary<string, string> ShownOnly { get; } =
         new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
@@ -59,6 +60,9 @@ internal static class SettingsSampleFile
             [Orkeon.Infrastructure.Decision.SystemOne.DecisionProviderDescriptor.Kev.Section] =
                 "Shown, not written: Kev is never deduced, so the section written without `Orkeon:Decision:Provider` set to `kev` " +
                 "is ignored and the host warns about it at every start.",
+            [Orkeon.Tools.Web.FirefoxToolOptions.SectionName] =
+                "Shown, not written: the former name of `Orkeon:Tools:Browser`, with the Firefox engine only. Written beside " +
+                "`Orkeon:Tools:Browser`, the tools of the host are refused.",
         };
 
     /// <summary>The file for <paramref name="catalog"/>: the sections at least one shipped binary reads.</summary>

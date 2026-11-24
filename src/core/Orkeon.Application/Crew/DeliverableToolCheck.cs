@@ -121,6 +121,7 @@ public static class DeliverableToolCheck
         ("docx_writer", [".docx"]),
         ("xlsx_writer", [".xlsx"]),
         ("image_generation", [".png", ".jpg", ".jpeg", ".webp"]),
+        ("browser", [".png"]),
         ("firefox", [".png"]),
         (FileWriteToolName, []),
     ];
@@ -142,7 +143,7 @@ public static class DeliverableToolCheck
 
     /// <summary>
     /// The built-in tools that write a file at a path the agent names: <c>docx_writer</c> (<c>.docx</c>),
-    /// <c>xlsx_writer</c> (<c>.xlsx</c>), <c>image_generation</c> (an image), <c>firefox</c> (a <c>.png</c>
+    /// <c>xlsx_writer</c> (<c>.xlsx</c>), <c>image_generation</c> (an image), <c>browser</c> (a <c>.png</c>
     /// screenshot) and <c>file_write</c> (any text file).
     /// </summary>
     public static IReadOnlyList<string> FileWriterToolNames { get; } = [.. s_writers.Select(static writer => writer.Tool)];

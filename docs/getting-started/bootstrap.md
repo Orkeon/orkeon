@@ -89,7 +89,7 @@ var host = Host.CreateDefaultBuilder(args)
         // Data: CSV, PDF, JSON, XML, DOCX, XLSX, SQL queries, MongoDB queries, etc.
         services.AddOrkeonDataTools();
 
-        // Web: WebScrape, ScrapeElement, HttpApi, GitHub, ImageGeneration, Firefox
+        // Web: WebScrape, ScrapeElement, HttpApi, GitHub, ImageGeneration, Browser
         // (WebSearch/BraveSearch/Slack/CacheSearch have their own opt-in extensions)
         services.AddOrkeonWebTools();
 

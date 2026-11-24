@@ -5,7 +5,7 @@
 > **Voir aussi** : [ADR-019](../adr/ADR-019-tool-bridge.md) ·
 > [Référence de configuration](../reference/configuration.md#orkeontoolsbridge) ·
 > [Référence du CLI](../reference/cli.md#orkeon-bridge) · [Sécurité](../architecture/security.md#pont-doutils) ·
-> [L'outil `firefox`](./firefox.md) · [Retour à l'index](../INDEX.md)
+> [L'outil `browser`](./browser.md) · [Retour à l'index](../INDEX.md)
 
 Un Orkeon qui tourne dans un conteneur n'atteint pas ce qui vit sur votre machine : le navigateur où vous êtes
 connecté, une application de bureau, un périphérique. Le **pont d'outils** fait exécuter certains outils intégrés
@@ -25,7 +25,7 @@ Le fichier de réglages du dossier d'où vous le lancez (`appsettings.json`, ou 
 
 ```json
 { "Orkeon": { "Bridge": {
-  "Allow": ["firefox"]
+  "Allow": ["browser"]
 } } }
 ```
 
@@ -38,12 +38,12 @@ orkeon bridge serve
 
 ```text
 orkeon bridge serve: listening on http://127.0.0.1:7410/
-orkeon bridge serve: serving firefox
+orkeon bridge serve: serving browser
 orkeon bridge serve: Ctrl+C stops it.
 ```
 
 Il écoute en boucle locale, port 7410 (`http://localhost:7410/` sous Windows), jusqu'à Ctrl+C ou SIGTERM. L'outil
-s'exécute avec les réglages du pont : `Orkeon:Tools:Firefox` et la politique d'URL se lisent sur votre machine,
+s'exécute avec les réglages du pont : `Orkeon:Tools:Browser` et la politique d'URL se lisent sur votre machine,
 puisque le réseau qu'atteint le navigateur est celui de votre machine.
 
 ## 2. L'appelant, dans le conteneur
@@ -51,7 +51,7 @@ puisque le réseau qu'atteint le navigateur est celui de votre machine.
 ```json
 { "Orkeon": { "Tools": { "Bridge": {
   "Address": "http://127.0.0.1:7410/",
-  "Allow": ["firefox"]
+  "Allow": ["browser"]
 } } } }
 ```
 
@@ -60,7 +60,10 @@ l'appelant demande au pont quels outils il sert et refuse de démarrer quand le 
 ne sert pas un outil que nomme `Allow`, ou en sert un dont le contrat diffère (les deux côtés en exécutent des
 versions différentes). Une fois démarré, un appel auquel le pont ne peut répondre échoue avec la raison, et l'appel
 suivant réessaie ; un outil ponté ne se rabat jamais sur une exécution dans le conteneur. Une section
-`Orkeon:Tools:Firefox` laissée dans le conteneur est signalée une fois et n'est pas lue.
+`Orkeon:Tools:Browser` laissée dans le conteneur est signalée une fois et n'est pas lue.
+
+Le pont porte des noms : `browser` et son second nom déprécié `firefox` sont deux entrées, et une équipe qui liste
+encore `firefox` en a besoin dans `Allow` aussi, sinon son navigateur tourne dans le conteneur.
 
 `orkeon run`, `validate`, `--list-tools`, `orkeon mcp serve`, les scripts `.ork.ts`, `eval`, `orkeon-repl` et
 `orkeon-host` se connectent tous de la même façon ; `orkeon-host` sort avec 78 sur un refus. `orkeon bridge serve`
@@ -92,7 +95,7 @@ ne voyage jamais en clair hors de la machine.
   sur l'en-tête `Host`).
 
   ```json
-  { "Orkeon": { "Tools": { "Bridge": { "Address": "http://host.docker.internal:7410/", "HostHeader": "localhost:7410", "Allow": ["firefox"] } } } }
+  { "Orkeon": { "Tools": { "Bridge": { "Address": "http://host.docker.internal:7410/", "HostHeader": "localhost:7410", "Allow": ["browser"] } } } }
   ```
 
   Le démarrage consigne un avertissement : en http, le jeton et chaque appel circulent en clair sur le réseau
@@ -152,7 +155,7 @@ ne voyage jamais en clair hors de la machine.
   l'adaptateur de l'appelant n'est jamais remis par-dessus le proxy du pont, et l'appelant journalise
   `mcp.tool.held` une fois.
 - **Ce que `*` ne sélectionne jamais.** `"Allow": ["*"]` ne sélectionne, d'un côté comme de l'autre, que les outils
-  d'Orkeon sûrs sur une autre machine (`firefox`, `web_search`, `github`...). Il ne sélectionne jamais :
+  d'Orkeon sûrs sur une autre machine (`browser`, `web_search`, `github`...). Il ne sélectionne jamais :
   - un outil qui agit sur l'espace de travail (fichiers, shell, `code_interpreter`, `list_mounts`, index de code) :
     ponté, il agirait sur votre machine alors que l'espace de travail est dans le conteneur ;
   - un outil d'un serveur MCP, ou un outil dont la classe ne déclare aucun `[ToolContract]` (celui d'un plugin, d'un

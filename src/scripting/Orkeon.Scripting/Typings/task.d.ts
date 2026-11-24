@@ -95,7 +95,7 @@ declare global {
          * as-is to `path`; with `"structured_output"` it writes the JSON, checked against
          * `schema`. With `"tool_call"` the agent writes the file itself, so an agent
          * that may run the task needs a tool that writes that format (`file_write` for a
-         * text file, `docx_writer`, `xlsx_writer`, `image_generation`, `firefox` for
+         * text file, `docx_writer`, `xlsx_writer`, `image_generation`, `browser` for
          * theirs): the load warns otherwise, and a task that
          * succeeds without writing it is flagged `deliverableMissing`. `"none"` declares
          * no file.

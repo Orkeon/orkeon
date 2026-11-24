@@ -1,1 +1,8 @@
 #nullable enable
+const Orkeon.Tools.Web.FirefoxToolOptions.BrowserSectionName = "Orkeon:Tools:Browser" -> string!
+Orkeon.Tools.Web.FirefoxResponse.Engine.get -> string!
+Orkeon.Tools.Web.FirefoxResponse.Engine.init -> void
+Orkeon.Tools.Web.FirefoxToolOptions.Engine.get -> string!
+Orkeon.Tools.Web.FirefoxToolOptions.Engine.set -> void
+override Orkeon.Tools.Web.FirefoxTool.Description.get -> string!
+override Orkeon.Tools.Web.FirefoxTool.Name.get -> string!

@@ -283,7 +283,7 @@ Absent, rien ne change : les mounts (et la `working_root`, s'il y en a une) conf
 ### Le système de fichiers dans le prompt
 
 Un agent qui a un outil de fichiers (`IBaseTool.UsesFileSystem` : les outils fichier, de recherche, RAG,
-de pièces jointes, `email_parser`, `image_generation`, `firefox`, `index_codebase`, `incremental_reindex`,
+de pièces jointes, `email_parser`, `image_generation`, `browser`, `index_codebase`, `incremental_reindex`,
 `list_mounts`, `shell_command`) reçoit une section `## File system` dans son prompt système : les entrées
 de son périmètre, sinon les mounts du run visibles des agents (jamais les internes), chacun avec ses
 droits et ses surcharges de sous-chemin, triés par chemin virtuel pour que le prompt soit le même d'un run

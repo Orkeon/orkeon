@@ -4,13 +4,15 @@ using Orkeon.Domain.Execution;
 using Orkeon.Domain.FileSystem;
 using Orkeon.Domain.Tools.Protocol;
 using Orkeon.Tests.Shared.FileSystem;
+using Orkeon.Tools.Web.Browser;
+using Orkeon.Tools.Web.Tests.Browser;
 using Orkeon.Tools.Web.Firefox;
 using Orkeon.Tools.Web.Tests.Doubles;
 
 namespace Orkeon.Tools.Web.Tests.Firefox;
 
 /// <summary>The <c>firefox</c> tool as an agent calls it: snake_case arguments in, a dictionary out.</summary>
-public class FirefoxToolTests : FirefoxSessionTestBase
+public class FirefoxToolTests : BrowserSessionTestBase
 {
     private const string Intranet = "http://intranet.test/";
 
@@ -18,7 +20,7 @@ public class FirefoxToolTests : FirefoxSessionTestBase
     private readonly FakeFileSystemService _files = new FakeFileSystemService().AddMount("/output", FileAccessRights.ReadWrite);
     private readonly FirefoxToolOptions _options = new();
 
-    private FakeFirefoxBrowser Browser => Launcher.Last;
+    private FakeBrowserProcess Browser => Launcher.Last;
 
     private readonly FakeEphemeralCollectionSearch _search = new();
 
@@ -171,7 +173,7 @@ public class FirefoxToolTests : FirefoxSessionTestBase
     public async Task Should_LeaveThePageForABlankOne_When_AClickLeadsToARefusedAddress()
     {
         _policy.RefusedHosts.Add("intranet.test");
-        Launcher.Configure += browser => browser.ClickLeadsTo[FakeFirefoxBrowser.Reference(Home, 1)] = Intranet;
+        Launcher.Configure += browser => browser.ClickLeadsTo[FakeBrowserProcess.Reference(Home, 1)] = Intranet;
         await using var run = AgentRunScope.Begin("agent-1");
         using var tool = Tool();
         await CallAsync(tool, "navigate", ("url", Home));
@@ -189,7 +191,7 @@ public class FirefoxToolTests : FirefoxSessionTestBase
     [Fact]
     public async Task Should_OpenOnlyHttpPages_WhateverThePageDoes()
     {
-        Launcher.Configure += browser => browser.ClickLeadsTo[FakeFirefoxBrowser.Reference(Home, 1)] = "file:///etc/passwd";
+        Launcher.Configure += browser => browser.ClickLeadsTo[FakeBrowserProcess.Reference(Home, 1)] = "file:///etc/passwd";
         await using var run = AgentRunScope.Begin("agent-1");
         using var tool = Tool();
         await CallAsync(tool, "navigate", ("url", Home));
@@ -232,14 +234,14 @@ public class FirefoxToolTests : FirefoxSessionTestBase
     [Fact]
     public async Task Should_SayWhy_When_FirefoxDoesNotStart()
     {
-        Launcher.LaunchFailure = new FirefoxException("Firefox was not found: install it, or set Orkeon:Tools:Firefox:ExecutablePath.");
+        Launcher.LaunchFailure = new FirefoxException("Firefox was not found: install it, or set Orkeon:Tools:Browser:ExecutablePath.");
         await using var run = AgentRunScope.Begin("agent-1");
         using var tool = Tool();
 
         var result = await CallAsync(tool, "navigate", ("url", Home));
 
         Assert.False(result.Success);
-        Assert.Equal("Firefox was not found: install it, or set Orkeon:Tools:Firefox:ExecutablePath.", result.Error);
+        Assert.Equal("Firefox was not found: install it, or set Orkeon:Tools:Browser:ExecutablePath.", result.Error);
     }
 
     [Fact]
@@ -421,7 +423,7 @@ public class FirefoxToolTests : FirefoxSessionTestBase
             Hits(body));
         var request = Assert.Single(_search.Requests);
         Assert.Equal("how do I set it up?", request.Query);
-        Assert.Equal("firefox", request.CollectionPrefix);
+        Assert.Equal("browser", request.CollectionPrefix);
         Assert.Equal([$"{Home}#page", $"{Home}#2"], request.Sources.Select(source => source.Location));
         Assert.Equal(1, OutlineReads());
     }
@@ -506,7 +508,7 @@ public class FirefoxToolTests : FirefoxSessionTestBase
     [Fact]
     public async Task Should_ClickANode_AndReturnTheOutlineOfThePageItOpens()
     {
-        Launcher.Configure += browser => browser.ClickLeadsTo[FakeFirefoxBrowser.Reference(Home, 1)] = Docs;
+        Launcher.Configure += browser => browser.ClickLeadsTo[FakeBrowserProcess.Reference(Home, 1)] = Docs;
         await using var run = AgentRunScope.Begin("agent-1");
         using var tool = Tool();
         await CallAsync(tool, "navigate", ("url", Home));
@@ -620,8 +622,8 @@ public class FirefoxToolTests : FirefoxSessionTestBase
 
         // The outline comes with navigate; an empty tabs, hits or dialogs would read as "none" where none was asked.
         Assert.True(navigated.ContainsKey("nodes"));
-        Assert.Equal(["action", "success", "url", "title", "truncated", "total_nodes", "nodes", "tab", "profile"], navigated.Select(pair => pair.Key));
-        Assert.Equal(["action", "success", "url", "title", "truncated", "tab", "tabs", "profile"], tabs.Select(pair => pair.Key));
+        Assert.Equal(["action", "success", "engine", "url", "title", "truncated", "total_nodes", "nodes", "tab", "profile"], navigated.Select(pair => pair.Key));
+        Assert.Equal(["action", "success", "engine", "url", "title", "truncated", "tab", "tabs", "profile"], tabs.Select(pair => pair.Key));
     }
 
     [Fact]
@@ -774,7 +776,7 @@ public class FirefoxToolTests : FirefoxSessionTestBase
         var result = await CallAsync(tool, "navigate", ("url", Home), ("profile", "default"));
 
         Assert.False(result.Success);
-        Assert.Equal("'default' is not a profile this host lets an agent name (Orkeon:Tools:Firefox:AllowedProfiles): disposable, research.", result.Error);
+        Assert.Equal("'default' is not a profile this host lets an agent name (Orkeon:Tools:Browser:AllowedProfiles): disposable, research.", result.Error);
         Assert.Empty(Launcher.Browsers);
     }
 

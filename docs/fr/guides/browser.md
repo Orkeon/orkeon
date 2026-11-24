@@ -1,0 +1,272 @@
+> 🇬🇧 [English version](../../guides/browser.md)
+
+# L'outil `browser`
+
+> **Voir aussi** : [Inventaire des outils](../tools/inventory.md) ·
+> [Référence de configuration](../reference/configuration.md#orkeontoolsbrowser) ·
+> [RaggableTree](../architecture/raggable-tree.md) · [Limitations connues](../reference/limitations.md) ·
+> [Retour à l'index](../INDEX.md)
+
+`browser` donne un navigateur à un agent : celui installé sur la machine — Firefox, Chrome, Edge, Brave ou Safari —, piloté par
+[WebDriver BiDi](https://w3c.github.io/webdriver-bidi/) sur un WebSocket, ou par le WebDriver de macOS pour Safari. Aucun
+pilote à installer, aucun paquet d'éditeur, aucun téléchargement de navigateur. L'agent ouvre une page, la lit
+comme un plan de sections, de liens et de contrôles, clique, saisit, presse des touches, cherche
+dans la page par le sens, exécute un script et enregistre une capture d'écran. Les pages exécutent
+leur JavaScript : ce que `web_scrape` ne voit pas, `browser` le voit.
+
+> L'outil s'appelait `firefox`, sa section `Orkeon:Tools:Firefox`. Les deux marchent encore et sont dépréciés :
+> `firefox` est un second nom du même outil, sur les mêmes navigateurs, et l'ancienne section est lue quand
+> `Orkeon:Tools:Browser` est absente (les deux présentes, c'est refusé). Ils partent à la prochaine majeure
+> ([ADR-022](../adr/ADR-022-browser-tool-engines.md)).
+
+- **Un navigateur par exécution d'agent.** Le navigateur démarre à la première action de l'exécution,
+  garde ses pages d'une action à la suivante et se ferme avec l'exécution. Des agents qui
+  s'exécutent côte à côte ont chacun leur navigateur, ou en partagent un avec des onglets à eux
+  quand l'hôte le dit (`SharedInstance`). Hors de toute exécution, une action reçoit un
+  navigateur à elle, fermé juste après. Un hôte qui veut que le navigateur survive à
+  l'exécution le garde avec `Lifetime: host`
+  ([ci-dessous](#un-navigateur-qui-survit-à-lexécution)).
+- **Un profil jetable** par défaut : un dossier neuf, supprimé à la fermeture du navigateur.
+  L'hôte peut démarrer le navigateur sur un profil nommé à la place,
+  et nommer les profils qu'un agent peut demander et ceux qu'aucun navigateur n'utilise jamais
+  ([Profils](#profils)).
+- **La fenêtre est visible** par défaut — l'opérateur voit ce que fait l'agent. `Headless` la
+  cache ; une machine sans affichage démarre de toute façon sans fenêtre, avec un avertissement
+  dans le journal.
+- **Chaque adresse est vérifiée** par la politique d'URL de l'hôte (`IUrlValidator`), ou par la
+  garde fermée par défaut quand l'hôte n'en enregistre aucune : les adresses privées et de
+  boucle locale sont refusées avant que le navigateur ne démarre. L'adresse où une page arrive
+  après un clic, une touche ou un script est vérifiée de la même façon : une adresse refusée est
+  quittée pour une page vide, et la réponse le dit.
+- **La page est un graphe.** Un snapshot projette la page dans un `RaggableTree` à elle — jamais
+  l'index de code de l'hôte — et chaque nœud porte un identifiant que les actions suivantes
+  prennent.
+
+## Le donner à un agent
+
+```yaml
+agents:
+  researcher:
+    role: "Researcher"
+    goal: "Trouver et résumer des sources sur le web"
+    tools: [browser]
+```
+
+Le navigateur du moteur doit être installé sur l'hôte (sur le PATH, dans son dossier habituel, ou à `ExecutablePath`). L'outil est
+enregistré par `AddOrkeonWebTools()`, que chaque hôte livré appelle ; un hôte bibliothèque a aussi
+besoin d'un `IFileSystemService` (la capture d'écran passe par lui) et, pour `search`, de
+`AddOrkeonEphemeralSearch()` avec un fournisseur d'embeddings configuré — sans lui, toutes les
+autres actions fonctionnent et `search` le dit.
+
+### Moteurs
+
+`Engine` choisit le navigateur, par hôte ; les actions, les réponses et les vérifications sont les mêmes sur tous.
+
+| `Engine` | Navigateur | Comment il est piloté |
+|---|---|---|
+| `firefox` (défaut) | Firefox | Son propre point d'accès WebDriver BiDi |
+| `chrome` | Google Chrome, ou Chromium | Le protocole DevTools, par le mapper `chromium-bidi` qu'Orkeon embarque |
+| `edge` | Microsoft Edge | De même |
+| `brave` | Brave | De même ; Shields reste tel que Brave le règle, et peut bloquer ce qu'une page charge |
+| `safari` | Safari, sous macOS | WebDriver classic, par le `safaridriver` que macOS livre |
+
+Chrome, Edge et Brave exécutent le mapper dans un onglet caché du navigateur lui-même : pas de `chromedriver`, rien à
+télécharger. Trois choses diffèrent de Firefox :
+
+- **Un profil nommé est un chemin de dossier**, jamais un nom de profil : le navigateur refuse le pilotage à distance
+  sur le dossier de données de l'utilisateur, et Orkeon refuse ce dossier, et tout dossier qu'il contient, avant le
+  démarrage. Créez un dossier pour l'agent.
+- **Le bac à sable reste actif.** Orkeon ne passe jamais `--no-sandbox` : dans un conteneur sans espaces de noms
+  utilisateur, ou en root, le navigateur ne démarre pas, et l'erreur porte ce qu'il a dit.
+- **Les boîtes qu'une page ouvre** (`alert`, `confirm`, `prompt`) sont fermées par le mapper lui-même, et rapportées de
+  la même façon.
+
+Safari a un point d'accès WebDriver BiDi, sans saisie, sans capture d'écran et sans événement : Orkeon traduit en
+WebDriver classic à la place. Ce qui diffère :
+
+- **À autoriser une fois** : `sudo safaridriver --enable` sur le Mac. Sans cela, la première action est refusée et le dit.
+- **Le profil jetable seulement** : un profil nommé est refusé. Safari garde la session d'automatisation à part des
+  fenêtres, des cookies et de l'historique de l'utilisateur.
+- **Pas de mode sans fenêtre** : `Headless: true` avec `safari` est refusé à la construction des sessions de navigateur
+  de l'hôte.
+- **Une session à la fois sur le Mac** : la première action d'une seconde exécution est refusée tant qu'une autre la
+  tient, sauf si les exécutions partagent le navigateur (`SharedInstance`) ou si l'hôte le garde (`Lifetime: host`).
+- **Pas d'événements** : les onglets, les boîtes et les navigations sont regardés après chaque commande. Une boîte est
+  fermée et rapportée avec son texte, toujours comme un `alert`.
+
+## Les actions
+
+Un outil, un argument `action`. La classe de permission d'un appel dépend de l'action : les
+actions de lecture passent en mode `plan`, `screenshot` est une édition, les autres sont des
+exécutions.
+
+| Action | Arguments | Classe | Ce qu'elle fait |
+|---|---|---|---|
+| `navigate` | `url` | Read | Ouvre une page http ou https et rend son plan |
+| `back` | — | Read | Une page en arrière dans l'historique de l'onglet |
+| `snapshot` | `max_nodes`, `offset` | Read | Le plan de la page affichée : sections, liens, contrôles |
+| `read` | `node_id`, `offset` | Read | Le texte de la page, ou d'un nœud et des nœuds qu'il contient |
+| `find` | `kind`, `name`, `node_id` | Read | Les nœuds d'une sorte (`section`, `link`, `control`), dont le nom contient un texte, sous un nœud |
+| `search` | `query`, `max_nodes` | Read | Les sections les plus proches en sens d'une question (RAG) |
+| `screenshot` | `save_to_path` | Edit | Écrit le PNG de la partie visible de la page à un chemin virtuel |
+| `click` | `node_id` | Execute | Clique un élément, amené à l'écran d'abord |
+| `type` | `node_id`, `text` | Execute | Remplace ce qu'un champ contient ; un saut de ligne presse Entrée |
+| `press` | `key` | Execute | Une touche ou un accord sur l'élément qui a le focus : `Enter`, `Tab`, `Control+a` |
+| `evaluate` | `script` | Execute | Une expression JavaScript exécutée dans la page ; une promesse est attendue |
+| `tabs` | — | Read | Les onglets de l'agent, dans l'ordre d'ouverture : id, `url`, `title`, `current` |
+| `new_tab` | `url` | Read | Ouvre un onglet, sur `url` quand elle est donnée, et le pilote désormais |
+| `switch_tab` | `tab` | Read | Pilote désormais l'onglet `tab` (`t1`, `t2`), affiché devant les autres |
+| `close_tab` | `tab` | Execute | Ferme un onglet, le courant par défaut ; le dernier onglet n'est jamais fermé (`close` est là pour ça) |
+| `close` | `profile` | Execute | Ferme le navigateur de l'exécution ; l'action suivante en démarre un nouveau. Hors de toute exécution, sous `Lifetime: host`, ferme le navigateur de l'hôte du profil `profile`, celui du profil par défaut sans (`profile` ne compte que là) |
+
+Chaque réponse porte l'action, `engine` (le moteur que l'hôte fait tourner), l'`url` et le `title` de la page affichée, `tab`, la poignée de
+l'onglet que les actions pilotent désormais, et `profile`, celui avec lequel le navigateur
+tourne. `dialogs` l'accompagne quand la page a ouvert des boîtes `alert`, `confirm` ou `prompt`
+pendant l'action : ce qu'elles disaient, fermées pour que la page ne se fige jamais (une question
+`beforeunload` est acceptée : partir était ce que l'agent demandait). Les listes qu'une action n'a
+pas produites - `nodes`, `hits`, `tabs` - sont absentes de sa réponse, jamais vides.
+
+Chaque action accepte un `profile` facultatif : il compte à la première action d'une exécution,
+quand le navigateur démarre ; un navigateur déjà ouvert garde son profil, et une action qui en
+nomme un autre est refusée jusqu'à `close`. La règle tient sous `Lifetime: host` : l'exécution
+est liée au profil de sa première action, et une action sans `profile` va à ce navigateur, quel
+que soit le profil par défaut de l'hôte.
+
+### Onglets
+
+Un agent pilote un onglet à la fois et ne voit que les siens : ceux qu'il a ouverts avec
+`new_tab`, et ceux qu'un lien d'une de ses pages a ouverts — l'agent suit un tel onglet, comme
+le feraient les yeux d'un utilisateur. Un onglet ouvert par l'utilisateur ou par un autre agent
+n'est jamais listé, lu ni fermé. `close_tab` sur l'onglet piloté ramène l'agent au précédent.
+
+### Identifiants de nœuds
+
+`snapshot`, `find` et `search` nomment les nœuds `p<lecture>#<index>` — `p2#7` est l'élément 7
+de la deuxième lecture d'une page. Les identifiants restent valides tant que la page ne change
+pas : saisir dans un champ puis cliquer un bouton ne demande pas de nouveau snapshot. Après une
+navigation, ou quand une action a changé la page, un ancien identifiant est refusé avec la
+raison, et l'agent rappelle `snapshot`. Une liste est coupée à `MaxNodes` (`Orkeon:Tools:Browser`,
+40 par défaut, 200 au plus) : `truncated` et `total_nodes` le disent, et `offset` lit la suite.
+
+### Un enchaînement typique
+
+```text
+navigate  url=https://example.org/docs           → plan : p1#0 section "Getting started" …
+search    query="comment configure-t-on une crew ?" → hits : p1#5 (0.82) "Configuration" …
+read      node_id=p1#5                           → le texte de cette section
+find      kind=control name=search               → p1#12 textbox "Search"
+type      node_id=p1#12 text="crew yaml\n"       → la page après Entrée, p2#…
+click     node_id=p2#3                           → la page que le lien a ouverte
+screenshot save_to_path=/output/docs.png         → saved_path
+```
+
+`search` envoie le texte de chaque section de la page au fournisseur d'embeddings comme source
+en ligne d'une collection éphémère nommée d'après la page (préfixe `browser`) : une page lue deux
+fois n'est embarquée qu'une fois. Chaque résultat nomme le nœud de la section, et l'agent lit ou
+clique ce que la recherche a trouvé : c'est le lien entre le sous-système RAG et le graphe de la
+page.
+
+## Ce qui ne passe jamais par l'outil
+
+- Un **secret** : le texte de `type` est un argument d'outil, que le modèle écrit et que la
+  transcription garde. Une page qui demande un mot de passe est une page que l'agent ne doit pas
+  remplir.
+- Une **page hors de la politique** : les sous-ressources qu'une page charge (images, scripts,
+  cadres) sont récupérées par le navigateur lui-même et ne sont pas vérifiées par la politique d'URL ;
+  seules les pages que l'onglet affiche le sont. Gardez le navigateur sur un réseau isolé quand la
+  politique compte.
+- Le **texte d'une page n'est pas filtré** contre l'injection de consignes : un agent le lit comme
+  il lit tout résultat d'outil. Le Guardian de l'hôte s'applique à ce que l'agent dit et fait
+  ensuite.
+
+## Profils
+
+Un navigateur démarre sur l'un de trois genres de profil, et le `profile` de la réponse dit lequel :
+
+- **`disposable`**, par défaut : un dossier neuf sous `ProfileRoot`, avec les préférences d'un
+  premier démarrage silencieux, supprimé à la fermeture du navigateur. Rien ne survit au navigateur.
+- **Un profil du Firefox installé sur l'hôte**, par le nom que `profiles.ini` lui donne
+  (`about:profiles` les montre) : utilisé sur place, avec ses cookies, ses sessions, ses extensions
+  et son historique, et jamais supprimé. L'agent voit ce que voit l'utilisateur du profil, connecté
+  là où il l'est : donnez à un agent un profil fait pour lui, jamais celui de l'opérateur. Un
+  profil qu'un autre Firefox tient ouvert est refusé : fermez ce Firefox, ou prenez un autre profil. Firefox seulement.
+- **Un dossier de profil**, par son chemin : la même chose, pour un profil que `profiles.ini` ne
+  liste pas, et pour le dossier de données d'un moteur Chromium.
+
+Qui choisit : `Orkeon:Tools:Browser:Profile` nomme le profil sur lequel un navigateur démarre
+quand l'agent n'en nomme aucun. Un agent peut nommer `disposable`, ce profil, ou l'un de
+`AllowedProfiles` — rien d'autre. `DeniedProfiles` l'emporte sur tous : un profil qui y figure ne
+démarre aucun navigateur, qui que ce soit qui le demande. Les noms sont comparés sans égard à la
+casse.
+
+```json
+"Orkeon": { "Tools": { "Browser": {
+  "Profile": "agent-work",
+  "AllowedProfiles": ["agent-reviews"],
+  "DeniedProfiles": ["default", "default-release"]
+} } }
+```
+
+## Un navigateur pour plusieurs exécutions
+
+Par défaut, chaque exécution d'agent a son propre navigateur. `SharedInstance: true` donne à
+l'hôte un navigateur par profil, partagé entre les exécutions qui l'utilisent : chacune y pilote
+ses propres onglets, ne voit qu'eux, et le navigateur se ferme quand la dernière exécution le
+quitte — sauf si `Lifetime: host` le garde ([ci-dessous](#un-navigateur-qui-survit-à-lexécution)) —
+ou quand l'hôte s'arrête. `close` ferme les onglets de l'exécution qui l'appelle, pas le
+navigateur que les autres partagent. C'est un profil nommé qui rend le partage utile : plusieurs
+agents sur une même session connectée, côte à côte.
+
+## Un navigateur qui survit à l'exécution
+
+`Lifetime: host` garde le navigateur une fois l'exécution terminée : sa fenêtre, ses onglets et
+son profil — le jetable compris — restent comme la dernière action les a laissés, et l'exécution
+suivante, ou une action hors de toute exécution, les retrouve. Un navigateur par profil : une
+action nomme avec `profile` le navigateur qu'elle vise, ou reçoit celui du profil par défaut de
+l'hôte. Le navigateur se ferme quand un agent appelle `close`, quand l'utilisateur ferme la
+fenêtre, ou quand l'hôte s'arrête ; le dossier jetable part avec lui. Une action qui échoue ou
+est annulée le laisse ouvert. Un navigateur que l'utilisateur a fermé, ou qui est mort, est
+remarqué à l'action suivante, qui en démarre un nouveau. La session aussi est celle de l'hôte :
+`tabs` liste les onglets que les exécutions précédentes ont laissés, et l'exécution suivante
+pilote celui où la dernière s'est arrêtée.
+
+Des exécutions qui se chevauchent sur un même profil mettent leurs actions en file sur son
+navigateur, une à la fois : le navigateur de l'hôte est partagé par toutes les exécutions de
+l'hôte, ce qui convient à une console à un seul opérateur — un agent qui reprend là où le
+précédent s'est arrêté, une page que l'utilisateur lit entre deux exécutions — pas à des agents
+qui naviguent côte à côte. Pour ceux-là, `SharedInstance` reste la réponse, et les deux se
+combinent : chaque exécution ne voit toujours que ses propres onglets, qui se ferment avec elle,
+et la fenêtre reste ouverte pour la suivante sur un onglet vierge ; si l'utilisateur ferme cet
+onglet, l'exécution suivante en ouvre un à elle.
+
+```json
+{ "Orkeon": { "Tools": { "Browser": { "Lifetime": "host" } } } }
+```
+
+Dans une exécution, `close` ferme le navigateur de l'exécution, comme toujours — ou, quand
+l'exécution n'en a pas encore utilisé, le navigateur de l'hôte du profil nommé, celui du profil
+par défaut sans ; hors de toute exécution — une console, un script — `close` ferme le navigateur
+de l'hôte de la même façon. Chaque fois qu'un profil jetable est créé, l'outil supprime d'abord,
+sous `ProfileRoot`, les dossiers jetables de plus de dix minutes qu'aucun navigateur ne tient : ce
+qu'un hôte tué avec ses navigateurs a laissé derrière lui.
+
+## Réglages
+
+`Orkeon:Tools:Browser` — voir la [référence de configuration](../reference/configuration.md#orkeontoolsbrowser) :
+`Engine`, `ExecutablePath`, `Headless`, `Profile`, `AllowedProfiles`, `DeniedProfiles`, `SharedInstance`,
+`Lifetime`, `ProfileRoot`, `StartupTimeoutSeconds`, `CommandTimeoutSeconds`, `MaxNodes`,
+`MaxTextLength`. `Engine` choisit le navigateur ([Moteurs](#moteurs)) ; un inconnu est
+refusé, et rien ne se replie sur Firefox. C'est l'hôte qui le choisit, jamais l'agent. Quand le navigateur est un snap, la racine de profil par défaut est
+`~/snap/<snap>/common/orkeon/profiles` : un snap ne lit pas le dossier temporaire du système.
+
+Firefox annonce son protocole distant tôt dans son démarrage et ne répond à la première commande,
+`session.new`, qu'une fois sa première fenêtre chargée : cette réponse est la seconde moitié du
+démarrage, et attend à nouveau `StartupTimeoutSeconds`, ou `CommandTimeoutSeconds` quand il est le plus grand. Un navigateur qui
+la laisse sans réponse aussi longtemps est tué, son profil supprimé s'il est jetable, et redémarré une
+fois, avec un avertissement dans le journal ; un second silence fait échouer le démarrage avec une
+erreur qui dit que Firefox a été redémarré. Un démarrage bloqué sur l'annonce ou sur la session échoue donc au
+plus après 2 tentatives × (`StartupTimeoutSeconds` + l'attente de la session) : environ 2 minutes avec les défauts de 30 s. La borne
+laisse de côté le reste du démarrage : la connexion à l'adresse annoncée n'a pas de délai propre, et les deux
+commandes qui suivent la session (`browsingContext.getTree`, `session.subscribe`) attendent chacune
+`CommandTimeoutSeconds`, sans redémarrage. Sur une
+machine chargée, augmentez `StartupTimeoutSeconds`.

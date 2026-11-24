@@ -5,7 +5,7 @@
 > **See also**: [ADR-019](../adr/ADR-019-tool-bridge.md) ·
 > [Configuration reference](../reference/configuration.md#orkeontoolsbridge) ·
 > [CLI reference](../reference/cli.md#orkeon-bridge) · [Security](../architecture/security.md#tool-bridge) ·
-> [The `firefox` tool](./firefox.md) · [Back to index](../INDEX.md)
+> [The `browser` tool](./browser.md) · [Back to index](../INDEX.md)
 
 An Orkeon that runs in a container cannot reach what lives on your machine: the browser you are signed in to, a
 desktop application, a device. The **tool bridge** lets some built-in tools of a run execute on your machine while
@@ -23,7 +23,7 @@ The settings file of the folder you start it from (`appsettings.json`, or `--set
 
 ```json
 { "Orkeon": { "Bridge": {
-  "Allow": ["firefox"]
+  "Allow": ["browser"]
 } } }
 ```
 
@@ -36,12 +36,12 @@ orkeon bridge serve
 
 ```text
 orkeon bridge serve: listening on http://127.0.0.1:7410/
-orkeon bridge serve: serving firefox
+orkeon bridge serve: serving browser
 orkeon bridge serve: Ctrl+C stops it.
 ```
 
 It listens on loopback, port 7410 (`http://localhost:7410/` under Windows), until Ctrl+C or SIGTERM. The tool runs
-with the bridge's own settings: `Orkeon:Tools:Firefox` and the URL policy are read on your machine, since the network
+with the bridge's own settings: `Orkeon:Tools:Browser` and the URL policy are read on your machine, since the network
 the browser reaches is your machine's.
 
 ## 2. The caller, in the container
@@ -49,7 +49,7 @@ the browser reaches is your machine's.
 ```json
 { "Orkeon": { "Tools": { "Bridge": {
   "Address": "http://127.0.0.1:7410/",
-  "Allow": ["firefox"]
+  "Allow": ["browser"]
 } } } }
 ```
 
@@ -57,8 +57,11 @@ The container receives the same token in `ORKEON_BRIDGE_TOKEN` (`docker run -e O
 caller asks the bridge which tools it serves and refuses to start when the bridge cannot be reached, refuses the
 token, does not serve a tool `Allow` names, or serves one whose contract differs (the two sides run different
 versions of it). Once started, a call the bridge cannot answer fails with the reason, and the next call tries again;
-a bridged tool never falls back to running in the container. A section `Orkeon:Tools:Firefox` left in the container
+a bridged tool never falls back to running in the container. A section `Orkeon:Tools:Browser` left in the container
 is reported once and not read.
+
+The bridge carries names: `browser` and its deprecated second name `firefox` are two entries, and a crew that still
+lists `firefox` needs it in `Allow` as well, or its browser runs in the container.
 
 `orkeon run`, `validate`, `--list-tools`, `orkeon mcp serve`, the `.ork.ts` scripts, `eval`, `orkeon-repl` and
 `orkeon-host` all connect the same way; `orkeon-host` exits 78 on a refusal. `orkeon bridge serve` itself never connects
@@ -89,7 +92,7 @@ travels in clear off the machine.
   `localhost:7410` (HTTP.sys matches that prefix on the `Host` header alone).
 
   ```json
-  { "Orkeon": { "Tools": { "Bridge": { "Address": "http://host.docker.internal:7410/", "HostHeader": "localhost:7410", "Allow": ["firefox"] } } } }
+  { "Orkeon": { "Tools": { "Bridge": { "Address": "http://host.docker.internal:7410/", "HostHeader": "localhost:7410", "Allow": ["browser"] } } } }
   ```
 
   The start logs a warning: over http the token and every call travel in clear over the Docker host's virtual
@@ -141,7 +144,7 @@ travels in clear off the machine.
   MCP tool stays bridged when its server on the caller changes its list (`list_changed`): the caller's adapter is
   never put back over the bridge's proxy, and the caller logs `mcp.tool.held` once.
 - **What `*` never selects.** `"Allow": ["*"]` selects, on either side, only Orkeon's own tools that are safe on
-  another machine (`firefox`, `web_search`, `github`...). It never selects:
+  another machine (`browser`, `web_search`, `github`...). It never selects:
   - a tool that acts on the workspace (files, shell, `code_interpreter`, `list_mounts`, code index): bridged, it would
     act on your machine while the workspace is in the container;
   - a tool of an MCP server, or a tool whose class declares no `[ToolContract]` (a plugin's, a script's): what it

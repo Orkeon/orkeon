@@ -149,7 +149,7 @@ une ligne qui nomme la clé — code de sortie `1` pour `orkeon` et `orkeon-repl
   mauvais endroit — sauf aux listes dont le lecteur découpe une valeur unique séparée par des
   virgules, la forme qu'écrit une variable d'environnement : `Llm:AvailableModels`,
   `Llm:ModelCapabilities:<id>:ReasoningEfforts`, `Llm:Profiles:<name>:Fallback`,
-  `Orkeon:Tools:Firefox:AllowedProfiles` et `:DeniedProfiles` (`Llm__AvailableModels=gpt-4o,claude`) ; dans une liste ou un dictionnaire, une entrée que
+  `Orkeon:Tools:Browser:AllowedProfiles` et `:DeniedProfiles` (`Llm__AvailableModels=gpt-4o,claude`) ; dans une liste ou un dictionnaire, une entrée que
   le binder écarterait faute de pouvoir la convertir (un profil de décision dont un `FailClosed`
   vaut `"peut-être"`, une étape dont un seuil n'est pas un nombre) ; une énumération écrite comme un
   nombre (`Orkeon:Guardian:Llm:FailMode: "1"`, que le binder prendrait pour `Open`), dans une valeur, une
@@ -166,9 +166,9 @@ une ligne qui nomme la clé — code de sortie `1` pour `orkeon` et `orkeon-repl
   `Phase` et les `Steps` d'une étape de décision nomment la clé et les noms acceptés
   (`Logging:LogLevel:Default is not a log level: write one of Trace, Debug, Information, Warning, Error, Critical, None.`) ;
   seules les `Phases` du gardien citent les noms qu'elles refusent, pour montrer la faute de frappe.
-  `Orkeon:Tools:Firefox:Lifetime` et `Orkeon:Scripting:Toolchain:TypeCheck` ne prennent qu'un nom partout où
+  `Orkeon:Tools:Browser:Lifetime` et `Orkeon:Scripting:Toolchain:TypeCheck` ne prennent qu'un nom partout où
   ils sont lus, hors d'un hôte que ce contrôle parcourt compris
-  (`Orkeon:Tools:Firefox:Lifetime is not a browser lifetime: write one of Run, Host.`). Hors d'un hôte que
+  (`Orkeon:Tools:Browser:Lifetime is not a browser lifetime: write one of Run, Host.`). Hors d'un hôte que
   `RunnerHost` construit, les énumérations d'une classe d'options qu'une bibliothèque lie
   (`Orkeon:Checkpointing:Store`, `Orkeon:HumanInput:Pause`, `MCP:Servers:<name>:Transport`,
   `Orkeon:RunHistory:Store`, `Orkeon:Rag:WebFallback:SuspiciousAction`) gardent la lecture du binder. Une valeur
@@ -231,13 +231,13 @@ qu'elle accepte quand leur liste est fermée, et son sens.
 | [RAG](#rag) | [`Orkeon:Rag`](#orkeonrag), [`Orkeon:Rag:Ingestion`](#orkeonragingestion), [`Orkeon:Rag:QueryRouting`](#orkeonragqueryrouting), [`Orkeon:Rag:Retrieval:Hybrid`](#orkeonragretrievalhybrid), [`Orkeon:Rag:WebFallback`](#orkeonragwebfallback) | 34 |
 | [Fichiers et bac à sable](#fichiers-et-bac-à-sable) | [`Orkeon:CodeSandbox`](#orkeoncodesandbox), [`Orkeon:CodeSandbox:Docker`](#orkeoncodesandboxdocker), [`Orkeon:FileSystem`](#orkeonfilesystem), [`Orkeon:Sandbox`](#orkeonsandbox), [`PathSecurity`](#pathsecurity) | 33 |
 | [Sécurité](#sécurité) | [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:Guardian`](#orkeonguardian), [`Orkeon:Security:PermissionGate`](#orkeonsecuritypermissiongate), [`Secrets`](#secrets), [`Security:Audit`](#securityaudit), [`Security:Prompt`](#securityprompt), [`Security:ToolResults`](#securitytoolresults), [`Security:Url`](#securityurl), [`Security:Vault`](#securityvault) | 40 |
-| [Outils](#outils) | [`BRAVE_API_KEY`](#brave_api_key), [`MCP`](#mcp), [`MCP:Server`](#mcpserver), [`Orkeon:Bridge`](#orkeonbridge), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Tools:Bridge`](#orkeontoolsbridge), [`Orkeon:Tools:Chat`](#orkeontoolschat), [`Orkeon:Tools:Drive`](#orkeontoolsdrive), [`Orkeon:Tools:Email`](#orkeontoolsemail), [`Orkeon:Tools:Firefox`](#orkeontoolsfirefox), [`Orkeon:Tools:GitHub`](#orkeontoolsgithub), [`Orkeon:Tools:ResultLimits`](#orkeontoolsresultlimits), [`Orkeon:Tools:Shell`](#orkeontoolsshell), [`Plugins`](#plugins), [`RaggableTree`](#raggabletree) | 148 |
+| [Outils](#outils) | [`BRAVE_API_KEY`](#brave_api_key), [`MCP`](#mcp), [`MCP:Server`](#mcpserver), [`Orkeon:Bridge`](#orkeonbridge), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Tools:Bridge`](#orkeontoolsbridge), [`Orkeon:Tools:Browser`](#orkeontoolsbrowser), [`Orkeon:Tools:Chat`](#orkeontoolschat), [`Orkeon:Tools:Drive`](#orkeontoolsdrive), [`Orkeon:Tools:Email`](#orkeontoolsemail), [`Orkeon:Tools:Firefox`](#orkeontoolsfirefox), [`Orkeon:Tools:GitHub`](#orkeontoolsgithub), [`Orkeon:Tools:ResultLimits`](#orkeontoolsresultlimits), [`Orkeon:Tools:Shell`](#orkeontoolsshell), [`Plugins`](#plugins), [`RaggableTree`](#raggabletree) | 162 |
 | [Orchestration et persistance](#orchestration-et-persistance) | [`Orkeon:Checkpointing`](#orkeoncheckpointing), [`Orkeon:Compaction`](#orkeoncompaction), [`Orkeon:Compaction:Prune`](#orkeoncompactionprune), [`Orkeon:Consensus`](#orkeonconsensus), [`Orkeon:CrewFactory`](#orkeoncrewfactory), [`Orkeon:ExecutionState:Persistence`](#orkeonexecutionstatepersistence), [`Orkeon:HumanInput`](#orkeonhumaninput), [`Orkeon:RunHistory`](#orkeonrunhistory), [`Orkeon:Skills`](#orkeonskills) | 39 |
 | [Scripts et console](#scripts-et-console) | [`Orkeon:Cli:ConsoleStreaming`](#orkeoncliconsolestreaming), [`Orkeon:Cli:Memory`](#orkeonclimemory), [`Orkeon:Cli:ScriptCommands`](#orkeoncliscriptcommands), [`Orkeon:Cli:ScriptHost`](#orkeoncliscripthost), [`Orkeon:Cli:Session`](#orkeonclisession), [`Orkeon:Cli:Tui`](#orkeonclitui), [`Orkeon:Scripting:AgentInstances`](#orkeonscriptingagentinstances), [`Orkeon:Scripting:AgentMemory`](#orkeonscriptingagentmemory), [`Orkeon:Scripting:Limits`](#orkeonscriptinglimits), [`Orkeon:Scripting:Toolchain`](#orkeonscriptingtoolchain) | 35 |
 | [Hôte de service et A2A](#hôte-de-service-et-a2a) | [`A2A`](#a2a), [`A2A:Security`](#a2asecurity), [`A2A:Security:AzureAD`](#a2asecurityazuread), [`A2A:Security:Oidc`](#a2asecurityoidc), [`Orkeon:Host`](#orkeonhost), [`Orkeon:Host:Discord`](#orkeonhostdiscord), [`Orkeon:Host:Teams`](#orkeonhostteams) | 70 |
 | [Observabilité](#observabilité) | [`Logging`](#logging), [`Orkeon:Monitoring`](#orkeonmonitoring), [`Telemetry`](#telemetry) | 8 |
 
-90 sections, 602 clés. Lues par aucun binaire livré, seulement par un hôte écrit en C# (6) : [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting), [`Orkeon:VectorSearch`](#orkeonvectorsearch), [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Monitoring`](#orkeonmonitoring).
+91 sections, 616 clés. Lues par aucun binaire livré, seulement par un hôte écrit en C# (6) : [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting), [`Orkeon:VectorSearch`](#orkeonvectorsearch), [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Monitoring`](#orkeonmonitoring).
 <!-- /settings-index -->
 
 Lire un tableau :
@@ -1770,6 +1770,36 @@ Parcours par fournisseur et table clé par clé :
 | `Screening:WithholdRejected` | booléen | `false` |  | À true, le corps d'un message que le détecteur d'injection de prompt rejette est retenu. Désactivé par défaut : le détecteur a été réglé sur des pages web, et les lettres d'information le déclenchent. |
 <!-- /settings -->
 
+### `Orkeon:Tools:Browser`
+
+Lue une fois par `AddOrkeonWebTools` quand l'outil `browser` est enregistré. L'outil pilote un
+Firefox à lui par WebDriver BiDi : le navigateur démarre à la première action d'une exécution
+d'agent, avec un dossier de profil qu'aucun autre navigateur n'utilise, garde sa page d'une action à
+la suivante et se ferme avec l'exécution — le profil est alors supprimé. Firefox lui-même n'est pas
+livré : c'est celui qui est installé sur la machine. La fenêtre est visible sauf si `Headless` vaut
+`true` ou si la machine n'a pas d'affichage. Ce que l'outil ne fait pas est listé dans
+[Limitations connues](limitations.md).
+
+<!-- settings:Orkeon:Tools:Browser -->
+**Lue par** : `orkeon`, `orkeon-host`, `orkeon-repl`.
+
+| Clé | Type | Défaut | Valeurs | Sens |
+|---|---|---|---|---|
+| `AllowedProfiles` | liste de chaînes | `[]` |  | Profils qu'un agent peut nommer avec l'argument `profile`, en plus de `disposable` et de `Profile`. Vide : un agent n'en nomme aucun autre. Un nom présent dans `DeniedProfiles` reste refusé. |
+| `CommandTimeoutSeconds` | entier | `30` |  | Secondes laissées à une commande du navigateur (un chargement de page, un script, un clic) pour répondre. |
+| `DeniedProfiles` | liste de chaînes | `[]` |  | Profils avec lesquels aucun navigateur ne démarre jamais, qu'un agent en nomme un ou que `Profile` le fasse : les profils personnels de l'opérateur, par exemple. |
+| `Engine` | chaîne | `"firefox"` |  | Navigateur que l'hôte pilote : `firefox` (par défaut), `chrome`, `edge`, `brave`, ou `safari` sous macOS. Casse ignorée ; toute autre valeur est refusée. |
+| `ExecutablePath` | chaîne | — |  | Chemin du programme du navigateur, ou son nom sur le PATH. Non renseigné : les noms habituels du moteur sur le PATH, puis le dossier d'installation habituel de la plateforme. |
+| `Headless` | booléen | `false` |  | `true` démarre le navigateur sans fenêtre. Par défaut la fenêtre est visible ; sous Linux sans `DISPLAY` ni `WAYLAND_DISPLAY`, le navigateur démarre quand même sans fenêtre, et un avertissement le dit. Refusé avec `safari`, qui n'a pas ce mode. |
+| `Lifetime` | énumération | `"Run"` | `Run`, `Host` | Durée de vie d'un navigateur : `Run` (par défaut) le ferme avec l'exécution d'agent qui l'a démarré ; `Host` le garde ouvert, avec ses onglets et son profil, d'une exécution à la suivante, un navigateur par profil, jusqu'à `close`, la fermeture de la fenêtre par l'utilisateur ou l'arrêt de l'hôte. Casse ignorée. |
+| `MaxNodes` | entier | `40` |  | Nombre maximal de nœuds que liste une réponse de `snapshot` ou de `find` ; le reste se lit avec `offset`. |
+| `MaxTextLength` | entier | `3000` |  | Nombre maximal de caractères de texte de page que porte une réponse de `read`. |
+| `Profile` | chaîne | — |  | Profil avec lequel un navigateur démarre quand l'agent n'en nomme aucun : `disposable` (par défaut, un dossier neuf supprimé à la fermeture du navigateur), le nom d'un profil du Firefox installé sur l'hôte (`profiles.ini`), ou le chemin d'un dossier de profil — la seule forme qu'un moteur Chromium prend, et jamais le dossier de données de l'utilisateur. Un profil nommé est utilisé sur place, avec ses cookies et ses sessions, et jamais supprimé ; un profil qu'un autre navigateur tient ouvert est refusé. |
+| `ProfileRoot` | chaîne | — |  | Dossier sous lequel chaque navigateur reçoit son propre dossier de profil, supprimé à la fermeture du navigateur. Non renseigné : `~/snap/<snap>/common/orkeon/profiles` quand le navigateur est un snap (un snap ne lit pas le dossier temporaire du système), sinon `orkeon-<moteur>` sous le dossier temporaire du système. |
+| `SharedInstance` | booléen | `false` |  | `true` partage un navigateur par profil entre les exécutions d'agents de l'hôte : chaque exécution y pilote ses propres onglets, et le navigateur se ferme quand la dernière exécution le quitte, sauf si `Lifetime` vaut `Host`. Par défaut, chaque exécution a son propre navigateur. |
+| `StartupTimeoutSeconds` | entier | `30` |  | Secondes laissées au navigateur pour ouvrir son protocole distant ; sa session, à laquelle Firefox répond une fois sa première fenêtre chargée, attend ensuite la plus grande de cette valeur et de `CommandTimeoutSeconds`. |
+<!-- /settings -->
+
 ### `Orkeon:Tools:Chat`
 
 Lié par `AddOrkeonChatTools(configuration)` et validé paresseusement, comme la section drive : un
@@ -1886,13 +1916,8 @@ les journaux de l'outil.
 
 ### `Orkeon:Tools:Firefox`
 
-Lue une fois par `AddOrkeonWebTools` quand l'outil `firefox` est enregistré. L'outil pilote un
-Firefox à lui par WebDriver BiDi : le navigateur démarre à la première action d'une exécution
-d'agent, avec un dossier de profil qu'aucun autre navigateur n'utilise, garde sa page d'une action à
-la suivante et se ferme avec l'exécution — le profil est alors supprimé. Firefox lui-même n'est pas
-livré : c'est celui qui est installé sur la machine. La fenêtre est visible sauf si `Headless` vaut
-`true` ou si la machine n'a pas d'affichage. Ce que l'outil ne fait pas est listé dans
-[Limitations connues](limitations.md).
+L'ancien nom de [`Orkeon:Tools:Browser`](#orkeontoolsbrowser), déprécié et retiré à la prochaine majeure : lue, avec le
+moteur Firefox seulement (`Engine` n'y est pas lue), quand `Orkeon:Tools:Browser` est absente. Les deux présentes, c'est refusé.
 
 <!-- settings:Orkeon:Tools:Firefox -->
 **Lue par** : `orkeon`, `orkeon-host`, `orkeon-repl`.
@@ -1902,15 +1927,16 @@ livré : c'est celui qui est installé sur la machine. La fenêtre est visible s
 | `AllowedProfiles` | liste de chaînes | `[]` |  | Profils qu'un agent peut nommer avec l'argument `profile`, en plus de `disposable` et de `Profile`. Vide : un agent n'en nomme aucun autre. Un nom présent dans `DeniedProfiles` reste refusé. |
 | `CommandTimeoutSeconds` | entier | `30` |  | Secondes laissées à une commande du navigateur (un chargement de page, un script, un clic) pour répondre. |
 | `DeniedProfiles` | liste de chaînes | `[]` |  | Profils avec lesquels aucun navigateur ne démarre jamais, qu'un agent en nomme un ou que `Profile` le fasse : les profils personnels de l'opérateur, par exemple. |
-| `ExecutablePath` | chaîne | — |  | Chemin du programme Firefox, ou son nom sur le PATH. Non renseigné : `firefox` sur le PATH, puis le dossier d'installation habituel de la plateforme. |
-| `Headless` | booléen | `false` |  | `true` démarre Firefox sans fenêtre. Par défaut la fenêtre est visible ; sous Linux sans `DISPLAY` ni `WAYLAND_DISPLAY`, le navigateur démarre quand même sans fenêtre, et un avertissement le dit. |
+| `Engine` | chaîne | `"firefox"` |  | Navigateur que l'hôte pilote : `firefox` (par défaut), `chrome`, `edge`, `brave`, ou `safari` sous macOS. Casse ignorée ; toute autre valeur est refusée. |
+| `ExecutablePath` | chaîne | — |  | Chemin du programme du navigateur, ou son nom sur le PATH. Non renseigné : les noms habituels du moteur sur le PATH, puis le dossier d'installation habituel de la plateforme. |
+| `Headless` | booléen | `false` |  | `true` démarre le navigateur sans fenêtre. Par défaut la fenêtre est visible ; sous Linux sans `DISPLAY` ni `WAYLAND_DISPLAY`, le navigateur démarre quand même sans fenêtre, et un avertissement le dit. Refusé avec `safari`, qui n'a pas ce mode. |
 | `Lifetime` | énumération | `"Run"` | `Run`, `Host` | Durée de vie d'un navigateur : `Run` (par défaut) le ferme avec l'exécution d'agent qui l'a démarré ; `Host` le garde ouvert, avec ses onglets et son profil, d'une exécution à la suivante, un navigateur par profil, jusqu'à `close`, la fermeture de la fenêtre par l'utilisateur ou l'arrêt de l'hôte. Casse ignorée. |
 | `MaxNodes` | entier | `40` |  | Nombre maximal de nœuds que liste une réponse de `snapshot` ou de `find` ; le reste se lit avec `offset`. |
 | `MaxTextLength` | entier | `3000` |  | Nombre maximal de caractères de texte de page que porte une réponse de `read`. |
-| `Profile` | chaîne | — |  | Profil avec lequel un navigateur démarre quand l'agent n'en nomme aucun : `disposable` (par défaut, un dossier neuf supprimé à la fermeture du navigateur), le nom d'un profil du Firefox installé sur l'hôte (`profiles.ini`), ou le chemin d'un dossier de profil. Un profil nommé est utilisé sur place, avec ses cookies et ses sessions, et jamais supprimé ; un profil qu'un autre Firefox tient ouvert est refusé. |
-| `ProfileRoot` | chaîne | — |  | Dossier sous lequel chaque navigateur reçoit son propre dossier de profil, supprimé à la fermeture du navigateur. Non renseigné : `~/snap/firefox/common/orkeon/profiles` quand Firefox est un snap (un snap ne lit pas le dossier temporaire du système), sinon `orkeon-firefox` sous le dossier temporaire du système. |
+| `Profile` | chaîne | — |  | Profil avec lequel un navigateur démarre quand l'agent n'en nomme aucun : `disposable` (par défaut, un dossier neuf supprimé à la fermeture du navigateur), le nom d'un profil du Firefox installé sur l'hôte (`profiles.ini`), ou le chemin d'un dossier de profil — la seule forme qu'un moteur Chromium prend, et jamais le dossier de données de l'utilisateur. Un profil nommé est utilisé sur place, avec ses cookies et ses sessions, et jamais supprimé ; un profil qu'un autre navigateur tient ouvert est refusé. |
+| `ProfileRoot` | chaîne | — |  | Dossier sous lequel chaque navigateur reçoit son propre dossier de profil, supprimé à la fermeture du navigateur. Non renseigné : `~/snap/<snap>/common/orkeon/profiles` quand le navigateur est un snap (un snap ne lit pas le dossier temporaire du système), sinon `orkeon-<moteur>` sous le dossier temporaire du système. |
 | `SharedInstance` | booléen | `false` |  | `true` partage un navigateur par profil entre les exécutions d'agents de l'hôte : chaque exécution y pilote ses propres onglets, et le navigateur se ferme quand la dernière exécution le quitte, sauf si `Lifetime` vaut `Host`. Par défaut, chaque exécution a son propre navigateur. |
-| `StartupTimeoutSeconds` | entier | `30` |  | Secondes laissées à Firefox pour ouvrir son protocole distant ; sa session, à laquelle il répond une fois sa première fenêtre chargée, attend ensuite la plus grande de cette valeur et de `CommandTimeoutSeconds`. |
+| `StartupTimeoutSeconds` | entier | `30` |  | Secondes laissées au navigateur pour ouvrir son protocole distant ; sa session, à laquelle Firefox répond une fois sa première fenêtre chargée, attend ensuite la plus grande de cette valeur et de `CommandTimeoutSeconds`. |
 <!-- /settings -->
 
 ### `Orkeon:Tools:Bridge`

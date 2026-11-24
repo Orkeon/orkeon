@@ -1,0 +1,301 @@
+using Orkeon.Tools.Web.Firefox;
+using Microsoft.Extensions.Logging;
+using Orkeon.Domain.Execution;
+using Orkeon.Domain.FileSystem;
+using Orkeon.Tools.Abstractions.Base;
+
+namespace Orkeon.Tools.Web.Browser;
+
+/// <summary>
+/// Gives each action its browser session. By default (<see cref="FirefoxBrowserLifetime.Run"/>) the
+/// session lives in the run's <see cref="AgentRunScope"/>: the browser starts at the run's first action, the
+/// next ones find the page where the last left it, and the session closes with the run. Agents running
+/// side by side have their own scopes, hence their own sessions: a browser each by default, tabs of their
+/// own in one shared browser per profile with <c>SharedInstance</c>. With
+/// <see cref="FirefoxBrowserLifetime.Host"/> the session is the host's: one per profile, kept with its
+/// tabs from one run to the next until <c>close</c>, the user closes the window, or the host stops.
+/// </summary>
+/// <remarks>
+/// <list type="bullet">
+/// <item>Outside any run, an action gets a session of its own, closed right after it - or, under the
+/// host's lifetime, the host's session of its profile.</item>
+/// <item>A run's browser starts on the profile its first action names, or the host's default; a later
+/// action that names another profile is refused until <c>close</c>. Under the host's lifetime, "the run's
+/// browser" is the host's browser of that profile, and an action without a profile goes there.</item>
+/// <item>An action that fails for a reason the agent can act on (<see cref="IExpectedToolError"/>) keeps
+/// the browser; any other failure, a cancellation, or a browser that has gone closes it, and the next
+/// action starts a new one. A browser the host keeps stays through a failure or a cancellation, and is
+/// replaced only once it has gone.</item>
+/// </list>
+/// </remarks>
+internal sealed class BrowserSessionManager : IDisposable
+{
+    private static readonly SlotKey s_key = new();
+    private static readonly BindingKey s_bindingKey = new();
+
+    private readonly IBrowserEngine _engine;
+    private readonly FirefoxToolOptions _options;
+    private readonly IFileSystemService _fileSystem;
+    private readonly BrowserSessionTimings? _timings;
+    private readonly ILogger? _logger;
+    private readonly BrowserPool? _pool;
+    private readonly Dictionary<string, BrowserSessionSlot>? _host;
+    private readonly Lock _sync = new();
+    private bool _disposed;
+
+    public BrowserSessionManager(
+        IBrowserEngine engine, FirefoxToolOptions options, IFileSystemService fileSystem,
+        ILogger? logger = null, BrowserSessionTimings? timings = null)
+    {
+        ArgumentNullException.ThrowIfNull(engine);
+        ArgumentNullException.ThrowIfNull(options);
+        ArgumentNullException.ThrowIfNull(fileSystem);
+        _engine = engine;
+        _options = options;
+        _fileSystem = fileSystem;
+        _logger = logger;
+        _timings = timings;
+        var hostLifetime = options.Lifetime == FirefoxBrowserLifetime.Host;
+        if (options.SharedInstance)
+            _pool = new BrowserPool(engine, options, fileSystem, logger, timings, keepIdle: hostLifetime);
+        else if (hostLifetime)
+            _host = new Dictionary<string, BrowserSessionSlot>(StringComparer.OrdinalIgnoreCase);
+    }
+
+    /// <summary>The engine every browser of the manager is started with.</summary>
+    public IBrowserEngine Engine => _engine;
+
+    /// <summary>The shared browsers now running; <c>null</c> when each run, or the host, has its own.</summary>
+    public BrowserPool? Pool => _pool;
+
+    /// <summary>How many browsers the host keeps between runs (<c>Lifetime: host</c> without <c>SharedInstance</c>).</summary>
+    public int HostBrowserCount
+    {
+        get
+        {
+            lock (_sync)
+                return _host?.Values.Count(slot => slot.IsOpen) ?? 0;
+        }
+    }
+
+    /// <summary>
+    /// Runs <paramref name="operation"/> on the session the action goes to, started first when needed on
+    /// <paramref name="profile"/>. When <paramref name="named"/>, the agent asked for that profile: a
+    /// session already open on another one refuses.
+    /// </summary>
+    /// <exception cref="FirefoxException">The browser is not installed, did not start, or the profile is missing, held, or not the run's.</exception>
+    public async Task<T> UseAsync<T>(
+        BrowserProfileChoice profile, bool named, Func<BrowserSession, CancellationToken, Task<T>> operation, CancellationToken cancellationToken)
+        where T : class
+    {
+        ArgumentNullException.ThrowIfNull(profile);
+        ArgumentNullException.ThrowIfNull(operation);
+
+        if (_host is not null)
+        {
+            // The host's session of the profile, the run bound to it from its first action on.
+            var binding = BindingOf();
+            var target = binding?.Bind(profile, named, IsOpen) ?? profile;
+            try
+            {
+                var kept = await HostSlotOf(target).UseAsync(target, named: false, OpenAsync, operation, cancellationToken).ConfigureAwait(false);
+                return kept ?? throw new ObjectDisposedException(nameof(BrowserSessionManager));
+            }
+            finally
+            {
+                binding?.Release();
+            }
+        }
+
+        var slot = SlotOf();
+        if (slot is not null)
+        {
+            var result = await slot.UseAsync(profile, named, OpenAsync, operation, cancellationToken).ConfigureAwait(false);
+            if (result is not null)
+                return result;
+        }
+
+        // No run, or a run that has ended: a session for this action alone.
+        var session = await OpenAsync(profile, cancellationToken).ConfigureAwait(false);
+        await using (session.ConfigureAwait(false))
+            return await operation(session, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Closes the browser the action addresses: the current run's, or, outside any run, the host's
+    /// browser of <paramref name="profile"/>; <c>false</c> when there is none. Under the host's lifetime
+    /// a run that has not used the browser yet addresses the host's browser of <paramref name="profile"/>.
+    /// </summary>
+    /// <exception cref="FirefoxException">Under the host's lifetime, <paramref name="named"/> names a profile other than the run's while the run's browser is open.</exception>
+    public async Task<bool> CloseAsync(BrowserProfileChoice profile, bool named, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(profile);
+
+        if (_host is not null)
+        {
+            var target = BindingOf()?.Unbind(profile, named, IsOpen) ?? profile;
+            BrowserSessionSlot? kept;
+            lock (_sync)
+                _host.TryGetValue(target.Name, out kept);
+            return kept is not null && await kept.CloseAsync(cancellationToken).ConfigureAwait(false);
+        }
+
+        var slot = SlotOf();
+        if (slot is not null)
+            return await slot.CloseAsync(cancellationToken).ConfigureAwait(false);
+
+        // Outside any run, a browser the host keeps for the next run is closed on demand.
+        return _pool is { KeepsIdle: true } && await _pool.CloseAsync(profile).ConfigureAwait(false);
+    }
+
+    /// <summary>Closes the browsers of the host - shared, or kept between runs; a run's own browser closes with the run.</summary>
+    public void Dispose()
+    {
+        List<BrowserSessionSlot> kept = [];
+        lock (_sync)
+        {
+            if (_disposed)
+                return;
+            _disposed = true;
+            if (_host is not null)
+            {
+                kept = [.. _host.Values];
+                _host.Clear();
+            }
+        }
+
+        foreach (var slot in kept)
+            Wait(slot.DisposeAsync());
+        if (_pool is not null)
+            Wait(_pool.DisposeAsync());
+    }
+
+    private static void Wait(ValueTask closing)
+    {
+        if (!closing.IsCompleted)
+            closing.AsTask().GetAwaiter().GetResult();
+    }
+
+    private Task<BrowserSession> OpenAsync(BrowserProfileChoice profile, CancellationToken cancellationToken) =>
+        _pool is null
+            ? BrowserSession.OpenAsync(_engine, profile, _options, _fileSystem, _timings, _logger, cancellationToken)
+            : _pool.AttachAsync(profile, cancellationToken);
+
+    private BrowserSessionSlot HostSlotOf(BrowserProfileChoice profile)
+    {
+        lock (_sync)
+        {
+            ObjectDisposedException.ThrowIf(_disposed, this);
+            if (!_host!.TryGetValue(profile.Name, out var slot))
+            {
+                slot = new BrowserSessionSlot(keepOnFailure: true);
+                _host[profile.Name] = slot;
+            }
+
+            return slot;
+        }
+    }
+
+    private bool IsOpen(BrowserProfileChoice profile)
+    {
+        lock (_sync)
+            return _host!.TryGetValue(profile.Name, out var slot) && slot.IsOpen;
+    }
+
+    private static BrowserSessionSlot? SlotOf() => ResourceOf(s_key, static () => new BrowserSessionSlot());
+
+    private static FirefoxRunBinding? BindingOf() => ResourceOf(s_bindingKey, static () => new FirefoxRunBinding());
+
+    private static T? ResourceOf<T>(object key, Func<T> factory) where T : class, IAsyncDisposable
+    {
+        var scope = AgentRunScope.Current;
+        if (scope is null)
+            return null;
+
+        try
+        {
+            // The factory runs under the scope's lock: it only allocates. Firefox starts at the first use.
+            return scope.GetOrAdd(key, factory);
+        }
+        catch (ObjectDisposedException)
+        {
+            // The run ended (a scripted agent's scope ends without waiting for its last calls).
+            return null;
+        }
+    }
+
+    /// <summary>The key of a run's browser: private, so no other resource can hold it. One browser per run.</summary>
+    private sealed record SlotKey;
+
+    /// <summary>The key of the profile a run is bound to under the host's lifetime.</summary>
+    private sealed record BindingKey;
+
+    /// <summary>
+    /// The profile a run is bound to under the host's lifetime: the one its first action named, or the
+    /// default; released by <c>close</c>, or when the host's browser of that profile has gone and no
+    /// action of the run is on its way to it.
+    /// </summary>
+    private sealed class FirefoxRunBinding : IAsyncDisposable
+    {
+        private readonly Lock _sync = new();
+        private BrowserProfileChoice? _profile;
+        private int _inFlight;
+
+        /// <summary>
+        /// The profile an action goes to: the run's, or <paramref name="profile"/> when the run has none
+        /// yet, which binds the run to it. When <paramref name="named"/> names another profile than the
+        /// run's, the action is refused while the run's browser is open, or while another action of the
+        /// run is on its way to it (two actions at once must not open two browsers). Every call is paired
+        /// with <see cref="Release"/>.
+        /// </summary>
+        /// <exception cref="FirefoxException">Another profile was named while the run's browser is open.</exception>
+        public BrowserProfileChoice Bind(BrowserProfileChoice profile, bool named, Func<BrowserProfileChoice, bool> isOpen)
+        {
+            lock (_sync)
+            {
+                if (_profile is { } bound)
+                {
+                    if (!named || bound.Same(profile))
+                    {
+                        _inFlight++;
+                        return bound;
+                    }
+
+                    if (_inFlight > 0 || isOpen(bound))
+                        throw Refusal(bound, profile);
+                }
+
+                _profile = profile;
+                _inFlight++;
+                return profile;
+            }
+        }
+
+        /// <summary>The action <see cref="Bind"/> admitted is over.</summary>
+        public void Release()
+        {
+            lock (_sync)
+                _inFlight--;
+        }
+
+        /// <summary>The profile <c>close</c> addresses - the run's, else <paramref name="profile"/> - the run unbound from it.</summary>
+        /// <exception cref="FirefoxException">Another profile was named while the run's browser is open.</exception>
+        public BrowserProfileChoice Unbind(BrowserProfileChoice profile, bool named, Func<BrowserProfileChoice, bool> isOpen)
+        {
+            lock (_sync)
+            {
+                var bound = _profile;
+                if (bound is not null && named && !bound.Same(profile) && (_inFlight > 0 || isOpen(bound)))
+                    throw Refusal(bound, profile);
+
+                _profile = null;
+                return bound is not null && (!named || bound.Same(profile)) ? bound : profile;
+            }
+        }
+
+        public ValueTask DisposeAsync() => ValueTask.CompletedTask;
+
+        private static FirefoxException Refusal(BrowserProfileChoice bound, BrowserProfileChoice asked) =>
+            new($"The browser of this run runs with the profile '{bound}': close it before opening one with '{asked}'.");
+    }
+}

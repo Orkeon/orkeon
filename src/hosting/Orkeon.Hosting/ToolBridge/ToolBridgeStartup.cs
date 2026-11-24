@@ -258,7 +258,7 @@ internal sealed partial class ToolBridgeLink : IDisposable
 
     /// <summary>
     /// The section of this Orkeon's settings that configures <paramref name="tool"/>, by the convention of the built-in
-    /// tools (<c>Orkeon:Tools:Firefox</c> for <c>firefox</c>, <c>Orkeon:Tools:Shell</c> for <c>shell_command</c>): the
+    /// tools (<c>Orkeon:Tools:Browser</c> for <c>browser</c>, <c>Orkeon:Tools:Shell</c> for <c>shell_command</c>): the
     /// tool's name in Pascal case, or its first word.
     /// </summary>
     /// <param name="configuration">The settings.</param>

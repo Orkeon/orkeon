@@ -51,15 +51,15 @@ jobs:
         # trees below is used by this job (dotnet lives in /usr/share/dotnet, and
         # the runner's actions ship their own Node in externals/). The runner's
         # Firefox (/usr/lib/firefox, behind the /usr/bin/firefox link) stays: the
-        # `firefox` tool's integration suite drives it (#294 - the 2026-11-07 run
-        # removed it and the seven Firefox tests failed on a dangling link).
+        # `browser` tool's integration suite drives it (#294 - the 2026-11-07 run
+        # removed it and the seven Firefox tests failed on a dangling link). Its Chrome
+        # (/opt/google/chrome) stays for the same reason (#441).
         run: |
           echo "Before:"; df -h / | tail -1
           sudo rm -rf /usr/local/lib/android /opt/ghc /usr/local/.ghcup /usr/share/swift \
             /opt/hostedtoolcache /usr/lib/jvm /usr/lib/google-cloud-sdk /opt/az /usr/share/az_* \
             /usr/share/miniconda /usr/local/julia* /usr/local/lib/node_modules \
-            /usr/local/share/powershell /opt/microsoft/powershell /usr/local/share/chromium \
-            /opt/google/chrome
+            /usr/local/share/powershell /opt/microsoft/powershell /usr/local/share/chromium
           sudo docker image prune --all --force >/dev/null 2>&1 || true
           sudo apt-get clean >/dev/null 2>&1 || true
           echo "After:"; df -h / | tail -1
@@ -103,15 +103,16 @@ jobs:
           bwrap --unshare-all --die-with-parent --new-session --ro-bind / / \
             --proc /proc --dev /dev --tmpfs /tmp -- true
           echo "bubblewrap confines a process on this runner."
-      # The Firefox suite (tests/tools/Orkeon.Tools.Web.Tests/Firefox/FirefoxToolIntegrationTests.cs)
-      # SKIPS when the launcher finds no Firefox, so a runner image that drops the browser
+      # The Firefox and Chrome suites (tests/tools/Orkeon.Tools.Web.Tests/Browser/BrowserToolIntegrationTests.cs)
+      # SKIP when the engine finds no browser, so a runner image that drops the browser
       # would make a green night that never drove it. The probe runs the binary itself:
       # a link left without its target (what the disk cleanup above used to do) fails here,
       # not seven tests further down.
-      - name: Check that Firefox starts
+      - name: Check that Firefox and Chrome start
         run: |
           firefox --version
-          echo "Firefox starts on this runner: the firefox tool's integration suite will run."
+          google-chrome --version
+          echo "Both start on this runner: the browser tool's integration suites will run."
       # The Slow filter below also selects TemplatesPackTests (FWK-26, tests/e2e): it packs the
       # lineup and the Orkeon.Templates package, installs the latter into a throw-away `dotnet new`
       # hive, and builds each generated project on the local feed.
@@ -313,3 +314,52 @@ jobs:
         run: >-
           dotnet test tests/tools/Orkeon.Tools.Code.Tests/Orkeon.Tools.Code.Tests.csproj -c Release --no-build
           --filter "Category=Integration&FullyQualifiedName~Orkeon.Tools.Code.Tests.Sessions.Windows"
+
+  # The browser tool on the engines the Linux runner cannot prove (ADR-022, D9): Edge on Windows,
+  # Safari on macOS. Their integration tests skip where the browser is missing, so a floor on the
+  # number of tests that succeeded keeps a green night from meaning that no browser was started.
+  # These jobs do not latch the tracking issue either.
+  browser:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: windows-latest, suite: EdgeToolIntegrationTests, min-succeeded: '7', safaridriver: '' }
+          # Safari has no named profile: the two tests that need one skip.
+          - { os: macos-latest, suite: SafariToolIntegrationTests, min-succeeded: '5', safaridriver: /usr/bin/safaridriver }
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
+        with: { global-json-file: global.json }
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            packages
+            ~/.nuget/packages
+          key: nuget-${{ runner.os }}-${{ hashFiles('**/*.csproj', '**/Directory.Packages.props', '**/packages.lock.json') }}
+          restore-keys: nuget-${{ runner.os }}-
+      - run: dotnet restore tests/tools/Orkeon.Tools.Web.Tests/Orkeon.Tools.Web.Tests.csproj
+      - run: dotnet build tests/tools/Orkeon.Tools.Web.Tests/Orkeon.Tools.Web.Tests.csproj -c Release --no-restore
+      - name: Allow the remote automation of Safari
+        if: runner.os == 'macOS'
+        run: sudo safaridriver --enable
+      - name: Run the browser suite
+        shell: bash
+        env:
+          SUITE: ${{ matrix.suite }}
+          MIN_SUCCEEDED: ${{ matrix.min-succeeded }}
+          ORKEON_TEST_BROWSER_SAFARI: ${{ matrix.safaridriver }}
+        run: |
+          set +e
+          out="$(dotnet test tests/tools/Orkeon.Tools.Web.Tests/Orkeon.Tools.Web.Tests.csproj -c Release --no-build \
+            --filter "FullyQualifiedName~$SUITE" -- --no-ansi 2>&1)"
+          rc=$?
+          echo "$out"
+          succeeded="$(printf '%s\n' "$out" | sed -e 's/\x1b\[[0-9;]*m//g' | sed -n 's/^[[:space:]]*succeeded:[[:space:]]*\([0-9][0-9]*\)[[:space:]]*$/\1/p' | sort -n | tail -1)"
+          if [ "${succeeded:-0}" -lt "$MIN_SUCCEEDED" ]; then
+            echo "::error::Only ${succeeded:-0} test(s) succeeded, expected at least $MIN_SUCCEEDED. Do NOT lower the floor to clear this."
+            exit 1
+          fi
+          exit $rc
