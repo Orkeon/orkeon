@@ -138,7 +138,7 @@ internal sealed class ChromiumBiDiTransport : IBiDiTransport
             if (JsonNode.Parse(text) is not JsonObject message || Id(message) != id)
                 continue;
             return message["error"] is JsonObject error
-                ? throw new FirefoxException($"The browser refused '{method}': {error["message"]?.ToString()}.")
+                ? throw new FirefoxException($"The browser refused '{method}': {error["message"]}.")
                 : message["result"] as JsonObject ?? [];
         }
 

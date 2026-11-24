@@ -31,7 +31,9 @@ internal sealed class FakeSafariDriver : HttpMessageHandler
 
     protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
     {
-        var body = request.Content is null ? null : JsonNode.Parse(await request.Content.ReadAsStringAsync(cancellationToken)) as JsonObject;
+        var body = request.Content is null
+            ? []
+            : JsonNode.Parse(await request.Content.ReadAsStringAsync(cancellationToken)) as JsonObject ?? [];
         var path = request.RequestUri!.AbsolutePath;
         var command = path.StartsWith("/session/s1/", StringComparison.Ordinal) ? path["/session/s1/".Length..] : path;
         lock (Calls)
@@ -65,17 +67,17 @@ internal sealed class FakeSafariDriver : HttpMessageHandler
             case "alert/dismiss":
                 Dialog = null;
                 break;
-            case "actions" when body is not null:
+            case "actions" when request.Method == HttpMethod.Post:
                 Actions.Add(body);
                 OnActions?.Invoke();
                 break;
-            case "execute/sync" when body!["script"]!.GetValue<string>().StartsWith("return [window[", StringComparison.Ordinal):
+            case "execute/sync" when body["script"]!.GetValue<string>().StartsWith("return [window[", StringComparison.Ordinal):
                 value = Watch?.DeepClone();
                 break;
             case "execute/sync" when body["script"]!.GetValue<string>().StartsWith("const key", StringComparison.Ordinal):
                 break;
             case "execute/sync" or "execute/async":
-                Scripts.Add(body!);
+                Scripts.Add(body);
                 value = Results.Count > 0 ? Results.Dequeue() : null;
                 break;
         }

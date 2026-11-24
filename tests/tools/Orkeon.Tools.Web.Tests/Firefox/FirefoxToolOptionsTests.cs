@@ -59,7 +59,7 @@ public class FirefoxToolOptionsTests
     }
 
     private static IConfiguration Settings(params (string Key, string Value)[] values) =>
-        new ConfigurationBuilder().AddInMemoryCollection(values.ToDictionary(v => v.Key, v => (string?)v.Value)).Build();
+        new ConfigurationBuilder().AddInMemoryCollection(values.ToDictionary<(string Key, string Value), string, string?>(v => v.Key, v => v.Value)).Build();
 
     private static IConfiguration Configuration(params (string Key, string Value)[] keys) =>
         new ConfigurationBuilder()
