@@ -36,7 +36,7 @@ Le périmètre est gelé (CONTRIBUTING, « Le périmètre est gelé ») ; `firef
 | D6 | Profils nommés sous une racine d'Orkeon | Pas au départ : un profil Chromium nommé est un chemin de dossier. |
 | D7 | Le canal Chromium | Le mapper exécuté par Orkeon ; un chemin de pilote seulement si un essai mesuré échoue. |
 | D8 | D'où vient le mapper | Le paquet npm `chromium-bidi`, épinglé, son bundle embarqué. |
-| D9 | CI | Chrome sur le runner Ubuntu, Edge sur le runner Windows, Safari sur le runner macOS ; Brave en local. |
+| D9 | CI | Chaque nuit : Chrome sur le runner Ubuntu, Edge sur le runner Windows, Safari sur le runner macOS ; Brave en local. |
 | D10 | Safari sans BiDi | WebDriver classic derrière le même canal. Mesuré sur Safari 27.2 (macOS 26.7.2) : `safaridriver` ouvre une session BiDi, mais sans domaine `input` ni capture d'écran, sans passer d'argument à `script.callFunction`, et n'a envoyé aucun événement. |
 
 ## Alternatives envisagées

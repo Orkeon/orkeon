@@ -36,7 +36,7 @@ The scope is frozen (CONTRIBUTING, "The scope is frozen"); `firefox` is its four
 | D6 | Named user data dirs under a root of Orkeon's | Not at first: a named Chromium profile is a folder path. |
 | D7 | The Chromium channel | The mapper run by Orkeon; a driver path only if a measured trial fails. |
 | D8 | Where the mapper comes from | The `chromium-bidi` npm package, pinned, its bundle embedded. |
-| D9 | CI | Chrome on the Ubuntu runner, Edge on the Windows runner, Safari on the macOS runner; Brave locally. |
+| D9 | CI | Nightly: Chrome on the Ubuntu runner, Edge on the Windows runner, Safari on the macOS runner; Brave locally. |
 | D10 | Safari without BiDi | WebDriver classic behind the same channel. Measured on Safari 27.2 (macOS 26.7.2): `safaridriver` opens a BiDi session, but it has no `input` domain and no screenshot, passes no argument to `script.callFunction`, and sent no event. |
 
 ## Alternatives considered
