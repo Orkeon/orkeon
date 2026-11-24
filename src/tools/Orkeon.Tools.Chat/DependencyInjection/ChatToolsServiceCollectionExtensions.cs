@@ -31,7 +31,9 @@ public static class ChatToolsServiceCollectionExtensions
     /// Accounts keep their OAuth tokens in the registered <see cref="IChatTokenStore"/>. This
     /// method only registers a placeholder that refuses; the runner host replaces it with a
     /// <see cref="FileSystemChatTokenStore"/> over its internal <c>/credentials</c> root, and a
-    /// host of its own registers its store before or after this call.
+    /// host of its own registers its store before or after this call. The certificate or federated
+    /// token file of an application account is refused likewise until
+    /// <see cref="AddOrkeonChatCredentialFiles"/> names the internal root its folder is mounted under.
     /// </remarks>
     /// <param name="services">The service collection.</param>
     /// <param name="configuration">The configuration holding <c>Orkeon:Tools:Chat</c>.</param>
@@ -64,8 +66,9 @@ public static class ChatToolsServiceCollectionExtensions
         services.TryAddSingleton(sp => new ChatOAuth(new OAuth2Client(
             sp.GetRequiredService<IHttpClientFactory>().CreateClient(ChatDefaults.HttpClientName),
             sp.GetRequiredService<TimeProvider>())));
+        services.TryAddSingleton(_ => new ChatCredentialFileSource(null));
         services.TryAddSingleton(sp => new ChatCredentialProvider(
-            sp.GetRequiredService<IChatTokenStore>(), sp.GetRequiredService<ChatOAuth>().Client));
+            sp.GetRequiredService<IChatTokenStore>(), sp.GetRequiredService<ChatOAuth>().Client, files: sp.GetRequiredService<ChatCredentialFileSource>().Reader));
         services.TryAddSingleton(sp => ChatSessions.Over(
             sp.GetRequiredService<ChatCredentialProvider>(),
             () => sp.GetRequiredService<IHttpClientFactory>().CreateClient(ChatDefaults.HttpClientName),
@@ -112,6 +115,26 @@ public static class ChatToolsServiceCollectionExtensions
         ArgumentNullException.ThrowIfNull(fileSystem);
         ArgumentException.ThrowIfNullOrWhiteSpace(virtualDirectory);
         services.Replace(ServiceDescriptor.Singleton<IChatTokenStore>(sp => new FileSystemChatTokenStore(fileSystem(sp), virtualDirectory)));
+        return services;
+    }
+
+    /// <summary>
+    /// Lets the application accounts read their certificate or federated token file through
+    /// <paramref name="virtualRoot"/> of the file system <paramref name="fileSystem"/> returns: the host's
+    /// privileged view of an internal root, under which it mounted, read-only, the folder of each file at
+    /// the name <see cref="ChatCredentialsLocation.CredentialFileDirectories"/> gives it.
+    /// </summary>
+    /// <param name="services">The service collection.</param>
+    /// <param name="fileSystem">Returns the file system the files are read through.</param>
+    /// <param name="virtualRoot">The internal virtual root holding one mounted folder per directory.</param>
+    /// <returns>The same collection.</returns>
+    public static IServiceCollection AddOrkeonChatCredentialFiles(
+        this IServiceCollection services, Func<IServiceProvider, IFileSystemService> fileSystem, string virtualRoot)
+    {
+        ArgumentNullException.ThrowIfNull(services);
+        ArgumentNullException.ThrowIfNull(fileSystem);
+        ArgumentException.ThrowIfNullOrWhiteSpace(virtualRoot);
+        services.Replace(ServiceDescriptor.Singleton(sp => new ChatCredentialFileSource(new ChatCredentialFile(fileSystem(sp), virtualRoot))));
         return services;
     }
 

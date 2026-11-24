@@ -197,10 +197,19 @@ laisse aucune application publier en tant qu'utilisateur.
 - **Un identifiant, nommé par sa variable**, exactement un parmi : `CertificatePathEnvVar`, le chemin
   absolu d'un fichier PEM avec le certificat et sa clé RSA non chiffrée ; `FederatedTokenFileEnvVar`, le
   chemin absolu d'un fichier de jeton que son émetteur renouvelle (workload identity) ;
-  `ClientSecretEnvVar`, le secret lui-même. Il est relu pour chaque jeton. Orkeon lit ces fichiers hors
-  de son système de fichiers virtuel : ne les mettez pas sous un répertoire que vous montez pour une
-  crew, dont les outils de fichiers les liraient. Un fichier vide, ou qui n'est pas un fichier ordinaire
-  (un tube), est refusé.
+  `ClientSecretEnvVar`, le secret lui-même. Il est relu pour chaque jeton. Un fichier vide, de plus de 64 Kio, ou qui n'est pas un fichier
+  ordinaire (un tube), est refusé.
+- **Le fichier est dans un dossier à lui.** Au démarrage, l'hôte monte ce dossier en montage interne, en
+  lecture seule, sous `/credential-files`, qu'aucun outil de fichiers d'agent ne résout ; les autres
+  fichiers du dossier ne sont atteints que par des composants privilégiés. Si le dossier est le répertoire
+  de travail, un dossier que vous montez pour une crew ou un dossier qui en contient un, l'hôte ne le monte
+  pas, avertit au démarrage (« Keep it in a folder of its own. ») et le compte ne peut pas se connecter. Un
+  dossier qui n'existe pas au démarrage donne aussi un avertissement, et le compte refuse. Définissez la
+  variable avant le démarrage de l'hôte : le dossier est monté à ce moment. Un lien est suivi à l'intérieur
+  du dossier (la disposition des jetons projetés de Kubernetes `token -> ..data/token` marche) ; un lien qui
+  sort du dossier est refusé, nommez donc le vrai fichier. Le fichier est relu pour chaque jeton : un
+  fichier renouvelé est pris en compte. Cela vaut pour les runners (`orkeon`, `orkeon-host`) et pour
+  `orkeon-repl`.
 - **Le jeton reste en mémoire** : rien n'est écrit dans le magasin de jetons. `login` est refusé,
   `logout` n'a rien à oublier et réussit sans racine `/credentials`, et `check` obtient un jeton et cherche les lieux.
 - **`Tenant` est obligatoire** : un id ou un domaine, pas `common`, `organizations` ni `consumers`.
@@ -470,7 +479,8 @@ aux agents ne résout, à côté de ceux de `email` et `drive`. Un run garde un 
 répertoire d'identifiants pour les trois familles : quand elles en nomment de différents, celui de
 l'e-mail l'emporte, puis celui du drive. Comme pour eux, les jetons sont à l'abri
 des outils du VFS, **pas** d'un `shell_command` qui tourne sous le même utilisateur du système.
-`orkeon-repl` ne tient aucun magasin de jetons : un compte chat qui se connecte le dit là.
+`orkeon-repl` ne tient aucun magasin de jetons : un compte chat qui se connecte comme utilisateur (`OAuth2`) le dit là. Un compte
+d'application marche dans le REPL, avec un certificat, un jeton fédéré ou un secret client.
 
 ## Erreurs
 

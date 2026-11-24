@@ -28,7 +28,7 @@ internal sealed class ChatFixture : IDisposable
     private readonly ChatSessions _sessions;
 
     /// <summary>Creates the fixture.</summary>
-    public ChatFixture(ChatAccountOptions options, bool withhold = false, bool signedIn = true)
+    public ChatFixture(ChatAccountOptions options, bool withhold = false, bool signedIn = true, ChatCredentialFile? files = null)
     {
         Options.Accounts["work"] = options;
         Options.Screening.WithholdRejected = withhold;
@@ -41,7 +41,7 @@ internal sealed class ChatFixture : IDisposable
             Time.Advance(wait);
             return Task.CompletedTask;
         });
-        Credentials = new ChatCredentialProvider(Store, OAuth, new SecretEnvironment(Variables.GetValueOrDefault));
+        Credentials = new ChatCredentialProvider(Store, OAuth, new SecretEnvironment(Variables.GetValueOrDefault), files);
         var bound = Microsoft.Extensions.Options.Options.Create(Options);
         Registry = new ChatAccountRegistry(bound);
         Account = Registry.Resolve("work");

@@ -394,8 +394,9 @@ des deux autres :
   dans le sous-répertoire `chat` de la racine interne `/credentials`
   ([conformité VFS](./vfs-compliance.md)).
 - **Un compte d'application ne fait que lire, et son jeton n'est jamais stocké.** Son identifiant est
-  nommé par une variable d'environnement et lu pour chaque jeton, les fichiers hors du VFS
-  ([pourquoi](vfs-compliance.md#en-attente-de-ratification)). Ses permissions couvrent le tenant : les lieux nommés sont la limite,
+  nommé par une variable d'environnement et lu pour chaque jeton ; un fichier de certificat ou de jeton fédéré est lu par un montage interne en
+  lecture seule, que l'outil de fichiers d'aucun agent n'atteint
+  ([conformité VFS](vfs-compliance.md#racines-internes-et-accès-privilégié)). Ses permissions couvrent le tenant : les lieux nommés sont la limite,
   `*` est refusé.
 - **L'adresse d'un webhook est le secret.** Un compte `TeamsWebhook` nomme la variable qui la contient ;
   elle doit être en `https`, elle est lue à chaque publication, et aucun journal, aucune erreur, aucun

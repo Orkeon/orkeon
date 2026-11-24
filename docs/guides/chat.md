@@ -190,8 +190,17 @@ application post as a user.
 - **One credential, named by its variable**, exactly one of: `CertificatePathEnvVar`, the absolute path
   of a PEM file with the certificate and its unencrypted RSA key; `FederatedTokenFileEnvVar`, the
   absolute path of a token file its issuer rotates (workload identity); `ClientSecretEnvVar`, the secret
-  itself. It is read again for each token. Orkeon reads these files outside its virtual file system: do
-  not put them under a directory you mount for a crew, whose file tools would read them. A file that is empty, or is no regular file (a pipe), is refused.
+  itself. It is read again for each token. A file that is empty, larger than 64 KiB, or no regular file (a pipe)
+  is refused.
+- **The file sits in a folder of its own.** At start the host mounts that folder as an internal, read-only
+  mount under `/credential-files`, which no agent's file tool resolves; the folder's other files are
+  reachable by privileged components only. If the folder is the working directory, a folder you mount for a
+  crew or a folder that holds one, the host does not mount it, warns at start ("Keep it in a folder of its
+  own.") and the account cannot sign in. A folder that does not exist at start is also a warning, and the
+  account refuses. Set the variable before the host starts: the folder is mounted then. A link is followed
+  inside the folder (the Kubernetes projected-token layout `token -> ..data/token` works); a link that
+  leaves the folder is refused, so name the real file. The file itself is read again for each token, so a
+  rotated file is picked up. This holds in the runners (`orkeon`, `orkeon-host`) and in `orkeon-repl`.
 - **The token stays in memory**: nothing is written to the token store. `login` is refused, `logout` has
   nothing to forget and succeeds with no `/credentials` root, and `check` obtains a token and looks the places up.
 - **`Tenant` is mandatory**: an id or a domain, not `common`, `organizations` or `consumers`.
@@ -449,7 +458,8 @@ In the `chat` subdirectory of the runner's internal `/credentials` root, which n
 resolves, beside the `email` and `drive` ones. A run keeps one credentials directory for the three
 families: when they name different ones, e-mail's wins, then drive's. As for those, the tokens are shielded from the VFS
 tools, **not** from a `shell_command` running as the same operating-system user. `orkeon-repl` keeps
-no token store: a chat account that signs in says so there.
+no token store: a chat account that signs in as a user (`OAuth2`) says so there. An application account
+works in the REPL, with a certificate, a federated token or a client secret.
 
 ## Errors
 

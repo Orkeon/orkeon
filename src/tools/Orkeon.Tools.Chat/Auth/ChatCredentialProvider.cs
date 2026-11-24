@@ -16,17 +16,19 @@ internal sealed class ChatCredentialProvider
     private readonly IChatTokenStore _store;
     private readonly OAuth2Client _oauth;
     private readonly SecretEnvironment _environment;
+    private readonly ChatCredentialFile? _files;
     private readonly ConcurrentDictionary<string, SemaphoreSlim> _refreshGates = new(StringComparer.Ordinal);
     private readonly ConcurrentDictionary<string, ChatTokenSet> _fresh = new(StringComparer.Ordinal);
 
     /// <summary>Creates the provider.</summary>
-    public ChatCredentialProvider(IChatTokenStore store, OAuth2Client oauth, SecretEnvironment? environment = null)
+    public ChatCredentialProvider(IChatTokenStore store, OAuth2Client oauth, SecretEnvironment? environment = null, ChatCredentialFile? files = null)
     {
         ArgumentNullException.ThrowIfNull(store);
         ArgumentNullException.ThrowIfNull(oauth);
         _store = store;
         _oauth = oauth;
         _environment = environment ?? SecretEnvironment.Machine;
+        _files = files;
     }
 
     /// <summary>
@@ -168,7 +170,9 @@ internal sealed class ChatCredentialProvider
         if (application.Kind == ChatApplicationCredential.Secret)
             return (value.Trim(), null);
 
-        var text = await ChatCredentialFile.ReadAsync(value.Trim(), application.EnvVar, cancellationToken).ConfigureAwait(false);
+        if (_files is null)
+            throw ChatCredentialFile.Unmounted(application.EnvVar);
+        var text = await _files.ReadAsync(value.Trim(), application.EnvVar, cancellationToken).ConfigureAwait(false);
         try
         {
             return (null, application.Kind == ChatApplicationCredential.Certificate

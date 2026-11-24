@@ -112,7 +112,7 @@ l'autre. Un crew sans `Mounts` garde les mounts de boot, inchangés.
 
 Deux choses à savoir avant de s'en servir. Entrer un scope **remplace** le jeu de mounts au lieu
 de fusionner avec lui, donc le registre composé reporte les mounts du boot — les internes (`/llm-logs`,
-`/sandbox`, `/credentials`) et ceux que voit l'agent, moins tout chemin que les mounts propres du crew revendiquent — sans cela, la journalisation des échanges et les bacs à sable de code tomberaient
+`/sandbox`, `/credentials`, `/credential-files`) et ceux que voit l'agent, moins tout chemin que les mounts propres du crew revendiquent — sans cela, la journalisation des échanges et les bacs à sable de code tomberaient
 pour toute la durée du run, et le contrôle qui les empêche de gagner une seconde adresse joignable
 par l'agent tomberait avec eux. Un dossier accordé est une entrée du démon : il est lisible où qu'il soit, sans
 `--allow-external-mounts`. Au démarrage, un dossier accordé à une crew mal formé ou absent refuse le démarrage avec `78`

@@ -1215,7 +1215,74 @@ public static partial class RunnerHost
         if (mounts.AllowExternalMounts)
             nextWhitelistIndex = WhitelistBases(overrides, mounts.CliMounts.Concat(mounts.InternalMounts), nextWhitelistIndex);
 
+        // The credential files of the chat application accounts (#446): the folder of each, read-only and
+        // Internal, for a runner and the REPL alike.
+        EnsureCredentialFilesRootIsFree(declaredMounts.Select(entry => entry.Value)
+            .Concat(declaredInternal.Select(entry => entry.Value)).Concat(mounts.CliMounts).Concat(mounts.InternalMounts));
+        var agentFolders = inForce.Concat(mounts.CliMounts).Select(TryExtractMountBasePath).OfType<string>()
+            .Append(TryFullPath(mounts.WorkingDirectory ?? Environment.CurrentDirectory)).OfType<string>().ToList();
+        foreach (var (directory, folder) in PlanCredentialFiles(declared, agentFolders, decisions))
+        {
+            overrides[$"{ConfigurationKeys.FileSystemInternalMounts}:{nextInternalIndex++}"] =
+                $"{FileSystemMount.Quote(directory)}:{RunnerVirtualRoots.CredentialFiles}/{folder}:ro";
+            nextWhitelistIndex = WhitelistDirectory(overrides, directory, nextWhitelistIndex);
+        }
+
         return new MountPlacement(declaredMounts, declaredInternal, nextInternalIndex, nextWhitelistIndex);
+    }
+
+    /// <summary>
+    /// The folders to mount under <see cref="RunnerVirtualRoots.CredentialFiles"/>: the directory of each
+    /// certificate or federated token file a chat application account names by its variable, with the name it
+    /// is mounted at. An Internal mount closes its folder to the agents whatever other mount holds it, so a
+    /// directory that is, or holds, one mounted for them is left out and said in
+    /// <paramref name="decisions"/>, like one that does not exist: the run goes on and that account alone refuses.
+    /// </summary>
+    private static List<(string Directory, string Folder)> PlanCredentialFiles(
+        DeclaredConfiguration declared, List<string> agentFolders, MountDecisions decisions)
+    {
+        var planned = new List<(string Directory, string Folder)>();
+        if (declared.Section(ConfigurationKeys.ToolsChat) is not { } section || !section.Exists())
+            return planned;
+
+        foreach (var (directory, folder) in ChatCredentialsLocation.CredentialFileDirectories(section).OrderBy(pair => pair.Value, StringComparer.Ordinal))
+        {
+            if (TryFullPath(directory) is not { } full)
+                continue;
+
+            // EXCEPTION-BOOTSTRAP: judged before the container, and so the VFS, exists.
+            if (!Directory.Exists(full))
+            {
+                decisions.StartupWarnings.Add(
+                    $"The folder of a credential file of {ConfigurationKeys.ToolsChat} does not exist: the account that names it cannot sign in.");
+            }
+            else if (agentFolders.Any(agent => PhysicalPathContainment.IsUnder(agent, full)))
+            {
+                decisions.StartupWarnings.Add(
+                    $"A credential file of {ConfigurationKeys.ToolsChat} lies in the working directory, in a folder mounted for the agents or in one that holds such a folder: " +
+                    "it is not read, and the account that names it cannot sign in. Keep it in a folder of its own.");
+            }
+            else
+            {
+                planned.Add((full, folder));
+            }
+        }
+
+        return planned;
+    }
+
+    /// <summary>Refuses a mount claiming <see cref="RunnerVirtualRoots.CredentialFiles"/> or a path under it, which the host reserves.</summary>
+    private static void EnsureCredentialFilesRootIsFree(IEnumerable<string?> mountStrings)
+    {
+        var claimed = mountStrings.Any(mount => mount is { Length: > 0 }
+            && MountSelection.TryGetVirtualRoot(mount) is { } root
+            && (string.Equals(root, RunnerVirtualRoots.CredentialFiles, StringComparison.Ordinal)
+                || root.StartsWith(RunnerVirtualRoots.CredentialFiles + "/", StringComparison.Ordinal)));
+        if (claimed)
+        {
+            throw new RunnerSettingsException(
+                $"The virtual root {RunnerVirtualRoots.CredentialFiles} is reserved: the host reads the credential files of chat application accounts there. Mount the folder under another name.");
+        }
     }
 
     /// <summary>
@@ -1809,6 +1876,14 @@ public static partial class RunnerHost
                 $"{RunnerVirtualRoots.Credentials}/{ChatCredentialsLocation.TokenSubdirectory}");
         }
 
+        // The certificate or federated token file of an application account, read through the
+        // internal /credential-files root the configuration step mounted its folder under.
+        if (HasInternalRootUnder(RunnerVirtualRoots.CredentialFiles))
+        {
+            services.AddOrkeonChatCredentialFiles(
+                sp => sp.GetRequiredService<PrivilegedFileSystemAccess>().FileSystem, RunnerVirtualRoots.CredentialFiles);
+        }
+
         // RAG (GAP-02): the subsystem and its three agent tools, for every runner — YAML
         // crews, crew directories, declarative and procedural .ork.ts, and orkeon-host. A
         // crew's rag: collections are ingested when it loads, its agents' knowledge: reaches
@@ -1834,6 +1909,12 @@ public static partial class RunnerHost
             var section = context.Configuration.GetSection(key);
             return section.Exists() && section.GetChildren().Any();
         }
+
+        bool HasInternalRootUnder(string root) =>
+            context.Configuration.GetSection(ConfigurationKeys.FileSystemInternalMounts).GetChildren()
+                .Any(entry => entry.Value is { Length: > 0 } mount
+                    && MountSelection.TryGetVirtualRoot(mount) is { } mounted
+                    && mounted.StartsWith(root + "/", StringComparison.Ordinal));
 
         bool HasInternalRoot(string root) =>
             context.Configuration.GetSection(ConfigurationKeys.FileSystemInternalMounts).GetChildren()

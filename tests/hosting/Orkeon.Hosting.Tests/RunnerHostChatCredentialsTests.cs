@@ -4,6 +4,8 @@ using Orkeon.Constants.FileSystem;
 using Orkeon.Domain.FileSystem;
 using Orkeon.Domain.Tools;
 using Orkeon.Infrastructure.Configuration;
+using Orkeon.Infrastructure.FileSystem;
+using Orkeon.Tools.Chat.Administration;
 using Orkeon.Tools.Chat.Auth;
 using Orkeon.Tools.Email.Auth;
 
@@ -21,6 +23,7 @@ public sealed class RunnerHostChatCredentialsTests : IDisposable
     private const UnixFileMode OwnerOnly = UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute;
 
     private readonly string _root;
+    private readonly string _variable = "ORKEON_TEST_CHAT_FILE_" + Guid.NewGuid().ToString("N");
 
     public RunnerHostChatCredentialsTests()
     {
@@ -31,6 +34,7 @@ public sealed class RunnerHostChatCredentialsTests : IDisposable
     public void Dispose()
     {
         RunnerSettings.GlobalSettingsPathOverride = AssemblyGlobalSettingsGuard.DefaultOverride;
+        Environment.SetEnvironmentVariable(_variable, null);
         try { Directory.Delete(_root, recursive: true); } catch (IOException) { /* best-effort */ }
     }
 
@@ -162,6 +166,101 @@ public sealed class RunnerHostChatCredentialsTests : IDisposable
             $"WARNING: Orkeon:Tools:Chat:CredentialsDirectory ({chat}) differs from Orkeon:Tools:Drive:CredentialsDirectory ({drive}): the runner keeps one credentials directory, the drive one, and the chat tokens go there too.",
             stderr.ToString(), StringComparison.Ordinal);
     }
+
+    [Fact]
+    public async Task The_folder_of_an_application_credential_file_is_an_internal_read_only_mount()
+    {
+        var file = CredentialFile("keys");
+
+        using var host = RunnerHost.Build(WriteSettings(chat: ApplicationSection()), new RunnerMountPlan());
+
+        var mount = Assert.Single(CredentialFileMounts(host));
+        Assert.Equal(Path.GetDirectoryName(file), mount.BasePath);
+        Assert.Equal((MountVisibility.Internal, FileAccessRights.ReadOnly), (mount.Visibility, mount.DefaultRights));
+        var privileged = host.Services.GetRequiredService<PrivilegedFileSystemAccess>().FileSystem;
+        Assert.Equal("jwt.a.b", await privileged.TryReadAllTextAsync(mount.VirtualPath + "/token", TestContext.Current.CancellationToken));
+        Assert.False(privileged.ResolveAndValidate(mount.VirtualPath + "/token", FileAccessRights.Write).IsAllowed);
+        var status = Assert.Single(await host.Services.GetRequiredService<ChatAccountAdministration>().ListAsync(TestContext.Current.CancellationToken));
+        Assert.Null(status.CredentialProblem);
+    }
+
+    [Fact]
+    public void No_agent_reaches_a_credential_file_by_its_root_nor_by_a_mount_that_holds_its_folder()
+    {
+        var file = CredentialFile(Path.Combine("data", "keys"));
+        File.WriteAllText(Path.Combine(_root, "data", "seen.txt"), "seen");
+        var plan = new RunnerMountPlan { CliMounts = [$"{Path.Combine(_root, "data")}:/data:ro"], AllowExternalMounts = true };
+
+        using var host = RunnerHost.Build(WriteSettings(chat: ApplicationSection()), plan);
+
+        var mount = Assert.Single(CredentialFileMounts(host));
+        var agents = host.Services.GetRequiredService<IFileSystemService>();
+        Assert.True(agents.ResolveAndValidate("/data/seen.txt", FileAccessRights.Read).IsAllowed);
+        Assert.False(agents.ResolveAndValidate(mount.VirtualPath + "/token", FileAccessRights.Read).IsAllowed);
+        Assert.False(agents.ResolveAndValidate("/data/keys/token", FileAccessRights.Read).IsAllowed);
+        Assert.Null(agents.ToVirtualPath(file));
+        Assert.DoesNotContain(agents.GetAvailableMounts(), m => m.VirtualPath.StartsWith(RunnerVirtualRoots.CredentialFiles, StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void A_credential_file_in_a_folder_mounted_for_the_agents_is_not_mounted_and_said()
+    {
+        CredentialFile("data");
+        var plan = new RunnerMountPlan { CliMounts = [$"{Path.Combine(_root, "data")}:/data:ro"], AllowExternalMounts = true };
+        var original = Console.Error;
+        using var stderr = new StringWriter();
+        Console.SetError(stderr);
+        try
+        {
+            using var host = RunnerHost.Build(WriteSettings(chat: ApplicationSection()), plan);
+
+            Assert.Empty(CredentialFileMounts(host));
+            Assert.True(host.Services.GetRequiredService<IFileSystemService>().ResolveAndValidate("/data/token", FileAccessRights.Read).IsAllowed);
+        }
+        finally
+        {
+            Console.SetError(original);
+        }
+
+        Assert.Contains("Keep it in a folder of its own.", stderr.ToString(), StringComparison.Ordinal);
+        Assert.DoesNotContain(_root, stderr.ToString(), StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("/credential-files")]
+    [InlineData("/credential-files/mine")]
+    public void A_user_mount_on_the_credential_files_root_is_refused(string root)
+    {
+        var plan = new RunnerMountPlan { CliMounts = [$"{_root}:{root}:ro"], AllowExternalMounts = true };
+
+        var refused = Assert.Throws<RunnerSettingsException>(() => RunnerHost.Build(WriteSettings(chat: ApplicationSection()), plan).Dispose());
+
+        Assert.Contains("The virtual root /credential-files is reserved", refused.Message, StringComparison.Ordinal);
+    }
+
+    private static List<FileSystemMount> CredentialFileMounts(Microsoft.Extensions.Hosting.IHost host) =>
+        [.. Mounts(host).Where(m => m.VirtualPath.StartsWith(RunnerVirtualRoots.CredentialFiles + "/", StringComparison.Ordinal))];
+
+    /// <summary>A federated token file in <paramref name="folder"/> of the test's root, named by the test's variable.</summary>
+    private string CredentialFile(string folder)
+    {
+        var file = Path.Combine(Directory.CreateDirectory(Path.Combine(_root, folder)).FullName, "token");
+        File.WriteAllText(file, "jwt.a.b");
+        Environment.SetEnvironmentVariable(_variable, file);
+        return file;
+    }
+
+    private string ApplicationSection() => $$"""
+        {
+          "Accounts": {
+            "ops": {
+              "Provider": "Teams", "Rights": "Read",
+              "Auth": { "Method": "ClientCredentials", "ClientId": "client-id", "Tenant": "contoso.example", "FederatedTokenFileEnvVar": "{{_variable}}" },
+              "Read": { "AllowedPlaces": [ "chat:19:weekly@thread.v2" ] }
+            }
+          }
+        }
+        """;
 
     private static IReadOnlyList<FileSystemMount> Mounts(Microsoft.Extensions.Hosting.IHost host) =>
         host.Services.GetService<FileSystemRegistry>()?.GetMounts().ToList() ?? [];

@@ -42,6 +42,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   places (`*`, `user:` and a team by its name are refused) and a token kept in memory alone. `chat_meetings` reads there
   by `place` alone, under the organizer the chat tells. `Send:AllowedPlaces`, `Send:MaxPerHour` and `Meetings` without
   `Read` are refused there. Not tried on a real tenant.
+- The certificate or federated token file of such an account is read through the VFS: the host mounts its folder as an
+  internal, read-only mount under the new reserved root `/credential-files`, in the runners and in `orkeon-repl`, and
+  the file must sit in a folder of its own (otherwise the host warns at start and the account cannot sign in). No user
+  mount may claim `/credential-files`. New public members: `AddOrkeonChatCredentialFiles(fileSystem, virtualRoot)`,
+  which a host of your own that calls `AddOrkeonChatTools` must also call (without it only `Auth:ClientSecretEnvVar`
+  works), and `RunnerVirtualRoots.CredentialFiles`. The file is no longer read with raw `System.IO`.
 - `orkeon chat accounts`, `login` (the browser, or `--device-code`), `logout` and `check`. With `--events jsonl`, `login`
   and `check` write one event per line, of the kinds of `Orkeon.Constants.Protocol.ChatEventKinds`. `logout` of a webhook
   or application account succeeds with no `/credentials` root.
@@ -70,6 +76,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - An identity provider that answers `temporarily_unavailable` or `server_error` is a server failure of `OAuth2Client`
   (`OAuthFailure.ServerError`, to be tried later), no longer a refused sign-in: e-mail and drive accounts too.
+- `IFileSystemService.TryGetEntryAsync` reads a relative symbolic link target from the link's own folder, no longer
+  from the process working directory, which gave a wrong `LinkTarget`.
 
 ## [1.4.0] - 2026-11-23
 

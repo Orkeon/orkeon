@@ -149,7 +149,9 @@ Trois faits ont bougé depuis la rédaction de cet ADR ; la décision tient.
 - **Une quatrième racine, interne : `/credentials`.** `RunnerVirtualRoots.Credentials` est
   l'endroit où le runner garde les identifiants obtenus pour le run (les jetons OAuth des
   comptes e-mail). `FileSystemEmailTokenStore` y lit et y écrit via `PrivilegedFileSystemAccess`
-  (ADR-012), jamais par le système de fichiers qu'un outil exposé aux agents résout.
+  (ADR-012), jamais par le système de fichiers qu'un outil exposé aux agents résout. Une cinquième,
+  `/credential-files` (`RunnerVirtualRoots.CredentialFiles`), est montée en lecture seule sur les dossiers des
+  fichiers de certificat et de jeton fédéré des comptes chat d'application (ADR-021).
 - **Les montages sont composés par portée.** Les montages d'un run ne sont plus un registre
   unique pour tout le processus : `IFileSystemScope` porte le registre du run ou de la requête
   en cours. Voir [Conformité VFS](../architecture/vfs-compliance.md).

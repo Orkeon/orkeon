@@ -442,6 +442,19 @@ public sealed partial class FileSystemService
         return Encoding.UTF8.GetByteCount(content);
     }
 
+    /// <summary>
+    /// Where a link leads, as a virtual path, or its text behind <c>ext::</c> when that is under no mount. A
+    /// relative target is read from the link's own folder, as the system reads it, not from the working directory.
+    /// </summary>
+    private string? LinkTargetOf(string physicalLink, string? target)
+    {
+        if (target is null)
+            return null;
+        var folder = Path.GetDirectoryName(physicalLink);
+        var full = folder is null ? target : Path.GetFullPath(target, folder);
+        return ToVirtualPath(full) ?? $"ext::{target}";
+    }
+
     /// <inheritdoc />
     public Task<VirtualFileEntry?> TryGetEntryAsync(string virtualPath, CancellationToken ct)
     {
@@ -456,7 +469,7 @@ public sealed partial class FileSystemService
         if (File.Exists(physical))
         {
             var fi = new FileInfo(physical);
-            var linkTarget = fi.LinkTarget is null ? null : ToVirtualPath(fi.LinkTarget) ?? $"ext::{fi.LinkTarget}";
+            var linkTarget = LinkTargetOf(physical, fi.LinkTarget);
             return Task.FromResult<VirtualFileEntry?>(new VirtualFileEntry(
                 virtualPath,
                 fi.Length,
@@ -469,7 +482,7 @@ public sealed partial class FileSystemService
         if (Directory.Exists(physical))
         {
             var di = new DirectoryInfo(physical);
-            var linkTarget = di.LinkTarget is null ? null : ToVirtualPath(di.LinkTarget) ?? $"ext::{di.LinkTarget}";
+            var linkTarget = LinkTargetOf(physical, di.LinkTarget);
             return Task.FromResult<VirtualFileEntry?>(new VirtualFileEntry(
                 virtualPath,
                 0,

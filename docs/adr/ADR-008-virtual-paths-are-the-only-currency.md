@@ -140,7 +140,9 @@ Three facts moved since this ADR was written; the decision stands.
 - **A fourth, internal root: `/credentials`.** `RunnerVirtualRoots.Credentials` is where the
   runner keeps the credentials it obtained for the run (the OAuth tokens of e-mail accounts).
   `FileSystemEmailTokenStore` reads and writes it through `PrivilegedFileSystemAccess`
-  (ADR-012), never through the file system an agent-facing tool resolves.
+  (ADR-012), never through the file system an agent-facing tool resolves. A fifth,
+  `/credential-files` (`RunnerVirtualRoots.CredentialFiles`), is mounted read-only over the folders of the
+  certificate and federated token files of chat application accounts (ADR-021).
 - **Mounts are composed per scope.** A run's mounts are no longer one process-wide registry:
   `IFileSystemScope` carries the registry of the current run or request. See
   [VFS compliance](../architecture/vfs-compliance.md).

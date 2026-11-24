@@ -111,7 +111,7 @@ the boot mounts, unchanged.
 
 Two things worth knowing before you use it. Entering a scope **replaces** the mount set rather
 than merging with it, so the composed registry carries the boot mounts forward — the Internal ones (`/llm-logs`,
-`/sandbox`, `/credentials`) and the agent-facing ones, minus any path the crew's own mounts claim — without that, exchange logging and the code sandboxes would fail for the
+`/sandbox`, `/credentials`, `/credential-files`) and the agent-facing ones, minus any path the crew's own mounts claim — without that, exchange logging and the code sandboxes would fail for the
 length of the run, and the check that stops either gaining a second, agent-reachable address would
 go with them. A granted folder is an entry of the daemon: it is readable wherever it lies, without
 `--allow-external-mounts`. At start, a folder granted to a crew that is malformed or missing refuses the start with `78`

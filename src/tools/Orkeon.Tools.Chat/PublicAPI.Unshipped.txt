@@ -146,3 +146,5 @@ static Orkeon.Tools.Chat.DependencyInjection.ChatToolsServiceCollectionExtension
 static Orkeon.Tools.Chat.DependencyInjection.ChatToolsServiceCollectionExtensions.AddOrkeonChatTools(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, Microsoft.Extensions.Configuration.IConfiguration! configuration) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
 Orkeon.Tools.Chat.Administration.ChatCheckResult.Contacted.get -> bool
 Orkeon.Tools.Chat.Administration.ChatCheckResult.Contacted.init -> void
+static Orkeon.Tools.Chat.Configuration.ChatCredentialsLocation.CredentialFileDirectories(Microsoft.Extensions.Configuration.IConfiguration! chatSection) -> System.Collections.Generic.IReadOnlyDictionary<string!, string!>!
+static Orkeon.Tools.Chat.DependencyInjection.ChatToolsServiceCollectionExtensions.AddOrkeonChatCredentialFiles(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, System.Func<System.IServiceProvider!, Orkeon.Domain.FileSystem.IFileSystemService!>! fileSystem, string! virtualRoot) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!

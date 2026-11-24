@@ -23,10 +23,15 @@ public sealed class TeamsApplicationTests : IDisposable
     private const string Chat = "19:weekly@thread.v2";
 
     private readonly DirectoryInfo _folder = Directory.CreateTempSubdirectory("orkeon-chat-app-");
+    private readonly DirectoryInfo _outside = Directory.CreateTempSubdirectory("orkeon-chat-out-");
 
     private static CancellationToken Token => TestContext.Current.CancellationToken;
 
-    public void Dispose() => _folder.Delete(recursive: true);
+    public void Dispose()
+    {
+        _folder.Delete(recursive: true);
+        _outside.Delete(recursive: true);
+    }
 
     [Theory]
     [InlineData("Global", "https://graph.microsoft.com/.default", "login.microsoftonline.com")]
@@ -68,7 +73,7 @@ public sealed class TeamsApplicationTests : IDisposable
         using var rsa = RSA.Create(2048);
         using var certificate = new CertificateRequest("CN=t", rsa, HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1)
             .CreateSelfSigned(DateTimeOffset.UnixEpoch, DateTimeOffset.UnixEpoch.AddYears(100));
-        using var fixture = Create(WithFile(certificate: true), WriteFile(certificate.ExportCertificatePem() + "\n" + rsa.ExportPkcs8PrivateKeyPem()));
+        using var fixture = Create(WithFile(certificate: true), WriteFile(certificate.ExportCertificatePem() + "\n" + rsa.ExportPkcs8PrivateKeyPem()), Files());
 
         await fixture.Credentials.GetAccessTokenAsync(fixture.Account, Token);
 
@@ -81,7 +86,7 @@ public sealed class TeamsApplicationTests : IDisposable
     public async Task Should_read_the_federated_token_again_for_each_request()
     {
         var path = WriteFile("jwt.one.x\n");
-        using var fixture = Create(WithFile(certificate: false), path);
+        using var fixture = Create(WithFile(certificate: false), path, Files());
         await fixture.Credentials.GetAccessTokenAsync(fixture.Account, Token);
 
         await File.WriteAllTextAsync(path, "jwt.two.x", Token);
@@ -94,6 +99,8 @@ public sealed class TeamsApplicationTests : IDisposable
     [InlineData("missing", "names a file that does not exist")]
     [InlineData("relative", "is not an absolute path")]
     [InlineData("folder", "names a file that cannot be read")]
+    [InlineData("link-out", "names a file that cannot be read")]
+    [InlineData("elsewhere", "names a file whose folder the host did not mount when it started")]
     [InlineData("empty", "names an empty file, or one that is not a regular file")]
     [InlineData("pipe", "names an empty file, or one that is not a regular file")]
     [InlineData("linked-pipe", "names an empty file, or one that is not a regular file")]
@@ -106,7 +113,9 @@ public sealed class TeamsApplicationTests : IDisposable
         {
             "missing" => Path.Join(_folder.FullName, "canary-none"),
             "relative" => "canary-relative.pem",
-            "folder" => _folder.FullName,
+            "folder" => Directory.CreateDirectory(Path.Join(_folder.FullName, "canary-folder")).FullName,
+            "link-out" => File.CreateSymbolicLink(Path.Join(_folder.FullName, "canary-out"), Outside()).FullName,
+            "elsewhere" => Outside(),
             "empty" => WriteFile(string.Empty),
             "pipe" => Pipe(),
             "linked-pipe" => File.CreateSymbolicLink(Path.Join(_folder.FullName, "canary-link"), Pipe()).FullName,
@@ -114,7 +123,7 @@ public sealed class TeamsApplicationTests : IDisposable
             "not-a-key" => WriteFile("canary-content"),
             _ => " ",
         };
-        using var fixture = Create(WithFile(certificate: true), path);
+        using var fixture = Create(WithFile(certificate: true), path, Files());
 
         var status = Assert.Single(await fixture.Administration.ListAsync(Token));
         var refused = await Assert.ThrowsAsync<ChatToolException>(() => fixture.Credentials.GetAccessTokenAsync(fixture.Account, Token));
@@ -125,6 +134,35 @@ public sealed class TeamsApplicationTests : IDisposable
         Assert.Contains(problem, refused.Message, StringComparison.Ordinal);
         Assert.Contains(TestChatAccounts.ApplicationVariable, refused.Message, StringComparison.Ordinal);
         Assert.DoesNotContain("canary", refused.ToString(), StringComparison.Ordinal);
+        Assert.DoesNotContain(_folder.FullName, refused.ToString(), StringComparison.Ordinal);
+        Assert.Empty(fixture.Graph.TokenRequests);
+    }
+
+    [Fact]
+    public async Task Should_follow_the_links_a_rotating_issuer_leaves_in_the_folder()
+    {
+        Assert.SkipWhen(OperatingSystem.IsWindows(), "A link needs a privilege on Windows.");
+        // The shape of a projected token: the name links into a folder, itself a link to the current one.
+        var current = Directory.CreateDirectory(Path.Join(_folder.FullName, "..2026")).FullName;
+        await File.WriteAllTextAsync(Path.Join(current, "token"), "jwt.linked.x", Token);
+        Directory.CreateSymbolicLink(Path.Join(_folder.FullName, "..data"), "..2026");
+        var path = File.CreateSymbolicLink(Path.Join(_folder.FullName, "token"), Path.Join("..data", "token")).FullName;
+        using var fixture = Create(WithFile(certificate: false), path, Files());
+
+        await fixture.Credentials.GetAccessTokenAsync(fixture.Account, Token);
+
+        Assert.Equal("jwt.linked.x", Assert.Single(fixture.Graph.TokenRequests).Form["client_assertion"]);
+    }
+
+    [Fact]
+    public async Task Should_refuse_a_credential_file_in_a_host_that_mounts_none()
+    {
+        using var fixture = Create(WithFile(certificate: false), WriteFile("jwt.one.x"));
+
+        var refused = await Assert.ThrowsAsync<ChatToolException>(() => fixture.Credentials.GetAccessTokenAsync(fixture.Account, Token));
+
+        Assert.Equal(ChatErrorCode.InvalidConfiguration, refused.Code);
+        Assert.Contains("names a file whose folder the host did not mount when it started", refused.Message, StringComparison.Ordinal);
         Assert.DoesNotContain(_folder.FullName, refused.ToString(), StringComparison.Ordinal);
         Assert.Empty(fixture.Graph.TokenRequests);
     }
@@ -411,9 +449,9 @@ public sealed class TeamsApplicationTests : IDisposable
 
     private static int Count(Dictionary<string, object?> result) => Convert.ToInt32(result["count"], System.Globalization.CultureInfo.InvariantCulture);
 
-    private static ChatFixture Create(ChatAccountOptions? options = null, string credential = Secret)
+    private static ChatFixture Create(ChatAccountOptions? options = null, string credential = Secret, ChatCredentialFile? files = null)
     {
-        var fixture = new ChatFixture(options ?? TestChatAccounts.Application($"chat:{Chat}"));
+        var fixture = new ChatFixture(options ?? TestChatAccounts.Application($"chat:{Chat}"), files: files);
         fixture.Variables[TestChatAccounts.ApplicationVariable] = credential;
         fixture.Graph.Identity("token", Issued);
         return fixture;
@@ -428,6 +466,18 @@ public sealed class TeamsApplicationTests : IDisposable
         else
             options.Auth.FederatedTokenFileEnvVar = TestChatAccounts.ApplicationVariable;
         return options;
+    }
+
+    /// <summary>The reader of a host that mounted the test's folder, and no other, for its credential files.</summary>
+    private ChatCredentialFile Files() => new(
+        new DiskBackedFileSystemService(_folder.FullName, $"/credential-files/{ChatCredentialFile.Folder(Path.Join(_folder.FullName, "any"))}"),
+        "/credential-files");
+
+    private string Outside()
+    {
+        var path = Path.Join(_outside.FullName, "canary-outside");
+        File.WriteAllText(path, "canary-content");
+        return path;
     }
 
     private string Pipe()

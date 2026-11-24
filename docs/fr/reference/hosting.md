@@ -143,7 +143,7 @@ lisent une seule déclaration — nomme les racines que les runners livrés se r
 (le dossier de définition du crew), `/script` (le dossier d'un point d'entrée scripté),
 `/llm-logs`, `/llm-mock` et `/llm-cassette` (le fichier de `--llm-mock` et la cassette enregistrée ou
 rejouée), `/sandbox` (où les bacs à sable de code déposent ce qu'ils exécutent) et
-`/credentials` (les jetons OAuth des comptes e-mail, drive et chat, refusée à un montage utilisateur par toutes
+`/credentials` (les jetons OAuth des comptes e-mail, drive et chat) et `/credential-files` (les dossiers des fichiers de certificat et de jeton fédéré des comptes chat d'application, en lecture seule), toutes deux refusées à un montage utilisateur par toutes
 les commandes).
 `RunnerVirtualRoots.All` est l'ensemble contre lequel un appelant refuse un `--mount` utilisateur ;
 demander l'ensemble plutôt que comparer les racines une à une est délibéré, car l'oubli de
@@ -164,7 +164,7 @@ Il compose `Host.CreateDefaultBuilder()` avec :
   l'`appsettings.json` et l'`appsettings.{Environment}.json` de la racine de contenu — le
   répertoire courant —, ni les secrets utilisateur. Puis une couche en mémoire qui
   porte les décisions de montage : les valeurs `--mount` placées par racine virtuelle, les
-  montages internes, le montage `/credentials` des jetons OAuth e-mail, drive et chat, et les entrées
+  montages internes, le montage `/credentials` des jetons OAuth e-mail, drive et chat, les montages `/credential-files` des fichiers d'identifiant des applications chat, et les entrées
   `PathSecurity:AdditionalAllowedDirectories` qui laissent le validateur de chemins atteindre les
   dossiers de ces montages (un `--mount` hors du dossier de travail seulement avec
   `AllowExternalMounts`).
@@ -279,7 +279,7 @@ settings/montages et retournent un code de sortie processus.
 `RunOneShotAsync`, `RunValidateAsync` et `RunListToolsAsync` connectent les serveurs MCP configurés
 avant de charger ou de lister quoi que ce soit, pour que les trois voient la même surface d'outils.
 Les gardes que la CLI exécute avant de construire un hôte sont publiques elles aussi —
-`EnsureReservedRootsAreFree` (ajoute toujours `/credentials`), `EnsureVirtualRootsAreUnique`,
+`EnsureReservedRootsAreFree` (ajoute toujours `/credentials` et `/credential-files`), `EnsureVirtualRootsAreUnique`,
 `EnsureMountSelectionIsResolvable`, `EnsureMountSourcesExist` — tout comme
 `RegisterGracefulShutdown`, `DetectOutputMountPath`, `ConfigureVerboseLogging` (`1` : Information
 pour les modules Orkeon ; `2` : Debug) et `IsScriptedCrewDefinition` (`.ork.ts` / `.ork.js`).
