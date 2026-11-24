@@ -7,9 +7,9 @@
 > [RaggableTree](../architecture/raggable-tree.md) · [Known limitations](../reference/limitations.md) ·
 > [Back to index](../INDEX.md)
 
-`browser` gives an agent a browser: the one installed on the machine — Firefox, Chrome, Edge or Brave —, driven over
-[WebDriver BiDi](https://w3c.github.io/webdriver-bidi/) on a WebSocket. No driver binary, no
-vendor package, no browser download. The agent opens a page, reads it as an outline of sections,
+`browser` gives an agent a browser: the one installed on the machine — Firefox, Chrome, Edge, Brave or Safari —, driven over
+[WebDriver BiDi](https://w3c.github.io/webdriver-bidi/) on a WebSocket, or over the WebDriver of macOS for Safari. No driver
+to install, no vendor package, no browser download. The agent opens a page, reads it as an outline of sections,
 links and controls, clicks, types, presses keys, searches the page by meaning, runs a script and
 saves a screenshot. Pages run their JavaScript: what `web_scrape` cannot see, `browser` can.
 
@@ -63,6 +63,7 @@ action works and `search` says so.
 | `chrome` | Google Chrome, or Chromium | The DevTools protocol, through the `chromium-bidi` mapper Orkeon embeds |
 | `edge` | Microsoft Edge | The same |
 | `brave` | Brave | The same; Shields stays as Brave sets it, and may block what a page loads |
+| `safari` | Safari, on macOS | Classic WebDriver, through the `safaridriver` macOS ships |
 
 Chrome, Edge and Brave run the mapper in a hidden tab of the browser itself: no `chromedriver`, nothing
 downloaded. Three things differ from Firefox:
@@ -72,6 +73,18 @@ downloaded. Three things differ from Firefox:
 - **The sandbox stays on.** Orkeon never passes `--no-sandbox`: in a container without user namespaces, or as root,
   the browser does not start, and the error carries what it said.
 - **Boxes a page opens** (`alert`, `confirm`, `prompt`) are dismissed by the mapper itself, and reported the same way.
+
+Safari has a WebDriver BiDi endpoint, without input, screenshots or events: Orkeon translates to classic WebDriver
+instead. What differs:
+
+- **Allow it once**: `sudo safaridriver --enable` on the Mac. Without it, the first action is refused and says so.
+- **The disposable profile only**: a named profile is refused. Safari keeps the automation session apart from the
+  user's windows, cookies and history.
+- **No headless mode**: `Headless: true` with `safari` is refused when the browser sessions of the host are built.
+- **One session at a time on the Mac**: a second run's first action is refused while another holds it, unless the
+  runs share the browser (`SharedInstance`) or the host keeps it (`Lifetime: host`).
+- **No events**: tabs, boxes and navigations are looked at after each command. A box is dismissed and reported with
+  its text, always as an `alert`.
 
 ## The actions
 

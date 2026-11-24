@@ -18,7 +18,7 @@ public sealed class FirefoxToolOptions
     /// <summary>The former name of <see cref="BrowserSectionName"/>, read when that section is absent.</summary>
     public const string SectionName = "Orkeon:Tools:Firefox";
 
-    /// <summary>The browser the host drives: `firefox` (the default), `chrome`, `edge` or `brave`. Case ignored; any other value is refused.</summary>
+    /// <summary>The browser the host drives: `firefox` (the default), `chrome`, `edge`, `brave`, or `safari` on macOS. Case ignored; any other value is refused.</summary>
     public string Engine { get; set; } = FirefoxEngine.EngineId;
 
     /// <summary>The section the options were read from, which errors name.</summary>
@@ -32,7 +32,7 @@ public sealed class FirefoxToolOptions
 
     /// <summary>
     /// `true` starts the browser without a window. The default shows the window; under Linux with neither
-    /// `DISPLAY` nor `WAYLAND_DISPLAY` the browser starts headless anyway, and a warning says so.
+    /// `DISPLAY` nor `WAYLAND_DISPLAY` the browser starts headless anyway, and a warning says so. Refused with `safari`, which has no such mode.
     /// </summary>
     public bool Headless { get; set; }
 

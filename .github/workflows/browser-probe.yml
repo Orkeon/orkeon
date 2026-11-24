@@ -1,26 +1,57 @@
-# TEMPORARY (#444): runs the Safari suite on the macOS runner. Removed before the branch is merged.
+# TEMPORARY (#444): validates the browser job of integration.yml. Removed before the branch is merged.
 name: browser-probe
 on:
   push:
     branches: [feature/browser-engines]
-    paths: ['.github/workflows/browser-probe.yml', 'src/tools/Orkeon.Tools.Web/Safari/**']
+    paths: ['.github/workflows/browser-probe.yml']
 permissions:
   contents: read
 jobs:
-  safari:
-    runs-on: macos-latest
+  # The browser tool on the engines the Linux runner cannot prove (ADR-022, D9): Edge on Windows,
+  # Safari on macOS. Their integration tests skip where the browser is missing, so a floor on the
+  # number of tests that succeeded keeps a green night from meaning that no browser was started.
+  # These jobs do not latch the tracking issue either.
+  browser:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: windows-latest, suite: EdgeToolIntegrationTests, min-succeeded: '7', safaridriver: '' }
+          # Safari has no named profile: the two tests that need one skip.
+          - { os: macos-latest, suite: SafariToolIntegrationTests, min-succeeded: '5', safaridriver: /usr/bin/safaridriver }
+    runs-on: ${{ matrix.os }}
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
         with: { global-json-file: global.json }
-      - run: sudo safaridriver --enable
-      - run: dotnet build tests/tools/Orkeon.Tools.Web.Tests/Orkeon.Tools.Web.Tests.csproj -c Release
-      - env: { ORKEON_TEST_BROWSER_SAFARI: /usr/bin/safaridriver }
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            packages
+            ~/.nuget/packages
+          key: nuget-${{ runner.os }}-${{ hashFiles('**/*.csproj', '**/Directory.Packages.props', '**/packages.lock.json') }}
+          restore-keys: nuget-${{ runner.os }}-
+      - run: dotnet restore tests/tools/Orkeon.Tools.Web.Tests/Orkeon.Tools.Web.Tests.csproj
+      - run: dotnet build tests/tools/Orkeon.Tools.Web.Tests/Orkeon.Tools.Web.Tests.csproj -c Release --no-restore
+      - name: Allow the remote automation of Safari
+        if: runner.os == 'macOS'
+        run: sudo safaridriver --enable
+      - name: Run the browser suite
+        shell: bash
+        env:
+          SUITE: ${{ matrix.suite }}
+          MIN_SUCCEEDED: ${{ matrix.min-succeeded }}
+          ORKEON_TEST_BROWSER_SAFARI: ${{ matrix.safaridriver }}
         run: |
           set +e
-          for i in 1 2 3; do
-            echo "== run $i"; date; ps ax | grep -iE "safari" | grep -v grep | cut -c1-150
-            dotnet test tests/tools/Orkeon.Tools.Web.Tests/Orkeon.Tools.Web.Tests.csproj -c Release --no-build --filter "FullyQualifiedName~SafariToolIntegrationTests" --output Detailed -- --no-ansi
-          done
-          log show --last 12m --style compact --predicate 'process == "safaridriver"' | tail -n 60
+          out="$(dotnet test tests/tools/Orkeon.Tools.Web.Tests/Orkeon.Tools.Web.Tests.csproj -c Release --no-build \
+            --filter "FullyQualifiedName~$SUITE" -- --no-ansi 2>&1)"
+          rc=$?
+          echo "$out"
+          succeeded="$(printf '%s\n' "$out" | sed -e 's/\x1b\[[0-9;]*m//g' | sed -n 's/^[[:space:]]*succeeded:[[:space:]]*\([0-9][0-9]*\)[[:space:]]*$/\1/p' | sort -n | tail -1)"
+          if [ "${succeeded:-0}" -lt "$MIN_SUCCEEDED" ]; then
+            echo "::error::Only ${succeeded:-0} test(s) succeeded, expected at least $MIN_SUCCEEDED. Do NOT lower the floor to clear this."
+            exit 1
+          fi
+          exit $rc

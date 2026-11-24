@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — Safari engine (#444)
+
+- `Orkeon:Tools:Browser:Engine` takes `safari`, on macOS: the same actions, over the classic WebDriver of
+  `safaridriver`, once `sudo safaridriver --enable` has been run. The disposable profile only, always with a window
+  (`Headless: true` is refused), one session at a time on the Mac ([guide](docs/guides/browser.md#engines)).
+
 ### Added — Chrome, Edge and Brave engines (#441, #442, #443)
 
 - `Orkeon:Tools:Browser:Engine` takes `chrome` (Google Chrome or Chromium), `edge` and `brave`: the same actions, over

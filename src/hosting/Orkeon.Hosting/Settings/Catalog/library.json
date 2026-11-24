@@ -3067,7 +3067,7 @@
       "section": "Orkeon:Tools:Browser",
       "type": "string",
       "default": "firefox",
-      "description": "The browser the host drives: `firefox` (the default), `chrome`, `edge` or `brave`. Case ignored; any other value is refused."
+      "description": "The browser the host drives: `firefox` (the default), `chrome`, `edge`, `brave`, or `safari` on macOS. Case ignored; any other value is refused."
     },
     {
       "path": "Orkeon:Tools:Browser:ExecutablePath",
@@ -3080,7 +3080,7 @@
       "section": "Orkeon:Tools:Browser",
       "type": "boolean",
       "default": false,
-      "description": "`true` starts the browser without a window. The default shows the window; under Linux with neither `DISPLAY` nor `WAYLAND_DISPLAY` the browser starts headless anyway, and a warning says so."
+      "description": "`true` starts the browser without a window. The default shows the window; under Linux with neither `DISPLAY` nor `WAYLAND_DISPLAY` the browser starts headless anyway, and a warning says so. Refused with `safari`, which has no such mode."
     },
     {
       "path": "Orkeon:Tools:Browser:Lifetime",
@@ -3581,7 +3581,7 @@
       "section": "Orkeon:Tools:Firefox",
       "type": "string",
       "default": "firefox",
-      "description": "The browser the host drives: `firefox` (the default), `chrome`, `edge` or `brave`. Case ignored; any other value is refused."
+      "description": "The browser the host drives: `firefox` (the default), `chrome`, `edge`, `brave`, or `safari` on macOS. Case ignored; any other value is refused."
     },
     {
       "path": "Orkeon:Tools:Firefox:ExecutablePath",
@@ -3594,7 +3594,7 @@
       "section": "Orkeon:Tools:Firefox",
       "type": "boolean",
       "default": false,
-      "description": "`true` starts the browser without a window. The default shows the window; under Linux with neither `DISPLAY` nor `WAYLAND_DISPLAY` the browser starts headless anyway, and a warning says so."
+      "description": "`true` starts the browser without a window. The default shows the window; under Linux with neither `DISPLAY` nor `WAYLAND_DISPLAY` the browser starts headless anyway, and a warning says so. Refused with `safari`, which has no such mode."
     },
     {
       "path": "Orkeon:Tools:Firefox:Lifetime",

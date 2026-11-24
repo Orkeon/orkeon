@@ -1724,9 +1724,9 @@ not do is listed in [Known limitations](limitations.md).
 | `AllowedProfiles` | list of string | `[]` |  | The profiles an agent may name with the `profile` argument, beside `disposable` and `Profile`. Empty: an agent names no other profile. A name in `DeniedProfiles` stays refused. |
 | `CommandTimeoutSeconds` | integer | `30` |  | Seconds one browser command (a page load, a script, a click) is given to answer. |
 | `DeniedProfiles` | list of string | `[]` |  | The profiles no browser ever starts with, whether an agent names one or `Profile` does: the operator's own profiles, for instance. |
-| `Engine` | string | `"firefox"` |  | The browser the host drives: `firefox` (the default), `chrome`, `edge` or `brave`. Case ignored; any other value is refused. |
+| `Engine` | string | `"firefox"` |  | The browser the host drives: `firefox` (the default), `chrome`, `edge`, `brave`, or `safari` on macOS. Case ignored; any other value is refused. |
 | `ExecutablePath` | string | — |  | Path of the browser's program, or its name on the PATH. Not set: the engine's usual names on the PATH, then the usual install folder of the platform. |
-| `Headless` | boolean | `false` |  | `true` starts the browser without a window. The default shows the window; under Linux with neither `DISPLAY` nor `WAYLAND_DISPLAY` the browser starts headless anyway, and a warning says so. |
+| `Headless` | boolean | `false` |  | `true` starts the browser without a window. The default shows the window; under Linux with neither `DISPLAY` nor `WAYLAND_DISPLAY` the browser starts headless anyway, and a warning says so. Refused with `safari`, which has no such mode. |
 | `Lifetime` | enum | `"Run"` | `Run`, `Host` | How long a browser lives: `Run` (the default) closes it with the agent run that started it; `Host` keeps it open, with its tabs and its profile, from one run to the next, one browser per profile, until `close`, the user closes the window, or the host stops. Case ignored. |
 | `MaxNodes` | integer | `40` |  | Most nodes one `snapshot` or `find` answer lists; the rest is read with `offset`. |
 | `MaxTextLength` | integer | `3000` |  | Most characters of page text one `read` answer carries. |
@@ -1858,9 +1858,9 @@ with the Firefox engine only (`Engine` is not read here), when `Orkeon:Tools:Bro
 | `AllowedProfiles` | list of string | `[]` |  | The profiles an agent may name with the `profile` argument, beside `disposable` and `Profile`. Empty: an agent names no other profile. A name in `DeniedProfiles` stays refused. |
 | `CommandTimeoutSeconds` | integer | `30` |  | Seconds one browser command (a page load, a script, a click) is given to answer. |
 | `DeniedProfiles` | list of string | `[]` |  | The profiles no browser ever starts with, whether an agent names one or `Profile` does: the operator's own profiles, for instance. |
-| `Engine` | string | `"firefox"` |  | The browser the host drives: `firefox` (the default), `chrome`, `edge` or `brave`. Case ignored; any other value is refused. |
+| `Engine` | string | `"firefox"` |  | The browser the host drives: `firefox` (the default), `chrome`, `edge`, `brave`, or `safari` on macOS. Case ignored; any other value is refused. |
 | `ExecutablePath` | string | — |  | Path of the browser's program, or its name on the PATH. Not set: the engine's usual names on the PATH, then the usual install folder of the platform. |
-| `Headless` | boolean | `false` |  | `true` starts the browser without a window. The default shows the window; under Linux with neither `DISPLAY` nor `WAYLAND_DISPLAY` the browser starts headless anyway, and a warning says so. |
+| `Headless` | boolean | `false` |  | `true` starts the browser without a window. The default shows the window; under Linux with neither `DISPLAY` nor `WAYLAND_DISPLAY` the browser starts headless anyway, and a warning says so. Refused with `safari`, which has no such mode. |
 | `Lifetime` | enum | `"Run"` | `Run`, `Host` | How long a browser lives: `Run` (the default) closes it with the agent run that started it; `Host` keeps it open, with its tabs and its profile, from one run to the next, one browser per profile, until `close`, the user closes the window, or the host stops. Case ignored. |
 | `MaxNodes` | integer | `40` |  | Most nodes one `snapshot` or `find` answer lists; the rest is read with `offset`. |
 | `MaxTextLength` | integer | `3000` |  | Most characters of page text one `read` answer carries. |

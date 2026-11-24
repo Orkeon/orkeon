@@ -7,9 +7,9 @@
 > [RaggableTree](../architecture/raggable-tree.md) · [Limitations connues](../reference/limitations.md) ·
 > [Retour à l'index](../INDEX.md)
 
-`browser` donne un navigateur à un agent : celui installé sur la machine — Firefox, Chrome, Edge ou Brave —, piloté par
-[WebDriver BiDi](https://w3c.github.io/webdriver-bidi/) sur un WebSocket. Aucun binaire de
-pilote, aucun paquet d'éditeur, aucun téléchargement de navigateur. L'agent ouvre une page, la lit
+`browser` donne un navigateur à un agent : celui installé sur la machine — Firefox, Chrome, Edge, Brave ou Safari —, piloté par
+[WebDriver BiDi](https://w3c.github.io/webdriver-bidi/) sur un WebSocket, ou par le WebDriver de macOS pour Safari. Aucun
+pilote à installer, aucun paquet d'éditeur, aucun téléchargement de navigateur. L'agent ouvre une page, la lit
 comme un plan de sections, de liens et de contrôles, clique, saisit, presse des touches, cherche
 dans la page par le sens, exécute un script et enregistre une capture d'écran. Les pages exécutent
 leur JavaScript : ce que `web_scrape` ne voit pas, `browser` le voit.
@@ -68,6 +68,7 @@ autres actions fonctionnent et `search` le dit.
 | `chrome` | Google Chrome, ou Chromium | Le protocole DevTools, par le mapper `chromium-bidi` qu'Orkeon embarque |
 | `edge` | Microsoft Edge | De même |
 | `brave` | Brave | De même ; Shields reste tel que Brave le règle, et peut bloquer ce qu'une page charge |
+| `safari` | Safari, sous macOS | WebDriver classic, par le `safaridriver` que macOS livre |
 
 Chrome, Edge et Brave exécutent le mapper dans un onglet caché du navigateur lui-même : pas de `chromedriver`, rien à
 télécharger. Trois choses diffèrent de Firefox :
@@ -79,6 +80,19 @@ télécharger. Trois choses diffèrent de Firefox :
   utilisateur, ou en root, le navigateur ne démarre pas, et l'erreur porte ce qu'il a dit.
 - **Les boîtes qu'une page ouvre** (`alert`, `confirm`, `prompt`) sont fermées par le mapper lui-même, et rapportées de
   la même façon.
+
+Safari a un point d'accès WebDriver BiDi, sans saisie, sans capture d'écran et sans événement : Orkeon traduit en
+WebDriver classic à la place. Ce qui diffère :
+
+- **À autoriser une fois** : `sudo safaridriver --enable` sur le Mac. Sans cela, la première action est refusée et le dit.
+- **Le profil jetable seulement** : un profil nommé est refusé. Safari garde la session d'automatisation à part des
+  fenêtres, des cookies et de l'historique de l'utilisateur.
+- **Pas de mode sans fenêtre** : `Headless: true` avec `safari` est refusé à la construction des sessions de navigateur
+  de l'hôte.
+- **Une session à la fois sur le Mac** : la première action d'une seconde exécution est refusée tant qu'une autre la
+  tient, sauf si les exécutions partagent le navigateur (`SharedInstance`) ou si l'hôte le garde (`Lifetime: host`).
+- **Pas d'événements** : les onglets, les boîtes et les navigations sont regardés après chaque commande. Une boîte est
+  fermée et rapportée avec son texte, toujours comme un `alert`.
 
 ## Les actions
 
