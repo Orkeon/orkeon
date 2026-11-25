@@ -200,6 +200,31 @@ public sealed class DiscordFilesTests
     }
 
     [Fact]
+    public async Task ShouldSayTheWordsOnce_WhenTheFilesTakeSeveralMessages()
+    {
+        var interaction = Interaction();
+
+        await DiscordChannel.AnswerDeferredAsync(
+            interaction,
+            new DiscordSends(),
+            () => Task.FromResult(new CommandReply("here", [.. Enumerable.Range(0, DiscordFiles.MaxPerMessage + 1).Select(i => File($"f{i}"))])),
+            Ct);
+
+        var posts = StubDiscord.CallsOf(interaction).Where(c => c.Method == "FollowupWithFilesAsync").ToList();
+        Assert.Equal(2, posts.Count);
+        Assert.Equal([true, false], posts.Select(p => p.Arguments.Contains("here")));
+    }
+
+    [Fact]
+    public void ShouldTakeNoMoreThanOneRequestHolds_WhateverIsAnnounced()
+    {
+        Assert.Equal(DiscordFiles.UnknownLimit, DiscordFiles.LimitOf(0));
+        Assert.Equal(100, DiscordFiles.LimitOf(100));
+        Assert.Equal(DiscordFiles.RequestBytes, DiscordFiles.LimitOf(500UL * 1024 * 1024));
+        Assert.Equal(DiscordFiles.RequestBytes, DiscordFiles.LimitOf(ulong.MaxValue));
+    }
+
+    [Fact]
     public async Task ShouldSendToFewAtOnce_AndOnceToOnePerson()
     {
         var sends = new DiscordSends();

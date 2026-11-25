@@ -230,7 +230,7 @@ public sealed class ChatFileCommandsTests : IDisposable
         {
             "/output/closed/c.txt", "/output/open/../closed/c.txt", "/output/open/.secret", "/output/drop/d.txt", "/outbox/folder", "/outbox",
             "/outbox/../inbox/sent.txt", "/inbox/sent.txt", "/inbox/.conversation/meta.json", "/outbox/./folder/x.txt", "/outbox//folder/x.txt",
-            "/outbox\\folder\\x.txt", "/crews/support.yaml", "/output/openx/c.txt", "/OUTBOX/folder/x.txt", "outbox/folder/x.txt", "",
+            "/outbox\\folder\\x.txt", "/outbox/folder\\x.txt", "/crews/support.yaml", "/output/openx/c.txt", "/OUTBOX/folder/x.txt", "outbox/folder/x.txt", "",
             "/outbox/../../" + new ConversationRef("discord", "1002").Key + "/out/theirs.txt", "/outbox/a\0b",
         })
         {
@@ -589,6 +589,116 @@ public sealed class ChatFileCommandsTests : IDisposable
         Assert.False(Directory.Exists(Path.Combine(Root, new ConversationRef("discord", "1003").Key)));
         Assert.Empty(bounded);
     }
+
+    [Theory]
+    [InlineData("/a/./b")]
+    [InlineData("/a/.")]
+    [InlineData("/a/../b")]
+    [InlineData("/..")]
+    [InlineData("/a\\b")]
+    [InlineData("/a//b")]
+    [InlineData("a/b")]
+    public void ShouldReadNoPath_ThatHasAnotherReading(string typed) => Assert.Null(DownloadableFiles.Canonical(typed));
+
+    [Fact]
+    public async Task ShouldNotSend_WhenTheDeclarationClosesTheFolderBeforeItIsOpened()
+    {
+        var (commands, _) = Build();
+        Write(Output, "open/a.txt", "a");
+        var file = Assert.Single((await commands.AnswerAsync(Get("/output/open/a.txt"), Ct)).Files);
+
+        await SwitchAsync("download: true", "upload: true");
+
+        await Assert.ThrowsAsync<FileNotFoundException>(() => file.OpenAsync(Ct));
+    }
+
+    [Fact]
+    public async Task ShouldStopWaiting_WhenAFileDoesNotCome()
+    {
+        var (commands, _) = Build();
+        var (source, _, arrive) = Late();
+        commands.ReceiveLimit = TimeSpan.FromMilliseconds(50);
+
+        try
+        {
+            // The wait ends by the limit; the half minute only keeps a broken one from hanging.
+            var reply = await commands.AnswerAsync(Put("/output/drop", source), Ct).WaitAsync(TimeSpan.FromSeconds(30), Ct);
+            Assert.DoesNotContain("Kept", reply.Text, StringComparison.Ordinal);
+        }
+        finally
+        {
+            arrive.TrySetResult();
+        }
+    }
+
+    [Fact]
+    public async Task ShouldSuggestNothing_WhenItCannotBeFoundInTime()
+    {
+        var (commands, _) = Build();
+        commands.SuggestionLimit = TimeSpan.FromMilliseconds(50);
+        var slow = Get("") with
+        {
+            Focused = "path",
+            RoomId = null,
+            ResolveRoomAsync = async ct =>
+            {
+                await Task.Delay(Timeout.Infinite, ct);
+                return "5";
+            },
+        };
+
+        Assert.Empty(await ChatChannelService.SuggestAsync(new AllowListChatAuthorizer(["alice"]), slow, commands, Ct).WaitAsync(TimeSpan.FromSeconds(30), Ct));
+    }
+
+    [Fact]
+    public async Task ShouldSuggestNoName_ThatDoesNotShowAsItIs()
+    {
+        var (commands, _) = Build();
+        Write(Outbox, "plain.txt", "x");
+        foreach (var mark in "\u202E\u200B\u2028\uE000")
+            Write(Outbox, $"a{mark}exe.txt", "x");
+
+        Assert.Equal(["/outbox/plain.txt"], await commands.SuggestAsync(Get("") with { Focused = "path" }, Ct));
+    }
+
+    [Fact]
+    public async Task ShouldSayTheFilesCannotBeRead_WhenTheFolderIsNone()
+    {
+        var (commands, _) = Build();
+        await File.WriteAllTextAsync(Path.Combine(Root, new ConversationRef("discord", "1003").Key), "in the way", Ct);
+
+        var reply = await commands.AnswerAsync(Invocation(ChatCommands.Files) with { ConversationId = "1003" }, Ct);
+
+        Assert.Contains("cannot be read now", reply.Text, StringComparison.Ordinal);
+        Assert.DoesNotContain(_harness.Root, reply.Text, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task ShouldKeepOneOfTwo_WhenTwoArriveInOneConversationThatHasRoomForOne()
+    {
+        var (commands, _) = Build(files: s => { s["MaxConversationBytes"] = 100; s["MaxTotalBytes"] = 10_000; });
+        var (first, asked, arrive) = Late(content: new string('x', 60));
+        CommandInvocation Sized(FakeAttachmentSource source, string id)
+        {
+            var put = Put("/output/drop", source, id: id);
+            return put with { Attachments = [put.Attachments[0] with { Size = 60 }] };
+        }
+
+        var one = commands.AnswerAsync(Sized(first, "1"), Ct);
+        await asked.WaitAsync(Ct);
+        var two = new FakeAttachmentSource().With("2", new string('y', 60));
+        var refused = (await commands.AnswerAsync(Sized(two, "2"), Ct)).Text;
+        arrive.SetResult();
+
+        Assert.Contains("of this conversation have reached", refused, StringComparison.Ordinal);
+        Assert.Empty(two.Opened);
+        Assert.Contains("Kept", (await one).Text, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("/outbox/a`b.txt", "`/outbox/a'b.txt`")]
+    [InlineData("/outbox/a\nb.txt", "`/outbox/a_b.txt`")]
+    public void ShouldKeepAPathInItsCode(string path, string shown) => Assert.Equal(shown, FileNotices.Path(path));
 
     [Fact]
     public async Task ShouldAskNothingOfThePlatform_WhenTheSenderIsNotAllowed()

@@ -24,7 +24,6 @@ internal sealed class ChatFileCommands
     private const string NoFile = DownloadableFiles.NoFile + " /files lists what is.";
     private const string NoFolder = "There is no such folder here, or it is not open. /files lists what is.";
     private const string NoUpload = "There is no such folder here, or it takes no file. /files lists those that do.";
-    private static readonly TimeSpan s_receiveLimit = TimeSpan.FromMinutes(2);
 
     private readonly string _channel;
     private readonly ChatRoutes _routes;
@@ -32,6 +31,12 @@ internal sealed class ChatFileCommands
     private readonly ConversationFiles _files;
     private readonly CrewFileFolders _folders;
     private readonly DownloadableFiles _downloads;
+
+    /// <summary>How long a file may take to arrive.</summary>
+    internal TimeSpan ReceiveLimit { get; set; } = TimeSpan.FromMinutes(2);
+
+    /// <summary>How long a suggestion is looked for: Discord waits three seconds for it.</summary>
+    internal TimeSpan SuggestionLimit { get; set; } = TimeSpan.FromSeconds(2);
 
     /// <summary>Builds the commands of a channel.</summary>
     /// <param name="channel">The channel's name, part of the conversation's key.</param>
@@ -240,7 +245,7 @@ internal sealed class ChatFileCommands
 
         // What it may take is reserved while it is read: a file that stops coming must not keep it.
         using var bounded = CancellationTokenSource.CreateLinkedTokenSource(ct);
-        bounded.CancelAfter(s_receiveLimit);
+        bounded.CancelAfter(ReceiveLimit);
         try
         {
             var stored = await _files.StoreAsync(

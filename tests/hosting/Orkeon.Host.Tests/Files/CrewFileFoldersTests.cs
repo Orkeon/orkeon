@@ -301,6 +301,17 @@ public sealed class CrewFileFoldersTests : IDisposable
     }
 
     [Fact]
+    public void Nothing_is_shown_where_the_mount_forbids_reading()
+    {
+        using var registry = new FileSystemRegistry(
+            [new FileSystemMount(_harness.Root, "/m", FileAccessRights.ReadWrite, [new SubPathOverride("private", FileAccessRights.Write)])]);
+        var fs = new FileSystemService(registry, new FakePathValidator(), NullLogger<FileSystemService>.Instance);
+
+        Assert.True(DownloadableFiles.IsShown(fs, "/m", "/m/a.txt"));
+        Assert.False(DownloadableFiles.IsShown(fs, "/m", "/m/private/a.txt"));
+    }
+
+    [Fact]
     public async Task A_folder_written_only_takes_uploads()
     {
         Declare("a.yaml", "files:\n  - path: /drop\n    upload: true\n");

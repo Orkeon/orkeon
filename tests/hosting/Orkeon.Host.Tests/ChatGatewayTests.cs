@@ -304,6 +304,23 @@ public class ChatGatewayTests
     };
 
     [Theory]
+    [InlineData("", "There is nothing to work on")]
+    [InlineData("go", null)]
+    public async Task Files_are_left_out_and_said_so_where_the_host_keeps_none(string text, string? answered)
+    {
+        var (gateway, runner, _, _) = Build();
+        var responder = new RecordingResponder();
+        var source = new FakeAttachmentSource().With("0", "x");
+
+        await gateway.HandleAsync(WithFiles(text, "a.txt") with { AttachmentSource = source }, responder, TestContext.Current.CancellationToken);
+
+        Assert.Equal(answered is null ? 1 : 0, runner.Ran.Count);
+        Assert.Empty(source.Opened);
+        Assert.Contains("Files are not taken here", responder.Sent[0].Text, StringComparison.Ordinal);
+        Assert.Contains(answered ?? "Working", responder.Sent[0].Text, StringComparison.Ordinal);
+    }
+
+    [Theory]
     [InlineData("")]
     [InlineData("  \n")]
     public async Task A_message_with_nothing_in_it_is_answered_and_starts_no_run(string text)

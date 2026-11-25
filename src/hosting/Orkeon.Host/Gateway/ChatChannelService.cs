@@ -27,7 +27,6 @@ internal sealed partial class ChatChannelService : BackgroundService
     private readonly IHostApplicationLifetime _lifetime;
     private readonly List<Func<ConfiguredChannel>> _channels = [];
     private TeamsChannel? _teamsChannel;
-    private static readonly TimeSpan s_suggestionLimit = TimeSpan.FromSeconds(2);
 
     /// <summary>What builds the Discord channel, a double in the tests.</summary>
     internal Func<IChatChannel> CreateDiscord { get; set; }
@@ -276,7 +275,7 @@ internal sealed partial class ChatChannelService : BackgroundService
             return [];
 
         using var bounded = CancellationTokenSource.CreateLinkedTokenSource(ct);
-        bounded.CancelAfter(s_suggestionLimit);
+        bounded.CancelAfter(files.SuggestionLimit);
         try
         {
             return await files.SuggestAsync(invocation, bounded.Token).ConfigureAwait(false);
