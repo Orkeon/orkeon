@@ -48,6 +48,15 @@ internal sealed record HostFilesOptions
     /// <summary>The extensions taken (<c>pdf</c> or <c>.pdf</c>, case ignored). Empty, every extension is.</summary>
     public IReadOnlyList<string> AllowedExtensions { get; init; } = [];
 
+    /// <summary>How many files the agents of one run may send to its conversation.</summary>
+    public int MaxAttachedFilesPerRun { get; init; } = 10;
+
+    /// <summary>How many messages the agents of one run may send files in.</summary>
+    public int MaxAttachedMessagesPerRun { get; init; } = 5;
+
+    /// <summary>What the agents of one run may send to its conversation, in bytes.</summary>
+    public long MaxAttachedBytesPerRun { get; init; } = 50L * 1024 * 1024;
+
     /// <summary>The first value the host cannot run on, as a sentence naming its key; null when there is none.</summary>
     internal string? Problem()
     {
@@ -63,6 +72,12 @@ internal sealed record HostFilesOptions
             return $"{SectionName}:MaxTotalBytes must be positive.";
         if (Retention <= TimeSpan.Zero)
             return $"{SectionName}:Retention must be positive.";
+        if (MaxAttachedFilesPerRun <= 0)
+            return $"{SectionName}:MaxAttachedFilesPerRun must be positive.";
+        if (MaxAttachedMessagesPerRun <= 0)
+            return $"{SectionName}:MaxAttachedMessagesPerRun must be positive.";
+        if (MaxAttachedBytesPerRun <= 0)
+            return $"{SectionName}:MaxAttachedBytesPerRun must be positive.";
         return AllowedExtensions.Any(e => string.IsNullOrWhiteSpace(e?.TrimStart('.')))
             ? $"{SectionName}:AllowedExtensions holds an empty entry."
             : null;

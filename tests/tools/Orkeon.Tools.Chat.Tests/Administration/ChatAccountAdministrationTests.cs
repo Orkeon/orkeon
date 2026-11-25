@@ -361,6 +361,8 @@ public sealed class ChatAccountAdministrationTests
 
         Assert.Empty(await check.CheckAsync(["chat_read"], Token));
         Assert.Empty(await check.CheckAsync(["web_search"], Token));
+        // Not of the family: it speaks to the conversation of the run, through no account.
+        Assert.Empty(await check.CheckAsync(["chat_attach"], Token));
         Assert.Equal(
             ["chat_send needs the Send right with a non-empty Send:AllowedPlaces on a ready chat account, and no account has it. Add it under Orkeon:Tools:Chat:Accounts:<name>:Rights and Send."],
             await check.CheckAsync(["chat_send", "chat_read"], Token));

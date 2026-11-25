@@ -20,7 +20,7 @@ public sealed class WorkspaceToolMarkerTests : IDisposable
 
     private static readonly string[] CallersOwn =
     [
-        "human_input", "memory_store", "memory_recall", "session_cost", "session_snip", "session_stats", "session_store",
+        "chat_attach", "human_input", "memory_store", "memory_recall", "session_cost", "session_snip", "session_stats", "session_store",
         "token_budget", "spawn_agent", "system_one_decide",
     ];
 

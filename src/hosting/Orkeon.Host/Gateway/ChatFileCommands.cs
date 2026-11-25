@@ -21,8 +21,7 @@ internal sealed class ChatFileCommands
 
     private const int MaxText = 2000;
     private const int MaxScanned = 1000;
-    private const int MaxPathLength = 1024;
-    private const string NoFile = "There is no such file here, or it is not open to download. /files lists what is.";
+    private const string NoFile = DownloadableFiles.NoFile + " /files lists what is.";
     private const string NoFolder = "There is no such folder here, or it is not open. /files lists what is.";
     private const string NoUpload = "There is no such folder here, or it takes no file. /files lists those that do.";
     private static readonly TimeSpan s_receiveLimit = TimeSpan.FromMinutes(2);
@@ -32,6 +31,7 @@ internal sealed class ChatFileCommands
     private readonly IReadOnlyList<HostedCrewOptions> _crews;
     private readonly ConversationFiles _files;
     private readonly CrewFileFolders _folders;
+    private readonly DownloadableFiles _downloads;
 
     /// <summary>Builds the commands of a channel.</summary>
     /// <param name="channel">The channel's name, part of the conversation's key.</param>
@@ -47,6 +47,7 @@ internal sealed class ChatFileCommands
         _crews = crews ?? throw new ArgumentNullException(nameof(crews));
         _files = files ?? throw new ArgumentNullException(nameof(files));
         _folders = folders ?? throw new ArgumentNullException(nameof(folders));
+        _downloads = new DownloadableFiles(files, folders);
     }
 
     /// <summary>Answers a file command of a person already known to be allowed.</summary>
@@ -125,12 +126,12 @@ internal sealed class ChatFileCommands
         string? asked = null;
         if (Argument(invocation, "folder").Trim() is { Length: > 0 } typed)
         {
-            asked = Canonical(typed.TrimEnd('/'));
-            if (asked is null || !Roots(declared).Any(r => r == asked || IsUnder(asked, r)))
+            asked = DownloadableFiles.Canonical(typed.TrimEnd('/'));
+            if (asked is null || !Roots(declared).Any(r => r == asked || DownloadableFiles.IsUnder(asked, r)))
                 return new CommandReply(NoFolder);
         }
 
-        var roots = Roots(declared).Where(r => asked is null || r == asked || IsUnder(asked, r)).ToList();
+        var roots = Roots(declared).Where(r => asked is null || r == asked || DownloadableFiles.IsUnder(asked, r)).ToList();
         var listed = await _files.UseAsync(
             Conversation(invocation),
             crew,
@@ -140,7 +141,7 @@ internal sealed class ChatFileCommands
                 foreach (var root in roots)
                 {
                     var (files, cut) = await ScanAsync(fs, root, token).ConfigureAwait(false);
-                    sections.Add((root, [.. files.Where(f => asked is null || asked == root || IsUnder(f.VirtualPath, asked))], cut));
+                    sections.Add((root, [.. files.Where(f => asked is null || asked == root || DownloadableFiles.IsUnder(f.VirtualPath, asked))], cut));
                 }
 
                 return sections;
@@ -191,69 +192,10 @@ internal sealed class ChatFileCommands
     private async Task<CommandReply> GetAsync(CommandInvocation invocation, HostedCrewOptions crew, CancellationToken ct)
     {
         var conversation = Conversation(invocation);
-        var path = Canonical(Argument(invocation, "path"));
-        var entry = path is null ? null : await EntryAsync(conversation, crew, path, ct).ConfigureAwait(false);
-        if (entry is null || path is null)
-            return new CommandReply(NoFile);
-
-        return new CommandReply(FileNotices.Path(path), [new OutboundFile
-        {
-            Name = path[(path.LastIndexOf('/') + 1)..],
-            Size = entry.SizeBytes,
-            OpenAsync = token => OpenAsync(conversation, crew, path, entry.SizeBytes, token),
-        }]);
-    }
-
-    private async Task<VirtualFileEntry?> EntryAsync(ConversationRef conversation, HostedCrewOptions crew, string path, CancellationToken ct)
-    {
-        var declared = await _folders.ReadAsync(crew.Name, ct).ConfigureAwait(false);
-        var root = DownloadRoots(declared).FirstOrDefault(r => IsUnder(path, r));
-        return root is null
-            ? null
-            : await _files.UseAsync(conversation, crew, (fs, token) => EntryAsync(fs, root, path, token), ct).ConfigureAwait(false);
-    }
-
-    /// <summary>
-    /// Reads the file whole, judged again: the declaration, the rights and the links may have changed since it was named.
-    /// A copy, not the open file, so neither the conversation nor an agent that writes there waits for the upload.
-    /// </summary>
-    private async Task<Stream> OpenAsync(ConversationRef conversation, HostedCrewOptions crew, string path, long announced, CancellationToken ct)
-    {
-        var declared = await _folders.ReadAsync(crew.Name, ct).ConfigureAwait(false);
-        var root = DownloadRoots(declared).FirstOrDefault(r => IsUnder(path, r));
-        return await _files.UseAsync<Stream>(
-            conversation,
-            crew,
-            async (fs, token) =>
-            {
-                if (root is null || await EntryAsync(fs, root, path, token).ConfigureAwait(false) is null)
-                    throw new FileNotFoundException(NoFile);
-
-                var source = await fs.OpenReadStreamAsync(path, token).ConfigureAwait(false);
-                await using var lease = source.ConfigureAwait(false);
-                var copy = new MemoryStream();
-                try
-                {
-                    var block = new byte[81920];
-                    int read;
-                    while ((read = await source.ReadAsync(block, token).ConfigureAwait(false)) > 0)
-                    {
-                        // More than was announced: it is being written, and may be more than the channel takes.
-                        if (copy.Length + read > announced)
-                            throw new IOException("The file is being written.");
-                        await copy.WriteAsync(block.AsMemory(0, read), token).ConfigureAwait(false);
-                    }
-
-                    copy.Position = 0;
-                    return copy;
-                }
-                catch
-                {
-                    await copy.DisposeAsync().ConfigureAwait(false);
-                    throw;
-                }
-            },
-            ct).ConfigureAwait(false);
+        var path = Argument(invocation, "path").Trim();
+        return await _downloads.FindAsync(conversation, crew, path, ct).ConfigureAwait(false) is { } file
+            ? new CommandReply(FileNotices.Path(path), [file])
+            : new CommandReply(NoFile);
     }
 
     private async Task<IEnumerable<string>> PathsAsync(CommandInvocation invocation, HostedCrewOptions crew, OpenedFolders declared, CancellationToken ct) =>
@@ -263,7 +205,7 @@ internal sealed class ChatFileCommands
             async (fs, token) =>
             {
                 var paths = new List<string>();
-                foreach (var root in DownloadRoots(declared))
+                foreach (var root in DownloadableFiles.Roots(declared))
                     paths.AddRange((await ScanAsync(fs, root, token).ConfigureAwait(false)).Files.Select(f => f.VirtualPath));
                 return paths;
             },
@@ -276,12 +218,12 @@ internal sealed class ChatFileCommands
         if (invocation is not { Attachments: [var attachment, ..], AttachmentSource: { } source })
             return new CommandReply("There is no file to keep.");
 
-        var folder = Canonical(Argument(invocation, "folder").Trim().TrimEnd('/'));
+        var folder = DownloadableFiles.Canonical(Argument(invocation, "folder").Trim().TrimEnd('/'));
         var declared = await _folders.ReadAsync(crew.Name, ct).ConfigureAwait(false);
         var conversation = Conversation(invocation);
         if (folder is null
             || !declared.Open.Any(f => f.Upload && f.Path == folder)
-            || !await _files.UseAsync(conversation, crew, (fs, token) => IsDirectAsync(fs, folder, token), ct).ConfigureAwait(false))
+            || !await _files.UseAsync(conversation, crew, (fs, token) => DownloadableFiles.IsDirectAsync(fs, folder, token), ct).ConfigureAwait(false))
         {
             return new CommandReply(NoUpload);
         }
@@ -313,67 +255,6 @@ internal sealed class ChatFileCommands
     private static IEnumerable<string> Roots(OpenedFolders declared) =>
         [RunnerVirtualRoots.Outbox, RunnerVirtualRoots.Inbox, .. declared.Open.Where(f => f.Download).Select(f => f.Path)];
 
-    private static IEnumerable<string> DownloadRoots(OpenedFolders declared) =>
-        [RunnerVirtualRoots.Outbox, .. declared.Open.Where(f => f.Download).Select(f => f.Path)];
-
-    private static bool IsUnder(string path, string root) => path.StartsWith(root + "/", StringComparison.Ordinal);
-
-    /// <summary>The path as typed when it has one reading; null otherwise. Nothing is resolved here: what would need it is refused.</summary>
-    private static string? Canonical(string typed)
-    {
-        var path = typed.Trim();
-        if (path.Length is < 2 or > MaxPathLength || path[0] != '/' || path.Contains('\\', StringComparison.Ordinal) || path.Any(char.IsControl))
-            return null;
-
-        return path[1..].Split('/').All(IsName) ? path : null;
-
-        static bool IsName(string segment) =>
-            segment.Length > 0
-            && segment is not ("." or "..")
-            && (!OperatingSystem.IsWindows() || !(segment.Contains(':', StringComparison.Ordinal) || segment.EndsWith('.') || segment.EndsWith(' ')));
-    }
-
-    /// <summary>The file, when it may be read through the folder opened: nothing hidden, no link, no other mount, and the rights of the mount.</summary>
-    private static async Task<VirtualFileEntry?> EntryAsync(IFileSystemService fs, string root, string path, CancellationToken ct)
-    {
-        if (!IsShown(fs, root, path) || !await IsDirectAsync(fs, path, ct).ConfigureAwait(false))
-            return null;
-
-        return await fs.TryGetEntryAsync(path, ct).ConfigureAwait(false) is { Kind: VirtualEntryKind.File } entry ? entry : null;
-    }
-
-    private static bool IsShown(IFileSystemService fs, string root, string path)
-    {
-        if (path[(root.Length + 1)..].Split('/').Any(s => s.StartsWith('.')))
-            return false;
-
-        var mounts = fs.GetAvailableMounts();
-        if (mounts.Any(m => IsUnder(m.VirtualPath, root) && (path == m.VirtualPath || IsUnder(path, m.VirtualPath))))
-            return false;
-
-        return fs.ResolveAndValidate(path, FileAccessRights.Read).IsAllowed;
-    }
-
-    private static MountInfo? MountOf(IReadOnlyList<MountInfo> mounts, string path) =>
-        mounts.Where(m => path == m.VirtualPath || IsUnder(path, m.VirtualPath)).MaxBy(m => m.VirtualPath.Length);
-
-    /// <summary>Whether no link stands between the root of the mount, the operator's own, and the path.</summary>
-    private static async Task<bool> IsDirectAsync(IFileSystemService fs, string path, CancellationToken ct)
-    {
-        if (MountOf(fs.GetAvailableMounts(), path) is not { } mount)
-            return false;
-
-        for (var end = mount.VirtualPath.Length; end < path.Length;)
-        {
-            end = path.IndexOf('/', end + 1) is var next && next < 0 ? path.Length : next;
-            // Null where the rights forbid looking: what is below them is then judged by its own.
-            if (await fs.TryGetEntryAsync(path[..end], ct).ConfigureAwait(false) is { Kind: VirtualEntryKind.SymLink })
-                return false;
-        }
-
-        return true;
-    }
-
     /// <summary>The files open under a folder: the latest first in the conversation's own, by path elsewhere.</summary>
     private static async Task<(List<VirtualFileEntry> Files, bool Cut)> ScanAsync(IFileSystemService fs, string root, CancellationToken ct)
     {
@@ -381,7 +262,7 @@ internal sealed class ChatFileCommands
         var cut = false;
         try
         {
-            if (await IsDirectAsync(fs, root, ct).ConfigureAwait(false))
+            if (await DownloadableFiles.IsDirectAsync(fs, root, ct).ConfigureAwait(false))
             {
                 var seen = 0;
                 await foreach (var entry in fs.EnumerateFilesAsync(root, new VirtualEnumerationOptions(), ct).ConfigureAwait(false))
@@ -392,7 +273,7 @@ internal sealed class ChatFileCommands
                         break;
                     }
 
-                    if (entry.Kind == VirtualEntryKind.File && IsShown(fs, root, entry.VirtualPath))
+                    if (entry.Kind == VirtualEntryKind.File && DownloadableFiles.IsShown(fs, root, entry.VirtualPath))
                         files.Add(entry);
                 }
             }

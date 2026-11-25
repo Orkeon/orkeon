@@ -157,6 +157,16 @@ declare global {
             readonly query: string;
         }>;
 
+        /** `chat_attach` - Send files to the chat conversation this run answers, and to no other. A file must be under /outbox, or under a folder the crew opens to download. Outside a chat conversation the call fails. What was sent cannot be taken back, and the number of files and messages of a run is bounded: send the finished file, once. */
+        chatAttach(input: {
+            /** Virtual paths of the files to send: under /outbox, or under a folder this crew opens to download. Never /inbox. */
+            paths: readonly string[];
+        }, ctx?: ExecutionContext): Promise<{
+            readonly error?: string;
+            readonly files: readonly { readonly path: string; readonly reason?: string; readonly status: string; }[];
+            readonly success: boolean;
+        }>;
+
         /** `codebase_map` - What is the shape of this codebase? Lists the entries of one level (L1_Package by default, L2_Module, L3_Symbol) with their kind and path, under root_fqn when given, at most max_entries (200), truncated when more exist; include_metrics adds counts and complexity. The FQN of an entry feeds package_summary and symbol_detail. */
         codebaseMap(input?: {
             /** Add children_count, cyclomatic and loc to each entry. */

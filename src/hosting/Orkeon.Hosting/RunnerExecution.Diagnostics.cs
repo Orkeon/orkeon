@@ -279,6 +279,7 @@ public static partial class RunnerExecution
                     // must list exactly the tools a real kickoff exposes — without this,
                     // human_input is silently absent from --list-tools.
                     services.AddOrkeonHumanInput();
+                    Conversations.ChatAttachExtensions.AddOrkeonChatAttach(services);
                     services.AddSingleton(console);
                     RunnerHost.RegisterMcpLoginInteraction(services, console);
                     configureServices?.Invoke(ctx, services);

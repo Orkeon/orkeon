@@ -219,10 +219,10 @@ closed list, and what it means.
 | [Tools](#tools) | [`BRAVE_API_KEY`](#brave_api_key), [`MCP`](#mcp), [`MCP:Server`](#mcpserver), [`Orkeon:Bridge`](#orkeonbridge), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Tools:Bridge`](#orkeontoolsbridge), [`Orkeon:Tools:Browser`](#orkeontoolsbrowser), [`Orkeon:Tools:Chat`](#orkeontoolschat), [`Orkeon:Tools:Drive`](#orkeontoolsdrive), [`Orkeon:Tools:Email`](#orkeontoolsemail), [`Orkeon:Tools:Firefox`](#orkeontoolsfirefox), [`Orkeon:Tools:GitHub`](#orkeontoolsgithub), [`Orkeon:Tools:ResultLimits`](#orkeontoolsresultlimits), [`Orkeon:Tools:Shell`](#orkeontoolsshell), [`Plugins`](#plugins), [`RaggableTree`](#raggabletree) | 162 |
 | [Orchestration and persistence](#orchestration-and-persistence) | [`Orkeon:Checkpointing`](#orkeoncheckpointing), [`Orkeon:Compaction`](#orkeoncompaction), [`Orkeon:Compaction:Prune`](#orkeoncompactionprune), [`Orkeon:Consensus`](#orkeonconsensus), [`Orkeon:CrewFactory`](#orkeoncrewfactory), [`Orkeon:ExecutionState:Persistence`](#orkeonexecutionstatepersistence), [`Orkeon:HumanInput`](#orkeonhumaninput), [`Orkeon:RunHistory`](#orkeonrunhistory), [`Orkeon:Skills`](#orkeonskills) | 39 |
 | [Scripts and console](#scripts-and-console) | [`Orkeon:Cli:ConsoleStreaming`](#orkeoncliconsolestreaming), [`Orkeon:Cli:Memory`](#orkeonclimemory), [`Orkeon:Cli:ScriptCommands`](#orkeoncliscriptcommands), [`Orkeon:Cli:ScriptHost`](#orkeoncliscripthost), [`Orkeon:Cli:Session`](#orkeonclisession), [`Orkeon:Cli:Tui`](#orkeonclitui), [`Orkeon:Scripting:AgentInstances`](#orkeonscriptingagentinstances), [`Orkeon:Scripting:AgentMemory`](#orkeonscriptingagentmemory), [`Orkeon:Scripting:Limits`](#orkeonscriptinglimits), [`Orkeon:Scripting:Toolchain`](#orkeonscriptingtoolchain) | 35 |
-| [Service host and A2A](#service-host-and-a2a) | [`A2A`](#a2a), [`A2A:Security`](#a2asecurity), [`A2A:Security:AzureAD`](#a2asecurityazuread), [`A2A:Security:Oidc`](#a2asecurityoidc), [`Orkeon:Host`](#orkeonhost), [`Orkeon:Host:Discord`](#orkeonhostdiscord), [`Orkeon:Host:Teams`](#orkeonhostteams) | 78 |
+| [Service host and A2A](#service-host-and-a2a) | [`A2A`](#a2a), [`A2A:Security`](#a2asecurity), [`A2A:Security:AzureAD`](#a2asecurityazuread), [`A2A:Security:Oidc`](#a2asecurityoidc), [`Orkeon:Host`](#orkeonhost), [`Orkeon:Host:Discord`](#orkeonhostdiscord), [`Orkeon:Host:Teams`](#orkeonhostteams) | 81 |
 | [Observability](#observability) | [`Logging`](#logging), [`Orkeon:Monitoring`](#orkeonmonitoring), [`Telemetry`](#telemetry) | 8 |
 
-91 sections, 624 keys. Read by no shipped binary, only by a host written in C# (6): [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting), [`Orkeon:VectorSearch`](#orkeonvectorsearch), [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Monitoring`](#orkeonmonitoring).
+91 sections, 627 keys. Read by no shipped binary, only by a host written in C# (6): [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting), [`Orkeon:VectorSearch`](#orkeonvectorsearch), [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Monitoring`](#orkeonmonitoring).
 <!-- /settings-index -->
 
 How to read a table:
@@ -2501,6 +2501,9 @@ The daemon (`Orkeon.Host`):
 | `Crews:<i>:Profile:MaxConcurrentRuns` | integer | `4` | How many runs of this crew may be in flight at once. Bounded on purpose: a daemon that accepts unlimited concurrent runs is a daemon that dies under its first burst. |
 | `Files:AllowedExtensions` | list of string | `[]` | The extensions taken (`pdf` or `.pdf`, case ignored). Empty, every extension is. |
 | `Files:Enabled` | boolean | `false` | Gives each conversation two folders, mounted for its runs: `/inbox`, read-only, and `/outbox`. Off, no folder is made and neither path is mounted. |
+| `Files:MaxAttachedBytesPerRun` | integer | `52428800` | What the agents of one run may send to its conversation, in bytes. |
+| `Files:MaxAttachedFilesPerRun` | integer | `10` | How many files the agents of one run may send to its conversation. |
+| `Files:MaxAttachedMessagesPerRun` | integer | `5` | How many messages the agents of one run may send files in. |
 | `Files:MaxConversationBytes` | integer | `104857600` | What one conversation may hold, in bytes, both folders counted. A run writes freely while it runs: a conversation found over this afterwards starts no other run. |
 | `Files:MaxFileBytes` | integer | `10485760` | The largest file taken, in bytes. |
 | `Files:MaxFilesPerMessage` | integer | `10` | How many files of one message are taken. |

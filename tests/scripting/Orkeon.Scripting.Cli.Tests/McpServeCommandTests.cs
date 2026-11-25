@@ -41,11 +41,12 @@ public sealed class McpServeCommandTests
         Assert.Contains("2026-07-28", answers[0].GetProperty("result").GetProperty("supportedVersions")
             .EnumerateArray().Select(v => v.GetString()));
         Assert.Equal(2, answers[1].GetProperty("id").GetInt32());
-        // Every tool of the run's host but human_input, which answers for the operator of a run:
-        // the client of an MCP server has a human of its own.
+        // Every tool of the run's host but human_input, which answers for the operator of a run, and chat_attach, which
+        // answers a chat conversation: the client of an MCP server has a human of its own.
         Assert.Contains("file_read", manifest);
         Assert.Contains("human_input", manifest);
-        Assert.Equal(manifest.Where(name => name != "human_input"), ToolNames(answers[1]));
+        Assert.Contains("chat_attach", manifest);
+        Assert.Equal(manifest.Where(name => name is not ("human_input" or "chat_attach")), ToolNames(answers[1]));
     }
 
     [Fact]

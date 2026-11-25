@@ -34,6 +34,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - With it on, an answer ends with the files the run left in `/outbox`, and one too long for the channel is kept whole as
   `/outbox/reply-<run id>.md`. No file is sent unasked.
 
+### Added — an agent sends files to its conversation (`chat_attach`)
+
+- `chat_attach` sends files of `/outbox`, or of a folder the crew opens to download, to the Discord conversation the run
+  answers, by the checks of `/get` and under the agent's `filesystem:` scope. Without a conversation the call fails. Teams
+  sends none yet. The sixth motivated exception to the scope freeze (ADR-023): 135 built-in tools.
+- `Orkeon:Host:Files:MaxAttachedFilesPerRun` (10), `MaxAttachedMessagesPerRun` (5) and `MaxAttachedBytesPerRun` (50 MiB)
+  bound a run; `/stop`, the deadline and the end of the run stop the sending.
+
 ### Added — a crew declares the folders it opens
 
 - `files:` in a crew's YAML names folders people may download from or leave files in, within what the operator mounted.

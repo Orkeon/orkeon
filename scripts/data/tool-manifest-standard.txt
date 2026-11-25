@@ -7,6 +7,7 @@ arcadedb_query
 batch_anchors
 cache_search
 chat_accounts
+chat_attach
 chat_delete
 chat_edit
 chat_list

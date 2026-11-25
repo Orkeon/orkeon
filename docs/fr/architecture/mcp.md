@@ -391,7 +391,7 @@ crew : sous `StrictTools` — le défaut des runners — une crew qui nomme l'ou
 qui n'a pas pu être connecté échoue au chargement avec la ligne ordinaire `unknown tool(s)`.
 `--list-tools` et `--validate` voient les outils MCP, `McpServer` ré-expose ce que contient
 le registre — tous les outils, ou ceux que nomme `orkeon mcp serve --tools` (`AllowedTools`) ; l'hôte
-d'`orkeon mcp serve` n'enregistre pas `human_input` —, et du code C# peut en résoudre un par `IToolRegistry.GetToolByNameAsync(name)`.
+d'`orkeon mcp serve` n'enregistre ni `human_input` ni `chat_attach` —, et du code C# peut en résoudre un par `IToolRegistry.GetToolByNameAsync(name)`.
 Le décorateur des runs observés de `--events jsonl` enveloppe les outils enregistrés dans la
 DI ; les outils MCP arrivent dans le registre à l'exécution et ne sont pas enveloppés.
 
@@ -413,8 +413,8 @@ réponses sur son stdout, une par ligne ; fermer stdin arrête le serveur.
   fichier retenu est nommé sur stderr. Les montages qu'il déclare (`Orkeon:FileSystem:Mounts`)
   sont ce qu'atteignent les outils de fichiers, et les serveurs MCP qu'il déclare sous
   `MCP:Servers` sont connectés d'abord, leurs outils servis aussi. Ce qui est servi est ce
-  qu'imprime `orkeon run --list-tools` pour les mêmes réglages, `human_input` à part : cet
-  outil répond pour l'opérateur d'un run, et le client d'un serveur MCP a son propre humain.
+  qu'imprime `orkeon run --list-tools` pour les mêmes réglages, `human_input` et `chat_attach` à part : le second
+  parle à la conversation d'un run, et il n'y en a pas ; le premier répond pour l'opérateur d'un run, et le client d'un serveur MCP a son propre humain.
   Aucune crew n'est chargée, donc aucun outil que déclare une crew `.ork.ts` n'est servi : ceux-là
   sont enregistrés au chargement de leur crew.
 - **`--crew <a.yaml> [<b.yaml> …]` sert des crews comme outils.** Plusieurs crews se suivent, séparées par

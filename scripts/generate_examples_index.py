@@ -641,6 +641,7 @@ TOOL_NEEDS: dict[str, ToolNeeds] = {
         # a web service — and no example ships or names one.
         "relational_database_query",
         "semantic_search", "human_input",   # Orkeon.Infrastructure: memory search, stdin
+        "chat_attach",                      # Orkeon.Hosting: the run's own conversation
         "shell_command",                    # Orkeon.Tools.Code: a local process, allowlisted
     ), ToolNeeds()),
     **dict.fromkeys(FINANCE_MODULE_TOOLS, ToolNeeds()),

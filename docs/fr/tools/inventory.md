@@ -4,7 +4,7 @@
 
 # Inventaire des tools Orkeon
 
-Cette page est le catalogue de référence des **134 classes de tools intégrées**. La règle
+Cette page est le catalogue de référence des **135 classes de tools intégrées**. La règle
 de comptage est celle qu'applique `scripts/check-doc-claims.py` : chaque fichier
 `*Tool.cs` sous `src/`, sauf l'interface (`IBaseTool.cs`) et l'infrastructure non-tool
 qui matche le glob (`MockTool.cs`, `JsTool.cs`, `ObservedTool.cs`, `AIAgentTool.cs`). Le même script
@@ -23,6 +23,7 @@ la racine de composition — voir [Disponibilité par racine de composition](#di
 | `delegate_work_to_coworker` | `DelegateWorkTool` | Même construction par agent (avec `AgentExecutionBudget` optionnel pour borner la profondeur récursive) | Déléguer une tâche complète à un agent spécialisé ; avec `wait_for_result: true` le collègue s'exécute dans le contexte de la tâche qui délègue — même crew et même portée mémoire, sa réponse jamais rangée dans la mémoire de la crew — et hors d'un run de crew l'appel est refusé | `{ "task": "Analyze competitor pricing", "coworker_role": "Market Researcher", "context": "Focus on SaaS B2B" }` |
 | `spawn_agent` | `SpawnAgentTool` | **Câblé par aucune racine de composition livrée** — l'hôte l'enregistre explicitement (`IAgentFactory` requis) | Créer et exécuter un sous-agent spécialisé à l'exécution (mode autonome) | `{ "role": "Fact checker", "goal": "Verify the claims", "task": "..." }` |
 | `human_input` | `HumanInputTool` | `AddOrkeonHumanInput()` — câblé par `orkeon run` pour un crew YAML (`RunnerExecution`) et par le REPL avec son fournisseur console ; sous `--events` la question remonte sur le flux d'événements du run, sinon c'est le `AutoApproveHumanInputProvider` par défaut qui répond | Poser une question à l'humain (`input_type` : `text`, `approval`, `choice` avec `choices` — `recommended` marque une option — ou `multi` qui renvoie une liste) ; sans interface, `HumanInputOptions.HeadlessPolicy` répond la valeur par défaut (`Default`) ou refuse (`Refuse`) ; le runtime se suspend jusqu'à la réponse | `{ "prompt": "Deploy to production?", "input_type": "approval" }` |
+| `chat_attach` | `ChatAttachTool` (`Orkeon.Hosting`) | `orkeon run` pour un crew YAML, `orkeon-host`, le REPL ; il reste chez l'appelant d'un pont d'outils | Envoyer des fichiers de `/outbox`, ou d'un dossier que la crew ouvre au téléchargement, à la conversation Discord à laquelle le run répond ; chaque fichier revient `sent`, `too_large`, `refused` ou `awaiting_consent`. Hors d'une conversation, l'appel échoue ([ADR-023](../adr/ADR-023-chat-attach-tool.md)) | `{ "paths": ["/outbox/report.pdf"] }` |
 
 Les noms d'affichage des trois premiers contrats sont en prose (« Ask question to
 coworker », « Delegate work to coworker », « Spawn sub-agent ») ; le nom du registre —
@@ -312,7 +313,7 @@ Vingt-neuf tools sur le graphe sémantique de code RaggableTree — le guide com
 
 ## Hors catalogue
 
-Délibérément **hors** des 134 classes de tools intégrées :
+Délibérément **hors** des 135 classes de tools intégrées :
 
 - `brief_submit` / `blueprint_submit` — internes à la commande `orkeon forge`
   (`ForgeSubmission.cs`, `Orkeon.Scripting.Cli`) ; les agents du moteur les utilisent,
@@ -344,8 +345,8 @@ le nombre qu'affichent le README et l'index de la documentation, vérifié par
 | `Orkeon.Tools.EventHub` | 7 |
 | `Orkeon.Tools.FileSystem` | 8 |
 | `Orkeon.Tools.Rag` | 3 |
-| `Orkeon.Tools.Abstractions` / `Orkeon.Tools.Code` / `Orkeon.Tools.Embeddings.Local` / `Orkeon.Cli.Commands.Scripting` / `Orkeon.Scripting` | 1 chacun |
-| **Total** | **134** |
+| `Orkeon.Tools.Abstractions` / `Orkeon.Tools.Code` / `Orkeon.Tools.Embeddings.Local` / `Orkeon.Cli.Commands.Scripting` / `Orkeon.Scripting` / `Orkeon.Hosting` | 1 chacun |
+| **Total** | **135** |
 
 ## Disponibilité par racine de composition
 
@@ -355,8 +356,8 @@ le REPL. `orkeon run` construit un hôte différent pour un crew YAML (via `Runn
 et pour un script `.ork.ts` (directement sur `RunnerHost`) ; là où les deux diffèrent, la
 table le dit. L'hôte de service `orkeon-host` s'appuie sur le même `RunnerHost` : il a donc
 la suite de `RunnerHost` — tout ce que liste la première colonne sauf `semantic_search` — et
-enregistre `human_input` lui-même : une question attend sa réponse sur `POST /runs/{id}/input`. `orkeon mcp serve` construit l'hôte
-d'`orkeon run --list-tools` et sert ses outils à un client MCP, `human_input` à part — voir
+enregistre lui-même `human_input` et `chat_attach` : une question attend sa réponse sur `POST /runs/{id}/input`. `orkeon mcp serve` construit l'hôte
+d'`orkeon run --list-tools` et sert ses outils à un client MCP, `human_input` et `chat_attach` à part — voir
 [Intégration MCP](../architecture/mcp.md#servir-les-outils-avec-orkeon-mcp-serve).
 
 | Suite / tool | `orkeon run` (CLI) | `orkeon-repl` (ConsoleApp) |
@@ -375,6 +376,7 @@ d'`orkeon run --list-tools` et sert ses outils à un client MCP, `human_input` �
 | Les outils des serveurs MCP déclarés par `MCP:Servers` | ✅ connectés avant le chargement de la crew, sous leur propre nom — un agent les liste dans `tools:` comme tout autre outil (voir le pipeline de résolution plus bas) | ✅ connectés avant le chargement des commandes scriptées, sous leur propre nom |
 | `semantic_search` | ✅ pour un crew YAML (câblé par la commande run) | ❌ |
 | `human_input` | ✅ pour un crew YAML (sur le flux d'événements sous `--events`, approuvé automatiquement sinon)  | ✅ (invite console) |
+| `chat_attach` | ✅ pour un crew YAML, où chaque appel échoue : un run du CLI n'a pas de conversation (`orkeon-host` lui en donne une) | ✅ enregistré, même échec |
 | `ask_question_to_coworker`, `delegate_work_to_coworker` | par agent, quand `AllowDelegation` est actif | par agent |
 | `spawn_agent` (script, `SpawnAgentScriptTool`) | ✅ proposé au modèle dans le `ctx.llm.act` du corps d'un agent de crew | ❌ (une commande scriptée n'exécute aucun agent de crew) |
 | `spawn_agent` (C# `SpawnAgentTool`) | ❌ (l'hôte doit l'enregistrer) | ❌ |
@@ -463,6 +465,7 @@ correspondance alphabétique complète :
 | `brave_search` | `BraveSearchTool` | `Orkeon.Tools.Web` |
 | `cache_search` | `CacheSearchTool` | `Orkeon.Tools.Web` |
 | `chat_accounts` | `ChatAccountsTool` | `Orkeon.Tools.Chat` |
+| `chat_attach` | `ChatAttachTool` | `Orkeon.Hosting` |
 | `chat_delete` | `ChatDeleteTool` | `Orkeon.Tools.Chat` |
 | `chat_edit` | `ChatEditTool` | `Orkeon.Tools.Chat` |
 | `chat_list` | `ChatListTool` | `Orkeon.Tools.Chat` |

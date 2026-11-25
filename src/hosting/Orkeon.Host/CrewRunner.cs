@@ -116,6 +116,7 @@ internal sealed partial class CrewRunner : ICrewRunner
     private readonly TimeProvider _time;
     private readonly Orkeon.Application.Interfaces.Checkpointing.IPendingInputBroker? _broker;
     private readonly Files.ConversationFiles? _files;
+    private readonly Files.DownloadableFiles? _downloads;
 
     /// <summary>Builds the runner over the host's services and its registry.</summary>
     public CrewRunner(
@@ -126,12 +127,14 @@ internal sealed partial class CrewRunner : ICrewRunner
         ILogger<CrewRunner> logger,
         HostCrewMountPlan? mountPlan = null,
         Orkeon.Application.Interfaces.Checkpointing.IPendingInputBroker? broker = null,
-        Files.ConversationFiles? files = null)
+        Files.ConversationFiles? files = null,
+        Files.CrewFileFolders? fileFolders = null)
     {
         ArgumentNullException.ThrowIfNull(host);
         _time = host.Services.GetService<TimeProvider>() ?? TimeProvider.System;
         _broker = broker;
         _files = files;
+        _downloads = files is null || fileFolders is null ? null : new Files.DownloadableFiles(files, fileFolders);
         _scopes = scopes ?? throw new ArgumentNullException(nameof(scopes));
         _registry = registry ?? throw new ArgumentNullException(nameof(registry));
         _host = host;
@@ -239,6 +242,10 @@ internal sealed partial class CrewRunner : ICrewRunner
                 refusedFiles = prepared.RefusedFiles;
             }
 
+            // Read at each call of chat_attach, by everything the run starts and by no other run; closed with the run, even
+            // when what it started outlives it. Entered without one too: no conversation is inherited from a caller.
+            using var attachments = AttachmentsOf(conversation, hosted, run);
+            using var entered = Orkeon.Hosting.Conversations.ConversationScope.Enter(attachments);
             result = await RunMountedAsync(hosted, run, folders, prompt, onProgress, variables, idempotency).ConfigureAwait(false)
                 with { RefusedFiles = refusedFiles };
             return result;
@@ -282,6 +289,12 @@ internal sealed partial class CrewRunner : ICrewRunner
             return (null, new HostedRunResult(HostedRunOutcome.Failed, run.Id, ex.Message));
         }
     }
+
+    private Files.ConversationAttachments? AttachmentsOf(HostedConversation? conversation, HostedCrewOptions hosted, HostedRun run) =>
+        _downloads is not null && conversation is { SendFilesAsync: { } send }
+            ? new Files.ConversationAttachments(
+                _downloads, _options.Files, new ConversationRef(conversation.Channel, conversation.ConversationId), hosted, run, send, _logger)
+            : null;
 
     /// <summary>
     /// The run in its own mount namespace, entered here and left when this returns, and what it changed in

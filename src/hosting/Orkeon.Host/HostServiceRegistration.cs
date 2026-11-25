@@ -101,6 +101,8 @@ internal static class HostServiceRegistration
         // settings say otherwise, then the run suspends with the question persisted (FWK-23).
         // The `human_input` tool and its provider: the daemon had none, so a crew that asked a human could not load here.
         Orkeon.Infrastructure.DependencyInjection.HumanInputExtensions.AddOrkeonHumanInput(services);
+        // Whether the host keeps files or not: a crew that names `chat_attach` loads, and each call says what it may.
+        Orkeon.Hosting.Conversations.ChatAttachExtensions.AddOrkeonChatAttach(services);
         Orkeon.Infrastructure.DependencyInjection.HumanInputExtensions.UseHoldByDefault(services, TimeSpan.FromMinutes(30));
         services.AddScoped<Orkeon.Application.Crew.ICrewExecutionHook>(
             sp => sp.GetRequiredService<HostRunRecording>().Hook(sp.GetRequiredService<RunProgressHook>()));

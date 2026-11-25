@@ -20,6 +20,9 @@ internal sealed record HostedConversation
     /// replaces the run's prompt and variables.
     /// </summary>
     public required Func<CancellationToken, Task<PreparedRun>> PrepareAsync { get; init; }
+
+    /// <summary>Sends files to this conversation, and to no other; null when its runs send none.</summary>
+    public Func<IReadOnlyList<Gateway.OutboundFile>, CancellationToken, Task<IReadOnlyList<Gateway.FileSendResult>>>? SendFilesAsync { get; init; }
 }
 
 /// <summary>A conversation, named by its channel and the channel's identifier of it.</summary>

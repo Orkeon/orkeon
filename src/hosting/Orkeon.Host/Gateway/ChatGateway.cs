@@ -114,6 +114,7 @@ internal sealed partial class ChatGateway
                     PrepareAsync = token => _files is null || source is null
                         ? Task.FromResult(new PreparedRun(text))
                         : ChatReception.PrepareAsync(_files, message, source, text, token),
+                    SendFilesAsync = (files, token) => responder.SendFilesAsync(message, files, token),
                 }).ConfigureAwait(false);
 
             // Before the conversation is free: the next message's run must not find the answer half kept.

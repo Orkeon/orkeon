@@ -149,6 +149,7 @@ public static partial class RunnerExecution
                     // the provider (e.g. TerminalGuiHumanInputProvider) via
                     // configureServices below.
                     services.AddOrkeonHumanInput();
+                    Conversations.ChatAttachExtensions.AddOrkeonChatAttach(services);
                     // The runner's console, before the caller's services: the operator channel
                     // writes on it (RunnerOperatorLog), a caller may still replace it.
                     services.AddSingleton(opts.RunnerConsole);

@@ -131,7 +131,8 @@ sur les deux dossiers d'une autre conversation, même sur une crew à la fois ; 
 par ailleurs est dit sous **Partagé**, plus bas. Un run demandé par A2A ou par l'API de l'hôte n'a
 pas de conversation : il reçoit deux dossiers vides à lui, supprimés à sa fin. À la fin d'un run, les fichiers de `/outbox`
 qu'il a ajoutés ou modifiés sont listés, fichiers cachés et liens exclus. Discord remplit `/inbox` ([ce qu'il prend](#ce-quécoute-le-canal-discord)) ;
-[les commandes de Discord](#les-commandes-de-fichiers) listent et envoient ce que contient `/outbox`. Rien n'est envoyé d'office.
+[les commandes de Discord](#les-commandes-de-fichiers) listent et envoient ce que contient `/outbox`. Rien n'est envoyé d'office,
+sauf ce qu'un agent envoie par [`chat_attach`](#les-fichiers-quenvoie-un-agent).
 
 ```json
 "Files": {
@@ -141,6 +142,9 @@ qu'il a ajoutés ou modifiés sont listés, fichiers cachés et liens exclus. Di
   "MaxFilesPerMessage": 10,
   "MaxConversationBytes": 104857600,
   "MaxTotalBytes": 2147483648,
+  "MaxAttachedFilesPerRun": 10,
+  "MaxAttachedMessagesPerRun": 5,
+  "MaxAttachedBytesPerRun": 52428800,
   "Retention": "7.00:00:00",
   "AllowedExtensions": [ "pdf", "csv" ]
 }
@@ -253,7 +257,7 @@ Un message devient un run dans un ordre fixe : **autoriser, router, accuser réc
 
 **Accuser réception.** La fenêtre de réponse de toute plateforme de chat se mesure en secondes ; une crew se mesure en minutes. L'accusé de réception part avec l'**admission** : à l'instant où la place du run est réservée — toujours avant tout travail de crew, et porteur du bouton d'arrêt, pour qu'un run soit interruptible dès sa première seconde. Un refus (crew inconnue, saturée) est répondu sans accusé : « je m'y mets » plus un bouton Stop, suivi de « on est occupé », serait une promesse rétractée par sa propre ligne suivante — avec un bouton accroché à rien.
 
-**Travailler**, en rapportant au fil de l'eau. La réponse finale est postée dans le fil, coupée aux 2 000 caractères de Discord (avec la marque `…(truncated)`) ; une réponse vide s'affiche `(no output)`. Avec [`Files`](#files--les-dossiers-dune-conversation) allumé, la réponse se termine par les fichiers de `/outbox` que le run a ajoutés ou modifiés, dont la place est réservée avant la coupe du texte, et une réponse coupée est gardée entière dans `/outbox/reply-<id du run>.md`, avant que la conversation soit libre pour le message suivant ; quand une limite la refuse, la réponse le dit. Un succès, un échec, un arrêt et un run qui attend une entrée finissent de même. Les fichiers sont nommés, jamais envoyés sans demande. La progression est **throttlée** (`ProgressInterval`, 2 secondes par défaut) : un run émet un événement par pensée d'agent et par appel d'outil, et relayer chacun épuiserait la limite de débit par canal de Discord à l'intérieur d'une seule crew. La dernière mise à jour supprimée est vidée juste avant la réponse finale, pour qu'un run ne se termine pas sur une vue vieille de plusieurs étapes.
+**Travailler**, en rapportant au fil de l'eau. La réponse finale est postée dans le fil, coupée aux 2 000 caractères de Discord (avec la marque `…(truncated)`) ; une réponse vide s'affiche `(no output)`. Avec [`Files`](#files--les-dossiers-dune-conversation) allumé, la réponse se termine par les fichiers de `/outbox` que le run a ajoutés ou modifiés, dont la place est réservée avant la coupe du texte, et une réponse coupée est gardée entière dans `/outbox/reply-<id du run>.md`, avant que la conversation soit libre pour le message suivant ; quand une limite la refuse, la réponse le dit. Un succès, un échec, un arrêt et un run qui attend une entrée finissent de même. Les fichiers sont nommés, jamais envoyés sans demande par l'hôte. La progression est **throttlée** (`ProgressInterval`, 2 secondes par défaut) : un run émet un événement par pensée d'agent et par appel d'outil, et relayer chacun épuiserait la limite de débit par canal de Discord à l'intérieur d'une seule crew. La dernière mise à jour supprimée est vidée juste avant la réponse finale, pour qu'un run ne se termine pas sur une vue vieille de plusieurs étapes.
 
 ### Ce que le canal Discord écoute
 
@@ -322,6 +326,16 @@ Enregistrées sur Discord quand [`Files`](#files--les-dossiers-dune-conversation
 - **Pendant un run.** Les trois commandes marchent. Le run ne retient pas les fichiers de la conversation : une commande n'attend qu'une autre commande, ou un fichier en cours de réception. `/get` envoie une copie lue d'un trait, après avoir jugé de nouveau le chemin ; un fichier qui grossit entre-temps est refusé, et un fichier réécrit à taille égale peut partir tel qu'il était à mi-chemin.
 - **`/put`** ne démarre aucun run. Le fichier est rangé sous les limites de tout fichier reçu, jamais par-dessus un autre, et pas deux fois dans un dossier pour un même fichier Discord ; il a deux minutes pour arriver. Un agent le voit quand il regarde dans ce dossier.
 - **Qui voit.** Un dossier déclaré comme `/output` appartient à la crew : ce qu'un fil y laisse, les autres fils de la crew le lisent.
+
+#### Les fichiers qu'envoie un agent
+
+`Files` allumé, un agent qui liste `chat_attach` envoie des fichiers dans le fil auquel son run répond, visibles de tous ceux qui y sont ([ADR-023](../adr/ADR-023-chat-attach-tool.md)).
+
+- **Quoi.** Exactement ce que `/get` enverrait, par les mêmes contrôles : `/outbox` et les dossiers que la crew déclare en `download`. Jamais `/inbox`. Un fichier interdit reçoit la même réponse qu'un fichier absent. Un agent dont la portée `filesystem:` exclut un dossier n'en envoie rien.
+- **Où.** La conversation du run et aucune autre : l'outil ne prend pas d'adresse. Les agents que le run démarre (sous-agents, agents créés, travail en arrière-plan) la partagent, avec ses comptes, jusqu'à la fin du run. Sans conversation, ou après le run, l'appel échoue et le run continue.
+- **Combien.** `MaxAttachedFilesPerRun`, `MaxAttachedMessagesPerRun` et `MaxAttachedBytesPerRun` bornent un run, tous ses agents ensemble ; les limites du canal s'y ajoutent. Ce qui dépasse un plafond est refusé et nommé avec son réglage.
+- **Ce qui revient.** Par fichier : `sent`, `too_large`, `refused` ou `awaiting_consent`, avec la raison. Teams refuse chacun : il n'envoie pas encore de fichier.
+- **Quand cela s'arrête.** `/stop` et l'échéance du run mettent fin à l'envoi : le reste n'est pas envoyé. Ce qui a été posté le reste.
 
 ---
 

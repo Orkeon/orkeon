@@ -318,6 +318,27 @@
       "description": "Gives each conversation two folders, mounted for its runs: `/inbox`, read-only, and `/outbox`. Off, no folder is made and neither path is mounted."
     },
     {
+      "path": "Orkeon:Host:Files:MaxAttachedBytesPerRun",
+      "section": "Orkeon:Host",
+      "type": "integer",
+      "default": 52428800,
+      "description": "What the agents of one run may send to its conversation, in bytes."
+    },
+    {
+      "path": "Orkeon:Host:Files:MaxAttachedFilesPerRun",
+      "section": "Orkeon:Host",
+      "type": "integer",
+      "default": 10,
+      "description": "How many files the agents of one run may send to its conversation."
+    },
+    {
+      "path": "Orkeon:Host:Files:MaxAttachedMessagesPerRun",
+      "section": "Orkeon:Host",
+      "type": "integer",
+      "default": 5,
+      "description": "How many messages the agents of one run may send files in."
+    },
+    {
       "path": "Orkeon:Host:Files:MaxConversationBytes",
       "section": "Orkeon:Host",
       "type": "integer",
