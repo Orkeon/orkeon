@@ -1727,27 +1727,14 @@ public static partial class RunnerExecution
         foreach (var ignored in JsCrewConfigurationAdapter.CollectIgnoredFeatures(jsCrew))
             LogDeclarativeShapeIgnores(logger, ignored);
 
-        // Script-defined tools become first-class (EX-01): register the instances with
-        // the runtime registry BEFORE the factory's strict resolution runs — the same
-        // late-registration path MCP tools use. The registry refuses a name another tool
-        // already holds (IToolRegistry.RegisterToolAsync returns false); for a script tool
-        // that refusal ends the run loudly: silently replacing a built-in is exactly the
-        // kind of surprise strict resolution exists to prevent.
+        // Script-defined tools are first-class (EX-01) and belong to this load: orkeon-host loads the
+        // crew once per message, each load with its own engine, so the instances travel with the
+        // configuration and never enter the host's registry. The factory resolves them by name and
+        // refuses one whose name the registry holds.
         var scriptTools = JsCrewConfigurationAdapter.CollectScriptTools(jsCrew);
+        crewConfig = JsCrewConfigurationAdapter.WithScriptTools(crewConfig, scriptTools);
         if (scriptTools.Count > 0)
-        {
-            var registry = sp.GetRequiredService<Orkeon.Domain.Tools.IToolRegistry>();
-            foreach (var tool in scriptTools)
-            {
-                if (!await registry.RegisterToolAsync(tool, ct).ConfigureAwait(false))
-                {
-                    throw new InvalidOperationException(
-                        $"Script tool '{tool.Name}' collides with an already-registered tool of the same name. "
-                        + "Rename the script tool — shadowing a registered tool is refused.");
-                }
-            }
-            LogRegisteredScriptTools(logger, scriptTools.Count, jsCrew.name);
-        }
+            LogScriptTools(logger, scriptTools.Count, jsCrew.name);
 
         LogAdaptedJsCrew(logger, jsCrew.name, crewConfig.Agents.Count, crewConfig.Tasks.Count);
         return await factory.CreateFromConfigAsync(crewConfig, ct).ConfigureAwait(false);
@@ -1806,8 +1793,8 @@ public static partial class RunnerExecution
     [LoggerMessage(EventId = 14, Level = LogLevel.Warning, Message = "Declarative crew script: {Detail}")]
     private static partial void LogDeclarativeShapeIgnores(ILogger logger, string detail);
 
-    [LoggerMessage(EventId = 13, Level = LogLevel.Information, Message = "Registered {Count} script-defined tool(s) from crew '{CrewName}' with the runtime tool registry.")]
-    private static partial void LogRegisteredScriptTools(ILogger logger, int count, string crewName);
+    [LoggerMessage(EventId = 13, Level = LogLevel.Information, Message = "Crew '{CrewName}' brings {Count} script-defined tool(s) of its own.")]
+    private static partial void LogScriptTools(ILogger logger, int count, string crewName);
 
     private sealed class CompositeDisposable : IDisposable
     {

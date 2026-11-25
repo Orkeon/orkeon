@@ -17,6 +17,12 @@ public sealed record CrewConfiguration
     public IReadOnlyList<AgentConfiguration> Agents { get; init; } = Array.Empty<AgentConfiguration>();
     /// <summary>Gets the task configurations for this crew.</summary>
     public IReadOnlyList<TaskConfiguration> Tasks { get; init; } = Array.Empty<TaskConfiguration>();
+    /// <summary>
+    /// Gets the tools the crew's own script defines: resolved by name for this configuration alone, never
+    /// registered with the host's <see cref="Orkeon.Domain.Tools.IToolRegistry"/>, so they live and die with
+    /// the crew built from it. A name the registry holds is refused, never shadowed.
+    /// </summary>
+    internal IReadOnlyList<Orkeon.Domain.Tools.IBaseTool> ScriptTools { get; init; } = [];
     /// <summary>Gets the process type for task execution.</summary>
     public ProcessType Process { get; init; } = ProcessType.Sequential;
     /// <summary>Gets a value indicating whether verbose logging is enabled.</summary>
