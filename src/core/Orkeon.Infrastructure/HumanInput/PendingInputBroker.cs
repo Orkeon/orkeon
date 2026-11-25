@@ -68,11 +68,16 @@ public sealed class PendingInputBroker : IPendingInputBroker
     public IReadOnlyList<string> HeldRequestIds(string runId)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(runId);
-        return _waiters
-            .Where(w => string.Equals(w.Key.Run, runId, StringComparison.Ordinal) && !w.Value.Waiter.Task.IsCompleted)
-            .OrderBy(static w => w.Value.Order)
-            .Select(static w => w.Key.Request)
-            .ToArray();
+        // Under the gate: a question is seen only once the watcher was told of it, so a reader that sees one knows the run
+        // clock is stopped.
+        lock (_gate)
+        {
+            return _waiters
+                .Where(w => string.Equals(w.Key.Run, runId, StringComparison.Ordinal) && !w.Value.Waiter.Task.IsCompleted)
+                .OrderBy(static w => w.Value.Order)
+                .Select(static w => w.Key.Request)
+                .ToArray();
+        }
     }
 
     /// <inheritdoc />

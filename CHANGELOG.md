@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — a held question is listed only once the run clock is stopped
+
+- `PendingInputBroker.HeldRequestIds` and `HeldRequestId` could show a question before the run deadline was told of it:
+  a run could time out while a reader already saw it hold. They now wait until the watcher has been told.
+
 ### Fixed — `agent-cli` sends the thinking effort (#487)
 
 - A thinking effort set on a call (`low`, `medium`, `high`, `xhigh`, `max`, in any case) now starts the Claude Code CLI
