@@ -22,6 +22,18 @@ internal static class PhysicalOverlap
         return IsUnder(first, second, comparison) || IsUnder(second, first, comparison);
     }
 
+    /// <summary>Whether a full path is a folder or under it, as this platform's file systems usually compare.</summary>
+    public static bool IsUnder(string path, string directory) =>
+        IsUnder(path, directory, OperatingSystem.IsWindows() || OperatingSystem.IsMacOS());
+
+    /// <summary>Whether a full path is a folder or under it.</summary>
+    public static bool IsUnder(string path, string directory, bool ignoreCase)
+    {
+        ArgumentNullException.ThrowIfNull(path);
+        ArgumentNullException.ThrowIfNull(directory);
+        return IsUnder(path, directory, ignoreCase ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal);
+    }
+
     /// <summary>Compares two folders as written and as their links lead now; a loop of links overlaps nothing, it opens nothing.</summary>
     public static bool BetweenFolders(string first, string second)
     {

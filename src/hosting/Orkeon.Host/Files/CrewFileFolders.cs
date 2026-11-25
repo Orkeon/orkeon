@@ -192,7 +192,7 @@ internal sealed partial class CrewFileFolders
 
     /// <summary>
     /// Whether the folder is a second address for what <c>/crews</c> holds: it is or holds the folder of a crew, or is
-    /// part of a crew directory. As written and as the links lead.
+    /// part of a crew directory. As written and as the links lead; in any case where the file system ignores it.
     /// </summary>
     [Orkeon.Compliance.Vfs.SuppressVfsCompliance("OUT-OF-SCOPE: compares the folders two mounts of the operator lead to, and opens nothing; every path was resolved by the registry first.")]
     private bool ReachesACrew(FileSystemRegistry registry, CrewFileFolder opened)
@@ -208,7 +208,7 @@ internal sealed partial class CrewFileFolders
             string[] roots = [crews, PhysicalRealPath.Resolve(crews) ?? crews];
             var whole = directories.Contains(mount.VirtualPath);
             if (roots.Any(root => folders.Any(f =>
-                    PhysicalPathContainment.IsUnder(root, f) || (whole && PhysicalPathContainment.IsUnder(f, root)))))
+                    PhysicalOverlap.IsUnder(root, f) || (whole && PhysicalOverlap.IsUnder(f, root)))))
             {
                 return true;
             }
