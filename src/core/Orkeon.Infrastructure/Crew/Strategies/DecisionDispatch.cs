@@ -72,6 +72,9 @@ internal sealed class DecisionDispatch
                 inputs.Add((DecisionPreflight.NameOf(named), produced.Content));
         }
 
+        Orkeon.Application.Crew.Execution.RunImages.NoteAllUnseen(
+            $"the decision '{DecisionPreflight.NameOf(task)}'", "a decision reads text alone");
+
         try
         {
             return await _runner.RunAsync(task, inputs, RelayAgentOf(task, agents), ct).ConfigureAwait(false);

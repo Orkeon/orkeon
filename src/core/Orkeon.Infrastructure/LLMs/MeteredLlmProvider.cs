@@ -171,7 +171,9 @@ public sealed class MeteredLlmProvider : ILlmProvider, IStreamingLlmProvider
         ArgumentNullException.ThrowIfNull(provider);
         var underMeter = UnderMeter(provider);
         var underCallMode = underMeter is CallMode.CallModeLlmProvider callMode ? callMode.Inner : underMeter;
-        return underCallMode is Replay.ILlmProviderDecorator cassette ? cassette.Inner : underCallMode;
+        while (underCallMode is Replay.ILlmProviderDecorator decorator)
+            underCallMode = decorator.Inner;
+        return underCallMode;
     }
 
     /// <summary>The provider under the limiter and the meter, the call-mode decorator included.</summary>

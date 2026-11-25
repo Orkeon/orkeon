@@ -71,6 +71,7 @@ internal static class CrewExecutionStateMapper
             EndTime = snapshot.EndTime,
             InputInitialContext = state.Input?.InitialContext,
             InputVariables = ToStringVariables(state.Input),
+            InputImages = state.Input is { Images.Count: > 0 } pictured ? pictured.Images : null,
             Output = ToPersistedOutput(state.Output),
             Metadata = ToStringMetadata(snapshot.Metadata)
         };
@@ -163,7 +164,7 @@ internal static class CrewExecutionStateMapper
 
         var variables = (document.InputVariables ?? new Dictionary<string, string>())
             .ToDictionary(kvp => kvp.Key, kvp => (object)kvp.Value);
-        var input = new CrewInput(document.InputInitialContext, variables);
+        var input = new CrewInput(document.InputInitialContext, variables) { Images = document.InputImages ?? [] };
 
         return CrewExecutionState.Restore(snapshot, input, FromPersistedOutput(document.Output));
     }
@@ -304,6 +305,9 @@ public sealed record CrewExecutionStateDocument
 
     /// <summary>Crew input variables (persisted as strings).</summary>
     public IReadOnlyDictionary<string, string>? InputVariables { get; init; }
+
+    /// <summary>The images of the crew input, by reference.</summary>
+    public IReadOnlyList<CrewInputImage>? InputImages { get; init; }
 
     /// <summary>Final crew output, if the execution produced one.</summary>
     public PersistedCrewOutput? Output { get; init; }

@@ -335,6 +335,11 @@ public sealed partial class CheckpointingAgentExecutionService : IAgentExecution
             agent?.Goal.Value ?? string.Empty,
             string.Join('\u0002', dependencies));
 
+        // The images of the input, by path: a resumed run given other ones works again. A run without any keeps its
+        // fingerprints, and so does a decision, which reads none.
+        if (task is not CrewTask { Decision: not null } && Orkeon.Application.Crew.Execution.RunImages.Current is { Count: > 0 } images)
+            text = string.Concat(text, "\u0001", string.Join('\u0002', images.Select(i => i.Path)));
+
         // A decision task is also what it asks: a recorded decision is replayed only while its questions, its
         // fallback and its relay are those it was taken with; changed, it is decided again, and what runs after it
         // too (#430). Only a decision task's fingerprint gains this part: the others keep theirs.

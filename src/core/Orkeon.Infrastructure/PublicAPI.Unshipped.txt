@@ -13,3 +13,5 @@ Orkeon.Infrastructure.Configuration.CrewYamlConfig.Files.get -> System.Collectio
 Orkeon.Infrastructure.Configuration.CrewYamlConfig.Files.set -> void
 Orkeon.Infrastructure.Configuration.CrewMappingSettings.Files.get -> System.Collections.ObjectModel.Collection<Orkeon.Infrastructure.Configuration.CrewFileYamlConfig!>?
 Orkeon.Infrastructure.Configuration.CrewMappingSettings.Files.init -> void
+Orkeon.Infrastructure.Orchestration.CrewExecutionStateDocument.InputImages.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Application.Interfaces.Services.CrewInputImage!>?
+Orkeon.Infrastructure.Orchestration.CrewExecutionStateDocument.InputImages.init -> void

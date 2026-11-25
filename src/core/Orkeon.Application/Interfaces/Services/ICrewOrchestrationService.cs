@@ -125,6 +125,12 @@ public sealed record CrewInput(
     IReadOnlyDictionary<string, object> Variables)
 {
     /// <summary>
+    /// Gets the images of the input, by reference: they join the first user turn of every task of the run whose model reads
+    /// images. The bytes are read again at each model call.
+    /// </summary>
+    public IReadOnlyList<CrewInputImage> Images { get; init; } = [];
+
+    /// <summary>
     /// Creates a <see cref="CrewInput"/> with strongly-typed string variables.
     /// Preferred factory for new code since crew input variables are template strings.
     /// </summary>
@@ -152,6 +158,29 @@ public sealed record CrewInput(
         => Variables.ToDictionary(
             kvp => kvp.Key,
             kvp => kvp.Value?.ToString() ?? string.Empty);
+}
+
+/// <summary>An image of a crew's input, by reference: never its bytes.</summary>
+public sealed record CrewInputImage
+{
+    /// <summary>Gets the image's virtual path, read through the run's file system.</summary>
+    public required string Path { get; init; }
+
+    /// <summary>Gets the media type it was announced under, when there is one. A claim: the bytes decide.</summary>
+    public string? MediaType { get; init; }
+}
+
+/// <summary>An image of the input that an agent or a task of the run was not shown.</summary>
+public sealed record UnseenImage
+{
+    /// <summary>Gets the image's virtual path.</summary>
+    public required string Path { get; init; }
+
+    /// <summary>Gets who was not shown it, in words for a person.</summary>
+    public required string Reader { get; init; }
+
+    /// <summary>Gets why, in words for a person.</summary>
+    public required string Reason { get; init; }
 }
 
 /// <summary>
@@ -208,6 +237,9 @@ public sealed record CrewOutput(
     /// <see cref="Succeeded"/> is false and this says what it waits for; it resumes with the answer.
     /// </summary>
     public Orkeon.Application.Interfaces.Checkpointing.PendingInputRequest? PendingInput { get; init; }
+
+    /// <summary>Gets the images of the input an agent or a task was not shown, and why, whatever the outcome of the run.</summary>
+    public IReadOnlyList<UnseenImage> UnseenImages { get; init; } = [];
 }
 
 /// <summary>

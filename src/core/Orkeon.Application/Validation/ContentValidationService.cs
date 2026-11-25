@@ -45,6 +45,11 @@ public class MultiModalOptions
     public long MaxImageSizeBytes { get; set; } = 20 * 1024 * 1024;
 
     /// <summary>
+    /// Maximum number of images of a crew's input one model call carries (default: 10).
+    /// </summary>
+    public int MaxImages { get; set; } = 10;
+
+    /// <summary>
     /// Maximum allowed audio duration in seconds (default: 300 seconds / 5 minutes).
     /// </summary>
     public int MaxAudioDurationSeconds { get; set; } = ExecutionDefaults.DefaultMaxExecutionSeconds;

@@ -47,4 +47,7 @@ public sealed class LlmProviderFactoryOptions
     /// by it, under the same layers as a built-in provider. Null, or empty, builds none.
     /// </summary>
     public IReadOnlyList<ILlmProviderModule>? Modules { get; init; }
+
+    /// <summary>Where the images of a run's input are read, and within which limits. Null shows none.</summary>
+    internal RunImageSource? Images { get; init; }
 }
