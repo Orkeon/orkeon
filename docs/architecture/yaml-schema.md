@@ -51,6 +51,11 @@ mounts:                   # The virtual roots the crew uses (optional) — selec
   - /output               # a root a settings entry (or a --mount) must provide; refused in one line when nothing does
   - 01J9Z3K4M5N6P7Q8R9S0T1V2W3|/data   # a root pinned to ONE settings entry by its id, when several entries declare it
 
+files:                    # The folders people who talk to the crew may reach (optional) — read by orkeon-host alone, closed when absent
+  - path: string          # A virtual folder of the crew's mounts: absolute, no "..", "." or empty segment
+    download: bool        # default: false — its files, and those of the folders under it, may be downloaded
+    upload: bool          # default: false — files may be left in it, and in the folders under it; write one or both
+
 announce_mounts: bool     # default: true — every agent with a file-system tool lists its virtual paths in its system prompt (alias announceMounts); an agent's own key wins
 
 rag:                      # Crew-level RAG configuration (optional)
@@ -184,7 +189,7 @@ tasks:
 
 Validation happens at load time (`CrewDefinitionValidator`): a crew needs a `name`, a `goal`, at least one agent (each
 with a goal) and at least one task (each with a `description` and, unless it is a decision task, an
-`expectedOutput`); circular `dependencies`, a `mounts:` item listed twice or two ids selecting the same root fail the load. So
+`expectedOutput`); circular `dependencies`, a `mounts:` item listed twice, two ids selecting the same root, or a `files:` item whose path is malformed, listed twice or opened to nothing fail the load. So
 does a `circuitBreaker:` key, at the root or on a task: the block was removed (see "Removed: `circuitBreaker`" below), and the load names the `graph` block
 instead of ignoring it. And so does a task's `asyncExecution: true` outside `process: sequential` and
 `process: parallel`: the four other modes order their tasks themselves, and the load names every task
@@ -672,6 +677,7 @@ All the YAML models live in `Orkeon.Infrastructure.Configuration` (`src/core/Ork
 - `GuardrailsYamlConfig` (agent- and task-level `guardrails:`)
 - `LinkYamlConfig` (the crew-level `links:` ACL)
 - `CrewYamlConfig.Mounts` / `CrewSettingsYamlConfig.Mounts` (the crew-level `mounts:` block — `/root` or `<ulid>|/root` items) → `CrewConfiguration.Mounts` (`MountReference`)
+- `CrewYamlConfig.Files` / `CrewSettingsYamlConfig.Files` (the crew-level `files:` block, items of `CrewFileYamlConfig`) → `CrewConfiguration.Files` (`CrewFileFolder`)
 - `AgentYamlConfig.Filesystem` (path or `{path, access}` items) → `AgentConfiguration.FileSystem` (`FileSystemScopeEntry`); `AgentYamlConfig.AnnounceMounts`, else the crew's `announce_mounts` → `AgentConfiguration.AnnounceMounts`
 - `GraphYamlConfig` (start, nodes, edges, circuitBreakerPreset and its limits) with `GraphNodeYamlConfig`, `GraphEdgeYamlConfig`
 - `RagYamlConfig` (collections + sources/chunking, defaults — with `RagCollectionYamlConfig`, `RagChunkingYamlConfig`, `RagDefaultsYamlConfig`) → `RagCrewConfig`

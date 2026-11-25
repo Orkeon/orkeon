@@ -368,7 +368,7 @@ than `IBaseTool` to implement. The servers are connected before the crew loads, 
 `StrictTools` — the runners' default — a crew that names a tool of a server that could not
 be connected fails at load with the ordinary `unknown tool(s)` line. `--list-tools` and
 `--validate` see the MCP tools, `McpServer` re-exposes what the registry holds - every tool, or those `orkeon mcp serve --tools` names
-(`AllowedTools`); the host of `orkeon mcp serve` registers no `human_input` -, and C#
+(`AllowedTools`); the host of `orkeon mcp serve` registers no `human_input` and no `chat_attach` -, and C#
 code can resolve one with `IToolRegistry.GetToolByNameAsync(name)`. The observed-run
 decorator of `--events jsonl` wraps the tools registered in DI; MCP tools reach the
 registry at run time and are not wrapped.
@@ -391,7 +391,7 @@ stdout, one per line; closing stdin ends the server.
   mounts it declares (`Orkeon:FileSystem:Mounts`) are what the file tools reach, and the MCP
   servers it declares under `MCP:Servers` are connected first, their tools served too. What
   is served is what `orkeon run --list-tools` prints for the same settings, `human_input`
-  aside: that tool answers for the operator of a run, and the client of an MCP server has a
+  and `chat_attach` aside: the second speaks to the conversation of a run, and there is none; the first answers for the operator of a run, and the client of an MCP server has a
   human of its own. No crew is loaded, so no tool a `.ork.ts` crew declares is served: those
   are registered when their crew loads.
 - **`--crew <a.yaml> [<b.yaml> …]` serves crews as tools.** Several crews go space-separated after

@@ -31,8 +31,12 @@ internal sealed class ChatRoutes
     public string Resolve(InboundMessage message)
     {
         ArgumentNullException.ThrowIfNull(message);
-        return message.RoomId is { } room && _byRoom.TryGetValue(room, out var crew) ? crew : DefaultCrew;
+        return Resolve(message.RoomId);
     }
+
+    /// <summary>The crew a room reaches; the default one without a room.</summary>
+    public string Resolve(string? roomId) =>
+        roomId is not null && _byRoom.TryGetValue(roomId, out var crew) ? crew : DefaultCrew;
 
     /// <summary>
     /// The hosted crews no room reaches — neither the default nor any route's target. Not an

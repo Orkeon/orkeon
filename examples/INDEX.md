@@ -211,7 +211,7 @@ These live under `examples/` but are code- or script-driven rather than pure `co
 | [`cli-ts-commands/`](cli-ts-commands/) | `.cmd.ts` / `.ork.ts` | TypeScript CLI command examples. |
 | [`local-embeddings/`](local-embeddings/) | C# program | On-device BGE-micro-v2 ONNX embeddings. |
 | [`run-events/`](run-events/) | Python reader | Watching a run from another program: `orkeon run --events jsonl`, a ~90-line dependency-free reader, and a recorded stream to try it with no model configured. |
-| [`service-host/`](service-host/) | JSON configuration | Hosting a crew as a daemon: one hosted crew, a Discord channel, mounts, and the two secrets named rather than written. |
+| [`service-host/`](service-host/) | JSON configuration | Hosting a crew as a daemon: one hosted crew, a Discord channel, mounts, and the two secrets named rather than written; `conversation-files/`: a crew that works on the files of a chat conversation and hands files back. |
 | [`rag/`](rag/) | C# programs | RAG subsystem (fully offline, local BGE, no API key): `basic-ingestion` (incremental ingestion + cited queries), `hybrid-retrieval` (BM25 + RRF vs vector-only), `custom-reranker` (host-provided `IReranker` via `IRerankerRegistrar`), `crew-yaml` (crew `rag:`/`knowledge:` blocks); plus the `eval/` golden dataset. |
 | [`09-experimental/llm-response-format/`](09-experimental/llm-response-format/) | `crew.yaml` + `.ork.ts` | Structured-output (`response_format`) demo. |
 | [`09-experimental/streaming-demo/`](09-experimental/streaming-demo/) | C# program | A crew run streamed as it goes (`KickoffStreamingAsync`): task start and end, the model's text, the final output. |

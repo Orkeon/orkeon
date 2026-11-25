@@ -42,6 +42,7 @@ public sealed partial class LlmProviderFactory : ILlmProviderFactory
     private readonly IModelCapabilityRegistry _capabilities;
     private readonly IFileSystemService _fileSystem;
     private readonly LlmCassette? _cassette;
+    private readonly RunImageSource? _images;
     private readonly LlmReplayMode _replayMode;
     private readonly OpenAIToolCallingStrategy _openAiStrategy;
     private readonly AnthropicToolCallingStrategy _anthropicStrategy;
@@ -83,6 +84,7 @@ public sealed partial class LlmProviderFactory : ILlmProviderFactory
         _callObserver = options?.CallObserver ?? NullLlmCallObserver.Instance;
         _tokenCounter = options?.TokenCounter ?? new SimpleTokenCounter();
         _capabilities = options?.Capabilities ?? ModelCapabilityRegistry.Default;
+        _images = options?.Images;
         _modules = IndexModules(options?.Modules);
 
         // Create tool calling strategies
@@ -290,12 +292,19 @@ public sealed partial class LlmProviderFactory : ILlmProviderFactory
     {
         if (built is HttpLlmProviderBase http)
             http.ModelCapabilities = _capabilities;
-        var provider = new CallModeLlmProvider(Cassette(built, config), config.CallMode, logger, _callObserver, _tokenCounter);
+        var provider = new CallModeLlmProvider(WithImages(Cassette(built, config)), config.CallMode, logger, _callObserver, _tokenCounter);
         // A replayed call is answered from the cassette and sends nothing: it is metered as recorded
         // (the usage the vendor reported) but takes no lease of the host's limiter (FWK review LLM-7).
         var limiter = _cassette is not null && _replayMode == LlmReplayMode.Replay ? null : _rateLimiter;
         return new LlmProviderAdapter(LlmProviderEntrance.Enter(provider, _usageSink, limiter, _budget));
     }
+
+    /// <summary>
+    /// <paramref name="provider"/> under the layer that shows the images of a run's input. Above the cassette: the key of a
+    /// call covers the bytes it carried.
+    /// </summary>
+    private ILlmProvider WithImages(ILlmProvider provider) =>
+        _images is null ? provider : new RunImageLlmProvider(provider, _images.FileSystem, _images.Options, _capabilities);
 
     /// <summary>
     /// <paramref name="built"/> under the cassette decorator the host asked for, or as it is. The cassette

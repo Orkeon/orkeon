@@ -384,6 +384,47 @@ settings, grant the fewest rights, and do not give an untrusted crew both chat `
 channel. The token files are plain JSON: shielded from the VFS tools, **not** from a shell or code
 tool running as the same user.
 
+### Conversation files
+
+With `Orkeon:Host:Files` on ([service host](./service-host.md#files--the-folders-of-a-conversation)), `orkeon-host` takes
+the files people send it in a chat and hands back those its crews make. It is off by default, and what it opens is this:
+bytes chosen by whoever is on the allow list of a channel, on the disk of the host and in front of its agents.
+
+- **Who.** The `AllowedUserIds` of each channel, and nothing else; an empty list refuses the start. On Discord,
+  `GuildIds` restricts no one.
+- **Two folders per conversation, and no other way in.** `/inbox` is read-only to the crew, `/outbox` read-write, and no
+  run is mounted on another conversation's. The host refuses to start when a mount reaches their root, and compares again
+  at each run and each access, so a link made later opens nothing.
+- **The content is untrusted.** The prompt names the files (path, type, size), never their content, says they are data,
+  and no name forges a line of it. An agent that opens one reads whatever its sender wrote, and no screen
+  (`PromptInjectionDocumentValidator`) is run on it by the reception. The images of a message go to the model themselves.
+- **Bounded.** Bytes per file, files per message, bytes and files per conversation, bytes in all, the extensions taken, and
+  a retention. What passes a limit is refused alone, with its reason.
+- **A download is held to one place.** Discord's files come from `cdn.discordapp.com`, Teams' from the SharePoint hosts of
+  `SharePointNames` and, for a pasted picture, the Bot Connector: HTTPS, no redirection, no address logged.
+- **What leaves is asked for.** Nothing is sent unasked but by [`chat_attach`](./service-host.md#files-an-agent-sends),
+  which takes no address: it sends to the conversation of its run, within caps per run. `/outbox` is open to download;
+  every other folder is closed until the crew declares it in its
+  [`files:`](./service-host.md#files--the-folders-a-crew-opens), within the rights the operator mounted. `/inbox` is never
+  sent back. A person writes nowhere but in a folder declared `upload`.
+- **The Teams rules.** Files pass in the personal chat with the bot alone. `SharePointNames` empty exchanges none. The
+  application's SharePoint token needs a certificate, and the application must hold no `Sites.*` and no `Files.*`
+  permission: the address comes from what a client sent, and such a permission would make it the key to every file it
+  covers. Without a certificate, the addresses that carry `tempauth` work until 2027-03-01 (UTC); after that date no file
+  shared by SharePoint passes. Everything sent is offered by a consent card first
+  ([Files in Teams](./service-host.md#files-in-teams)).
+
+**Honest limits.** Only `/inbox` and `/outbox` are a conversation's own: a folder the crew is granted (`/output`, a
+workspace) is shared by every thread of that crew, and so are `session_store`, the memory and the event hub, so what one
+person has an agent write there another may have it read. The mounts bind the file tools, not a process: an unconfined
+`shell_command`, code run with `AllowHostExecution`, a stdio MCP server and the process of the `agent-cli` provider read
+the received files of every conversation. The host warns at start about the first two only;
+[confine the shell](#shell-confinement), and give a crew that takes files none of the others, or run it on a host of its
+own. Nothing caps what a run writes in `/outbox` while it runs: the limits are checked when a file arrives and when the next
+run starts, so the disk needs a quota of its own. A file is neither scanned for malware nor decoded: its extension is what
+its sender wrote. The path rule of Teams' addresses is inferred, Microsoft documenting none, and neither channel is
+verified against the real service in CI. The rest is in [the limits](../reference/limitations.md).
+
 ### Tool bridge
 
 The tool bridge ([guide](../guides/tool-bridge.md), [ADR-019](../adr/ADR-019-tool-bridge.md)) runs some built-in

@@ -13,6 +13,9 @@ internal sealed class ScriptedRunner : ICrewRunner
     /// <summary>The variables of each run, in the order they were asked for.</summary>
     public List<IReadOnlyDictionary<string, string>?> Variables { get; } = [];
 
+    /// <summary>The conversation of each run, in the order they were asked for.</summary>
+    public List<HostedConversation?> Conversations { get; } = [];
+
     /// <summary>
     /// Whether the scripted run reaches admission — a refusal (UnknownCrew, Busy) never
     /// invokes <c>onStarted</c>, and the gateway's acknowledgement rides on it.
@@ -28,11 +31,13 @@ internal sealed class ScriptedRunner : ICrewRunner
         Action<string>? onProgress = null,
         Func<string, Task>? onStarted = null,
         IReadOnlyDictionary<string, string>? variables = null,
-        RunIdempotency? idempotency = null)
+        RunIdempotency? idempotency = null,
+        HostedConversation? conversation = null)
     {
         Ran.Add($"{crewName}:{prompt}");
         Origins.Add(origin);
         Variables.Add(variables);
+        Conversations.Add(conversation);
 
         if (Admits && onStarted is not null)
             await onStarted(Result.RunId ?? "run-1");

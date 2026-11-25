@@ -307,7 +307,7 @@ internal sealed class ChatClientAgentLoop
         using var chatActivity = StartChatActivity(agent, options);
         try
         {
-            var chatResponse = await RespondAsync(messages, options, cancellationToken).ConfigureAwait(false);
+            var chatResponse = await RespondAsync(agent, messages, options, cancellationToken).ConfigureAwait(false);
             CompleteChatActivity(chatActivity, chatResponse);
             return (chatResponse, null);
         }
@@ -750,7 +750,7 @@ internal sealed class ChatClientAgentLoop
         CancellationToken cancellationToken)
     {
         await _llmGate.WaitTurnAsync(agent, cancellationToken).ConfigureAwait(false);
-        var response = await RespondAsync(messages, retryOptions, cancellationToken).ConfigureAwait(false);
+        var response = await RespondAsync(agent, messages, retryOptions, cancellationToken).ConfigureAwait(false);
 
         var text = response.Text ?? string.Empty;
         var tokens = (int)(response.Usage?.TotalTokenCount ?? 0);
@@ -768,10 +768,16 @@ internal sealed class ChatClientAgentLoop
     /// the loop then retries or that ends in a tool call was streamed all the same.
     /// </summary>
     private async System.Threading.Tasks.Task<ChatResponse> RespondAsync(
-        List<ChatMessage> messages, ChatOptions options, CancellationToken cancellationToken)
+        DomainAgent agent, List<ChatMessage> messages, ChatOptions options, CancellationToken cancellationToken)
     {
+        // The run's images ride on this call alone, and not on the tools the turn may call after it.
+        using var images = RunImages.OpenTurn(agent.Role.Value);
         if (!CrewStreamScope.IsOpen && _deltaSink is null)
-            return await _chatClient.GetResponseAsync(messages, options, cancellationToken).ConfigureAwait(false);
+        {
+            var buffered = await _chatClient.GetResponseAsync(messages, options, cancellationToken).ConfigureAwait(false);
+            NoteAnswered(images, buffered);
+            return buffered;
+        }
 
         // Read before the first update: the call's task and agent, as the token meter knows them.
         var call = LlmUsageScope.Current;
@@ -809,8 +815,17 @@ internal sealed class ChatClientAgentLoop
                 turn.ReleaseToolCall(redacted);
         }
 
+        var streamed = updates.ToChatResponse();
+        NoteAnswered(images, streamed);
         turn.Complete();
-        return updates.ToChatResponse();
+        return streamed;
+    }
+
+    /// <summary>An answer that is an error was not given without the images: nobody is told they were left out of it.</summary>
+    private static void NoteAnswered(RunImageTurn? images, ChatResponse response)
+    {
+        if (images is not null && !response.Messages.Any(m => m.Contents.Any(c => c is ErrorContent)))
+            images.Answered();
     }
 
     /// <summary>

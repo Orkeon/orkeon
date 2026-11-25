@@ -131,7 +131,7 @@ services.AddOrkeonMultiModal(configuration);   // binds Orkeon:MultiModal
 ```
 
 Options (`Orkeon:MultiModal`, `MultiModalOptions`): `Enabled` (true), `MaxImageSizeBytes`
-(20 MB by default), `SupportedImageFormats` (png, jpeg, gif, webp by default),
+(20 MB by default), `MaxImages` (10 per call of a [run's images](#the-images-of-a-run)), `SupportedImageFormats` (png, jpeg, gif, webp by default),
 `MaxAudioDurationSeconds` (300), `SupportedAudioFormats` (wav, mp3, ogg). No image is resized:
 an image over the size limit fails validation.
 
@@ -141,6 +141,52 @@ an image over the size limit fails validation.
 > `OpenAICompatibleProviderBase` does the translation once). `AddOrkeonMultiModal`
 > enables the validation (`IContentValidationService`) and the VFS loader
 > (`IMultiModalContentLoader`).
+
+## The images of a run
+
+`CrewInput.Images` names the images that came with the message a crew answers, by virtual path; nothing is
+read or copied at that point. Each task of the run is shown them in its first user turn:
+
+- **When.** At each model call of a task, the bytes are read again through the run's file system and join that
+  call alone. They are in no message the loop keeps: a compaction, a checkpoint, the run history, the traces
+  and the logs hold the path. A cassette records a digest of them in the call's key, so replaying with another
+  picture is a miss. A resumed task given other images, or
+  another file under the same path, is worked again.
+- **To which model.** The one that answers, after routing and at each link of a fallback. It must be known to
+  read images (`ModelCapabilities.Vision`); an unknown model is not.
+- **Within which bounds.** `Orkeon:MultiModal`: `Enabled`, `MaxImages`, `MaxImageSizeBytes` and
+  `SupportedImageFormats`. The type is read from the bytes — png, jpeg, webp and gif —, never from the name.
+- **Within its vendor's own bounds.** Below `MaxImageSizeBytes`, what the vendor's page states, read before the call:
+
+  | Provider | Bound | Source |
+  |---|---|---|
+  | `anthropic` | 10 MB in base64, 8000 x 8000 pixels; request of 128 MB | [Vision](https://platform.claude.com/docs/en/build-with-claude/vision) |
+  | `azure-openai` | 20 MB | [Use vision-enabled chat models](https://learn.microsoft.com/en-us/azure/ai-services/openai/how-to/gpt-with-vision) |
+  | `gemini` | request of 20 MB (the [other page](https://aistudio.google.com/docs/file-input-methods) says 100 MB: the lower one); png, jpeg, webp | [Image understanding](https://aistudio.google.com/docs/image-understanding) |
+  | `grok` | 20 MiB; png, jpeg | [Image understanding](https://docs.x.ai/docs/guides/image-understanding) |
+  | `kimi` | request of 100 MB | [Vision model](https://platform.kimi.ai/docs/guide/use-kimi-vision-model) |
+  | `minimax` | 10 MB, sides up to 200:1; request of 64 MB | [Chat](https://platform.minimax.io/docs/api-reference/text-chat-openai) |
+  | `mistral` | 10 MB, 8 images, 10000 x 10000 pixels ([known limitations](https://docs.mistral.ai/resources/known-limitations) says 20 MB: the lower one); png, jpeg, webp (a gif of one frame alone is taken: Orkeon sends none) | [Vision](https://docs.mistral.ai/inference/conversations/vision) |
+  | `openai` | request of 512 MB | [Images and vision](https://developers.openai.com/api/docs/guides/images-vision) |
+  | `qwen` | 50 MiB in base64, its data URI prefix included, sides over 10 pixels and up to 200:1, 7680 x 4320 pixels; request of 16 MiB on the DashScope domain, Orkeon's default; png, jpeg, and webp up to 3840 x 2160 | [Vision](https://www.alibabacloud.com/help/en/model-studio/vision) |
+  | `zai` | under 5 MB, 6000 x 6000 pixels; png, jpeg | [Chat completion](https://docs.z.ai/api-reference/llm/chat-completion) |
+  | every other | 5 MB in base64 | none found: Orkeon's own, prudent |
+
+  A megabyte is a million bytes where the page does not say MiB, and a request keeps one of them for its text. The sides
+  are read from the file's header.
+- **When the vendor refuses all the same.** A 400, 413, 415 or 422 to a call that carries images is asked once more without
+  them, each named as unseen. Any other status, a conversation too long, an exhausted account and a bad key
+  keep their own handling, and so does a stream that has already said something. When the second call fails too, the error is
+  the first one, unless the second is one a fallback takes over. The run counts one call, that of the
+  answer; a cassette records the refusal and the second call, each under its own key, and replays both. Once the
+  second call is answered, that model is shown these images no more in the run. Data a vendor quotes in its error is left
+  out of the error and of the log.
+- **To which agent.** One whose `filesystem:` leaves the path out is not shown the image.
+
+An image that is not shown is never dropped in silence: its place in the turn says so by its path, and
+`CrewOutput.UnseenImages` gives the path, who was not shown it and why. The text loop, a decision task and a
+provider the host registers outside the factory (`AddOrkeonLlmProvider(_ => ...)`) carry no image, and say so
+the same way. A token count made before a call does not count images; the usage the vendor reports does.
 
 ## Supported providers and formats
 

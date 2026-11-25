@@ -349,7 +349,7 @@ def render(cats: list[Category]) -> str:
     a("| [`cli-ts-commands/`](cli-ts-commands/) | `.cmd.ts` / `.ork.ts` | TypeScript CLI command examples. |")
     a("| [`local-embeddings/`](local-embeddings/) | C# program | On-device BGE-micro-v2 ONNX embeddings. |")
     a("| [`run-events/`](run-events/) | Python reader | Watching a run from another program: `orkeon run --events jsonl`, a ~90-line dependency-free reader, and a recorded stream to try it with no model configured. |")
-    a("| [`service-host/`](service-host/) | JSON configuration | Hosting a crew as a daemon: one hosted crew, a Discord channel, mounts, and the two secrets named rather than written. |")
+    a("| [`service-host/`](service-host/) | JSON configuration | Hosting a crew as a daemon: one hosted crew, a Discord channel, mounts, and the two secrets named rather than written; `conversation-files/`: a crew that works on the files of a chat conversation and hands files back. |")
     a("| [`rag/`](rag/) | C# programs | RAG subsystem (fully offline, local BGE, no API key): `basic-ingestion` (incremental ingestion + cited queries), `hybrid-retrieval` (BM25 + RRF vs vector-only), `custom-reranker` (host-provided `IReranker` via `IRerankerRegistrar`), `crew-yaml` (crew `rag:`/`knowledge:` blocks); plus the `eval/` golden dataset. |")
     a("| [`09-experimental/llm-response-format/`](09-experimental/llm-response-format/) | `crew.yaml` + `.ork.ts` | Structured-output (`response_format`) demo. |")
     a("| [`09-experimental/streaming-demo/`](09-experimental/streaming-demo/) | C# program | A crew run streamed as it goes (`KickoffStreamingAsync`): task start and end, the model's text, the final output. |")
@@ -641,6 +641,7 @@ TOOL_NEEDS: dict[str, ToolNeeds] = {
         # a web service — and no example ships or names one.
         "relational_database_query",
         "semantic_search", "human_input",   # Orkeon.Infrastructure: memory search, stdin
+        "chat_attach",                      # Orkeon.Hosting: the run's own conversation
         "shell_command",                    # Orkeon.Tools.Code: a local process, allowlisted
     ), ToolNeeds()),
     **dict.fromkeys(FINANCE_MODULE_TOOLS, ToolNeeds()),

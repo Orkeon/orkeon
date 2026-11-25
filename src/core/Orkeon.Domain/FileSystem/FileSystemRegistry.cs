@@ -58,6 +58,12 @@ public sealed class FileSystemRegistry : IDisposable
         _mounts = mountList;
     }
 
+    /// <summary>
+    /// A physical folder no mount may reach but those the runtime made in it (<see cref="FileSystemMount.InReservedFolder"/>), checked at each
+    /// access; null when none is. A registry composed for an execution carries it forward.
+    /// </summary>
+    internal string? ReservedFolder { get; set; }
+
     /// <summary>Adds a mount at runtime (e.g. from a hosted service bootstrapper).</summary>
     public void AddMount(FileSystemMount mount)
     {
@@ -233,6 +239,15 @@ public sealed class FileSystemRegistry : IDisposable
             // 4. Build physical path
             var physicalPath = Path.GetFullPath(Path.Combine(mount.BasePath, relativePath));
 
+            if (mount.KeepsRoot && requiredRight.HasFlag(FileAccessRights.Delete)
+                && Path.TrimEndingDirectorySeparator(physicalPath) == Path.TrimEndingDirectorySeparator(Path.GetFullPath(mount.BasePath)))
+            {
+                throw new FileAccessDeniedException(
+                    $"Access denied for '{virtualPath}': the mounted folder itself cannot be deleted, only what it holds.",
+                    virtualPath,
+                    requiredRight);
+            }
+
             // 5. Containment check
             if (!PhysicalPathContainment.IsUnder(physicalPath, Path.GetFullPath(mount.BasePath)))
             {
@@ -254,6 +269,17 @@ public sealed class FileSystemRegistry : IDisposable
             {
                 throw new FileAccessDeniedException(
                     $"Access denied for '{virtualPath}': a symbolic link on the path leads outside its mount.",
+                    virtualPath,
+                    requiredRight);
+            }
+
+            // 5c. A reserved folder is reached by the mounts made in it alone, as the links lead now: a link replaced since
+            // the host compared its mounts must not turn one of them into a way in.
+            if (ReservedFolder is { } reserved && !mount.InReservedFolder
+                && PhysicalOverlap.Between(PhysicalRealPath.Resolve(reserved) ?? reserved, realRoot))
+            {
+                throw new FileAccessDeniedException(
+                    $"Access denied for '{virtualPath}': this path is reserved by the runtime.",
                     virtualPath,
                     requiredRight);
             }
@@ -411,7 +437,7 @@ public sealed class FileSystemRegistry : IDisposable
         {
             return _mounts
                 .Where(m => m.Visibility == MountVisibility.AgentFacing)
-                .Select(m => new MountInfo(m.VirtualPath, m.DefaultRights, m.Overrides, m.Visibility) { Id = m.Id })
+                .Select(m => new MountInfo(m.VirtualPath, m.DefaultRights, m.Overrides, m.Visibility) { Id = m.Id, IsPrivate = m.IsPrivate })
                 .ToList()
                 .AsReadOnly();
         }
@@ -425,7 +451,7 @@ public sealed class FileSystemRegistry : IDisposable
         try
         {
             return _mounts
-                .Select(m => new MountInfo(m.VirtualPath, m.DefaultRights, m.Overrides, m.Visibility) { Id = m.Id })
+                .Select(m => new MountInfo(m.VirtualPath, m.DefaultRights, m.Overrides, m.Visibility) { Id = m.Id, IsPrivate = m.IsPrivate })
                 .ToList()
                 .AsReadOnly();
         }

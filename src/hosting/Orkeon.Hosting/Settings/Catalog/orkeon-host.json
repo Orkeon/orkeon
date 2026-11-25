@@ -44,6 +44,7 @@
     "Orkeon:Kev",
     "Orkeon:LanceDb",
     "Orkeon:Liquid",
+    "Orkeon:MultiModal",
     "Orkeon:Pinecone",
     "Orkeon:Rag",
     "Orkeon:Rag:Ingestion",
@@ -304,6 +305,90 @@
       "description": "How many runs of this crew may be in flight at once. Bounded on purpose: a daemon that accepts unlimited concurrent runs is a daemon that dies under its first burst."
     },
     {
+      "path": "Orkeon:Host:Files:AllowedExtensions",
+      "section": "Orkeon:Host",
+      "type": "list of string",
+      "default": [],
+      "description": "The extensions taken (`pdf` or `.pdf`, case ignored). Empty, every extension is."
+    },
+    {
+      "path": "Orkeon:Host:Files:Enabled",
+      "section": "Orkeon:Host",
+      "type": "boolean",
+      "default": false,
+      "description": "Gives each conversation two folders, mounted for its runs: `/inbox`, read-only, and `/outbox`. Off, no folder is made and neither path is mounted."
+    },
+    {
+      "path": "Orkeon:Host:Files:MaxAttachedBytesPerRun",
+      "section": "Orkeon:Host",
+      "type": "integer",
+      "default": 52428800,
+      "description": "What the agents of one run may send to its conversation, in bytes."
+    },
+    {
+      "path": "Orkeon:Host:Files:MaxAttachedFilesPerRun",
+      "section": "Orkeon:Host",
+      "type": "integer",
+      "default": 10,
+      "description": "How many files the agents of one run may send to its conversation."
+    },
+    {
+      "path": "Orkeon:Host:Files:MaxAttachedMessagesPerRun",
+      "section": "Orkeon:Host",
+      "type": "integer",
+      "default": 5,
+      "description": "How many messages the agents of one run may send files in."
+    },
+    {
+      "path": "Orkeon:Host:Files:MaxConversationBytes",
+      "section": "Orkeon:Host",
+      "type": "integer",
+      "default": 104857600,
+      "description": "What one conversation may hold, in bytes: both folders, and what was left in the folders of a crew, be it still there or not. A run writes freely while it runs: a conversation found over this afterwards starts no other run."
+    },
+    {
+      "path": "Orkeon:Host:Files:MaxConversationFiles",
+      "section": "Orkeon:Host",
+      "type": "integer",
+      "default": 1000,
+      "description": "How many files one conversation may hold: those of both folders, and those left in the folders of a crew. At the limit, no other file is taken."
+    },
+    {
+      "path": "Orkeon:Host:Files:MaxFileBytes",
+      "section": "Orkeon:Host",
+      "type": "integer",
+      "default": 10485760,
+      "description": "The largest file taken, in bytes."
+    },
+    {
+      "path": "Orkeon:Host:Files:MaxFilesPerMessage",
+      "section": "Orkeon:Host",
+      "type": "integer",
+      "default": 10,
+      "description": "How many files of one message are taken."
+    },
+    {
+      "path": "Orkeon:Host:Files:MaxTotalBytes",
+      "section": "Orkeon:Host",
+      "type": "integer",
+      "default": 2147483648,
+      "description": "What the conversations may hold together, in bytes. Found over this, no conversation starts a run until the retention or the operator makes room."
+    },
+    {
+      "path": "Orkeon:Host:Files:Retention",
+      "section": "Orkeon:Host",
+      "type": "duration",
+      "default": "7.00:00:00",
+      "description": "How long a conversation is kept after its last activity. One with a run in progress, or suspended on a question, is kept."
+    },
+    {
+      "path": "Orkeon:Host:Files:Root",
+      "section": "Orkeon:Host",
+      "type": "string",
+      "default": "conversations",
+      "description": "The folder the conversations are kept in, relative to the service's working directory. No mount and no crew folder may hold it, be it or be under it, links followed: the start is refused."
+    },
+    {
       "path": "Orkeon:Host:LlmProfiles",
       "section": "Orkeon:Host",
       "type": "list of string",
@@ -386,6 +471,12 @@
       "description": "The bot's application (client) id: the audience every incoming token must carry."
     },
     {
+      "path": "Orkeon:Host:Teams:CertificatePathEnvironmentVariable",
+      "section": "Orkeon:Host:Teams",
+      "type": "string",
+      "description": "Name of the environment variable holding the absolute path of the application's certificate: a PEM file with its unencrypted RSA private key, in a folder of its own. SharePoint refuses a client secret: without a certificate, files go through the temporary addresses Microsoft ends on 1 March 2027, then not at all."
+    },
+    {
       "path": "Orkeon:Host:Teams:DefaultCrew",
       "section": "Orkeon:Host:Teams",
       "type": "string",
@@ -439,6 +530,13 @@
       "type": "list of string",
       "default": [],
       "description": "Hosts of the Bot Connector service replies may go to, beside the ones Microsoft publishes for Teams (`smba.trafficmanager.net`, `smba.infra.gcc.teams.microsoft.com`). An activity naming another host is refused, whatever its token says."
+    },
+    {
+      "path": "Orkeon:Host:Teams:SharePointNames",
+      "section": "Orkeon:Host:Teams",
+      "type": "list of string",
+      "default": [],
+      "description": "The names of the tenant's SharePoint: `contoso` for `contoso.sharepoint.com` and `contoso-my.sharepoint.com`. Files of a personal chat are read from and sent to those hosts and no other; empty, none is. Used when `Orkeon:Host:Files` is on."
     },
     {
       "path": "Orkeon:Host:Teams:TenantId",

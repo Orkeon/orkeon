@@ -82,6 +82,12 @@ public sealed record RunnerMountPlan
     /// </summary>
     public bool RunHistoryByDefault { get; init; }
 
+    /// <summary>
+    /// The files a host reads its own credentials from, by absolute path, with the settings key that names each: their folders
+    /// are mounted under <see cref="RunnerVirtualRoots.CredentialFiles"/>, like those of the chat application accounts.
+    /// </summary>
+    internal IReadOnlyList<(string Path, string Key)> CredentialFiles { get; init; } = [];
+
     /// <summary>Folders a command reads as its inputs, readable without the external-mounts opt-in.</summary>
     public IReadOnlyList<string> InputDirectories { get; init; } = [];
 
@@ -1245,7 +1251,7 @@ public static partial class RunnerHost
             .Concat(declaredInternal.Select(entry => entry.Value)).Concat(mounts.CliMounts).Concat(mounts.InternalMounts));
         var agentFolders = inForce.Concat(mounts.CliMounts).Select(TryExtractMountBasePath).OfType<string>()
             .Append(TryFullPath(mounts.WorkingDirectory ?? Environment.CurrentDirectory)).OfType<string>().ToList();
-        foreach (var (directory, folder) in PlanCredentialFiles(declared, agentFolders, decisions))
+        foreach (var (directory, folder) in PlanCredentialFiles(declared, mounts.CredentialFiles, agentFolders, decisions))
         {
             overrides[$"{ConfigurationKeys.FileSystemInternalMounts}:{nextInternalIndex++}"] =
                 $"{FileSystemMount.Quote(directory)}:{RunnerVirtualRoots.CredentialFiles}/{folder}:ro";
@@ -1283,19 +1289,30 @@ public static partial class RunnerHost
 
     /// <summary>
     /// The folders to mount under <see cref="RunnerVirtualRoots.CredentialFiles"/>: the directory of each
-    /// certificate or federated token file a chat application account names by its variable, with the name it
-    /// is mounted at. An Internal mount closes its folder to the agents whatever other mount holds it, so a
+    /// certificate or federated token file a chat application account names by its variable, and of each file the
+    /// host reads a credential of its own from, with the name it is mounted at. An Internal mount closes its folder to the agents whatever other mount holds it, so a
     /// directory that is, or holds, one mounted for them is left out and said in
     /// <paramref name="decisions"/>, like one that does not exist: the run goes on and that account alone refuses.
     /// </summary>
     private static List<(string Directory, string Folder)> PlanCredentialFiles(
-        DeclaredConfiguration declared, List<string> agentFolders, MountDecisions decisions)
+        DeclaredConfiguration declared, IReadOnlyList<(string Path, string Key)> hostFiles, List<string> agentFolders, MountDecisions decisions)
     {
-        var planned = new List<(string Directory, string Folder)>();
-        if (declared.Section(ConfigurationKeys.ToolsChat) is not { } section || !section.Exists())
-            return planned;
+        var named = new List<(string Directory, string Folder, string Key)>();
+        if (declared.Section(ConfigurationKeys.ToolsChat) is { } section && section.Exists())
+        {
+            named.AddRange(ChatCredentialsLocation.CredentialFileDirectories(section)
+                .OrderBy(pair => pair.Value, StringComparer.Ordinal)
+                .Select(pair => (pair.Key, pair.Value, ConfigurationKeys.ToolsChat)));
+        }
 
-        foreach (var (directory, folder) in ChatCredentialsLocation.CredentialFileDirectories(section).OrderBy(pair => pair.Value, StringComparer.Ordinal))
+        foreach (var (path, key) in hostFiles)
+        {
+            if (Orkeon.Tools.Chat.Auth.ChatCredentialFile.Directory(path) is { } directory && Orkeon.Tools.Chat.Auth.ChatCredentialFile.Folder(path) is { } folder)
+                named.Add((directory, folder, key));
+        }
+
+        var planned = new List<(string Directory, string Folder)>();
+        foreach (var (directory, folder, key) in named.DistinctBy(file => file.Folder))
         {
             if (TryFullPath(directory) is not { } full)
                 continue;
@@ -1304,12 +1321,12 @@ public static partial class RunnerHost
             if (!Directory.Exists(full))
             {
                 decisions.StartupWarnings.Add(
-                    $"The folder of a credential file of {ConfigurationKeys.ToolsChat} does not exist: the account that names it cannot sign in.");
+                    $"The folder of a credential file of {key} does not exist: the account that names it cannot sign in.");
             }
             else if (agentFolders.Any(agent => PhysicalPathContainment.IsUnder(agent, full)))
             {
                 decisions.StartupWarnings.Add(
-                    $"A credential file of {ConfigurationKeys.ToolsChat} lies in the working directory, in a folder mounted for the agents or in one that holds such a folder: " +
+                    $"A credential file of {key} lies in the working directory, in a folder mounted for the agents or in one that holds such a folder: " +
                     "it is not read, and the account that names it cannot sign in. Keep it in a folder of its own.");
             }
             else

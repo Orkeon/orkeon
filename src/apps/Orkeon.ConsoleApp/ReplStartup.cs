@@ -149,6 +149,7 @@ internal static class ReplStartup
             SettingsValidation.CheckLogging(context.Configuration);
             Program.ConfigureServices(context, services, effectiveUi, scriptedOpts, replWordWrap);
             RegisterReplHumanInput(services);
+            Orkeon.Hosting.Conversations.ChatAttachExtensions.AddOrkeonChatAttach(services);
 
             // The REPL keeps its session and its typed memory per project unless the settings say otherwise; the
             // start script runs from Program.RunHostAsync, once the host is built, never from Prepare.

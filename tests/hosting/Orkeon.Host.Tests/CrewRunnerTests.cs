@@ -290,6 +290,139 @@ tasks:
         Assert.Empty(registry.Running);
     }
 
+    private static HostedConversation Conversation(Func<CancellationToken, Task<PreparedRun>> prepare) => new()
+    {
+        Channel = "test",
+        ConversationId = "thread-1",
+        PrepareAsync = prepare,
+    };
+
+    [Fact]
+    public async Task A_conversation_is_prepared_after_admission_under_the_runs_token()
+    {
+        var (runner, registry, host) = Build();
+        using var _ = host;
+        var order = new List<string>();
+        var refused = new RefusedFile("a.pdf", "too big");
+
+        var result = await runner.RunAsync(
+            "support", "hello", "test:thread-1",
+            onStarted: _ =>
+            {
+                order.Add("started");
+                return Task.CompletedTask;
+            },
+            conversation: Conversation(ct =>
+            {
+                order.Add("prepared");
+                Assert.Equal(Assert.Single(registry.Running).Cancellation.Token, ct);
+                return Task.FromResult(new PreparedRun("prepared prompt") { RefusedFiles = [refused] });
+            }));
+
+        Assert.True(result.Succeeded, result.Message);
+        Assert.Equal(["started", "prepared"], order);
+        Assert.Equal(refused, Assert.Single(result.RefusedFiles));
+        Assert.Empty(result.OutboxFiles);
+    }
+
+    [Fact]
+    public async Task A_run_refused_at_admission_prepares_nothing()
+    {
+        var (runner, _, host) = Build();
+        using var __ = host;
+
+        var result = await runner.RunAsync(
+            "payroll", "hello", "test:thread-1",
+            conversation: Conversation(_ => throw new InvalidOperationException("prepared")));
+
+        Assert.Equal(HostedRunOutcome.UnknownCrew, result.Outcome);
+    }
+
+    [Fact]
+    public async Task A_preparation_that_fails_says_so_without_its_detail()
+    {
+        var (runner, registry, host) = Build();
+        using var _ = host;
+
+        var result = await runner.RunAsync(
+            "support", "hello", "test:thread-1",
+            conversation: Conversation(_ => throw new IOException("/srv/secret/path")));
+
+        Assert.Equal(HostedRunOutcome.Failed, result.Outcome);
+        Assert.Contains("could not be prepared", result.Message, StringComparison.Ordinal);
+        Assert.DoesNotContain("secret", result.Message, StringComparison.Ordinal);
+        Assert.Contains("/srv/secret/path", DebugLog, StringComparison.Ordinal);
+        Assert.Empty(registry.Running);
+    }
+
+    [Fact]
+    public async Task A_preparation_that_words_its_failure_is_relayed()
+    {
+        var (runner, _, host) = Build();
+        using var __ = host;
+
+        var result = await runner.RunAsync(
+            "support", "hello", "test:thread-1",
+            conversation: Conversation(_ => throw new ConversationPreparationException("The folder is full.")));
+
+        Assert.Equal((HostedRunOutcome.Failed, "The folder is full."), (result.Outcome, result.Message));
+    }
+
+    [Fact]
+    public async Task A_cancellation_of_its_own_is_a_failed_preparation_not_a_stopped_run()
+    {
+        var (runner, _, host) = Build();
+        using var __ = host;
+
+        var result = await runner.RunAsync(
+            "support", "hello", "test:thread-1",
+            conversation: Conversation(_ => throw new TaskCanceledException("an HTTP timeout")));
+
+        Assert.Equal(HostedRunOutcome.Failed, result.Outcome);
+        Assert.Contains("could not be prepared", result.Message, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task A_run_stopped_while_it_prepares_is_stopped(bool asCancellation)
+    {
+        var (runner, registry, host) = Build();
+        using var _ = host;
+
+        var result = await runner.RunAsync(
+            "support", "hello", "test:thread-1",
+            conversation: Conversation(async ct =>
+            {
+                Assert.True(registry.RequestStop(Assert.Single(registry.Running).Id));
+                if (asCancellation)
+                    await Task.Delay(Timeout.Infinite, ct);
+                throw new IOException("the download was cut");
+            }));
+
+        Assert.Equal((HostedRunOutcome.Cancelled, "The run was stopped."), (result.Outcome, result.Message));
+        Assert.Empty(registry.Running);
+    }
+
+    [Fact]
+    public async Task The_deadline_covers_the_preparation()
+    {
+        var (runner, registry, host) = Build(runTimeout: TimeSpan.FromMilliseconds(1));
+        using var _ = host;
+
+        var result = await runner.RunAsync(
+            "support", "hello", "test:thread-1",
+            conversation: Conversation(async ct =>
+            {
+                await Task.Delay(Timeout.Infinite, ct);
+                return new PreparedRun("never");
+            }));
+
+        Assert.Equal(HostedRunOutcome.Cancelled, result.Outcome);
+        Assert.Contains("timed out", result.Message, StringComparison.Ordinal);
+        Assert.Empty(registry.Running);
+    }
+
     [Fact]
     public async Task Task_completions_reach_the_conversation_as_progress()
     {

@@ -23,6 +23,9 @@
     <!-- The tool-call parsers and strategies, internal plumbing, read by the script runtime and the CLI probe. -->
     <InternalsVisibleTo Include="Orkeon.Scripting" />
     <InternalsVisibleTo Include="orkeon" />
+    <!-- The probe of a crew's files: block, read without loading the crew. -->
+    <InternalsVisibleTo Include="Orkeon.Hosting" />
+    <InternalsVisibleTo Include="orkeon-host" />
     <InternalsVisibleTo Include="Orkeon.Scripting.Tests" />
     <InternalsVisibleTo Include="Orkeon.Scripting.Cli.Tests" />
   </ItemGroup>

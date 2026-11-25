@@ -32,6 +32,9 @@ internal static partial class BuiltInToolTypings
     /// <summary>The prefixes of the families whose declarations stay hand-written in <c>tools.d.ts</c>.</summary>
     internal static readonly IReadOnlyList<string> HandWrittenFamilies = ["email_", "drive_", "chat_"];
 
+    /// <summary>A name under a family's prefix that is not of the family: rendered here.</summary>
+    private const string ChatAttach = "chat_attach";
+
     /// <summary>The declaration file for <paramref name="tools"/>, one member per tool name, ordered by name.</summary>
     /// <param name="tools">The tools a run registers.</param>
     internal static string Render(IEnumerable<IBaseTool> tools)
@@ -57,7 +60,7 @@ internal static partial class BuiltInToolTypings
             """);
 
         var members = tools
-            .Where(t => !HandWrittenFamilies.Any(prefix => t.Name.StartsWith(prefix, StringComparison.Ordinal)))
+            .Where(t => t.Name == ChatAttach || !HandWrittenFamilies.Any(prefix => t.Name.StartsWith(prefix, StringComparison.Ordinal)))
             .DistinctBy(t => t.Name, StringComparer.Ordinal)
             .OrderBy(t => t.Name, StringComparer.Ordinal)
             .ToList();

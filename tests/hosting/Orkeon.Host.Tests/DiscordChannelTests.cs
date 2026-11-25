@@ -224,6 +224,106 @@ public class DiscordChannelTests
             () => channel.RunAsync(null!, TestContext.Current.CancellationToken));
     }
 
+    // ---- What a message becomes ----------------------------------------------------------
+
+    private static Discord.IMessage DiscordMessage(
+        Discord.MessageType type = Discord.MessageType.Default, bool bot = false, params Discord.IAttachment[] attachments)
+    {
+        var author = StubDiscord.Of<Discord.IUser>(("Id", 42UL), ("IsBot", bot));
+        return StubDiscord.Of<Discord.IMessage>(
+            ("Type", type),
+            ("Author", author),
+            ("Content", "summarise"),
+            ("Attachments", attachments));
+    }
+
+    [Fact]
+    public async Task A_message_reads_its_own_files_only()
+    {
+        using var handler = new StubHttpHandler();
+        using var http = new HttpClient(handler);
+        var attachment = StubDiscord.Of<Discord.IAttachment>(
+            ("Id", 7UL), ("Filename", "a.txt"), ("ContentType", "text/plain"), ("Size", 3), ("Url", "https://cdn.discordapp.com/a/7"));
+        var message = StubDiscord.Of<Discord.IMessage>(
+            ("Id", 1UL), ("Content", "go"), ("Author", StubDiscord.Of<Discord.IUser>(("Id", 42UL), ("IsBot", false))),
+            ("Attachments", new[] { attachment }));
+
+        var inbound = DiscordChannel.ToInbound(message, StubDiscord.Of<Discord.IChannel>(("Id", 99UL)), null, DateTimeOffset.UnixEpoch, http);
+
+        var source = Assert.IsType<DiscordAttachmentSource>(inbound.AttachmentSource);
+        await using var stream = await source.OpenAsync(inbound.Attachments[0], TestContext.Current.CancellationToken);
+        Assert.Equal("https://cdn.discordapp.com/a/7", Assert.Single(handler.Requests).Address);
+        await Assert.ThrowsAsync<IOException>(
+            () => source.OpenAsync(new InboundAttachment { Id = "8", Name = "b.txt" }, TestContext.Current.CancellationToken));
+    }
+
+    [Fact]
+    public void Attachments_are_carried_without_their_signed_address()
+    {
+        var attachment = StubDiscord.Of<Discord.IAttachment>(
+            ("Id", 7UL), ("Filename", "march.pdf"), ("ContentType", "application/pdf"), ("Size", 12),
+            ("Url", "https://cdn.discordapp.com/secret"), ("ProxyUrl", "https://media.discordapp.net/secret"));
+        var thread = StubDiscord.Of<Discord.IChannel>(("Id", 99UL));
+
+        var message = DiscordChannel.ToInbound(DiscordMessage(attachments: attachment), thread, 5UL, DateTimeOffset.UnixEpoch);
+
+        Assert.Equal(("99", "5", "42", "summarise"), (message.ConversationId, message.RoomId, message.SenderId, message.Text));
+        Assert.Equal(
+            new InboundAttachment { Id = "7", Name = "march.pdf", ContentType = "application/pdf", Size = 12 },
+            Assert.Single(message.Attachments));
+        Assert.Null(message.AttachmentSource);
+        Assert.DoesNotContain("secret", message.ToString() + message.Attachments[0], StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task ShouldAskDiscordForTheRoom_OnlyOfAThreadWhoseChannelIsNotCached()
+    {
+        var asked = new List<ulong>();
+        Task<ulong?> RoomOf(ulong thread, CancellationToken ct)
+        {
+            asked.Add(thread);
+            return Task.FromResult<ulong?>(5UL);
+        }
+
+        var thread = StubDiscord.Of<Discord.IChannel>(("Id", 99UL));
+
+        var cached = DiscordChannel.ToInbound(DiscordMessage(), thread, 7UL, DateTimeOffset.UnixEpoch, null, RoomOf);
+        var unknown = DiscordChannel.ToInbound(DiscordMessage(), thread, null, DateTimeOffset.UnixEpoch, null, RoomOf);
+
+        Assert.Null(cached.ResolveRoomAsync);
+        Assert.Empty(asked);
+        Assert.Null(unknown.RoomId);
+        Assert.NotNull(unknown.ResolveRoomAsync);
+        Assert.Equal("5", await unknown.ResolveRoomAsync(TestContext.Current.CancellationToken));
+        Assert.Equal(99UL, Assert.Single(asked));
+    }
+
+    [Theory]
+    [InlineData(Discord.MessageType.Default, false, true)]
+    [InlineData(Discord.MessageType.Reply, false, true)]
+    [InlineData(Discord.MessageType.Default, true, false)]
+    [InlineData(Discord.MessageType.ChannelPinnedMessage, false, false)]
+    [InlineData(Discord.MessageType.GuildMemberJoin, false, false)]
+    [InlineData(Discord.MessageType.RecipientAdd, false, false)]
+    [InlineData(Discord.MessageType.ChannelNameChange, false, false)]
+    [InlineData(Discord.MessageType.ThreadStarterMessage, false, false)]
+    public void Only_what_a_person_writes_is_listened_to(Discord.MessageType type, bool bot, bool expected) =>
+        Assert.Equal(expected, DiscordChannel.IsFromAPerson(DiscordMessage(type, bot)));
+
+    [Fact]
+    public async Task No_answer_mentions_anyone()
+    {
+        // An answer carries text nobody vouched for: a file's name, a model's words.
+        var channel = StubDiscord.Of<Discord.IMessageChannel>();
+
+        await DiscordResponder.PostAsync(channel, "@everyone", components: null);
+
+        var (method, arguments) = Assert.Single(StubDiscord.CallsOf(channel));
+        Assert.Equal("SendMessageAsync", method);
+        Assert.Contains("@everyone", arguments);
+        Assert.Same(Discord.AllowedMentions.None, Assert.Single(arguments.OfType<Discord.AllowedMentions>()));
+    }
+
     // ---- The responder: a conversation id that is no Discord channel ---------------------
 
     private static InboundMessage Message(string conversation) => new()

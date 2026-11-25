@@ -66,6 +66,9 @@ public static class SourceGlobExpander
             if (string.IsNullOrWhiteSpace(location))
                 continue;
 
+            if (!IsWebAddress(location) && !HasWildcard(location))
+                PrivateMountGuard.ThrowIfReached(fileSystem, location);
+
             if (!HasWildcard(location))
             {
                 if (seen.Add(location))
@@ -89,6 +92,7 @@ public static class SourceGlobExpander
         IFileSystemService fileSystem, string pattern, CancellationToken ct)
     {
         var (root, relativePattern) = SplitAtFirstWildcardSegment(pattern);
+        PrivateMountGuard.ThrowIfReached(fileSystem, root);
         var regex = GlobToRegex(relativePattern);
 
         var matches = new List<string>();

@@ -108,7 +108,10 @@ public abstract partial class HttpLlmProviderBase : ILlmProvider, IStreamingLlmP
     /// </summary>
     /// <param name="config">The call's effective configuration; null for the provider's own.</param>
     /// <returns>A model identifier, never empty.</returns>
-    protected string ResolveModel(LlmConfig? config)
+    protected string ResolveModel(LlmConfig? config) => EffectiveModel(config);
+
+    /// <summary><see cref="ResolveModel"/>, for the layers the factory puts around a provider.</summary>
+    internal string EffectiveModel(LlmConfig? config)
     {
         if (!string.IsNullOrWhiteSpace(config?.Model))
             return config.Model;
@@ -472,7 +475,7 @@ public abstract partial class HttpLlmProviderBase : ILlmProvider, IStreamingLlmP
 
         async Task<LlmResponse> CreateErrorResponseCoreAsync()
         {
-            var errorContent = await httpResponse.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+            var errorContent = LogSanitizer.SanitizeVendorError(await httpResponse.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false));
 
             LogHttpError(httpResponse.StatusCode, errorContent);
 
@@ -679,7 +682,7 @@ public abstract partial class HttpLlmProviderBase : ILlmProvider, IStreamingLlmP
         // Same phrasing as the buffered path's error metadata, so a reader comparing M1 and M3
         // sees one wording and not two.
         return new HttpRequestException(
-            $"{providerDisplayName} API error: {response.StatusCode} - {Security.LogSanitizer.SanitizeString(body)}{Orkeon.Infrastructure.LLMs.Profiles.LlmFailureClassifier.BalanceExhaustedHint(response.StatusCode, body)}",
+            $"{providerDisplayName} API error: {response.StatusCode} - {Security.LogSanitizer.SanitizeVendorError(body)}{Orkeon.Infrastructure.LLMs.Profiles.LlmFailureClassifier.BalanceExhaustedHint(response.StatusCode, body)}",
             inner: null,
             statusCode: response.StatusCode);
     }

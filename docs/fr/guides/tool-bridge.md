@@ -160,7 +160,7 @@ ne voyage jamais en clair hors de la machine.
     ponté, il agirait sur votre machine alors que l'espace de travail est dans le conteneur ;
   - un outil d'un serveur MCP, ou un outil dont la classe ne déclare aucun `[ToolContract]` (celui d'un plugin, d'un
     script) : ce qu'il atteint sur l'autre machine n'est pas connu ;
-  - un outil de l'exécution de l'appelant (`human_input`, `memory_*`, `session_*`, `token_budget`, `spawn_agent`,
+  - un outil de l'exécution de l'appelant (`human_input`, `chat_attach`, `memory_*`, `session_*`, `token_budget`, `spawn_agent`,
     `system_one_decide`, `progress_report`, le bus d'événements, les magasins RAG), marqué
     `[ToolContract(StaysWithCaller = true)]` : sur le pont, il agirait sur l'état du pont, non sur celui de l'exécution ;
   - un outil de délégation à un coéquipier.

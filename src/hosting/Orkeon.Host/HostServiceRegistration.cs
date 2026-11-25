@@ -1,3 +1,4 @@
+using Orkeon.Infrastructure.Configuration;
 using System.Globalization;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -100,6 +101,8 @@ internal static class HostServiceRegistration
         // settings say otherwise, then the run suspends with the question persisted (FWK-23).
         // The `human_input` tool and its provider: the daemon had none, so a crew that asked a human could not load here.
         Orkeon.Infrastructure.DependencyInjection.HumanInputExtensions.AddOrkeonHumanInput(services);
+        // Whether the host keeps files or not: a crew that names `chat_attach` loads, and each call says what it may.
+        Orkeon.Hosting.Conversations.ChatAttachExtensions.AddOrkeonChatAttach(services);
         Orkeon.Infrastructure.DependencyInjection.HumanInputExtensions.UseHoldByDefault(services, TimeSpan.FromMinutes(30));
         services.AddScoped<Orkeon.Application.Crew.ICrewExecutionHook>(
             sp => sp.GetRequiredService<HostRunRecording>().Hook(sp.GetRequiredService<RunProgressHook>()));
@@ -117,6 +120,23 @@ internal static class HostServiceRegistration
             HostStartup.ReadSection<Gateway.DiscordChannelOptions>(configuration, Gateway.DiscordChannelOptions.SectionName)));
         services.AddSingleton(Options.Create(
             HostStartup.ReadSection<Gateway.TeamsChannelOptions>(configuration, Gateway.TeamsChannelOptions.SectionName)));
+
+        // The bounds of the images a run's tasks are shown (Orkeon:MultiModal).
+        Orkeon.Infrastructure.MultiModal.MultiModalServiceExtensions.AddOrkeonMultiModal(services, configuration);
+
+        // The conversations' files, when the operator turns them on: nothing of them is registered otherwise. Their
+        // retention touches no run, and starts before anything can start one.
+        if (hostSection.Files.Enabled)
+        {
+            services.TryAddSingleton<HostApiOptionalServices>();
+            services.AddSingleton<Files.ConversationFiles>();
+            services.AddSingleton<Files.CrewFileFolders>();
+            // The path validator keeps to the working directory: a root elsewhere is allowed as the sandbox session's is,
+            // and one it already holds is not widened. No mount but the conversations' own reaches it: the start was refused,
+            // and the registry refuses each access that would (FileSystemRegistry.ReservedFolder).
+            services.PostConfigure<PathSecurityOptions>(options => Files.HostFilesStartup.Allow(options, hostSection.Files.Root));
+            services.AddHostedService<Files.ConversationRetentionService>();
+        }
 
         // The MCP connection, the A2A server, the chat channel, the crew host — in that order,
         // which is both start order and stop order reversed.

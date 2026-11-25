@@ -89,7 +89,7 @@ Ces accès ne peuvent pas passer par le VFS par nature et sont **définitivement
 | Sondage hôte | `DockerSandbox`, `HostProcessRunner`, `ProcessGitDiffProvider` | `OUT-OF-SCOPE` | Découvrent `docker`/`dotnet`/`git` sur le PATH, jamais un mount |
 | Toolchain | `Scripting/Toolchain/EsbuildTranspiler.cs` | `OUT-OF-SCOPE` | Localise le binaire `esbuild` + fichiers temp de transpilation ; chaîne d'outils hôte |
 | Toolchain (vérification de types) | `Scripting/Toolchain/TscTypeChecker.cs` | `OUT-OF-SCOPE` (localiser `tsc`), `EXCEPTION-BOOTSTRAP` (le dossier de travail) | `tsc` est un processus externe qui lit et imprime des chemins physiques : le vérificateur écrit un dossier de travail (roll-up des typings, tsconfig, copies du script et de ses modules importés dont le pragma `orkeon-script` est blanchi) sous le répertoire temporaire, hors du VFS et non monté : rien dans le framework ne le relit. Chaque chemin de la sortie du compilateur et d'un message d'échec est remappé vers son chemin virtuel avant affichage ; le dossier est supprimé à la fin, y compris sur annulation |
-| Applications hôtes (pré-DI) | `orkeon-host` (`CrewHostService`, `HostCrewMounts`, `HostStartup`), `Hosting/CrewDirectoryLayout`, le point d'entrée `orkeon` (`Orkeon.Scripting.Cli`, à l'échelle de l'assembly), le `Program` du REPL | `EXCEPTION-BOOTSTRAP` | Valident ou classent les chemins de crew, de script et de settings fournis par l'opérateur avant qu'aucun mount n'existe |
+| Applications hôtes (pré-DI) | `orkeon-host` (`CrewHostService`, `HostCrewMounts`, `HostStartup`, `Files/HostFilesStartup`, `Files/ConversationStore`), `Hosting/CrewDirectoryLayout`, le point d'entrée `orkeon` (`Orkeon.Scripting.Cli`, à l'échelle de l'assembly), le `Program` du REPL | `EXCEPTION-BOOTSTRAP` | Valident ou classent les chemins de crew, de script et de settings fournis par l'opérateur avant qu'aucun mount n'existe ; créent et listent les dossiers des conversations, sur lesquels `/inbox` et `/outbox` sont ensuite montés |
 | Primitive sécurité | `Security/PathValidator.cs` | (allowlist) | résolution symlink/realpath = son rôle |
 | Watcher bridge | `Analysis/.../FileSystemWatcherCodebaseWatcher.cs` | `EXCEPTION-WATCHER-BRIDGE` | Adapte `System.IO.FileSystemWatcher` vers `ICodebaseWatcher` |
 | Sonde RaggableTree | `Analysis/Core/FileSystemDiscoverer.cs` (sonde diagnostique uniquement) | `OUT-OF-SCOPE` | La *découverte batch elle-même* utilise `EnumerateFilesAsync` ; la sonde compte délibérément les entrées physiques pour distinguer « le VFS n'a rien renvoyé » de « le disque est vide » |
@@ -305,14 +305,14 @@ d'échanges de `--llm-log`), `/sandbox` (où les sandboxes de code déposent ce 
 `/llm-cassette` (`--llm-mock`, `--llm-record`/`--llm-replay`), `/credentials` (les jetons OAuth des comptes e-mail, drive et chat — montée seulement quand un compte OAuth
 de l'une de ces familles est déclaré) et `/credential-files` (le dossier de chaque fichier de certificat ou de jeton fédéré
 d'un compte chat d'application, monté en **lecture seule**, un sous-dossier par dossier,
-`/credential-files/<16 hex du SHA-256 du chemin du dossier>`, seulement quand un tel compte est déclaré) ; le REPL monte ces deux derniers comme le fait un runner. Le registre refuse un montage interne à tout appelant ordinaire et le signale comme
+`/credential-files/<16 hex du SHA-256 du chemin du dossier>`, seulement quand un tel compte est déclaré ou, dans `orkeon-host` avec `Orkeon:Host:Files` allumé, quand le canal Teams nomme un certificat) ; le REPL monte ces deux derniers comme le fait un runner. Le registre refuse un montage interne à tout appelant ordinaire et le signale comme
 un chemin inexistant : aucun outil destiné aux agents ne peut l'atteindre ni même le nommer
 ([ADR-008](../adr/ADR-008-virtual-paths-are-the-only-currency.md)). Les quelques composants qui
 doivent y écrire demandent `PrivilegedFileSystemAccess` à la DI, par son nom : l'enregistreur des
 échanges, les sandboxes de code et les magasins de jetons (`FileSystemEmailTokenStore`,
 `FileSystemDriveTokenStore` et `FileSystemChatTokenStore`, que l'hôte des runners enregistre sur
 `/credentials/email`, `/credentials/drive` et `/credentials/chat`) et `ChatCredentialFile`, qui lit le fichier
-de certificat ou de jeton fédéré d'un compte chat d'application sous `/credential-files`, de nouveau pour chaque jeton. Ils passent toujours par le VFS. Le seul
+de certificat ou de jeton fédéré d'un compte chat d'application, ou le certificat du canal Teams de l'hôte, sous `/credential-files`, de nouveau pour chaque jeton. Ils passent toujours par le VFS. Le seul
 `System.IO` brut sur ce chemin est la création, par le runner, du répertoire physique
 `credentials` et de ses sous-répertoires `email`, `drive` et `chat` (réservés au propriétaire sous Unix), et la vérification que le dossier d'un fichier d'identifiant existe, avant
 qu'aucun montage n'existe — du bootstrap `Hosting/Runner*`, une portée `EXCEPTION-BOOTSTRAP` déjà
@@ -320,11 +320,12 @@ ratifiée, pas une nouvelle catégorie. `orkeon run` refuse un montage utilisate
 l'une de ces racines (`EnsureReservedRootsAreFree`, `/state` et `/runs` compris) ; chaque autre
 point d'entrée refuse les racines qu'il se réserve (`/crew` et `/sandbox` pour `--list-tools` et
 `mcp serve`), et tous refusent `/credentials` et `/credential-files` (ou tout chemin dessous), quels que soient les comptes.
+`orkeon-host` avec `Orkeon:Host:Files` allumé réserve aussi `/inbox` et `/outbox` (et tout chemin dessous), qui sont visibles des agents, une paire par conversation ; tout autre runner y accepte un montage.
 
 Un montage interne ferme son dossier physique aux agents, quel que soit l'autre montage qui le tient. Le
 dossier d'un fichier d'identifiant doit donc être un dossier à lui : s'il est le répertoire de travail, un
 dossier monté pour les agents ou un dossier qui en contient un, l'hôte ne le monte pas, avertit au démarrage
-(« Keep it in a folder of its own. ») et ce compte ne peut pas se connecter. Le dossier entier est monté, en
+(« Keep it in a folder of its own. ») et ce compte, ou le canal Teams pour ses fichiers, ne peut pas se connecter. Le dossier entier est monté, en
 lecture seule, et seuls les composants privilégiés atteignent ses autres fichiers. Les liens sont suivis à
 l'intérieur (la disposition des jetons projetés de Kubernetes `token -> ..data/token` marche) ; un lien qui
 sort du dossier est refusé.

@@ -10,6 +10,7 @@
 # other jobs (build-test-net11 needs the .NET 11 SDK, resolve-version-windows needs Windows).
 set -uo pipefail
 
+SCRIPTS="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 failed=0
 fail() { printf 'FAIL  %s\n' "$1"; failed=1; }
 pass() { printf 'ok    %s\n' "$1"; }
@@ -90,6 +91,8 @@ patterns() {
     "$(grep_added '\(new (MemoryStream|StringReader|StreamReader)\(')"
   show note "CodeQL cs/dereferenced-value-may-be-null: a value read with ?. then with ! within 5 lines" \
     "$(null_then_bang)"
+  show fail "CodeQL cs/useless-cast-to-self: a collection expression cast to an array" \
+    "$(grep_added '\((string|bool|byte|int|long|double|char|object)\[\]\)\[')"
   if [ -z "${SELF_TEST:-}" ] && command -v gitleaks >/dev/null 2>&1; then
     if gitleaks git --config .gitleaks.toml --redact --no-banner --log-opts="$1..HEAD" . >/dev/null 2>&1; then
       pass "gitleaks on the branch's commits"
@@ -100,6 +103,13 @@ patterns() {
     show note "gitleaks is not installed (a grep, not the scan): a random-looking value next to a key-named setting" \
       "$(key_literals)"
   fi
+}
+
+# docs.yml: docfx --warningsAsErrors refuses a link to an anchor the page does not hold (InvalidBookmark).
+doc_anchors() {
+  local out
+  out="$(python3 "$SCRIPTS/check-doc-anchors.py" 2>&1)" && out=""
+  show fail "docfx InvalidBookmark: a link to an anchor no heading of the page gives" "$out"
 }
 
 # file-modes.yml: every *.sh and every text file whose line 1 is a shebang is tracked as 100755.
@@ -186,22 +196,31 @@ self_test() {
     '        {' '        }' '    }' '}' > never-shapes.cs
   printf '%s\n' '    string? apiKey = "unused-in-tests";' '    var a = first?.Name;' '    var b = other!.Name;' \
     '    F();' '    F();' '    F();' '    F();' '    F();' '    var c = first!.Name;' > never-other.cs
+  printf '%s\n' '    foreach (var x in (string[])["a", "b"])' '    {' '        Run(x);' '    }' > must-cast.cs
+  mkdir -p docs
+  printf '%s\n' '# Ce que le canal écoute' '[ce qu'"'"'il prend](#ce-quécoute-le-canal)' > must-anchor.md
+  printf '%s\n' '[x](../never-anchor.md#no-such-heading)' > docs/must-page.md
+  printf '%s\n' '# L'"'"'hôte : `crew_files` & A2A' '## Twice' '## Twice' '```' '# not a heading' '[x](#no)' '```' \
+    '`[x](#no)` <a id="by-hand"></a>' '<!-- [x](#no) -->' '[a](#lhôte--crew_files--a2a) [b](#twice-1) [c](#by-hand)' \
+    '[d](must-anchor.md#ce-que-le-canal-écoute) [e](code.cs#L3) [f](https://example.invalid/a.md#b)' \
+    '[g](#lh%C3%B4te--crew_files--a2a)' > never-anchor.md
   git add -A && git -c user.name=self-test -c user.email=self-test@invalid commit -q -m branch || return 2
   git diff -M --name-status HEAD~1 | grep -q '^R' || { echo "self-test: git did not see the rename"; return 2; }
-  out="$(SELF_TEST=1 patterns HEAD~1)"
+  out="$(SELF_TEST=1 patterns HEAD~1; doc_anchors)"
   pairs="$(printf '%s\n' "$out" | awk '/^(FAIL|note)/ { h = $0; next }
     /^        / { p = $0; sub(/^ +/, "", p); match(p, /:[0-9]+:/); print h "|" substr(p, 1, RSTART - 1) }')"
   for c in "moved/must-renamed.cs|CA2026" "dir with space/must-space.cs|useless-upcast" \
            "$utf8/must-utf8.cs|useless-upcast" "must-floats.cs|equality-on-floats" \
            "must-disposed.cs|local-not-disposed" "must-catch.cs|empty-block" "must-if.cs|empty-block" \
            "must-else.cs|empty-block" "must-foreach.cs|empty-block" "must-nullbang.cs|may-be-null" \
-           "must-key-env.cs|key-named" "must-key-id.cs|key-named"; do
+           "must-key-env.cs|key-named" "must-key-id.cs|key-named" \
+           "must-cast.cs|cast-to-self" "must-anchor.md|InvalidBookmark" "docs/must-page.md|InvalidBookmark"; do
     if printf '%s\n' "$pairs" | awk -F'|' -v p="${c%%|*}" -v l="${c#*|}" '$NF == p && index($1, l) { f = 1 } END { exit !f }'; then pass "fires: $c"; else fail "silent: $c"; bad=1; fi
   done
   if printf '%s\n' "$pairs" | grep -qF 'never-'; then
     fail "a negative case fires"; printf '%s\n' "$pairs" | grep -F 'never-' | sed 's/^/        /'; bad=1
   else
-    pass "no negative case fires (empty method, constructor, class, record, using, initializers, { get; }, comments)"
+    pass "no negative case fires (empty method, constructor, class, record, using, initializers, { get; }, comments, anchors)"
   fi
   return "$bad"
 }
@@ -223,6 +242,7 @@ merge_base="$(git merge-base "$base" HEAD 2>/dev/null || true)"
 if [ -z "$merge_base" ]; then fail "no merge base with $base: fetch it or name the target branch"; exit 1; fi
 
 patterns "$merge_base"
+doc_anchors
 exec_bits
 if [ "$full" -eq 1 ]; then
   ci_build_test

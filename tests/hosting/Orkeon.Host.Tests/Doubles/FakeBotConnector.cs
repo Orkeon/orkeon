@@ -24,21 +24,24 @@ internal sealed class FakeBotConnector : IDisposable
     private readonly RSA _rsa = RSA.Create(2048);
     private readonly List<RSA> _others = [];
 
-    public FakeBotConnector()
+    /// <summary>The service, its clock started.</summary>
+    /// <param name="now">The clock's start; 2030 unless a test says otherwise.</param>
+    public FakeBotConnector(DateTimeOffset? now = null)
     {
+        Time = new ManualTimeProvider(now ?? new DateTimeOffset(2030, 1, 1, 12, 0, 0, TimeSpan.Zero));
         Transport.Map(HttpMethod.Get, BotConnectorKeys.MetadataAddress, _ =>
         {
             BeforeMetadata();
             return Metadata;
         });
         Transport.Map(HttpMethod.Get, KeysAddress, _ => FakeHttpResponse.Json(KeysDocument()));
-        Transport.Map(HttpMethod.Post, SignInHost, _ => SignIn);
+        Transport.Map(HttpMethod.Post, SignInHost, request => SignInFor?.Invoke(request) ?? SignIn);
         Transport.Map(HttpMethod.Post, "https://smba.", _ => Connector());
         Environment.SetEnvironmentVariable(SecretVariable, Secret);
     }
 
     public FakeHttpMessageHandler Transport { get; } = new();
-    public ManualTimeProvider Time { get; } = new(new DateTimeOffset(2030, 1, 1, 12, 0, 0, TimeSpan.Zero));
+    public ManualTimeProvider Time { get; }
     public string SecretVariable { get; } = $"ORKEON_TEST_TEAMS_{Guid.NewGuid():N}";
     public string Secret { get; } = $"hush-{Guid.NewGuid():N}";
     public string KeyId { get; set; } = "key-1";
@@ -46,6 +49,7 @@ internal sealed class FakeBotConnector : IDisposable
     public FakeHttpResponse Metadata { get; set; } = FakeHttpResponse.Json(MetadataNaming(KeysAddress));
     public Action BeforeMetadata { get; set; } = () => { };
     public FakeHttpResponse SignIn { get; set; } = FakeHttpResponse.Json("""{"token_type":"Bearer","expires_in":3600,"access_token":"outbound"}""");
+    public Func<RecordedRequest, FakeHttpResponse>? SignInFor { get; set; }
     public Func<FakeHttpResponse> Connector { get; set; } = () => new FakeHttpResponse(HttpStatusCode.Created, """{"id":"reply"}""");
 
     public IReadOnlyList<RecordedRequest> MetadataReads => Transport.RequestsTo(HttpMethod.Get, BotConnectorKeys.MetadataAddress);
@@ -127,6 +131,7 @@ internal static class Activities
     public const string UserId = "99999999-8888-7777-6666-555555555555";
     public const string BotId = "28:bot";
     public const string Room = "19:room@thread.tacv2";
+    public const string PersonalChat = "a:chat";
     public const string Thread = Room + ";messageid=1700";
 
     /// <summary>A message mentioning the bot in a channel's thread, each field one a test may change.</summary>
@@ -143,4 +148,23 @@ internal static class Activities
         ["entities"] = new object[] { new { type = "mention", text = "<at>Orkeon</at>", mentioned = new { id = BotId, name = "Orkeon" } } },
         ["text"] = text,
     };
+
+    /// <summary>A message of the bot's personal chat, with what came with it.</summary>
+    public static Dictionary<string, object?> Personal(string text, string id, params object[] attachments)
+    {
+        var activity = Message(text, id);
+        activity["conversation"] = new { id = PersonalChat, conversationType = "personal", tenantId = FakeBotConnector.TenantId };
+        activity["attachments"] = attachments;
+        return activity;
+    }
+
+    /// <summary>The answer to a consent card, as Teams posts it.</summary>
+    public static Dictionary<string, object?> Consent(string fileId, string id, string action = "accept", object? uploadInfo = null)
+    {
+        var activity = Personal(string.Empty, id);
+        activity["type"] = "invoke";
+        activity["name"] = "fileConsent/invoke";
+        activity["value"] = new { type = "fileUpload", action, context = new { fileId }, uploadInfo };
+        return activity;
+    }
 }

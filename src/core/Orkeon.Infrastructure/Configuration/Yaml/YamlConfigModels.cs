@@ -494,6 +494,8 @@ public class CrewYamlConfig
     /// root (<c>/output</c>) or a root pinned to one settings entry by its id (<c>01J…|/output</c>).
     /// </summary>
     public Collection<string>? Mounts { get; set; }
+    /// <summary>Gets or sets the folders the crew opens to the people who talk to it (<c>files:</c>).</summary>
+    public Collection<CrewFileYamlConfig>? Files { get; set; }
     /// <summary>
     /// Gets or sets whether the agents' prompts name the virtual paths they may touch (<c>announceMounts:</c>,
     /// #348); an agent's own setting wins. Unset, on.
@@ -503,6 +505,24 @@ public class CrewYamlConfig
     public Dictionary<string, AgentYamlConfig>? Agents { get; set; }
     /// <summary>Gets or sets the task configurations keyed by task identifier.</summary>
     public Dictionary<string, TaskYamlConfig>? Tasks { get; set; }
+}
+
+/// <summary>An item of the <c>files:</c> block: a folder, and what people may do with it.</summary>
+public class CrewFileYamlConfig
+{
+    /// <summary>Gets or sets the virtual path of the folder.</summary>
+    public string? Path { get; set; }
+    /// <summary>Gets or sets whether its files may be downloaded (off by default).</summary>
+    public bool? Download { get; set; }
+    /// <summary>Gets or sets whether files may be left in it (off by default).</summary>
+    public bool? Upload { get; set; }
+}
+
+/// <summary>The <c>files:</c> block read alone: the whole of a <c>&lt;name&gt;.files.yaml</c>, one key of a crew's file.</summary>
+internal sealed class CrewFilesYamlConfig
+{
+    /// <summary>Gets or sets the folders.</summary>
+    public Collection<CrewFileYamlConfig>? Files { get; set; }
 }
 
 /// <summary>
@@ -569,6 +589,8 @@ public class CrewSettingsYamlConfig
     /// root (<c>/output</c>) or a root pinned to one settings entry by its id (<c>01J…|/output</c>).
     /// </summary>
     public Collection<string>? Mounts { get; set; }
+    /// <summary>Gets or sets the folders the crew opens to the people who talk to it (<c>files:</c>).</summary>
+    public Collection<CrewFileYamlConfig>? Files { get; set; }
     /// <summary>
     /// Gets or sets whether the agents' prompts name the virtual paths they may touch (<c>announceMounts:</c>,
     /// #348); an agent's own setting wins. Unset, on.

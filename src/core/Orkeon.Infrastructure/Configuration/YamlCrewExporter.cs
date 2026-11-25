@@ -168,6 +168,7 @@ public partial class YamlCrewExporter
             Rag = MapRag(config.Rag),
             Links = MapLinks(config.Links),
             Mounts = MapMounts(config),
+            Files = MapFiles(config.Files),
         };
     }
 
@@ -199,6 +200,19 @@ public partial class YamlCrewExporter
         config.Mounts is { } mounts
             ? new System.Collections.ObjectModel.Collection<string>([.. mounts.Select(m => m.ToString())])
             : null;
+
+    /// <summary>The <c>files:</c> block as the loader reads it back; null when the crew has none, empty when it wrote an empty one.</summary>
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Major Code Smell", "S1168:Empty arrays and collections should be returned instead of null",
+        Justification = "null means the crew wrote no files: block and the exporter writes none; an empty collection is written `files: []`.")]
+    private static System.Collections.ObjectModel.Collection<CrewFileYamlConfig>? MapFiles(IReadOnlyList<CrewFileFolder>? folders) =>
+        folders is null
+            ? null
+            : new System.Collections.ObjectModel.Collection<CrewFileYamlConfig>([.. folders.Select(f => new CrewFileYamlConfig
+            {
+                Path = f.Path,
+                Download = f.Download ? true : null,
+                Upload = f.Upload ? true : null,
+            })]);
 
     /// <summary>
     /// The <c>links:</c> block (HUB-03): null when the crew never wrote one, an empty list when it wrote

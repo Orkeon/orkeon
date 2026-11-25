@@ -46,6 +46,9 @@ internal sealed class ScriptedFullLlmProvider : ILlmProvider
     /// <summary>The configuration the provider was built with: its model and window, null by default.</summary>
     public LlmConfig? BaseConfig { get; init; }
 
+    /// <summary>What the provider declares; unknown by default.</summary>
+    public LlmProviderCapabilities Capabilities { get; init; } = LlmProviderCapabilities.Unknown;
+
     public List<LlmMessage[]> ReceivedTurns { get; } = [];
 
     public List<LlmConfig?> ReceivedConfigs { get; } = [];

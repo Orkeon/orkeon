@@ -77,6 +77,7 @@ public sealed partial class YamlCrewMapper
             Rag = MapRag(settings.Rag),
             Links = MapLinks(settings.Name ?? string.Empty, settings.Links),
             Mounts = MapMounts(settings.Name ?? string.Empty, settings.Mounts),
+            Files = CrewFilesBlock.Map(settings.Files),
             DecisionMode = decisionMode,
         };
         CheckDecisionMode(configuration, agents?.Keys.ToList() ?? []);
@@ -1433,6 +1434,9 @@ public sealed record CrewMappingSettings
 
     /// <summary>Crew-level mount references (<c>crew.mounts</c>, VFS-90): roots, optionally pinned to a settings entry by id.</summary>
     public Collection<string>? Mounts { get; init; }
+
+    /// <summary>The folders the crew opens to the people who talk to it (<c>crew.files</c>).</summary>
+    public Collection<CrewFileYamlConfig>? Files { get; init; }
 
     /// <summary>Whether the agents' prompts name their virtual paths (<c>crew.announceMounts</c>, #348); null leaves it on.</summary>
     public bool? AnnounceMounts { get; init; }

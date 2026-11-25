@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Net;
 using System.Net.Sockets;
 using System.Text.RegularExpressions;
@@ -107,6 +108,48 @@ internal static partial class LlmFailureClassifier
     /// <summary><see cref="BalanceExhaustedNote"/> for an answer <see cref="IsBalanceExhausted"/> recognises, else empty.</summary>
     public static string BalanceExhaustedHint(HttpStatusCode status, string? body) =>
         IsBalanceExhausted(status, body) ? BalanceExhaustedNote : "";
+
+    /// <summary>The words of a refusal that is about the conversation's length, the account or the key, whatever its status.</summary>
+    private static readonly string[] NotItsImagesMarkers =
+        ["context_length", "context length", "context window", "prompt is too long", "maximum number of tokens", "credit balance",
+         "insufficient balance", "insufficient_quota", "api key", "api_key"];
+
+    /// <summary>
+    /// Whether the refusal of a call that carried images may be theirs: the request is said to be wrong, too large or of a type
+    /// not taken, and the words are not plainly about something else (the key, the account, the conversation's length).
+    /// </summary>
+    public static bool MayBeItsImages(LlmResponse response)
+    {
+        ArgumentNullException.ThrowIfNull(response);
+        if (response.Error is not { } error)
+            return false;
+        if (response.Metadata.TryGetValue(HttpStatusKey, out var status)
+            && int.TryParse(Convert.ToString(status, CultureInfo.InvariantCulture), NumberStyles.None, CultureInfo.InvariantCulture, out var code))
+        {
+            return MayBeItsImages((HttpStatusCode)code, error);
+        }
+
+        return response.ErrorType == "APIError" && MayBeItsImages(StatusOf(error), error);
+    }
+
+    /// <summary>The same for a refusal that was thrown.</summary>
+    public static bool MayBeItsImages(HttpRequestException exception)
+    {
+        ArgumentNullException.ThrowIfNull(exception);
+        return MayBeItsImages(exception.StatusCode, exception.Message);
+    }
+
+    private static bool MayBeItsImages(HttpStatusCode? status, string error)
+    {
+        var refused = status is { } known
+            ? (int)known is 400 or 413 or 415 or 422
+            // A refusal in a stream carries the vendor's label alone.
+            : ApiErrorStatus().Match(error) is { Success: true } label && label.Groups[1].Value == "invalid_request_error";
+        return refused && !NotItsImagesMarkers.Any(marker => error.Contains(marker, StringComparison.OrdinalIgnoreCase));
+    }
+
+    /// <summary>The metadata key of a failed answer's HTTP status, for a provider whose error line does not say it.</summary>
+    public const string HttpStatusKey = "http_status_code";
 
     /// <summary>Whether a failure of this class moves the call to the next profile of a chain.</summary>
     public static bool FailsOver(LlmFailureKind kind) =>

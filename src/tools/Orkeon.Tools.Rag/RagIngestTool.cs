@@ -213,6 +213,9 @@ public class RagIngestTool : IBaseTool
     private async Task<IReadOnlyList<SourceDescriptor>> ResolveSourcesAsync(
         IReadOnlyList<string> locations, CancellationToken ct)
     {
+        foreach (var location in locations.Where(l => !SourceGlobExpander.IsWebAddress(l) && !SourceGlobExpander.HasWildcard(l)))
+            PrivateMountGuard.ThrowIfReached(_fileSystem, location);
+
         if (!locations.Any(SourceGlobExpander.HasWildcard))
             return locations.Select(l => new SourceDescriptor { Location = l }).ToList();
 

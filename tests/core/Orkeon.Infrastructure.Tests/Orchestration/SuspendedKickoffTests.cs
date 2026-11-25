@@ -38,6 +38,30 @@ public sealed class SuspendedKickoffTests
         Assert.Null(scope.Current);
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task KickoffAsync_WhenTheRunIsLeftWaitingForInput_StillSaysWhichImagesWereNotSeen(bool throws)
+    {
+        var scope = new AsyncLocalRunScope();
+        var h = Cov.Build(withCheckpoint: true, runScope: scope);
+        var crew = Cov.MakeCrew(ProcessType.Sequential);
+        await h.Repo.AddAsync(crew, TestContext.Current.CancellationToken);
+        h.Factory.Strategy.OnExecute = () =>
+        {
+            Orkeon.Application.Crew.Execution.RunImages.NoteAllUnseen("Looker", "blind");
+            scope.Current!.Suspend(Question);
+            if (throws)
+                throw new InvalidOperationException("left behind");
+        };
+        var input = Cov.Input() with { Images = [new Orkeon.Application.Interfaces.Services.CrewInputImage { Path = "/inbox/photo.png" }] };
+
+        var output = await h.Orchestrator.KickoffAsync(crew.Id, input, TestContext.Current.CancellationToken);
+
+        Assert.NotNull(output.PendingInput);
+        Assert.Equal("blind", Assert.Single(output.UnseenImages).Reason);
+    }
+
     [Fact]
     [Trait("BR", "FWK-23")]
     public async Task KickoffAsync_WhenTheRunIsNotSuspended_CompletesItsSessionAsBefore()

@@ -833,7 +833,7 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
 
         error = new StreamError(
             code ?? "mid-stream",
-            LogSanitizer.SanitizeString(message),
+            LogSanitizer.SanitizeVendorError(message),
             AsHttpStatus(code));
         return true;
     }
@@ -2116,7 +2116,7 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
     /// <param name="hint">Optional sentence naming a likely cause. Empty when there is none.</param>
     private LlmResponse CreateApiErrorResponse(HttpStatusCode statusCode, string rawError, string hint = "")
     {
-        var error = LogSanitizer.SanitizeString(rawError);
+        var error = LogSanitizer.SanitizeVendorError(rawError);
         LogApiError(statusCode, error);
         return new LlmResponse
         {

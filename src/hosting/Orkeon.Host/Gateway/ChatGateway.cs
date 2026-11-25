@@ -18,6 +18,7 @@ internal sealed partial class ChatGateway
     private readonly IChatAuthorizer _authorizer;
     private readonly CrewHostRegistry _registry;
     private readonly ILogger<ChatGateway> _logger;
+    private readonly Files.ConversationFiles? _files;
 
     /// <summary>Builds the gateway over the runner and the gateway's own decisions.</summary>
     public ChatGateway(
@@ -25,13 +26,15 @@ internal sealed partial class ChatGateway
         IConversationRouter router,
         IChatAuthorizer authorizer,
         CrewHostRegistry registry,
-        ILogger<ChatGateway> logger)
+        ILogger<ChatGateway> logger,
+        Files.ConversationFiles? files = null)
     {
         _runner = runner ?? throw new ArgumentNullException(nameof(runner));
         _router = router ?? throw new ArgumentNullException(nameof(router));
         _authorizer = authorizer ?? throw new ArgumentNullException(nameof(authorizer));
         _registry = registry ?? throw new ArgumentNullException(nameof(registry));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _files = files;
     }
 
     /// <summary>
@@ -58,6 +61,33 @@ internal sealed partial class ChatGateway
         // prompt like any other.
         var text = message.Text.Trim();
 
+        // Nothing to run on. Said before the conversation is claimed: an empty prompt is no run, and silence looks like
+        // a broken bot. Where no file is taken, files alone are nothing to run on either.
+        var source = _files is null ? null : message.AttachmentSource;
+        var notTaken = source is null && message.Attachments.Count > 0 ? FileNotices.NotTaken(message.Attachments) : null;
+        if (notTaken is not null && message.NoFilesHere is { } noFiles)
+            notTaken = $"{notTaken} {noFiles}";
+        if (text.Length == 0 && (source is null || message.Attachments.Count == 0))
+        {
+            const string nothing = "There is nothing to work on: the message has no text.";
+            await responder.CompleteAsync(message, notTaken is null ? nothing : $"{notTaken}\n{nothing}", ct).ConfigureAwait(false);
+            return;
+        }
+
+        // Without its room a message would go to the default crew, which is not the one its room has.
+        if (message is { RoomId: null, ResolveRoomAsync: { } resolve })
+        {
+            if (await resolve(ct).ConfigureAwait(false) is not { } room)
+            {
+                await responder
+                    .CompleteAsync(message, "The room of this conversation could not be found, so its crew is unknown. Try again.", ct)
+                    .ConfigureAwait(false);
+                return;
+            }
+
+            message = message with { RoomId = room };
+        }
+
         // One conversation, one run — claimed atomically. A FindRun check followed by an
         // await let two interleaving messages both pass and start two runs in one thread,
         // giving the user answers nobody could tell apart.
@@ -72,6 +102,7 @@ internal sealed partial class ChatGateway
         var crewName = _router.ResolveCrew(message);
         var origin = $"{message.Channel}:{message.ConversationId}";
         HostedRunResult result;
+        string answer;
         try
         {
             result = await _runner.RunAsync(
@@ -86,15 +117,94 @@ internal sealed partial class ChatGateway
                 onStarted: async runId =>
                 {
                     _router.Attach(message.ConversationId, runId);
-                    await responder.AcknowledgeAsync(message, $"Working on it with '{crewName}'…", ct).ConfigureAwait(false);
+                    var working = $"Working on it with '{crewName}'…";
+                    await responder
+                        .AcknowledgeAsync(message, notTaken is null ? working : $"{working}\n{notTaken}", ct)
+                        .ConfigureAwait(false);
+                },
+                conversation: new HostedConversation
+                {
+                    Channel = message.Channel,
+                    ConversationId = message.ConversationId,
+                    // After admission and the acknowledgement, under the run's own token and deadline.
+                    PrepareAsync = token => _files is null || source is null
+                        ? Task.FromResult(new PreparedRun(text))
+                        : ChatReception.PrepareAsync(_files, message, source, text, token),
+                    SendFilesAsync = (files, token) => responder.SendFilesAsync(message, files, token),
                 }).ConfigureAwait(false);
+
+            // Before the conversation is free: the next message's run must not find the answer half kept.
+            answer = _files is null || result.RunId is not { } ended
+                ? result.Message
+                : await AnswerAsync(_files, message, responder, result, ended).ConfigureAwait(false);
         }
         finally
         {
             _router.Detach(message.ConversationId);
         }
 
-        await responder.CompleteAsync(message, result.Message, ct).ConfigureAwait(false);
+        if (result.RefusedFiles.Count > 0)
+        {
+            // In one message when it holds both: a long answer is cut, and must not be cut shorter by this.
+            var refused = FileNotices.Refused(result.RefusedFiles);
+            var both = $"{refused}\n\n{answer}";
+            if (both.Length <= responder.MaxTextLength)
+                answer = both;
+            else
+                await responder.CompleteAsync(message, refused, ct).ConfigureAwait(false);
+        }
+
+        await responder.CompleteAsync(message, answer, ct).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// The answer, then the files there are to take: named, never sent. Their place is kept first, so a long answer is cut
+    /// and not them; cut, it is kept whole in <c>/outbox</c>.
+    /// </summary>
+    private async Task<string> AnswerAsync(
+        Files.ConversationFiles files, InboundMessage message, IChatResponder responder, HostedRunResult result, string runId)
+    {
+        var body = string.IsNullOrWhiteSpace(result.Message) ? "(no output)" : result.Message;
+        var tail = string.Empty;
+        if (result.UnseenImages.Count > 0)
+        {
+            var unseen = FileNotices.Bounded([.. result.UnseenImages.Select(FileNotices.NotShown)], ", ", responder.MaxTextLength / 4);
+            tail = $"\n\nImages not shown: {unseen}.";
+        }
+
+        if (result.OutboxFiles.Count > 0)
+        {
+            var take = message.NoFilesHere ?? (responder.TakesFileCommands ? "/get sends one." : "This channel does not send them.");
+            var names = FileNotices.Bounded(
+                [.. result.OutboxFiles.Select(f => FileNotices.PathAndSize(f.Path, f.Size))], ", ", responder.MaxTextLength / 3);
+            tail += $"\n\nFiles: {names}. {take}";
+        }
+
+        if (body.Length + tail.Length <= responder.MaxTextLength)
+            return body + tail;
+
+        tail = $"\n\n{await KeepAsync(files, message, body, runId).ConfigureAwait(false)}{tail}";
+        return DiscordResponder.Truncate(body, responder.MaxTextLength - tail.Length) + tail;
+    }
+
+    private async Task<string> KeepAsync(Files.ConversationFiles files, InboundMessage message, string body, string runId)
+    {
+        try
+        {
+            var kept = await files
+                .StoreReplyAsync(new ConversationRef(message.Channel, message.ConversationId), runId, body, CancellationToken.None)
+                .ConfigureAwait(false);
+            return kept.Refused is { } refused
+                ? $"The whole answer could not be kept: {refused.Reason}."
+                : $"The whole answer is kept as {FileNotices.Path(kept.Path!)}.";
+        }
+#pragma warning disable CA1031 // The run has its answer: what cannot be kept of it must not replace it.
+        catch (Exception ex)
+#pragma warning restore CA1031
+        {
+            LogReplyNotKept(ex, message.Channel);
+            return "The whole answer could not be kept.";
+        }
     }
 
     /// <summary>
@@ -142,6 +252,9 @@ internal sealed partial class ChatGateway
         // line must not fail the run that was going fine.
         _ = responder.ProgressAsync(message, text, ct);
     }
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "The whole answer of a run from {Channel} could not be kept")]
+    private partial void LogReplyNotKept(Exception ex, string channel);
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Refused a message from {Channel} sender {SenderId}: not on the allow list")]
     private partial void LogRefused(string channel, string senderId);

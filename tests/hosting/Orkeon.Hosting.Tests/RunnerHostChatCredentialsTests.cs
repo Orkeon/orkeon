@@ -226,6 +226,60 @@ public sealed class RunnerHostChatCredentialsTests : IDisposable
         Assert.DoesNotContain(_root, stderr.ToString(), StringComparison.Ordinal);
     }
 
+    [Fact]
+    public async Task A_hosts_own_credential_file_is_mounted_without_any_chat_account_and_closed_to_the_agents()
+    {
+        var file = CredentialFile("keys");
+        var plan = new RunnerMountPlan { CredentialFiles = [(file, "Orkeon:Host:Teams")] };
+
+        using var host = RunnerHost.Build(WriteSettings(chat: "{}"), plan);
+
+        var mount = Assert.Single(CredentialFileMounts(host));
+        var privileged = host.Services.GetRequiredService<PrivilegedFileSystemAccess>().FileSystem;
+        Assert.Equal("jwt.a.b", await privileged.TryReadAllTextAsync(mount.VirtualPath + "/token", TestContext.Current.CancellationToken));
+        Assert.False(privileged.ResolveAndValidate(mount.VirtualPath + "/token", FileAccessRights.Write).IsAllowed);
+        Assert.False(host.Services.GetRequiredService<IFileSystemService>().ResolveAndValidate(mount.VirtualPath + "/token", FileAccessRights.Read).IsAllowed);
+    }
+
+    [Fact]
+    public void A_hosts_own_credential_file_beside_what_the_agents_see_is_not_mounted_and_its_key_is_said()
+    {
+        var file = CredentialFile("data");
+        var plan = new RunnerMountPlan
+        {
+            CliMounts = [$"{Path.Combine(_root, "data")}:/data:ro"],
+            AllowExternalMounts = true,
+            CredentialFiles = [(file, "Orkeon:Host:Teams")],
+        };
+        var original = Console.Error;
+        using var stderr = new StringWriter();
+        Console.SetError(stderr);
+        try
+        {
+            using var host = RunnerHost.Build(WriteSettings(chat: "{}"), plan);
+
+            Assert.Empty(CredentialFileMounts(host));
+        }
+        finally
+        {
+            Console.SetError(original);
+        }
+
+        Assert.Contains("Orkeon:Host:Teams", stderr.ToString(), StringComparison.Ordinal);
+        Assert.DoesNotContain(_root, stderr.ToString(), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void A_folder_a_chat_account_and_the_host_share_is_mounted_once()
+    {
+        var file = CredentialFile("keys");
+        var plan = new RunnerMountPlan { CredentialFiles = [(file, "Orkeon:Host:Teams")] };
+
+        using var host = RunnerHost.Build(WriteSettings(chat: ApplicationSection()), plan);
+
+        Assert.Single(CredentialFileMounts(host));
+    }
+
     [Theory]
     [InlineData("/credential-files")]
     [InlineData("/credential-files/mine")]

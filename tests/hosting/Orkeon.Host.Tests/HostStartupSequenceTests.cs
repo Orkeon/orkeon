@@ -486,6 +486,198 @@ public sealed class HostStartupSequenceTests : IDisposable
         AssertRefused(launch, "Llm:AgentCli:Engine is not an engine of the agent-cli provider: write claude");
     }
 
+    // ----- the conversations' files -----
+
+    private string FilesSettings(string root, string? grant = null, string extra = "", bool enabled = true)
+    {
+        var path = Path.Combine(_scratch, "host.json");
+        var mounts = grant is null ? "" : $", \"Mounts\": [ {System.Text.Json.JsonSerializer.Serialize(grant)} ]";
+        File.WriteAllText(path, $$"""
+            {
+              "RaggableTree": { "Enabled": false },
+              "Orkeon": { "Host": { "Crews": [ { "Name": "support", "Path": "crews/support.yaml"{{mounts}} } ], "Files": { "Enabled": {{(enabled ? "true" : "false")}}, "Root": {{System.Text.Json.JsonSerializer.Serialize(root)}}{{extra}} } } }
+            }
+            """);
+        return path;
+    }
+
+    private HostLaunch PrepareWithMounts(string settings, params string[] mounts) =>
+        HostStartup.Prepare(["--settings", settings, .. mounts.SelectMany(m => new[] { "--mount", m })], _failures.Report);
+
+    [Fact]
+    public void ShouldStartAndMakeTheRoot_WhenFilesAreOnWithTheDefaultRoot()
+    {
+        var launch = Prepare(FilesSettings("conversations"));
+
+        using var host = launch.Host;
+        Assert.Empty(_failures.Reported);
+        Assert.NotNull(host);
+        var root = Path.Combine(_scratch, "conversations");
+        Assert.True(Directory.Exists(root));
+        if (!OperatingSystem.IsWindows())
+            Assert.Equal(UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute, File.GetUnixFileMode(root));
+    }
+
+    /// <summary>The root equal to, holding or under what a mount shows, as written or through a link.</summary>
+    [Theory]
+    [InlineData("equal", "mount")]
+    [InlineData("holds", "mount")]
+    [InlineData("under", "mount")]
+    [InlineData("root-link", "mount")]
+    [InlineData("mount-link", "mount")]
+    [InlineData("equal", "grant")]
+    [InlineData("holds", "grant")]
+    [InlineData("under", "grant")]
+    [InlineData("root-link", "grant")]
+    [InlineData("mount-link", "grant")]
+    [InlineData("equal", "crew")]
+    [InlineData("holds", "crew")]
+    [InlineData("under", "crew")]
+    [InlineData("root-link", "crew")]
+    [InlineData("crew-link", "crew")]
+    public void ShouldRefuseWith78_WhenAMountReachesTheRoot(string shape, string source)
+    {
+        Assert.SkipWhen(OperatingSystem.IsWindows() && shape.EndsWith("link", StringComparison.Ordinal), "Symbolic links need a privilege.");
+        var mounted = source == "crew" ? Path.Combine(_scratch, "crews") : Path.Combine(_scratch, "outer", "data");
+        Directory.CreateDirectory(Path.Combine(mounted, "deep"));
+        var root = shape switch
+        {
+            "equal" => mounted,
+            "holds" => source == "crew" ? _scratch : Path.Combine(_scratch, "outer"),
+            "under" => Path.Combine(mounted, "deep", "conversations"),
+            "root-link" => Link("root-link", Path.Combine(mounted, "deep")),
+            _ => Path.Combine(_scratch, "real"),
+        };
+        if (shape == "mount-link")
+        {
+            Directory.CreateDirectory(root);
+            mounted = Link("mount-link", root);
+        }
+
+        if (shape == "crew-link")
+        {
+            // The crew's folder is a link to the conversations' root.
+            Directory.Delete(mounted, recursive: true);
+            Directory.CreateDirectory(root);
+            File.WriteAllText(Path.Combine(root, "support.yaml"), "name: support");
+            Link("crews", root);
+        }
+
+        var launch = source switch
+        {
+            "mount" => PrepareWithMounts(FilesSettings(root), $"{mounted}:/data:ro"),
+            "grant" => Prepare(FilesSettings(root, $"{mounted}:/data:ro")),
+            _ => Prepare(FilesSettings(root)),
+        };
+
+        using var host = launch.Host;
+        AssertRefused(launch, "Orkeon:Host:Files:Root");
+    }
+
+    [Theory]
+    [InlineData("/inbox", "mount")]
+    [InlineData("/inbox/", "mount")]
+    [InlineData("/inbox/sub", "mount")]
+    [InlineData("/outbox", "mount")]
+    [InlineData("/outbox/sub/deep", "mount")]
+    [InlineData("/inbox", "settings")]
+    [InlineData("/outbox/sub", "settings")]
+    [InlineData("/inbox", "grant")]
+    [InlineData("/inbox/", "grant")]
+    [InlineData("/inbox/sub", "grant")]
+    [InlineData("/outbox", "grant")]
+    [InlineData("/outbox/sub", "grant")]
+    public void ShouldRefuseWith78_WhenAMountClaimsAConversationsPath(string claimed, string source)
+    {
+        var data = Path.Combine(_scratch, "data");
+        Directory.CreateDirectory(data);
+        var mount = $"{data}:{claimed}:rw";
+        var settings = FilesSettings("conversations", source == "grant" ? mount : null);
+        if (source == "settings")
+        {
+            var json = File.ReadAllText(settings);
+            File.WriteAllText(settings, json.Replace("\"Host\":", $"\"FileSystem\": {{ \"Mounts\": [ {System.Text.Json.JsonSerializer.Serialize(mount)} ] }}, \"Host\":", StringComparison.Ordinal));
+        }
+
+        var launch = source == "mount" ? PrepareWithMounts(settings, mount) : Prepare(settings);
+
+        using var host = launch.Host;
+        Assert.Null(host);
+        Assert.Equal(78, launch.ExitCode);
+        Assert.Contains("'/" + claimed.Split('/')[1] + "'", Assert.Single(_failures.Reported), StringComparison.Ordinal);
+        Assert.False(Directory.Exists(Path.Combine(_scratch, "conversations")));
+    }
+
+    [Theory]
+    [InlineData("/inbox")]
+    [InlineData("/outbox/sub")]
+    public void ShouldTakeTheMount_WhenFilesAreOffAndItClaimsTheirPath(string claimed)
+    {
+        var data = Path.Combine(_scratch, "data");
+        Directory.CreateDirectory(data);
+
+        var launch = PrepareWithMounts(FilesSettings(data, $"{data}:{claimed}:rw", enabled: false), $"{data}:{claimed}:rw");
+
+        using var host = launch.Host;
+        Assert.Empty(_failures.Reported);
+        Assert.NotNull(host);
+    }
+
+    [Theory]
+    [InlineData(", \"MaxFileBytes\": 0", "MaxFileBytes")]
+    [InlineData(", \"MaxFilesPerMessage\": -1", "MaxFilesPerMessage")]
+    [InlineData(", \"MaxConversationBytes\": 0", "MaxConversationBytes")]
+    [InlineData(", \"MaxConversationFiles\": 0", "MaxConversationFiles")]
+    [InlineData(", \"MaxTotalBytes\": 0", "MaxTotalBytes")]
+    [InlineData(", \"Retention\": \"00:00:00\"", "Retention")]
+    [InlineData(", \"AllowedExtensions\": [ \"pdf\", \".\" ]", "AllowedExtensions")]
+    public void ShouldRefuseWith78NamingTheKey_WhenAFilesSettingMakesNoSense(string extra, string named) =>
+        AssertRefused(Prepare(FilesSettings("conversations", extra: extra)), "Orkeon:Host:Files:" + named);
+
+    [Fact]
+    public void ShouldRefuseWith78_WhenTheRootCannotBeResolvedOrMade()
+    {
+        File.WriteAllText(Path.Combine(_scratch, "file"), "x");
+
+        AssertRefused(Prepare(FilesSettings("file")), "Orkeon:Host:Files:Root");
+    }
+
+    [Theory]
+    [InlineData("None", false, true)]
+    [InlineData("0", false, true)]
+    [InlineData(" none ", false, true)]
+    [InlineData("Auto", true, true)]
+    [InlineData("2", true, true)]
+    [InlineData(null, true, true)]
+    [InlineData(null, false, false)]
+    [InlineData("Required", true, false)]
+    public void ShouldWarnOfTheShell_WhenNothingConfinesIt(string? mode, bool inContainer, bool warns)
+    {
+        using var configuration = new Microsoft.Extensions.Configuration.ConfigurationManager();
+        configuration["Orkeon:Tools:Shell:Confinement:Mode"] = mode;
+
+        Assert.Equal(warns, Orkeon.Host.Files.HostFilesStartup.ShellWarning(configuration, inContainer) is not null);
+    }
+
+    [Theory]
+    [InlineData("true", true)]
+    [InlineData("false", false)]
+    [InlineData(null, false)]
+    public void ShouldWarnOfTheCode_WhenItRunsOnTheHost(string? allowed, bool warns)
+    {
+        using var configuration = new Microsoft.Extensions.Configuration.ConfigurationManager();
+        configuration["Orkeon:CodeSandbox:AllowHostExecution"] = allowed;
+
+        Assert.Equal(warns, Orkeon.Host.Files.HostFilesStartup.ShellWarning(configuration, inContainer: false) is not null);
+    }
+
+    private string Link(string name, string target)
+    {
+        var link = Path.Combine(_scratch, name);
+        Directory.CreateSymbolicLink(link, target);
+        return link;
+    }
+
     private void AssertRefused(HostLaunch launch, string named)
     {
         Assert.Null(launch.Host);

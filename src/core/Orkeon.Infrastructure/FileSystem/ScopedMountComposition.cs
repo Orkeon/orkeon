@@ -49,6 +49,7 @@ public static class ScopedMountComposition
         // considered distinct but the registry considers equal would throw out of a DI factory.
         var registry = new FileSystemRegistry(
             [.. scoped, .. boot.GetMounts().Where(m => !claimed.Contains(m.VirtualPath))]);
+        registry.ReservedFolder = boot.ReservedFolder;
         WorkingDirectoryDesignation.CarryForward(boot, registry);
         return registry;
     }

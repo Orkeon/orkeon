@@ -66,6 +66,60 @@ public sealed class NativeLoopCompactionTests
         [.. turns.Select(t => string.Join("|", t.Select(m => $"{m.Role}:{m.Content}:{m.ToolCallId}")))];
 
     [Fact]
+    public async System.Threading.Tasks.Task ShouldShowTheImageAfterACompaction_AndNeverToTheSummary()
+    {
+        var logger = new SpyExecutionLogger();
+        var provider = new ScriptedFullLlmProvider
+        {
+            BaseConfig = LlmConfig.Create("gpt-4o"), Capabilities = LlmProviderCapabilities.Unknown with { Vision = true },
+        };
+        for (var turn = 1; turn <= 5; turn++)
+            provider.EnqueueOpenAiToolCall($"call-{turn}", ToolName, "{}");
+        provider.Enqueue(new LlmResponse { Content = "The agent read five pages.", TokensUsed = 50 });
+        provider.EnqueueOpenAiToolCall("call-6", ToolName, "{}");
+        provider.EnqueueText("done");
+        byte[] png = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A];
+        var files = new Orkeon.Tests.Shared.FileSystem.FakeFileSystemService().AddMount("/inbox")
+            .AddFile("/inbox/photo.png", png);
+        var shown = new Orkeon.Infrastructure.LLMs.RunImageLlmProvider(
+            provider, files, new Orkeon.Application.Validation.MultiModalOptions(),
+            new Orkeon.Infrastructure.LLMs.Capabilities.ModelCapabilityRegistry());
+        var compaction = new ContextCompactionServices
+        {
+            Options = new ContextCompactionOptions { KeepRecentTurns = 2 },
+            Windows = new FakeContextWindowResolver(new ContextWindow(10_000, ContextWindowSources.Table)),
+            Logger = logger,
+            Observer = new FakeCompactionObserver(),
+            Stages = [],
+        }.For(LlmProfiles.Default, baseConfig: null);
+        var tool = new SpyTool(ToolName, result: new string('x', 4_000));
+        var loop = new NativeToolCallingAgentLoop(logger, shown,
+            new FakeToolCallingStrategy(new OpenAiShapedToolCallParser()), [tool],
+            new LlmCallGate(logger, new ScriptedBasicLlmProvider()), ToolInvocationPipeline.Unguarded,
+            new NativeToolCallingAgentLoop.NativeToolCallingLoopOptions(Compaction: compaction));
+        DomainAgent agent = new AgentBuilder().Role("Reader").Goal("Read the pages").MaxIterations(10).WithTool(tool).Build();
+        var task = DomainTask.Create(TaskDescription.From("Read every page"), ExpectedOutput.From("A digest"));
+
+        using var images = RunImages.Begin([new Orkeon.Application.Interfaces.Services.CrewInputImage { Path = "/inbox/photo.png" }]);
+        await loop.ExecuteAsync(
+            new ExecutionInvocationContext(agent, task, "sys", "user", Context: null, ToolsUsed: [],
+                Stopwatch: System.Diagnostics.Stopwatch.StartNew()),
+            TestContext.Current.CancellationToken);
+
+        Assert.Equal(CompactionPrompts.Instructions, provider.ReceivedTurns[5][0].Content);
+        for (var i = 0; i < provider.ReceivedTurns.Count; i++)
+        {
+            var pictured = provider.ReceivedTurns[i].Where(m => m.MultiModalContent is not null).ToList();
+            if (i == 5)
+                Assert.Empty(pictured);
+            else
+                Assert.Equal("user", Assert.Single(pictured).Content);
+        }
+
+        Assert.Empty(RunImages.Unseen);
+    }
+
+    [Fact]
     [Trait("BR", "CH-432")]
     public async System.Threading.Tasks.Task ShouldReplaceTheOldTurnsWithTheSummaryAndChargeItsTokens_WhenTheEstimatePassesTheTrigger()
     {

@@ -38,7 +38,7 @@ internal static partial class LlmCallKey
                 name = m.Name,
                 toolCallId = m.ToolCallId,
                 rawToolCalls = m.RawToolCalls is null ? null : Normalize(m.RawToolCalls),
-                multiModal = m.MultiModalContent is null ? null : Serialize(m.MultiModalContent),
+                multiModal = m.MultiModalContent is null ? null : Serialize(m.MultiModalContent) + ImagesKey(m.MultiModalContent),
             }),
             systemMessage = config?.SystemMessage is null ? null : Normalize(config.SystemMessage),
             tools = config?.Tools is null ? null : SerializeTools(config.Tools),
@@ -76,6 +76,11 @@ internal static partial class LlmCallKey
         var text = Normalize(last?.Content ?? string.Empty);
         return text.Length <= 80 ? text : text[..80] + "...";
     }
+
+    // The parts are serialized as their base type, which says neither the bytes nor the address of an image.
+    private static string ImagesKey(Orkeon.Domain.SharedKernel.ValueObjects.Content.MultiModalContent content) =>
+        string.Concat(content.Parts.OfType<Orkeon.Domain.SharedKernel.ValueObjects.Content.ImageContentPart>().Select(image =>
+            $"|{image.MimeType}:{image.Uri}:{(image.Data is { } data ? Convert.ToHexStringLower(SHA256.HashData([.. data])) : string.Empty)}"));
 
     private static string? ToolModeKey(LlmConfig? config) =>
         config is null || config.ToolMode == Orkeon.Domain.Tools.Protocol.ToolCallMode.Auto ? null : config.ToolMode.ToString();

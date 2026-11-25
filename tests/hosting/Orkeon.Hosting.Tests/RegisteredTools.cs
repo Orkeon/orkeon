@@ -7,7 +7,7 @@ namespace Orkeon.Hosting.Tests;
 
 /// <summary>
 /// The built-in tools a run registers, read on the host <c>--list-tools</c> builds (human_input
-/// included, as on the crew path), plus <c>progress_report</c>, which the scripted-command substrate
+/// and chat_attach included, as on the crew path), plus <c>progress_report</c>, which the scripted-command substrate
 /// of <c>orkeon-repl</c> adds (<c>AddScriptCommands</c>).
 /// </summary>
 internal static class RegisteredTools
@@ -22,6 +22,7 @@ internal static class RegisteredTools
             (_, services) =>
             {
                 services.AddOrkeonHumanInput();
+                Conversations.ChatAttachExtensions.AddOrkeonChatAttach(services);
                 services.AddSingleton<IBaseTool>(new ProgressReportTool(new ProgressBroker()));
             },
             TextWriter.Null,

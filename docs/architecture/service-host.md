@@ -121,6 +121,92 @@ outside the working directory, without the flag, is refused with `78` and the ru
 
 `Path` accepts what `orkeon run` accepts: a YAML file, a multi-file crew directory, or an `.ork.ts` script. The host loads it through the same code path, so a hosted crew is exactly the crew a terminal launches. Each crew's directory is **mounted read-only into the VFS automatically**, under a name — `/crews`, then `/crews-1`, `/crews-2`, … for each further directory — and the crew is loaded by that virtual spelling (`/crews/support.yaml` for a file, `/crews-1` for a directory). The loader reads through the virtual file system like everything else in the framework, and a path that only existed on the physical disk would pass the startup probe and then fail on every message. The mount is deliberately *not* identity-mapped: an agent that calls `list_mounts`, or reads any access-denied message, must never be handed the operator's disk layout ([ADR-008](../adr/ADR-008-virtual-paths-are-the-only-currency.md)). A `--mount` of your own claiming `/crews*` is refused at start with exit code 78. One caveat travels with the script form: transpiling `.ork.ts` needs esbuild on the machine, and neither the container image nor a bare service install carries it — a daemon-hosted crew is a YAML crew unless you install esbuild yourself.
 
+### `Files` — the folders of a conversation
+
+Off by default. With `Orkeon:Host:Files:Enabled`, every run of a hosted crew finds two folders: `/inbox`, read-only, what
+the conversation was given, and `/outbox`, read-write, what its runs hand back. Both last as long as the conversation: the
+next message finds them as the previous run left them. No run is mounted on another conversation's two folders, even on one
+crew at once; what else two conversations of one host share is said under **Shared** below.
+A run asked over A2A or the host API has no conversation: it gets two empty folders of its own, deleted when it ends. At
+the end of a run, the files of `/outbox` it added or changed are listed, hidden files and links left out. Discord fills
+`/inbox` ([what it takes](#what-the-discord-channel-listens-to)); [Discord's commands](#the-file-commands) list
+and send what `/outbox` holds. Nothing is sent on its own, but what an agent sends with [`chat_attach`](#files-an-agent-sends).
+
+```json
+"Files": {
+  "Enabled": true,
+  "Root": "conversations",
+  "MaxFileBytes": 10485760,
+  "MaxFilesPerMessage": 10,
+  "MaxConversationBytes": 104857600,
+  "MaxConversationFiles": 1000,
+  "MaxTotalBytes": 2147483648,
+  "MaxAttachedFilesPerRun": 10,
+  "MaxAttachedMessagesPerRun": 5,
+  "MaxAttachedBytesPerRun": 52428800,
+  "Retention": "7.00:00:00",
+  "AllowedExtensions": [ "pdf", "csv" ]
+}
+```
+
+- **Where.** `Root` (relative to the working directory of the service) holds one folder per conversation, named by a hash
+  of its channel and identifier, open to the account of the service alone on Unix. The setting allows the host itself that
+  folder wherever it lies; no agent reaches it but by its own two mounts.
+- **Refused at start (`78`).** A `Root` that is, holds or is under any folder the host mounts — a `--mount`, a mount of
+  the settings, a crew's folder, a crew's `Mounts` —, links followed on both sides; a mount on `/inbox` or `/outbox`, or
+  on a path under them, wherever it is declared; a limit that is not positive; an empty extension. The folders are compared
+  without regard to case on Windows and macOS. A bind mount leads where no link shows, and is not seen: do not bind `Root`.
+- **Checked again.** A crew that writes in a folder may replace a folder under it by a link: the comparison is made again
+  at each run, which is refused, and at each access, so a link made during a run opens nothing either.
+- **Shared.** The code index, the document stores and the journal of `edit_batch` serve the whole process. In the run of a
+  conversation, `index_codebase`, `incremental_reindex`, `rag_ingest`, `edit_batch` and the searches that ingest what they
+  read (`directory_search`, `txt_search`, `pdf_search`, `mdx_search`) refuse `/inbox`, `/outbox`, what is under them, and a
+  folder or a pattern that holds them. `file_read`, `grep` and the other file tools read them. What an agent writes itself
+  in a shared place — a declared folder such as `/output`, `session_store`, the event hub — is read by the runs that share it.
+- **Limits.** A file over a limit, or of an extension `AllowedExtensions` leaves out, is refused alone. A run writes freely
+  while it runs: the limits are checked when a file arrives and when a run starts, and a conversation over
+  `MaxConversationBytes`, or a host over `MaxTotalBytes`, starts no run until the retention or the operator makes room. A
+  file left in a folder of a crew (`/put`) counts in its conversation, in bytes and against `MaxConversationFiles`, until the
+  retention deletes that conversation, even once the crew has moved or deleted it; the file itself is the crew's, and
+  stays. A conversation with a folder that cannot be listed counts as over its own limit, and stops no other.
+- **Retention.** A conversation is deleted `Retention` after its last activity; the check runs at start, then every hour.
+  One with a run in progress, or suspended on a question, is kept. A suspended run is resumed outside the host
+  (`orkeon run --resume`), with no conversation.
+- **The shell and the code.** An unconfined `shell_command`, or code run on the host
+  (`Orkeon:CodeSandbox:AllowHostExecution`), is not bound by the mounts and reads every conversation: the host says so at
+  start, and [the confinement](security.md#shell-confinement) is the answer. MCP stdio servers and the process of the
+  `agent-cli` provider run as the account of the service too: see [the limits](../reference/limitations.md).
+  The code sandbox, `/sandbox`, is one root for every run: no agent reaches it by a path, and only those processes, or a
+  shell given a mount that holds the sandbox's folder, cross from one run to another through it.
+- **Outside the host.** The two roots are reserved in `orkeon-host` with `Files` on, and nowhere else. A crew that uses
+  them runs in a terminal with `--mount ./in:/inbox:ro --mount ./out:/outbox:rw`.
+
+#### `files:` — the folders a crew opens
+
+A crew names the folders people may reach besides `/outbox`, which is always open to download. It chooses **within** what
+the operator mounted for it, and opens nothing by default. [The file commands](#the-file-commands) read them.
+
+```yaml
+files:
+  - path: /output
+    download: true
+  - path: /output/drop
+    upload: true
+```
+
+- **Where it is written.** In the YAML of the crew, or the `config.yaml` (else `crew.yaml`) of a crew directory. A script
+  has it in a file beside it, `support.files.yaml` for `support.ork.ts`, which holds that key alone and is read without
+  running the script; a script without that file opens no folder but `/outbox`. The file beside a YAML crew is not read.
+- **When it is read.** At each question, from the file as it stands: a change needs no restart.
+- **Refused.** A path under no mount of the crew, under an internal one, under `/crews*`, on `/inbox` or `/outbox`; a
+  download where the mount does not grant reading, an upload where it does not grant both writing and creating; a folder
+  that is or holds the folder of a crew's definition, or is part of a crew directory, links followed. Case is never a way
+  around: paths are compared with the mounts as written, and with what they must not reach whatever the case.
+- **An invalid declaration** closes the folders of that crew, all of them, and no other crew's. The log says why, once. A
+  block that is malformed in itself also fails the crew's own load; a folder the host refuses does not.
+- **`orkeon run --validate`** refuses a malformed block, the one beside a script included. It does not know the host's
+  mounts.
+
 The configuration is **validated at start**: no crew under `Orkeon:Host:Crews`, a crew without a `Name` or a `Path`, two crews with one name (compared case-insensitively), a crew path that does not exist, a `MaxConcurrentRuns` below 1, a `RunTimeout` that is zero, negative or beyond about 24.8 days, a negative `ShutdownGracePeriod`, an `LlmProfiles` entry naming a profile `Llm:Profiles` does not define, and — for an enabled channel — an empty allow list, an unset token variable, a `ProgressInterval` that is zero or negative, a `GuildIds` entry or `Routes` key that is not a number, or a `Routes` entry or `DefaultCrew` naming a crew the host does not declare; for an enabled A2A server, no exposed crew, an exposed crew the host does not declare, a malformed `Host` or `Port`, or a listener beyond the loopback interface with no authentication, and — whatever the A2A switch — an `A2A:EnableServer`, `A2A:Host` or `A2A:Port` key, which the daemon does not read (see [Other agents (A2A)](#5-other-agents-a2a)), and a listener the system refuses — a URL HTTP.sys reserved for no one, a port another process holds (see [Windows](#windows)); and, before any of them, a setting the runner host refuses — a value the configuration binder cannot convert (`"RunTimeout": "abc"`, `"Orkeon:Guardian:Enabled": "oui"`) or that a rule of its section refuses, a key no section carries (`Orkeon:Host:RunTimeoutt`, or one that is no setting any more, `RaggableTree:Exclude`), a section or a component's name it does not know (`Orkeon:Guardain`, a memory provider, a RAG reranker), a log level that is none, an LLM profile it cannot build, a settings file it cannot read, an address that is no address (`RaggableTree:Embedding:BaseUrl`, `Telemetry:OtlpEndpoint`), all refuse the start with exit code 78 — before the service ever reports ready — rather than being discovered one failed run at a time. Every setting the daemon reads is judged then, whether a run uses it or not; the e-mail accounts are the one exception — an account that cannot be read is set aside and reported when a run names it ([when a setting is refused](../reference/configuration.md#when-a-setting-is-refused)).
 
 The start also refuses a `${NAME}` or `%NAME%` reference in a setting the host passes as written, naming the path and never the value, with exit 78 and before any MCP server connects: Orkeon never expands a variable ([the list](../reference/configuration.md#a-variable-reference-is-never-expanded)).
@@ -164,15 +250,24 @@ A message becomes a run in a fixed order: **authorize, route, acknowledge, work.
 
 > **An empty allow list denies everyone**, and the channel refuses to start rather than answering nobody in silence. The opposite default is how a bot invited to a public server ends up spending someone's API budget on strangers.
 
-**Route.** The host ships one strategy: **a thread is a run**, and **the room picks the crew**. A thread opened in a Discord channel listed under `Discord:Routes` (channel id → crew name) starts that crew; a thread anywhere else starts `Discord:DefaultCrew` — the first crew of `Orkeon:Host:Crews` when it is unset. In the example above, threads of the channel `234567890123456789` reach `veille`, and every other channel's reach `support`. A hosted crew no room reaches is named by a warning at startup. Channel ids are what Discord shows with Developer Mode on (right-click the channel → Copy Channel ID); a thread inside a forum channel follows the forum's route. It is the mapping a person can predict without being told — `#billing` answers billing, and what happens in this thread is one job — and it gives parallelism without inventing a notion of session anyone has to learn. A second message in a running thread is refused with an explanation rather than starting a second run whose answers nobody could tell apart.
+**Route.** The host ships one strategy: **a thread is a run**, and **the room picks the crew**. A thread opened in a Discord channel listed under `Discord:Routes` (channel id → crew name) starts that crew; a thread anywhere else starts `Discord:DefaultCrew` — the first crew of `Orkeon:Host:Crews` when it is unset. In the example above, threads of the channel `234567890123456789` reach `veille`, and every other channel's reach `support`. A hosted crew no room reaches is named by a warning at startup. Channel ids are what Discord shows with Developer Mode on (right-click the channel → Copy Channel ID); a thread inside a forum channel follows the forum's route. When the host does not know a thread's channel yet, it asks Discord; unanswered, the message is refused with a sentence and starts no crew. It is the mapping a person can predict without being told — `#billing` answers billing, and what happens in this thread is one job — and it gives parallelism without inventing a notion of session anyone has to learn. A second message in a running thread is refused with an explanation rather than starting a second run whose answers nobody could tell apart.
 
 **Acknowledge.** Every chat platform's response window is measured in seconds; a crew is measured in minutes. The acknowledgement rides on **admission**: it goes out the moment the run's slot is reserved — still before any crew work, and carrying the stop button, so a run can be interrupted from its first second. A refusal (unknown crew, busy) is answered without an acknowledgement: "working on it" plus a Stop button, followed by "we are busy", would be a promise retracted by its own next line — with a button attached to nothing.
 
-**Work**, reporting as it goes. The final answer is posted in the thread, cut to Discord's 2,000 characters (with a `…(truncated)` marker); an empty answer reads `(no output)`. Progress is **throttled** (`ProgressInterval`, 2 seconds by default): a run emits an event per agent thought and per tool call, and relaying each one would exhaust Discord's per-channel rate limit inside a single crew. The last suppressed update is flushed just before the final answer, so a run does not end on a view several steps stale.
+**Work**, reporting as it goes. The final answer is posted in the thread, cut to Discord's 2,000 characters (with a `…(truncated)` marker); an empty answer reads `(no output)`. With [`Files`](#files--the-folders-of-a-conversation) on, the answer ends with the files of `/outbox` the run added or changed and did not send as they are, whose place is reserved before the text is cut, and an answer that is cut is kept whole as `/outbox/reply-<run id>.md`, before the conversation is free for its next message; when a limit refuses it, the answer says so. A success, a failure, a stop and a run that waits for an input end alike. The files are named, never sent unasked by the host. Progress is **throttled** (`ProgressInterval`, 2 seconds by default): a run emits an event per agent thought and per tool call, and relaying each one would exhaust Discord's per-channel rate limit inside a single crew. The last suppressed update is flushed just before the final answer, so a run does not end on a view several steps stale.
 
 ### What the Discord channel listens to
 
-Messages **inside a thread**, from people: a message posted in a plain channel is ignored, and so is every message from a bot. The client connects with the `Guilds`, `GuildMessages` and `MessageContent` intents — `MessageContent` is a privileged intent, to be switched on for the bot in the Discord developer portal, or every message arrives empty. `AllowedUserIds` is the only access control: `GuildIds` chooses where the slash commands are registered, it does not restrict who may talk to the bot.
+Messages **inside a thread**, from people: a message posted in a plain channel is ignored, and so is every message from a bot and every message Discord writes itself (a pin, a join, a rename). The client connects with the `Guilds`, `GuildMessages` and `MessageContent` intents — `MessageContent` is a privileged intent, to be switched on for the bot in the Discord developer portal, or every message arrives empty. `AllowedUserIds` is the only access control: `GuildIds` chooses where the slash commands are registered, it does not restrict who may talk to the bot. The bot's messages mention nobody: an `@everyone` in an answer is plain text.
+
+**Files.** Without [`Files`](#files--the-folders-of-a-conversation), none is taken: a message with attachments runs on its text alone, and the acknowledgement names the files left out. A message with no text and no file taken starts no agent and is answered with a sentence. With `Files` on:
+
+- **Reception.** The files are downloaded once the run is admitted and acknowledged, under its deadline, so `/stop` stops a download too. They come from `cdn.discordapp.com` alone, over HTTPS, with no redirection and without the bot token; their signed address is neither kept nor logged. The announced size refuses a file early, and the bytes are counted as they come. A file already kept, by its Discord identifier, is not kept twice.
+- **Refusals.** A file over a limit, past `MaxFilesPerMessage`, of an extension not taken, or that cannot be read is left out alone; the answer names each with its reason. The run goes on with the rest. When nothing arrived and the message has no text, no agent runs.
+- **What the crew reads.** A block follows the person's text: the path, type and size of the message's files, the latest 20 earlier ones, and `/outbox`. A message of files without text asks the crew to process them. There is no prompt variable and the content is never inserted; the names are made safe, quoted and bounded, so none forges a line of the prompt, and the block tells the model they are data. What a file holds is as trustworthy as the person who sent it: an agent that reads it may meet instructions there, so give a crew open to strangers no tool you would not give them.
+- **Images.** The png, jpeg, webp and gif files of the message are shown to each task of the run, when the agent's model is known to read images ([the rule and its bounds](../guides/multimodal.md#the-images-of-a-run)); those of earlier messages are named by their path alone. The answer ends with the images an agent was not shown, with who and why.
+- **Scopes.** An agent whose [`filesystem:`](vfs-compliance.md#agent-file-system-scope) leaves `/inbox` out does not read the files; the log says so at each run.
+- **Left out.** Stickers and forwarded messages are ignored: a person posts the file itself.
 
 ### The Microsoft Teams channel
 
@@ -202,7 +297,50 @@ Messages **inside a thread**, from people: a message posted in a plain channel i
 
 **Replies go to the validated service only.** The `serviceurl` claim must be `https` on a host Microsoft publishes for Teams, or one named by `ServiceHosts`; redirects are not followed. The bot's own token is obtained with the client credentials, cached until shortly before it expires, and neither it nor the secret is logged. The national clouds (GCC High, DoD, 21Vianet) use other issuers and sign-in addresses and are not supported.
 
-**A thread is a run** here too: in a team's channel, the thread; in a personal or group chat, the whole chat. In a channel Teams delivers only the messages that **mention the bot** (unless the app was granted more), and the mention is removed. A message without an Entra object id, from another bot, or empty is ignored; an activity delivered twice runs once. The request is answered at once, and the run goes on. Answers are cut to 20,000 characters. HTML in an answer is escaped outside code, so `List<string>` shows literally and no image tag is rendered; a Markdown image becomes a plain link. A final reply is retried when the connection fails, when the bot's sign-in fails for a transient reason, and on HTTP 412, 429, 502, 503 and 504.
+**A thread is a run** here too: in a team's channel, the thread; in a personal or group chat, the whole chat. In a channel Teams delivers only the messages that **mention the bot** (unless the app was granted more), and the mention is removed. A message without an Entra object id, from another bot, or empty is ignored, while a file sent alone is answered as on Discord — except in a team's channel, where Teams gives a file only as a link in the HTML copy of the message, which is not read; an activity delivered twice runs once. The request is answered at once, and the run goes on. Answers are cut to 20,000 characters. HTML in an answer is escaped outside code, so `List<string>` shows literally and no image tag is rendered; a Markdown image becomes a plain link. A final reply is retried when the connection fails, when the bot's sign-in fails for a transient reason, and on HTTP 412, 429, 502, 503 and 504.
+
+#### Files in Teams
+
+With [`Files`](#files--the-folders-of-a-conversation) on, files pass **in the personal chat with the bot only**: Teams gives a bot no file elsewhere. In a channel or a group chat, `/files`, `/get` and `/put` are answered with that sentence, and so is a message whose files Teams announces; an agent's `chat_attach` is refused there with it. With `Files` off, the commands answer that they are off on this host, and a message's files are named as left out.
+
+```json
+"Files": { "Enabled": true },
+"Teams": {
+  "SharePointNames": [ "contoso" ],
+  "CertificatePathEnvironmentVariable": "ORKEON_TEAMS_CERTIFICATE_PATH"
+}
+```
+
+**The manifest of the Teams app** (the entries for files, beside yours):
+
+```json
+{
+  "bots": [ { "botId": "11111111-2222-3333-4444-555555555555", "scopes": [ "personal" ], "supportsFiles": true } ],
+  "authorization": {
+    "permissions": {
+      "resourceSpecific": [ { "name": "File.ReadWriteSelected.User", "type": "Application" } ]
+    }
+  }
+}
+```
+
+`supportsFiles` lets people send files to the bot. The resource-specific permission is what Microsoft announces for the application token: manifests accept it from **2027-01-15** (Teams refuses the manifest before), and the app must be published with it by **2027-03-01**. `File.ReadSelected.User` downloads only; `File.ReadWriteSelected.User` uploads and covers downloads. It gives no access by itself: only to a file a person sent the bot or accepted.
+
+**Grant the application nothing else on SharePoint.** It needs no `Sites.*` and no `Files.*` permission of Graph or of SharePoint. With one, its token would open every file that permission covers, and the address the host reads comes from what a person's client sent: whoever could write that address would have the host read, for the crew, a file nobody shared with it. The path rule below narrows that to files; it cannot tell one file from another.
+
+**The certificate.** SharePoint takes the application's own token, obtained with a certificate; Microsoft refuses a client secret there (the bot keeps its secret for its replies). `CertificatePathEnvironmentVariable` names the environment variable that holds the absolute path of a PEM file: the certificate and its unencrypted RSA private key, its public half registered on the application `AppId`. Keep it in a folder of its own: the host mounts that folder read-only where no agent sees it ([credential files](vfs-compliance.md#internal-roots-and-privileged-access)), and says at start when it cannot. It is read again for each token. A variable that holds no absolute path refuses the start.
+
+**Without a certificate.** Until 2027-03-01 (UTC), the addresses Teams gives that carry a `tempauth` parameter work without a token, and the host uses them so; the start warns. After that date every file of SharePoint is refused with the reason, and the text of the messages still runs; a picture pasted in the message comes from the Bot Connector and needs no certificate. The same addresses serve when the certificate cannot sign in.
+
+**Where files come from and go.** Microsoft's pages do not list the hosts, so the host names them: `SharePointNames` `contoso` is `contoso.sharepoint.com` and `contoso-my.sharepoint.com`, and no other. Empty, no file is exchanged and the start warns. The pictures of a message are shown to the crew as [on Discord](#what-the-discord-channel-listens-to). A picture pasted in a message comes from the Bot Connector the message came from, under `/v3/attachments/`, with the bot's token. Always HTTPS on the default port, no redirection, the address exactly as Teams wrote it, a token asked for that host alone and sent to it alone, a file of `TenantId` alone, the bytes counted as they come; no address and no token is logged. Teams announces no size: a file too large is refused as it comes.
+
+**Which paths.** Microsoft documents no path and asks that the address be used exactly as received, so the rule is the narrowest that still takes the forms seen. A download is a file's own path, `_layouts/15/download.aspx`, or `_api/v2.x/drive(s)/…/content`; an upload is `_api/v2.x/drive(s)/…/uploadSession` on the `-my` host alone. SharePoint's other pages and interfaces (`_api`, `_layouts`, `_vti_*`, `_admin`, `_catalogs` and their like), an empty or dot segment, and an encoded separator or a double encoding are refused, with no request made and no token asked for. Were Microsoft to use another form, the file is refused with the reason.
+
+**Commands.** Typed as messages: `/files [folder]`, `/get <path>`, and `/put <folder>` on a message that carries one file. The answer is a message of the chat.
+
+**Sending.** Every file, whether of `/get` or of `chat_attach`, is **offered by a consent card** first; `chat_attach` gets `awaiting_consent` and the run does not wait. Accepted, the file is put in the person's OneDrive at the address Teams gives (checked like any other), and shown by a file card. An offer is open for an hour, to the person it was made to, in the chat it was made in, and is sent once: an answer that is replayed, forged, late, or from someone else is refused and said. At most 10 offers wait in a chat and 256 on the host. They are kept in memory: **a restart loses them**, and the card says so. At most 25 MiB a file, the host's own bound; no empty file. A file changed since it was offered (size or date) is not sent: ask for it again. When the sign-in, SharePoint or the wait for others' files fails, the card may be accepted again for what is left of its hour. The content is held in memory during the upload: one file at a time per person, four on the host, each waiting a minute at most for its turn.
+
+**What the Microsoft pages leave unknown**: the full list of the hosts, the largest file, how long an address lives. A national cloud's SharePoint is not supported. The host neither calls Graph nor reads the files of channels ([ADR-021](../adr/ADR-021-chat-tool-family.md)).
 
 ### Commands
 
@@ -212,8 +350,33 @@ Messages **inside a thread**, from people: a message posted in a plain channel i
 |---|---|
 | `/status` | What this conversation is running, and since when. |
 | `/stop` | Stops this conversation's run. The **Stop button** is the same invocation with a different finger — same allow-list check, same wording back. |
+| `/files [folder]` | `Files` on: the files of the conversation's folders and of those the crew opens. |
+| `/get <path>` | `Files` on: sends one file (on Teams, offers it). |
+| `/put <file> <folder>` | `Files` on: keeps a file in a folder the crew opens to uploads. |
 
 Every path is gated by the `AllowedUserIds` of its channel. That includes the button: a click from someone off the list is refused ephemerally instead of stopping the run.
+
+#### The file commands
+
+Registered on Discord when [`Files`](#files--the-folders-of-a-conversation) is on, and not otherwise. On Teams they are typed as messages, in the personal chat ([Files in Teams](#files-in-teams)). On Discord they answer ephemerally: what `/get` sends is seen by the person who asked alone.
+
+- **Where.** In a thread: its channel, asked of Discord after the first answer, chooses the crew. Elsewhere, or when the channel cannot be known, the command is refused, and the default crew never stands in.
+- **What is open.** `/outbox` is always listed and sent. `/inbox` is listed and not sent back: the person has what was sent, and a file taken back from the channel must not come out again by the bot. The rest is what the crew's [`files:`](#files--the-folders-a-crew-opens) declares, read at each command. Hidden files, links, and other mounts under an opened folder are left out. A listing reads at most 1,000 files per folder.
+- **Paths.** A path is typed whole, from `/`, with one reading: `..`, `.`, an empty segment, a backslash or a control character is refused. It is held to the declaration and to the virtual file system; a path that is forbidden is answered as one that is not there. The client completes with at most 25 paths of 100 characters; a longer one is typed by hand. Nothing is completed for a person off the allow list.
+- **Sizes.** Discord's own limit of the moment, and 24 MiB at most in one request, ten files a message; a larger file is named and not sent. One `/get` at once for one person, and four for the host: the next is asked to try again. In a thread, the bot needs the **Attach Files** permission.
+- **During a run.** The three commands work. The run does not hold the conversation's files, so a command waits only for another one, never for a file that is arriving. `/get` sends a copy read at once, after judging the path again; a file that grows meanwhile is refused, and one rewritten under the same size may come as it stood halfway.
+- **`/put`** starts no run. The file is kept under the limits of any received file, never over another, and not twice in one folder for one Discord file; it has two minutes to arrive, and the folder is judged again once it has: one the crew closed meanwhile, or replaced by a link, takes nothing. An agent sees it when it looks in that folder.
+- **Who sees.** A declared folder such as `/output` belongs to the crew: what one thread leaves there, the crew's other threads read.
+
+#### Files an agent sends
+
+With `Files` on, an agent that lists `chat_attach` sends files to the thread its run answers, visible to everyone there ([ADR-023](../adr/ADR-023-chat-attach-tool.md)).
+
+- **What.** Exactly what `/get` would send, by the same checks: `/outbox` and the folders the crew declares `download`. Never `/inbox`. A forbidden file is answered as one that is not there. An agent whose `filesystem:` scope leaves a folder out sends nothing from it.
+- **Where.** The conversation of the run and no other: the tool takes no address. Agents the run starts (sub-agents, spawned agents, background work) share it and its counts, until the run ends. Without a conversation, or after the run, the call fails and the run goes on.
+- **How much.** `MaxAttachedFilesPerRun`, `MaxAttachedMessagesPerRun` and `MaxAttachedBytesPerRun` bound one run, all its agents together; the channel's own limits apply besides. What passes a cap is refused and named with its setting.
+- **What comes back.** Per file: `sent`, `too_large`, `refused` or `awaiting_consent`, with the reason. On Teams a file of the personal chat is `awaiting_consent` ([Files in Teams](#files-in-teams)).
+- **When it stops.** `/stop` and the run's deadline end the sending: the rest is not sent. What was posted stays posted.
 
 ---
 
@@ -379,7 +542,7 @@ process holds, a port under 1024 without the privilege — names the prefix and
 
 ## 7. What ships, and what does not
 
-**Ships**: the host and its lifetime, the crew registry with per-run isolation and a concurrency ceiling, the gateway ports, the allow-list authorizer, thread-is-run routing, the throttled responder, the Discord channel with registered `/status` and `/stop` slash commands and the stop button — one authorized path for all three —, the Microsoft Teams channel, and the opt-in A2A server, one skill per exposed crew.
+**Ships**: the host and its lifetime, the crew registry with per-run isolation and a concurrency ceiling, the gateway ports, the allow-list authorizer, thread-is-run routing, the throttled responder, the Discord channel with registered `/status`, `/stop`, `/files`, `/get` and `/put` slash commands and the stop button — one authorized path for all three —, the Microsoft Teams channel, with files in the personal chat, and the opt-in A2A server, one skill per exposed crew.
 
 **Does not ship**, and is not implied anywhere: a scheduler, hot configuration reload, adding or removing hosted crews while the daemon runs, every chat channel other than Discord and Teams, and any HTTP surface beyond the Teams endpoint, the A2A server and the [host API](../reference/host-api.md) (off by default: health probes, the run routes and `POST /runs/{id}/input`) — no A2A task records (`GET /a2a/tasks/{id}` answers `501`). One runner feature stays out of the daemon too: the `semantic_search` tool is not registered (the MCP servers of the `MCP` section are connected at startup, like a run's — see [MCP integration](mcp.md)). The gateway ports are shaped so the run event bus's JSONL protocol is a legitimate implementation of the same contract — the model is not closed around chat — but that channel is not written.
 

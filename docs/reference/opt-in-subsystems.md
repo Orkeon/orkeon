@@ -14,9 +14,9 @@ binaries, as the *Activation* column says. Registering all of them by default wo
 the DI container and mask their status: the opt-in makes their activation
 **intentional, documented and verifiable**.
 
-**Six sections no shipped binary reads.** `orkeon run`, `orkeon-host` and `orkeon-repl` call none of
-the extensions that read `ToolRateLimiting`, `TokenBudget`, `Orkeon:Dlp`, `Orkeon:Monitoring`,
-`Orkeon:MultiModal` and `Orkeon:VectorSearch`. Written in the
+**Five sections no shipped binary reads.** `orkeon run`, `orkeon-host` and `orkeon-repl` call none of
+the extensions that read `ToolRateLimiting`, `TokenBudget`, `Orkeon:Dlp`, `Orkeon:Monitoring`
+and `Orkeon:VectorSearch`. Written in the
 settings of one of those binaries, such a section is read by nothing: the run starts without the
 limit, the budget or the screening it describes. The binary says so at its start — one line on
 stderr per section, naming the extension a host written in C# reads it through — and
@@ -375,8 +375,9 @@ No attribute carries an id of a crew, task or agent.
 
 ## Multi-modal content (vision) — `AddOrkeonMultiModal(...)`
 
-- **Shipped binaries**: none activates it. `orkeon run`, `orkeon-host` and `orkeon-repl` do not
-  read `Orkeon:MultiModal`, and say so at their start when the settings write it.
+- **Shipped binaries**: `orkeon-host` activates it: its options bound the
+  [images of a conversation's message](../guides/multimodal.md#the-images-of-a-run). `orkeon run` and
+  `orkeon-repl` do not read `Orkeon:MultiModal`.
 - **Status: real** — vision is wired end to end: image contents
   flow from the `MultiModalContent` abstractions (Domain) to provider payloads via
   `LlmMessage.MultiModalContent`. `AnthropicLlmProvider` emits image content

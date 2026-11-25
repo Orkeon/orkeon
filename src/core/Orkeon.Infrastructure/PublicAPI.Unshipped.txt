@@ -1,1 +1,17 @@
 #nullable enable
+Orkeon.Infrastructure.Configuration.CrewFileYamlConfig
+Orkeon.Infrastructure.Configuration.CrewFileYamlConfig.CrewFileYamlConfig() -> void
+Orkeon.Infrastructure.Configuration.CrewFileYamlConfig.Download.get -> bool?
+Orkeon.Infrastructure.Configuration.CrewFileYamlConfig.Download.set -> void
+Orkeon.Infrastructure.Configuration.CrewFileYamlConfig.Path.get -> string?
+Orkeon.Infrastructure.Configuration.CrewFileYamlConfig.Path.set -> void
+Orkeon.Infrastructure.Configuration.CrewFileYamlConfig.Upload.get -> bool?
+Orkeon.Infrastructure.Configuration.CrewFileYamlConfig.Upload.set -> void
+Orkeon.Infrastructure.Configuration.CrewSettingsYamlConfig.Files.get -> System.Collections.ObjectModel.Collection<Orkeon.Infrastructure.Configuration.CrewFileYamlConfig!>?
+Orkeon.Infrastructure.Configuration.CrewSettingsYamlConfig.Files.set -> void
+Orkeon.Infrastructure.Configuration.CrewYamlConfig.Files.get -> System.Collections.ObjectModel.Collection<Orkeon.Infrastructure.Configuration.CrewFileYamlConfig!>?
+Orkeon.Infrastructure.Configuration.CrewYamlConfig.Files.set -> void
+Orkeon.Infrastructure.Configuration.CrewMappingSettings.Files.get -> System.Collections.ObjectModel.Collection<Orkeon.Infrastructure.Configuration.CrewFileYamlConfig!>?
+Orkeon.Infrastructure.Configuration.CrewMappingSettings.Files.init -> void
+Orkeon.Infrastructure.Orchestration.CrewExecutionStateDocument.InputImages.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Application.Interfaces.Services.CrewInputImage!>?
+Orkeon.Infrastructure.Orchestration.CrewExecutionStateDocument.InputImages.init -> void

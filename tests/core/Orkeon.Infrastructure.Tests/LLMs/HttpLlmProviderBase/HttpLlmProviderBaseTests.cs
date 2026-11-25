@@ -646,6 +646,20 @@ public sealed class HttpLlmProviderBaseTests : IDisposable
         Assert.True(_logger.HasLoggedError("LLM HTTP error: InternalServerError"));
     }
 
+    [Fact]
+    public async Task ShouldKeepNoImageTheVendorQuotes_WhenCreateErrorResponseAsync()
+    {
+        var image = new string('Q', 5000);
+        using var provider = new TestLlmProvider(_defaultConfig, _httpClientFactory, _logger);
+        using var httpResponse = new HttpResponseMessage(HttpStatusCode.BadRequest) { Content = new StringContent("cannot read " + image) };
+
+        var response = await provider.CreateErrorResponseAsync(httpResponse, CancellationToken.None);
+
+        Assert.DoesNotContain("QQQQ", response.Metadata["error_content"].ToString(), StringComparison.Ordinal);
+        Assert.True(_logger.HasLoggedError("cannot read"));
+        Assert.False(_logger.HasLoggedError("QQQQ"));
+    }
+
     #endregion
 
     #region Dispose Tests

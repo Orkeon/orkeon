@@ -15,6 +15,9 @@
 
   <ItemGroup>
     <InternalsVisibleTo Include="Orkeon.Tools.Chat.Tests" />
+    <!-- The Teams channel reads its certificate by the rules of the credential files. -->
+    <InternalsVisibleTo Include="orkeon-host" />
+    <InternalsVisibleTo Include="Orkeon.Hosting" />
   </ItemGroup>
 
   <ItemGroup>

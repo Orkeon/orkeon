@@ -366,7 +366,10 @@ ask for more, **the functional surface does not grow**:
   ([ADR-013](docs/adr/ADR-013-drive-tool-family.md)). The `browser` tool is
   the fourth. The chat family (`Orkeon.Tools.Chat`, Microsoft Teams first,
   ten tools) is the fifth, decided by the owner on 2026-11-23
-  ([ADR-021](docs/adr/ADR-021-chat-tool-family.md)). The tool bridge
+  ([ADR-021](docs/adr/ADR-021-chat-tool-family.md)). `chat_attach`, one tool,
+  is the sixth, decided by the owner on 2026-11-25: a script or a plugin does
+  not hold the conversation a hosted run answers
+  ([ADR-023](docs/adr/ADR-023-chat-attach-tool.md)). The tool bridge
   (`orkeon bridge serve`, [ADR-019](docs/adr/ADR-019-tool-bridge.md)) adds no
   tool: it runs the built-in tools that exist on another machine, and a tool
   is not built in because the bridge could carry it. The rule stands for

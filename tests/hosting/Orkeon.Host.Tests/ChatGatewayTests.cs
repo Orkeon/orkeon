@@ -54,6 +54,72 @@ public class ChatGatewayTests
         Assert.Contains("not authorized", reply.Text, StringComparison.OrdinalIgnoreCase);
     }
 
+    private static (ChatGateway Gateway, ScriptedRunner Runner) BuildRouted()
+    {
+        var registry = new CrewHostRegistry(Options.Create(new OrkeonHostOptions
+        {
+            Crews =
+            [
+                new HostedCrewOptions { Name = "support", Path = "/crews/support.yaml" },
+                new HostedCrewOptions { Name = "legal", Path = "/crews/legal.yaml" },
+            ],
+        }));
+        var runner = new ScriptedRunner();
+        var routes = new ChatRoutes("support", new Dictionary<string, string> { ["5"] = "legal" });
+        return (
+            new ChatGateway(
+                runner, new ThreadIsRunRouter(routes), new AllowListChatAuthorizer(["trusted"]), registry, NullLogger<ChatGateway>.Instance),
+            runner);
+    }
+
+    [Fact]
+    public async Task ShouldRunTheCrewOfTheRoom_WhenTheRoomHadToBeAskedFor()
+    {
+        var (gateway, runner) = BuildRouted();
+        var responder = new RecordingResponder();
+
+        await gateway.HandleAsync(
+            Message("go") with { ResolveRoomAsync = _ => Task.FromResult<string?>("5") }, responder, TestContext.Current.CancellationToken);
+
+        Assert.Equal("legal:go", Assert.Single(runner.Ran));
+    }
+
+    [Fact]
+    public async Task ShouldRunNoCrew_WhenTheRoomCannotBeFound()
+    {
+        var (gateway, runner) = BuildRouted();
+        var responder = new RecordingResponder();
+
+        await gateway.HandleAsync(
+            Message("go") with { ResolveRoomAsync = _ => Task.FromResult<string?>(null) }, responder, TestContext.Current.CancellationToken);
+
+        Assert.Empty(runner.Ran);
+        var reply = Assert.Single(responder.Sent);
+        Assert.Equal("complete", reply.Kind);
+        Assert.Contains("room of this conversation could not be found", reply.Text, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task ShouldNotAskForTheRoom_OfASenderWhoIsNotAllowed_NorOfAKnownRoom()
+    {
+        var (gateway, runner) = BuildRouted();
+        var asked = 0;
+        Task<string?> Resolve(CancellationToken ct)
+        {
+            asked++;
+            return Task.FromResult<string?>("5");
+        }
+
+        await gateway.HandleAsync(
+            Message("go", sender: "stranger") with { ResolveRoomAsync = Resolve }, new RecordingResponder(), TestContext.Current.CancellationToken);
+        await gateway.HandleAsync(
+            Message("go") with { RoomId = "5", ResolveRoomAsync = Resolve }, new RecordingResponder(), TestContext.Current.CancellationToken);
+        await gateway.HandleAsync(Message("plain"), new RecordingResponder(), TestContext.Current.CancellationToken);
+
+        Assert.Equal(0, asked);
+        Assert.Equal(["legal:go", "support:plain"], runner.Ran);
+    }
+
     [Fact]
     public void An_empty_allow_list_denies_everyone()
     {
@@ -230,6 +296,130 @@ public class ChatGatewayTests
         Assert.Contains("support", reply, StringComparison.Ordinal);
         // A duration a person reads ("for 0s"), not an ISO timestamp to parse.
         Assert.Contains(" for ", reply, StringComparison.Ordinal);
+    }
+
+    private static InboundMessage WithFiles(string text, params string[] names) => Message(text) with
+    {
+        Attachments = [.. names.Select((name, i) => new InboundAttachment { Id = $"{i}", Name = name })],
+    };
+
+    [Theory]
+    [InlineData("", "There is nothing to work on")]
+    [InlineData("go", null)]
+    public async Task Files_are_left_out_and_said_so_where_the_host_keeps_none(string text, string? answered)
+    {
+        var (gateway, runner, _, _) = Build();
+        var responder = new RecordingResponder();
+        var source = new FakeAttachmentSource().With("0", "x");
+
+        await gateway.HandleAsync(WithFiles(text, "a.txt") with { AttachmentSource = source }, responder, TestContext.Current.CancellationToken);
+
+        Assert.Equal(answered is null ? 1 : 0, runner.Ran.Count);
+        Assert.Empty(source.Opened);
+        Assert.Contains("Files are not taken here", responder.Sent[0].Text, StringComparison.Ordinal);
+        Assert.Contains(answered ?? "Working", responder.Sent[0].Text, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("  \n")]
+    public async Task A_message_with_nothing_in_it_is_answered_and_starts_no_run(string text)
+    {
+        var (gateway, runner, _, router) = Build();
+        var responder = new RecordingResponder();
+
+        await gateway.HandleAsync(Message(text), responder, TestContext.Current.CancellationToken);
+
+        Assert.Empty(runner.Ran);
+        Assert.Equal(("complete", "There is nothing to work on: the message has no text."), Assert.Single(responder.Sent));
+        Assert.True(router.TryBegin("thread-1"));
+    }
+
+    [Fact]
+    public async Task A_message_of_files_alone_names_them_and_starts_no_run()
+    {
+        var (gateway, runner, _, _) = Build();
+        var responder = new RecordingResponder();
+
+        await gateway.HandleAsync(WithFiles("", "march.pdf", "b.png"), responder, TestContext.Current.CancellationToken);
+
+        Assert.Empty(runner.Ran);
+        var (kind, text) = Assert.Single(responder.Sent);
+        Assert.Equal("complete", kind);
+        Assert.Contains("`march.pdf`, `b.png`", text, StringComparison.Ordinal);
+        Assert.Contains("no text", text, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task The_text_of_a_message_with_files_runs_and_the_files_not_taken_are_named_once()
+    {
+        var (gateway, runner, _, _) = Build();
+        var responder = new RecordingResponder();
+
+        await gateway.HandleAsync(WithFiles("summarise", "march.pdf"), responder, TestContext.Current.CancellationToken);
+
+        Assert.Equal("support:summarise", Assert.Single(runner.Ran));
+        var naming = Assert.Single(responder.Sent, s => s.Text.Contains("`march.pdf`", StringComparison.Ordinal));
+        Assert.Equal("ack", naming.Kind);
+    }
+
+    [Fact]
+    public async Task The_names_of_files_are_made_safe_and_bounded()
+    {
+        var (gateway, _, _, _) = Build();
+        var responder = new RecordingResponder();
+        string[] names = ["../`@everyone`\u202E.exe", .. Enumerable.Range(0, 40).Select(i => new string('x', 300) + i)];
+
+        await gateway.HandleAsync(WithFiles("", names), responder, TestContext.Current.CancellationToken);
+
+        var text = Assert.Single(responder.Sent).Text;
+        Assert.Contains("`'@everyone'_.exe`", text, StringComparison.Ordinal);
+        Assert.Contains("and 31 more", text, StringComparison.Ordinal);
+        Assert.True(text.Length < responder.MaxTextLength, $"{text.Length}");
+    }
+
+    [Fact]
+    public async Task A_stranger_s_files_are_not_named_back()
+    {
+        var (gateway, _, _, _) = Build("someone-else");
+        var responder = new RecordingResponder();
+
+        await gateway.HandleAsync(WithFiles("", "march.pdf"), responder, TestContext.Current.CancellationToken);
+
+        Assert.DoesNotContain("march", Assert.Single(responder.Sent).Text, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task A_run_is_handed_its_conversation_which_prepares_the_text()
+    {
+        var (gateway, runner, _, _) = Build();
+
+        await gateway.HandleAsync(Message(" do the thing "), new RecordingResponder(), TestContext.Current.CancellationToken);
+
+        var conversation = Assert.Single(runner.Conversations);
+        Assert.NotNull(conversation);
+        Assert.Equal(("test", "thread-1"), (conversation.Channel, conversation.ConversationId));
+        var prepared = await conversation.PrepareAsync(TestContext.Current.CancellationToken);
+        Assert.Equal("do the thing", prepared.Prompt);
+        Assert.Null(prepared.Variables);
+        Assert.Empty(prepared.RefusedFiles);
+    }
+
+    [Fact]
+    public void A_conversation_s_key_is_a_folder_name_whatever_its_identifier_holds()
+    {
+        static string Key(string channel, string id) => new HostedConversation
+        {
+            Channel = channel,
+            ConversationId = id,
+            PrepareAsync = _ => Task.FromResult(new PreparedRun("")),
+        }.Key;
+
+        var key = Key("teams", "19:room@thread.tacv2;messageid=1700");
+
+        Assert.Matches("^[0-9a-f]{64}$", key);
+        Assert.Equal(key, Key("teams", "19:room@thread.tacv2;messageid=1700"));
+        Assert.NotEqual(key, Key("discord", "19:room@thread.tacv2;messageid=1700"));
     }
 
     [Fact]

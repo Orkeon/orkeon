@@ -1,4 +1,6 @@
 using System.Text.Json;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using System.Text.RegularExpressions;
 using Orkeon.Host;
 
@@ -54,6 +56,48 @@ public sealed partial class HostArgumentsTests : IDisposable
             || r.Contains("requires a path", StringComparison.Ordinal)
             || r.Contains("twice", StringComparison.Ordinal)
             || r.Contains("empty", StringComparison.Ordinal));
+    }
+
+    [Theory]
+    [InlineData(true, true, true)]
+    [InlineData(true, false, false)]
+    [InlineData(false, true, false)]
+    public async Task ShouldReadTheTeamsCertificateFromAFolderNoAgentSees_WhenFilesAndTeamsAreOn(bool teams, bool files, bool mounted)
+    {
+        var variable = $"ORKEON_TEST_CERT_{Guid.NewGuid():N}";
+        var outside = Directory.CreateTempSubdirectory("orkeon-keys-");
+        var pem = Path.Combine(outside.FullName, "bot.pem");
+        await File.WriteAllTextAsync(pem, "the certificate", TestContext.Current.CancellationToken);
+        Environment.SetEnvironmentVariable(variable, pem);
+        try
+        {
+            await File.WriteAllTextAsync(
+                _settings,
+                JsonSerializer.Serialize(new
+                {
+                    Orkeon = new { Host = new { Files = new { Enabled = files }, Teams = new { Enabled = teams, CertificatePathEnvironmentVariable = variable } } },
+                }),
+                TestContext.Current.CancellationToken);
+            var reports = new List<string>();
+            var launch = HostStartup.Prepare(["--settings", _settings], reports.Add);
+            Assert.True(launch.Host is not null, string.Join('\n', reports));
+            using var host = launch.Host;
+
+            var service = host.Services.GetServices<IHostedService>().OfType<Orkeon.Host.Gateway.ChatChannelService>().SingleOrDefault();
+            var mounts = host.Services.GetService<Orkeon.Domain.FileSystem.FileSystemRegistry>()?.GetMounts() ?? [];
+            Assert.Equal(mounted, mounts.Any(m => m.VirtualPath.StartsWith("/credential-files/", StringComparison.Ordinal)));
+            if (!mounted)
+                return;
+
+            Assert.NotNull(service);
+            Assert.NotNull(service.TeamsCertificate);
+            Assert.Equal("the certificate", await service.TeamsCertificate(TestContext.Current.CancellationToken));
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable(variable, null);
+            outside.Delete(recursive: true);
+        }
     }
 
     [Fact]

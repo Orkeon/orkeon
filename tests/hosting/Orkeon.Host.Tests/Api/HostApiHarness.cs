@@ -46,7 +46,7 @@ internal sealed class HostApiHarness : IDisposable
 
     public string Root { get; } = Path.Combine(Path.GetTempPath(), $"orkeon-host-api-{Guid.NewGuid():N}");
 
-    private string CrewPath => Path.Combine(Root, "crews", "support.yaml");
+    public string CrewPath => Path.Combine(Root, "crews", "support.yaml");
 
     public void Dispose()
     {

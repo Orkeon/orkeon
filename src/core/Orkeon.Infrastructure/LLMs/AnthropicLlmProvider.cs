@@ -193,7 +193,7 @@ public partial class AnthropicLlmProvider : HttpLlmProviderBase
 
             if (!response.IsSuccessStatusCode)
             {
-                var error = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+                var error = Security.LogSanitizer.SanitizeVendorError(await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false));
                 LogApiError(response.StatusCode, error);
                 return new LlmResponse
                 {
@@ -324,7 +324,7 @@ public partial class AnthropicLlmProvider : HttpLlmProviderBase
 
         if (!response.IsSuccessStatusCode)
         {
-            var error = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+            var error = Security.LogSanitizer.SanitizeVendorError(await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false));
             LogApiError(response.StatusCode, error);
             return BuildErrorResponse($"Anthropic API error: {response.StatusCode} - {error}{Orkeon.Infrastructure.LLMs.Profiles.LlmFailureClassifier.BalanceExhaustedHint(response.StatusCode, error)}", "APIError");
         }
@@ -1022,7 +1022,7 @@ public partial class AnthropicLlmProvider : HttpLlmProviderBase
 
             if (!response!.IsSuccessStatusCode)
             {
-                var error = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+                var error = Security.LogSanitizer.SanitizeVendorError(await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false));
                 LogStreamingError(response.StatusCode);
                 yield return LlmStreamEvent.Complete(
                     BuildErrorResponse($"Anthropic API error: {response.StatusCode} - {error}{Orkeon.Infrastructure.LLMs.Profiles.LlmFailureClassifier.BalanceExhaustedHint(response.StatusCode, error)}", "APIError"));
@@ -1241,7 +1241,7 @@ public partial class AnthropicLlmProvider : HttpLlmProviderBase
         var message = error.TryGetProperty("message", out var msg) && msg.ValueKind == JsonValueKind.String
             ? msg.GetString() ?? string.Empty
             : string.Empty;
-        return (label, Security.LogSanitizer.SanitizeString(message));
+        return (label, Security.LogSanitizer.SanitizeVendorError(message));
     }
 
     private static int BlockIndex(JsonElement root) =>

@@ -149,6 +149,7 @@ public static partial class RunnerExecution
                     // the provider (e.g. TerminalGuiHumanInputProvider) via
                     // configureServices below.
                     services.AddOrkeonHumanInput();
+                    Conversations.ChatAttachExtensions.AddOrkeonChatAttach(services);
                     // The runner's console, before the caller's services: the operator channel
                     // writes on it (RunnerOperatorLog), a caller may still replace it.
                     services.AddSingleton(opts.RunnerConsole);
@@ -456,9 +457,10 @@ public static partial class RunnerExecution
                 continue;
             }
 
+            // A path under these is refused as well: a mount there would answer, by the longer match, in their place.
             var clash = reserved.FirstOrDefault(r =>
-                string.Equals(virtualPath.TrimEnd('/'), r, StringComparison.Ordinal))
-                ?? (virtualPath.StartsWith(RunnerVirtualRoots.CredentialFiles + "/", StringComparison.Ordinal) ? RunnerVirtualRoots.CredentialFiles : null);
+                string.Equals(virtualPath.TrimEnd('/'), r, StringComparison.Ordinal)
+                || (r is RunnerVirtualRoots.CredentialFiles or RunnerVirtualRoots.Inbox or RunnerVirtualRoots.Outbox && ClaimsRoot(virtualPath, r)));
             if (clash is null)
                 continue;
 
@@ -474,6 +476,13 @@ public static partial class RunnerExecution
         }
 
         return true;
+    }
+
+    /// <summary>Whether a mount on <paramref name="virtualPath"/> is on <paramref name="root"/> or below it, whichever separator it is written with.</summary>
+    internal static bool ClaimsRoot(string virtualPath, string root)
+    {
+        var path = virtualPath.Replace('\\', '/').TrimEnd('/');
+        return string.Equals(path, root, StringComparison.Ordinal) || path.StartsWith(root + "/", StringComparison.Ordinal);
     }
 
     /// <summary>

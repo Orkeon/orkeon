@@ -149,7 +149,7 @@ travels in clear off the machine.
     act on your machine while the workspace is in the container;
   - a tool of an MCP server, or a tool whose class declares no `[ToolContract]` (a plugin's, a script's): what it
     reaches on the other machine is not known;
-  - a tool of the caller's own run (`human_input`, `memory_*`, `session_*`, `token_budget`, `spawn_agent`,
+  - a tool of the caller's own run (`human_input`, `chat_attach`, `memory_*`, `session_*`, `token_budget`, `spawn_agent`,
     `system_one_decide`, `progress_report`, the event hub, the RAG stores), marked
     `[ToolContract(StaysWithCaller = true)]`: on the bridge it would act on the bridge's state, not the run's;
   - a coworker delegation tool.

@@ -33,6 +33,12 @@ mounts:
   - /output
   - 01J9Z3K4M5N6P7Q8R9S0T1V2W3|/data
 
+files:
+  - path: /output
+    download: true
+  - path: /output/drop
+    upload: true
+
 # The crew's default for every agent's file-system section (#348); researcher turns it back on.
 announceMounts: false
 

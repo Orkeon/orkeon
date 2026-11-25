@@ -7,6 +7,13 @@ internal sealed class RecordingResponder : IChatResponder
 {
     public List<(string Kind, string Text)> Sent { get; } = [];
 
+    /// <summary>The files handed over, in order.</summary>
+    public List<OutboundFile> Files { get; } = [];
+
+    public int MaxTextLength { get; set; } = 2000;
+
+    public bool TakesFileCommands { get; set; } = true;
+
     public Task AcknowledgeAsync(InboundMessage message, string text, CancellationToken ct)
     {
         Sent.Add(("ack", text));
@@ -23,5 +30,11 @@ internal sealed class RecordingResponder : IChatResponder
     {
         Sent.Add(("complete", text));
         return Task.CompletedTask;
+    }
+
+    public Task<IReadOnlyList<FileSendResult>> SendFilesAsync(InboundMessage message, IReadOnlyList<OutboundFile> files, CancellationToken ct)
+    {
+        Files.AddRange(files);
+        return Task.FromResult<IReadOnlyList<FileSendResult>>([.. files.Select(f => new FileSendResult(f.Name, FileSendOutcome.Sent))]);
     }
 }

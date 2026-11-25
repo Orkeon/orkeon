@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Reflection;
 using System.Text;
@@ -63,17 +64,8 @@ internal static class CrewYamlKeyCheck
     /// </param>
     public static IReadOnlyList<string> Find(ExpandedYaml yaml, string? file, Type model, string documentPath)
     {
-        YamlNode? root;
-        try
-        {
-            var stream = new YamlStream();
-            stream.Load(new StringReader(yaml.Text));
-            root = stream.Documents.Count > 0 ? stream.Documents[0].RootNode : null;
-        }
-        catch (YamlException ex)
-        {
-            return [$"{Situate(file, yaml.FileLine(ex.Start.Line))}: {ex.Message}"];
-        }
+        if (!TryLoad(yaml, file, out var root, out var fault))
+            return [fault];
 
         // A document that is no block at all is the deserializer's to report.
         if (root is null or YamlScalarNode)
@@ -82,6 +74,50 @@ internal static class CrewYamlKeyCheck
         var context = new Context(yaml, file);
         WalkValue(root, model, PathOf(documentPath), context);
         return context.Faults;
+    }
+
+    /// <summary>The faults of one key of a document, whatever its other keys; empty when the document has not this key.</summary>
+    /// <param name="yaml">The expanded YAML document.</param>
+    /// <param name="file">The virtual path the document was read from, or null for a string.</param>
+    /// <param name="model">The type that holds the key, as a property.</param>
+    /// <param name="key">The key, in camelCase.</param>
+    public static IReadOnlyList<string> FindKey(ExpandedYaml yaml, string? file, Type model, string key)
+    {
+        if (!TryLoad(yaml, file, out var root, out var fault))
+            return [fault];
+        if (root is null || (root is YamlScalarNode scalar && IsNull(scalar)))
+            return [];
+
+        var context = new Context(yaml, file);
+        if (root is not YamlMappingNode mapping)
+            return [$"{context.Where(root)}: a crew is a block of keys."];
+
+        var property = model.GetProperties(BindingFlags.Public | BindingFlags.Instance).Single(p => CamelName(p.Name) == key);
+        foreach (var (name, value) in mapping.Children)
+        {
+            if (name is YamlScalarNode { Value: { } text } && text == key)
+                WalkValue(value, property.PropertyType, key, context);
+        }
+
+        return context.Faults;
+    }
+
+    private static bool TryLoad(ExpandedYaml yaml, string? file, out YamlNode? root, [NotNullWhen(false)] out string? fault)
+    {
+        root = null;
+        fault = null;
+        try
+        {
+            var stream = new YamlStream();
+            stream.Load(new StringReader(yaml.Text));
+            root = stream.Documents.Count > 0 ? stream.Documents[0].RootNode : null;
+            return true;
+        }
+        catch (YamlException ex)
+        {
+            fault = $"{Situate(file, yaml.FileLine(ex.Start.Line))}: {ex.Message}";
+            return false;
+        }
     }
 
     /// <summary>Where a fault sits: the file and the line, or the line alone for a string.</summary>

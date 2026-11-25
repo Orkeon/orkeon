@@ -420,6 +420,49 @@ donnez pas à un crew non fiable à la fois le `Read` chat et un canal sortant. 
 sont du JSON en clair : à l'abri des outils du VFS, **pas** d'un outil shell ou de code qui tourne
 sous le même utilisateur.
 
+### Fichiers des conversations
+
+Avec `Orkeon:Host:Files` ([hôte de service](./service-host.md#files--les-dossiers-dune-conversation)), `orkeon-host` prend
+les fichiers qu'on lui envoie dans un chat et rend ceux que font ses crews. C'est éteint par défaut, et voici ce que cela
+ouvre : des octets choisis par quiconque figure sur la liste d'un canal, sur le disque de l'hôte et devant ses agents.
+
+- **Qui.** Les `AllowedUserIds` de chaque canal, et rien d'autre ; une liste vide refuse le démarrage. Sur Discord,
+  `GuildIds` ne restreint personne.
+- **Deux dossiers par conversation, et aucune autre entrée.** `/inbox` est en lecture seule pour la crew, `/outbox` en
+  lecture et écriture, et aucun run n'est monté sur ceux d'une autre conversation. L'hôte refuse de démarrer quand un
+  montage atteint leur racine, et compare de nouveau à chaque run et à chaque accès : un lien créé après n'ouvre rien.
+- **Le contenu n'est pas fiable.** Le prompt nomme les fichiers (chemin, type, taille), jamais leur contenu, dit que ce sont
+  des données, et aucun nom n'en forge une ligne. Un agent qui en ouvre un lit ce que son expéditeur a écrit, et la réception
+  n'y passe aucun filtre (`PromptInjectionDocumentValidator`). Les images d'un message vont elles-mêmes au modèle.
+- **Borné.** Octets par fichier, fichiers par message, octets et fichiers par conversation, octets en tout, extensions
+  prises, et une rétention. Ce qui dépasse une limite est refusé seul, avec sa raison.
+- **Un téléchargement est tenu à un lieu.** Les fichiers de Discord viennent de `cdn.discordapp.com`, ceux de Teams des
+  hôtes SharePoint de `SharePointNames` et, pour une image collée, du Bot Connector : HTTPS, aucune redirection, aucune
+  adresse journalisée.
+- **Ce qui sort est demandé.** Rien n'est envoyé sans demande, sauf par
+  [`chat_attach`](./service-host.md#les-fichiers-quenvoie-un-agent), qui ne prend aucune adresse : il envoie dans la
+  conversation de son run, sous des plafonds par run. `/outbox` est ouvert au téléchargement ; tout autre dossier est fermé
+  tant que la crew ne le déclare pas dans son [`files:`](./service-host.md#files--les-dossiers-quune-crew-ouvre), dans les
+  droits que l'opérateur a montés. `/inbox` n'est jamais renvoyé. Une personne n'écrit que dans un dossier déclaré `upload`.
+- **Les règles de Teams.** Les fichiers ne passent que dans le chat personnel avec le bot. `SharePointNames` vide n'en
+  échange aucun. Le jeton SharePoint de l'application exige un certificat, et l'application ne doit détenir aucune permission
+  `Sites.*` ni `Files.*` : l'adresse vient de ce qu'un client a envoyé, et une telle permission en ferait la clé de chaque
+  fichier qu'elle couvre. Sans certificat, les adresses qui portent `tempauth` fonctionnent jusqu'au 2027-03-01 (UTC) ;
+  après cette date, aucun fichier partagé par SharePoint ne passe. Tout ce qui est envoyé est d'abord proposé par une carte
+  de consentement ([Les fichiers dans Teams](./service-host.md#les-fichiers-dans-teams)).
+
+**Limites honnêtes.** Seuls `/inbox` et `/outbox` sont propres à une conversation : un dossier accordé à la crew (`/output`,
+un espace de travail) est partagé par tous les fils de cette crew, de même que `session_store`, la mémoire et le hub
+d'événements ; ce qu'une personne y fait écrire, une autre peut le faire lire. Les montages tiennent les outils de fichiers,
+pas un processus : un `shell_command` non confiné, du code exécuté avec `AllowHostExecution`, un serveur MCP stdio et le
+processus du fournisseur `agent-cli` lisent les fichiers reçus de toutes les conversations. L'hôte n'avertit au démarrage que
+des deux premiers ; [confinez le shell](#confinement-du-shell), et ne donnez aucun des autres à une crew qui prend des fichiers, ou
+faites-la tourner sur un hôte à elle. Rien ne plafonne ce qu'un run écrit dans `/outbox` pendant qu'il tourne : les limites
+sont vérifiées quand un fichier arrive et quand le run suivant démarre ; le disque a besoin de son propre quota. Un fichier
+n'est ni analysé contre les logiciels malveillants ni décodé : son extension est ce que son expéditeur a écrit. La règle des
+chemins des adresses de Teams est déduite, Microsoft n'en documentant aucune, et aucun des deux canaux n'est vérifié contre
+le vrai service en CI. Le reste est dans [les limites](../reference/limitations.md).
+
 ### Pont d'outils
 
 Le pont d'outils ([guide](../guides/tool-bridge.md), [ADR-019](../adr/ADR-019-tool-bridge.md)) exécute certains

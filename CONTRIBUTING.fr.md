@@ -383,7 +383,10 @@ demandent pas davantage, **la surface fonctionnelle ne grandit pas** :
   ([ADR-013](docs/fr/adr/ADR-013-drive-tool-family.md)). L'outil `browser` est la
   quatrième. La famille chat (`Orkeon.Tools.Chat`, Microsoft Teams d'abord,
   dix outils) est la cinquième, actée par le propriétaire le 2026-11-23
-  ([ADR-021](docs/fr/adr/ADR-021-chat-tool-family.md)). Le pont d'outils
+  ([ADR-021](docs/fr/adr/ADR-021-chat-tool-family.md)). `chat_attach`, un seul
+  outil, est la sixième, actée par le propriétaire le 2026-11-25 : un script ou
+  un plugin ne tient pas la conversation à laquelle répond un run hébergé
+  ([ADR-023](docs/fr/adr/ADR-023-chat-attach-tool.md)). Le pont d'outils
   (`orkeon bridge serve`, [ADR-019](docs/fr/adr/ADR-019-tool-bridge.md))
   n'ajoute aucun outil : il exécute sur une autre machine les outils intégrés
   qui existent, et un outil n'est pas intégré parce que le pont pourrait le

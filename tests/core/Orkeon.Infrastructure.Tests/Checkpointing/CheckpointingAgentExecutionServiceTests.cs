@@ -92,6 +92,67 @@ public sealed class CheckpointingAgentExecutionServiceTests : IDisposable
         Assert.Equal(CheckpointStatus.Failed, state.TaskCheckpoints["second#1"].Status);
     }
 
+    [Theory]
+    [InlineData("/inbox/photo.png", 1)]
+    [InlineData("/inbox/other.png", 2)]
+    public async System.Threading.Tasks.Task ShouldWorkAgain_WhenTheResumedRunIsGivenOtherImages(string resumed, int calls)
+    {
+        var id = ExecutionId.New();
+        await StartSessionAsync(id);
+        using (Enter(id))
+        using (Orkeon.Application.Crew.Execution.RunImages.Begin([new CrewInputImage { Path = "/inbox/photo.png" }]))
+            await Decorate().ExecuteTaskAsync(_agent, Task("first"), Context(), TestContext.Current.CancellationToken);
+        var plan = await PlanOfAsync(id);
+
+        using (Enter(id, plan))
+        using (Orkeon.Application.Crew.Execution.RunImages.Begin([new CrewInputImage { Path = resumed }]))
+            await Decorate().ExecuteTaskAsync(_agent, Task("first"), Context(), TestContext.Current.CancellationToken);
+
+        Assert.Equal(calls, _inner.Calls);
+    }
+
+    [Theory]
+    [InlineData("photo", "photo", 1)]
+    [InlineData("photo", "other", 2)]
+    [InlineData("photo", null, 2)]
+    [InlineData(null, null, 1)]
+    public async System.Threading.Tasks.Task ShouldWorkAgain_WhenTheImageIsAnotherUnderTheSamePath(string? first, string? resumed, int calls)
+    {
+        const string path = "/inbox/photo.png";
+        static Orkeon.Tests.Shared.FileSystem.FakeFileSystemService Files(string? text, int day)
+        {
+            var files = new Orkeon.Tests.Shared.FileSystem.FakeFileSystemService().AddMount("/inbox");
+            return text is null ? files : files.AddFile(path, text, new DateTimeOffset(2026, 1, day, 0, 0, 0, TimeSpan.Zero));
+        }
+
+        var id = ExecutionId.New();
+        await StartSessionAsync(id);
+        using (Enter(id))
+        using (Orkeon.Application.Crew.Execution.RunImages.Begin([new CrewInputImage { Path = path }]))
+            await Decorate(Files(first, 1)).ExecuteTaskAsync(_agent, Task("first"), Context(), TestContext.Current.CancellationToken);
+        var plan = await PlanOfAsync(id);
+
+        using (Enter(id, plan))
+        using (Orkeon.Application.Crew.Execution.RunImages.Begin([new CrewInputImage { Path = path }]))
+            await Decorate(Files(resumed, 2)).ExecuteTaskAsync(_agent, Task("first"), Context(), TestContext.Current.CancellationToken);
+
+        Assert.Equal(calls, _inner.Calls);
+    }
+
+    // Outside every mount: what the model is told of it is the model's, not the resume's to fail on.
+    [Fact]
+    public async System.Threading.Tasks.Task ShouldCountAnImageThatCannotBeReadByItsPath()
+    {
+        var id = ExecutionId.New();
+        await StartSessionAsync(id);
+        using (Enter(id))
+        using (Orkeon.Application.Crew.Execution.RunImages.Begin([new CrewInputImage { Path = "/nowhere/photo.png" }]))
+            await Decorate(new Orkeon.Tests.Shared.FileSystem.FakeFileSystemService())
+                .ExecuteTaskAsync(_agent, Task("first"), Context(), TestContext.Current.CancellationToken);
+
+        Assert.Equal(1, _inner.Calls);
+    }
+
     [Fact]
     [Trait("BR", "FWK-07")]
     public async System.Threading.Tasks.Task ShouldCheckpointTheTypedOverloadToo_AndAnswerItFromTheCheckpointWhenResumed()

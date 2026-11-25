@@ -14,9 +14,9 @@ sont câblés par les binaires livrés, comme le dit la colonne *Activation*. Le
 tous par défaut gonflerait le conteneur DI et masquerait leur statut : l'opt-in rend leur
 activation **intentionnelle, documentée et vérifiable**.
 
-**Six sections qu'aucun binaire livré ne lit.** `orkeon run`, `orkeon-host` et `orkeon-repl` n'appellent
-aucune des extensions qui lisent `ToolRateLimiting`, `TokenBudget`, `Orkeon:Dlp`, `Orkeon:Monitoring`,
-`Orkeon:MultiModal` et `Orkeon:VectorSearch`. Écrite dans
+**Cinq sections qu'aucun binaire livré ne lit.** `orkeon run`, `orkeon-host` et `orkeon-repl` n'appellent
+aucune des extensions qui lisent `ToolRateLimiting`, `TokenBudget`, `Orkeon:Dlp`, `Orkeon:Monitoring`
+et `Orkeon:VectorSearch`. Écrite dans
 les réglages de l'un de ces binaires, une telle section n'est lue par rien : le run démarre sans
 la limite, le budget ou le filtrage qu'elle décrit. Le binaire le dit à son démarrage — une ligne
 sur stderr par section, qui nomme l'extension par laquelle un hôte écrit en C# la lit — et
@@ -383,8 +383,9 @@ Aucun attribut ne porte l'identifiant d'un crew, d'une tâche ou d'un agent.
 
 ## Contenu multi-modal (vision) — `AddOrkeonMultiModal(...)`
 
-- **Binaires livrés** : aucun ne l'active. `orkeon run`, `orkeon-host` et `orkeon-repl` ne lisent
-  pas `Orkeon:MultiModal`, et le disent à leur démarrage quand les réglages l'écrivent.
+- **Binaires livrés** : `orkeon-host` l'active : ses options bornent les
+  [images du message d'une conversation](../guides/multimodal.md#les-images-dun-run). `orkeon run` et
+  `orkeon-repl` ne lisent pas `Orkeon:MultiModal`.
 - **Statut : réel** — la vision est câblée de bout en bout : les contenus image
   circulent des abstractions `MultiModalContent` (Domain) aux payloads providers via
   `LlmMessage.MultiModalContent`. `AnthropicLlmProvider` émet des blocs de contenu

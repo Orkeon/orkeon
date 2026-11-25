@@ -64,6 +64,8 @@ public abstract class FileDocumentLoaderBase : IDocumentLoader
         ArgumentNullException.ThrowIfNull(source);
         ArgumentException.ThrowIfNullOrWhiteSpace(source.Location);
 
+        // What is loaded is stored, where every execution of the process reads.
+        PrivateMountGuard.ThrowIfReached(FileSystem, source.Location);
         var entry = await FileSystem.TryGetEntryAsync(source.Location, cancellationToken).ConfigureAwait(false);
         if (entry is null || entry.Kind != VirtualEntryKind.File)
             throw new FileNotFoundException($"File not found: {source.Location}", source.Location);

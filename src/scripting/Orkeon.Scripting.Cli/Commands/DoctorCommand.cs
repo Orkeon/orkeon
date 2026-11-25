@@ -575,6 +575,7 @@ internal static class DoctorCommand
         var verdict = RunnerHost.InspectSettings(llm.SettingsPath, (_, services) =>
         {
             services.AddOrkeonHumanInput();
+            Orkeon.Hosting.Conversations.ChatAttachExtensions.AddOrkeonChatAttach(services);
             services.AddSemanticSearchTool();
             RunCommand.AddCliRagServices(services);
             // The modules a test hands the doctor, beside the ones the tool ships (registered above).

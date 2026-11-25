@@ -1192,7 +1192,7 @@ public partial class OllamaLlmProvider : HttpLlmProviderBase
             var rawErrorContent = await httpResponse.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
 
             // SECURITY: Sanitize error content before logging to prevent credential exposure.
-            var sanitizedErrorContent = LogSanitizer.SanitizeString(rawErrorContent);
+            var sanitizedErrorContent = LogSanitizer.SanitizeVendorError(rawErrorContent);
             LogLlmHttpError(httpResponse.StatusCode, sanitizedErrorContent);
 
             // Try to parse Ollama-specific error format
@@ -1202,7 +1202,7 @@ public partial class OllamaLlmProvider : HttpLlmProviderBase
                 var ollamaError = DeserializeFromJson<OllamaErrorResponse>(rawErrorContent);
                 if (ollamaError?.Error != null)
                 {
-                    errorMessage = LogSanitizer.SanitizeString(ollamaError.Error);
+                    errorMessage = LogSanitizer.SanitizeVendorError(ollamaError.Error);
                 }
             }
             catch (System.Text.Json.JsonException)
@@ -1222,11 +1222,14 @@ public partial class OllamaLlmProvider : HttpLlmProviderBase
                 Content = string.Empty,
                 TokensUsed = 0,
                 Model = model,
-                Metadata = LlmResponseMetadata.CreateBuilder()
+                Metadata = new Dictionary<string, object>(LlmResponseMetadata.CreateBuilder()
                     .AddProvider(Name)
                     .AddError(errorMessage)
                     .Build()
-                    .ToDictionary()
+                    .ToDictionary())
+                {
+                    [Profiles.LlmFailureClassifier.HttpStatusKey] = (int)httpResponse.StatusCode,
+                },
             };
         }
     }

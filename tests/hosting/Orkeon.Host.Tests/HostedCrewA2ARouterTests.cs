@@ -71,6 +71,7 @@ public sealed class HostedCrewA2ARouterTests
         Assert.Equal("veille:What changed this week?", Assert.Single(runner.Ran));
         Assert.Equal("a2a:task-1", Assert.Single(runner.Origins));
         Assert.Equal("agents", Assert.Single(runner.Variables)!["topic"]);
+        Assert.Null(Assert.Single(runner.Conversations));
     }
 
     [Theory]

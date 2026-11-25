@@ -25,6 +25,8 @@
     <InternalsVisibleTo Include="Orkeon.Infrastructure" />
     <InternalsVisibleTo Include="Orkeon.Infrastructure.Tests" />
     <InternalsVisibleTo Include="Orkeon.Host.Tests" />
+    <!-- orkeon-host judges its conversations' root by its real path, as the registry judges a mount. -->
+    <InternalsVisibleTo Include="orkeon-host" />
     <!-- One source for the version every surface announces (OrkeonRelease): a consumer that mixes package
          versions still hears one version, the Domain's. -->
     <InternalsVisibleTo Include="Orkeon.Scripting" />

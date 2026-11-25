@@ -191,8 +191,8 @@ WARNING: ToolRateLimiting is read by no component of this host: a C# host reads 
 
 `orkeon doctor` reports the same sentence as a `warn` row of `runner-settings`, one per section,
 and still exits `0`. The sections are those the settings catalogue marks as read by no shipped
-binary: `ToolRateLimiting`, `TokenBudget`, `Orkeon:Dlp`, `Orkeon:Monitoring`,
-`Orkeon:MultiModal` and `Orkeon:VectorSearch`
+binary: `ToolRateLimiting`, `TokenBudget`, `Orkeon:Dlp`, `Orkeon:Monitoring`
+and `Orkeon:VectorSearch`
 ([opt-in subsystems](./opt-in-subsystems.md)). The list is computed, not written: a section a
 shipped binary starts to read leaves it. Not reported: a section another shipped binary reads
 (`Orkeon:Host` in a file `orkeon run` reads), a root section Orkeon does not know, and a section
@@ -216,13 +216,13 @@ closed list, and what it means.
 | [RAG](#rag) | [`Orkeon:Rag`](#orkeonrag), [`Orkeon:Rag:Ingestion`](#orkeonragingestion), [`Orkeon:Rag:QueryRouting`](#orkeonragqueryrouting), [`Orkeon:Rag:Retrieval:Hybrid`](#orkeonragretrievalhybrid), [`Orkeon:Rag:WebFallback`](#orkeonragwebfallback) | 34 |
 | [Files and sandbox](#files-and-sandbox) | [`Orkeon:CodeSandbox`](#orkeoncodesandbox), [`Orkeon:CodeSandbox:Docker`](#orkeoncodesandboxdocker), [`Orkeon:FileSystem`](#orkeonfilesystem), [`Orkeon:Sandbox`](#orkeonsandbox), [`PathSecurity`](#pathsecurity) | 33 |
 | [Security](#security) | [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:Guardian`](#orkeonguardian), [`Orkeon:Security:PermissionGate`](#orkeonsecuritypermissiongate), [`Secrets`](#secrets), [`Security:Audit`](#securityaudit), [`Security:Prompt`](#securityprompt), [`Security:ToolResults`](#securitytoolresults), [`Security:Url`](#securityurl), [`Security:Vault`](#securityvault) | 40 |
-| [Tools](#tools) | [`BRAVE_API_KEY`](#brave_api_key), [`MCP`](#mcp), [`MCP:Server`](#mcpserver), [`Orkeon:Bridge`](#orkeonbridge), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Tools:Bridge`](#orkeontoolsbridge), [`Orkeon:Tools:Browser`](#orkeontoolsbrowser), [`Orkeon:Tools:Chat`](#orkeontoolschat), [`Orkeon:Tools:Drive`](#orkeontoolsdrive), [`Orkeon:Tools:Email`](#orkeontoolsemail), [`Orkeon:Tools:Firefox`](#orkeontoolsfirefox), [`Orkeon:Tools:GitHub`](#orkeontoolsgithub), [`Orkeon:Tools:ResultLimits`](#orkeontoolsresultlimits), [`Orkeon:Tools:Shell`](#orkeontoolsshell), [`Plugins`](#plugins), [`RaggableTree`](#raggabletree) | 162 |
+| [Tools](#tools) | [`BRAVE_API_KEY`](#brave_api_key), [`MCP`](#mcp), [`MCP:Server`](#mcpserver), [`Orkeon:Bridge`](#orkeonbridge), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Tools:Bridge`](#orkeontoolsbridge), [`Orkeon:Tools:Browser`](#orkeontoolsbrowser), [`Orkeon:Tools:Chat`](#orkeontoolschat), [`Orkeon:Tools:Drive`](#orkeontoolsdrive), [`Orkeon:Tools:Email`](#orkeontoolsemail), [`Orkeon:Tools:Firefox`](#orkeontoolsfirefox), [`Orkeon:Tools:GitHub`](#orkeontoolsgithub), [`Orkeon:Tools:ResultLimits`](#orkeontoolsresultlimits), [`Orkeon:Tools:Shell`](#orkeontoolsshell), [`Plugins`](#plugins), [`RaggableTree`](#raggabletree) | 163 |
 | [Orchestration and persistence](#orchestration-and-persistence) | [`Orkeon:Checkpointing`](#orkeoncheckpointing), [`Orkeon:Compaction`](#orkeoncompaction), [`Orkeon:Compaction:Prune`](#orkeoncompactionprune), [`Orkeon:Consensus`](#orkeonconsensus), [`Orkeon:CrewFactory`](#orkeoncrewfactory), [`Orkeon:ExecutionState:Persistence`](#orkeonexecutionstatepersistence), [`Orkeon:HumanInput`](#orkeonhumaninput), [`Orkeon:RunHistory`](#orkeonrunhistory), [`Orkeon:Skills`](#orkeonskills) | 39 |
 | [Scripts and console](#scripts-and-console) | [`Orkeon:Cli:ConsoleStreaming`](#orkeoncliconsolestreaming), [`Orkeon:Cli:Memory`](#orkeonclimemory), [`Orkeon:Cli:ScriptCommands`](#orkeoncliscriptcommands), [`Orkeon:Cli:ScriptHost`](#orkeoncliscripthost), [`Orkeon:Cli:Session`](#orkeonclisession), [`Orkeon:Cli:Tui`](#orkeonclitui), [`Orkeon:Scripting:AgentInstances`](#orkeonscriptingagentinstances), [`Orkeon:Scripting:AgentMemory`](#orkeonscriptingagentmemory), [`Orkeon:Scripting:Limits`](#orkeonscriptinglimits), [`Orkeon:Scripting:Toolchain`](#orkeonscriptingtoolchain) | 35 |
-| [Service host and A2A](#service-host-and-a2a) | [`A2A`](#a2a), [`A2A:Security`](#a2asecurity), [`A2A:Security:AzureAD`](#a2asecurityazuread), [`A2A:Security:Oidc`](#a2asecurityoidc), [`Orkeon:Host`](#orkeonhost), [`Orkeon:Host:Discord`](#orkeonhostdiscord), [`Orkeon:Host:Teams`](#orkeonhostteams) | 70 |
+| [Service host and A2A](#service-host-and-a2a) | [`A2A`](#a2a), [`A2A:Security`](#a2asecurity), [`A2A:Security:AzureAD`](#a2asecurityazuread), [`A2A:Security:Oidc`](#a2asecurityoidc), [`Orkeon:Host`](#orkeonhost), [`Orkeon:Host:Discord`](#orkeonhostdiscord), [`Orkeon:Host:Teams`](#orkeonhostteams) | 84 |
 | [Observability](#observability) | [`Logging`](#logging), [`Orkeon:Monitoring`](#orkeonmonitoring), [`Telemetry`](#telemetry) | 8 |
 
-91 sections, 616 keys. Read by no shipped binary, only by a host written in C# (6): [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting), [`Orkeon:VectorSearch`](#orkeonvectorsearch), [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Monitoring`](#orkeonmonitoring).
+91 sections, 631 keys. Read by no shipped binary, only by a host written in C# (5): [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting), [`Orkeon:VectorSearch`](#orkeonvectorsearch), [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:Monitoring`](#orkeonmonitoring).
 <!-- /settings-index -->
 
 How to read a table:
@@ -470,7 +470,7 @@ covers is not the one read, so it is not judged. The settings judged, from
 | Settings | Correction stated |
 |---|---|
 | `Llm:ApiKey`, `Llm:Profiles:<name>:ApiKey`, `Orkeon:Embeddings:ApiKey` | write `"ApiKeyEnvVar": "<NAME>"` instead |
-| `Llm:ApiKeyEnvVar`, `Llm:Profiles:<name>:ApiKeyEnvVar`, `Orkeon:Rag:WebFallback:ApiKeyEnvVar`, `Orkeon:Embeddings:ApiKeyEnvVar`, `Orkeon:Host:Discord:TokenEnvironmentVariable`, `Orkeon:Host:Teams:SecretEnvironmentVariable`, `Orkeon:Tools:Bridge:TokenEnvVar`, `Orkeon:Bridge:TokenEnvVar`, `A2A:Security:ApiKeySecretNames:<i>`, `Orkeon:Encryption:SecretName`, `Orkeon:Tools:GitHub:TokenVariable` | write the name alone, without `${` and `}` |
+| `Llm:ApiKeyEnvVar`, `Llm:Profiles:<name>:ApiKeyEnvVar`, `Orkeon:Rag:WebFallback:ApiKeyEnvVar`, `Orkeon:Embeddings:ApiKeyEnvVar`, `Orkeon:Host:Discord:TokenEnvironmentVariable`, `Orkeon:Host:Teams:SecretEnvironmentVariable`, `Orkeon:Host:Teams:CertificatePathEnvironmentVariable`, `Orkeon:Tools:Bridge:TokenEnvVar`, `Orkeon:Bridge:TokenEnvVar`, `A2A:Security:ApiKeySecretNames:<i>`, `Orkeon:Encryption:SecretName`, `Orkeon:Tools:GitHub:TokenVariable` | write the name alone, without `${` and `}` |
 | `MCP:Servers:<id>:Command`, `:Args:<i>`, `:Url`; `Llm:AgentCli:Command`; `Orkeon:Redis:ConnectionString`, `Orkeon:Sqlite:ConnectionString`; `RaggableTree:Embedding:ApiKey`, `Orkeon:Pinecone:ApiKey`, `Orkeon:LanceDb:ApiKey`; `Llm:BaseUrl`, `Llm:Profiles:<name>:BaseUrl`, `RaggableTree:Embedding:BaseUrl`, `Orkeon:ChromaDb:BaseUrl`, `Orkeon:Pinecone:Host`, `Orkeon:LanceDb:Endpoint`, `Orkeon:Embeddings:Endpoint`, `Orkeon:Rag:WebFallback:Endpoint`, `Telemetry:OtlpEndpoint`; `Security:Vault:AzureKeyVaultUri`, `A2A:Security:AzureAD:Authority`, `A2A:Security:Oidc:Authority`; `Orkeon:Tools:GitHub:Token` | write the value, or keep it out of the file through the environment layer `ORKEON_<path with __>` |
 | `MCP:Servers:<id>:Env:<name>` | remove the entry: the server inherits the environment Orkeon runs in, set the variable there |
 | `Secrets:<name>` | remove the entry and set `ORKEON_<name>`, which the secret chain reads first |
@@ -2027,16 +2027,17 @@ Also read as a **configuration key** (not only an environment variable) to gate 
 
 ### `Orkeon:MultiModal`
 
-Vision and content validation — no image is resized. Opt-in:
-`AddOrkeonMultiModal(configuration)`.
+Vision and content validation — no image is resized. `orkeon-host` reads it for the images of a
+conversation's message; opt-in elsewhere: `AddOrkeonMultiModal(configuration)`.
 
 <!-- settings:Orkeon:MultiModal -->
-**Read by**: a host written in C# only, through `AddOrkeonMultiModal()` — no shipped binary reads this section.
+**Read by**: `orkeon-host`.
 
 | Key | Type | Default | Meaning |
 |---|---|---|---|
 | `Enabled` | boolean | `true` | Whether multi-modal content is enabled. |
 | `MaxAudioDurationSeconds` | integer | `300` | Maximum allowed audio duration in seconds (default: 300 seconds / 5 minutes). |
+| `MaxImages` | integer | `10` | Maximum number of images of a crew's input one model call carries (default: 10). |
 | `MaxImageSizeBytes` | integer | `20971520` | Maximum allowed image size in bytes (default: 20 MB). |
 | `SupportedAudioFormats` | list of string | `["audio/wav", "audio/mp3", "audio/ogg"]` | List of supported audio MIME types. |
 | `SupportedImageFormats` | list of string | `["image/png", "image/jpeg", "image/gif", "image/webp"]` | List of supported image MIME types. |
@@ -2499,6 +2500,18 @@ The daemon (`Orkeon.Host`):
 | `Crews:<i>:Name` | string | `""` | The name the channels and the operator use to refer to it. |
 | `Crews:<i>:Path` | string | `""` | Path to the crew definition — a YAML file, a multi-file crew directory, or an `.ork.ts` script. The same targets `orkeon run` accepts. |
 | `Crews:<i>:Profile:MaxConcurrentRuns` | integer | `4` | How many runs of this crew may be in flight at once. Bounded on purpose: a daemon that accepts unlimited concurrent runs is a daemon that dies under its first burst. |
+| `Files:AllowedExtensions` | list of string | `[]` | The extensions taken (`pdf` or `.pdf`, case ignored). Empty, every extension is. |
+| `Files:Enabled` | boolean | `false` | Gives each conversation two folders, mounted for its runs: `/inbox`, read-only, and `/outbox`. Off, no folder is made and neither path is mounted. |
+| `Files:MaxAttachedBytesPerRun` | integer | `52428800` | What the agents of one run may send to its conversation, in bytes. |
+| `Files:MaxAttachedFilesPerRun` | integer | `10` | How many files the agents of one run may send to its conversation. |
+| `Files:MaxAttachedMessagesPerRun` | integer | `5` | How many messages the agents of one run may send files in. |
+| `Files:MaxConversationBytes` | integer | `104857600` | What one conversation may hold, in bytes: both folders, and what was left in the folders of a crew, be it still there or not. A run writes freely while it runs: a conversation found over this afterwards starts no other run. |
+| `Files:MaxConversationFiles` | integer | `1000` | How many files one conversation may hold: those of both folders, and those left in the folders of a crew. At the limit, no other file is taken. |
+| `Files:MaxFileBytes` | integer | `10485760` | The largest file taken, in bytes. |
+| `Files:MaxFilesPerMessage` | integer | `10` | How many files of one message are taken. |
+| `Files:MaxTotalBytes` | integer | `2147483648` | What the conversations may hold together, in bytes. Found over this, no conversation starts a run until the retention or the operator makes room. |
+| `Files:Retention` | duration | `"7.00:00:00"` | How long a conversation is kept after its last activity. One with a run in progress, or suspended on a question, is kept. |
+| `Files:Root` | string | `"conversations"` | The folder the conversations are kept in, relative to the service's working directory. No mount and no crew folder may hold it, be it or be under it, links followed: the start is refused. |
 | `LlmProfiles` | list of string | `[]` | The LLM profiles (`Llm:Profiles:<name>`) the hosted crews may name. The service runs crews it does not control: unset, every profile the configuration defines is offered; set, only those listed — a crew naming another one fails to load, the run with it. The default profile (the `Llm` section) is always offered, so `["default"]` offers it alone. Every entry must name a defined profile. |
 | `RunTimeout` | duration | `"00:30:00"` | How long a run may take before the host cancels it. A daemon has no user watching to press Ctrl-C, so an unbounded run is a stuck daemon. The clock stops while the run holds on a question to a person: the hold timeout, not this one, ends that wait. |
 | `ShutdownGracePeriod` | duration | `"00:00:20"` | How long the host waits for in-flight runs on shutdown before giving up. Systemd sends SIGKILL after its own timeout, so this must stay under it. |
@@ -2539,6 +2552,7 @@ cannot be honoured refuses the start.
 |---|---|---|---|
 | `AllowedUserIds` | list of string | `[]` | Entra object ids of the people allowed to talk to the bot. **Empty denies everyone**, and an enabled channel refuses the start. |
 | `AppId` | string | `""` | The bot's application (client) id: the audience every incoming token must carry. |
+| `CertificatePathEnvironmentVariable` | string | — | Name of the environment variable holding the absolute path of the application's certificate: a PEM file with its unencrypted RSA private key, in a folder of its own. SharePoint refuses a client secret: without a certificate, files go through the temporary addresses Microsoft ends on 1 March 2027, then not at all. |
 | `DefaultCrew` | string | — | The crew a room without a route reaches. Unset, it is the first crew declared under `Orkeon:Host:Crews`; set, it must name one of them. |
 | `Enabled` | boolean | `false` | Whether the channel is switched on. Off unless a deployment says otherwise. |
 | `Prefix` | string | `"http://localhost:3978/"` | The listener's prefix: scheme, host, port and a closing slash. The channel answers `POST /api/messages` there; Microsoft must reach it over HTTPS, through a reverse proxy that terminates TLS in front of it. |
@@ -2547,6 +2561,7 @@ cannot be honoured refuses the start.
 | `Routes:<i>:Crew` | string | `""` | The hosted crew a thread opened in that channel starts. |
 | `SecretEnvironmentVariable` | string | `"ORKEON_TEAMS_APP_SECRET"` | Name of the environment variable holding the application's client secret. |
 | `ServiceHosts` | list of string | `[]` | Hosts of the Bot Connector service replies may go to, beside the ones Microsoft publishes for Teams (`smba.trafficmanager.net`, `smba.infra.gcc.teams.microsoft.com`). An activity naming another host is refused, whatever its token says. |
+| `SharePointNames` | list of string | `[]` | The names of the tenant's SharePoint: `contoso` for `contoso.sharepoint.com` and `contoso-my.sharepoint.com`. Files of a personal chat are read from and sent to those hosts and no other; empty, none is. Used when `Orkeon:Host:Files` is on. |
 | `TenantId` | string | `""` | The Entra tenant the bot is registered in (single-tenant). An activity of another tenant is refused. |
 <!-- /settings -->
 
@@ -2768,6 +2783,7 @@ value: the secret stays out of the file. `orkeon settings <key>` describes each.
 | `Orkeon:Embeddings:ApiKeyEnvVar` | The API key of the `mistral`, `azure-openai` or `gemini` embedding provider, read when no `Orkeon:Embeddings:ApiKey` is set. | The process environment. |
 | `Orkeon:Rag:WebFallback:ApiKeyEnvVar` | The key of the web search the corrective RAG falls back to; empty, no key is sent. | The process environment. |
 | `Orkeon:Host:Discord:TokenEnvironmentVariable` | The bot token of the Discord channel; the key names `ORKEON_DISCORD_TOKEN` when nothing sets it. | The process environment. |
+| `Orkeon:Host:Teams:CertificatePathEnvironmentVariable` | The absolute path of the PEM file, certificate and key, of the Teams channel's application. Its folder is mounted internal and read-only at start, and must be a folder of its own. | The process environment. |
 | `Orkeon:Host:Teams:SecretEnvironmentVariable` | The client secret of the Teams channel's bot application; the key names `ORKEON_TEAMS_APP_SECRET` when nothing sets it. | The process environment. |
 | `Orkeon:Tools:Bridge:TokenEnvVar` | The token the run sends to the tool bridge; the key names `ORKEON_BRIDGE_TOKEN` when nothing sets it. | The process environment. |
 | `Orkeon:Bridge:TokenEnvVar` | The token the tool bridge server expects from its callers; the key names `ORKEON_BRIDGE_TOKEN` when nothing sets it. | The process environment. |

@@ -267,6 +267,7 @@ public partial class YamlCrewExportRoundTripTests
             goal: Declare empty blocks
             links: []
             mounts: []
+            files: []
             rag: {}
             llm: {}
             agents:
@@ -297,12 +298,14 @@ public partial class YamlCrewExportRoundTripTests
 
         Assert.Empty(Assert.IsType<IReadOnlyList<Orkeon.Domain.EventHub.CrewLink>>(emptyAgain.Links, exactMatch: false));
         Assert.Empty(Assert.IsType<IReadOnlyList<Orkeon.Domain.FileSystem.MountReference>>(emptyAgain.Mounts, exactMatch: false));
+        Assert.Empty(Assert.IsType<IReadOnlyList<Orkeon.Domain.Configuration.CrewFileFolder>>(emptyAgain.Files, exactMatch: false));
         Assert.Empty(Assert.IsType<RagCrewConfig>(emptyAgain.Rag).Collections);
         Assert.NotNull(Assert.Single(emptyAgain.Agents).LlmConfig);
         CrewConfigurationProjection.AssertEqual(empty, emptyAgain);
 
         Assert.Null(absentAgain.Links);
         Assert.Null(absentAgain.Mounts);
+        Assert.Null(absentAgain.Files);
         Assert.Null(absentAgain.Rag);
         Assert.Null(Assert.Single(absentAgain.Agents).LlmConfig);
         CrewConfigurationProjection.AssertEqual(absent, absentAgain);

@@ -6,6 +6,7 @@ using Microsoft.Extensions.Logging;
 using Orkeon.Application.Interfaces;
 using Orkeon.Domain.FileSystem;
 using Orkeon.Domain.Tools;
+using Orkeon.Infrastructure.Configuration;
 using Orkeon.Infrastructure.DependencyInjection;
 
 namespace Orkeon.Hosting;
@@ -98,6 +99,8 @@ public static partial class RunnerExecution
                 // showed at run time (FWK-12).
                 if (!await TypeCheckScriptAsync(host, bootstrap, console, validating: true, cts.Token).ConfigureAwait(false))
                     return 1;
+
+                await CheckNeighbourFilesAsync(host, virtualConfigPath, cts.Token).ConfigureAwait(false);
 
                 // A procedural script builds and runs its crew when it is evaluated (#316): `orkeon run`
                 // hands it to the scripting host, never to the declarative loader below, whose checks
@@ -276,6 +279,7 @@ public static partial class RunnerExecution
                     // must list exactly the tools a real kickoff exposes — without this,
                     // human_input is silently absent from --list-tools.
                     services.AddOrkeonHumanInput();
+                    Conversations.ChatAttachExtensions.AddOrkeonChatAttach(services);
                     services.AddSingleton(console);
                     RunnerHost.RegisterMcpLoginInteraction(services, console);
                     configureServices?.Invoke(ctx, services);
@@ -633,6 +637,21 @@ public static partial class RunnerExecution
 
         if (verbose > 0 || RunnerEnvironment.DebugDiagnostics)
             await error.WriteLineAsync(ex.ToString()).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// The folders a script opens are declared beside it (<c>&lt;name&gt;.files.yaml</c>), in a file no run reads: a
+    /// validation is where its author learns that it is wrong.
+    /// </summary>
+    private static async Task CheckNeighbourFilesAsync(IHost host, string virtualConfigPath, CancellationToken ct)
+    {
+        if (CrewFilesBlock.NeighbourOf(virtualConfigPath) is not { } neighbour)
+            return;
+
+        var yaml = await host.Services.GetRequiredService<IFileSystemService>()
+            .TryReadAllTextAsync(neighbour, ct).ConfigureAwait(false);
+        if (yaml is not null && CrewFilesBlock.ReadNeighbour(yaml, neighbour).Fault is { } fault)
+            throw new InvalidOperationException(fault);
     }
 
     [LoggerMessage(EventId = 13, Level = LogLevel.Information, Message = "Validating crew from {ConfigPath} (dry-run — no LLM probe, no kickoff)...")]

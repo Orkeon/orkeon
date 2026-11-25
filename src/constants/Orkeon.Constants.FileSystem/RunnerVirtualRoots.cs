@@ -113,6 +113,16 @@ public static class RunnerVirtualRoots
     public const string CredentialFiles = "/credential-files";
 
     /// <summary>
+    /// What a chat conversation was given, read-only for its runs. Mounted by <c>orkeon-host</c> when it keeps its
+    /// conversations' files, and reserved there alone: any other runner takes a <c>--mount</c> on it, which is how a crew
+    /// written for the host runs outside it.
+    /// </summary>
+    public const string Inbox = "/inbox";
+
+    /// <summary>What a chat conversation's runs hand back, read-write. Mounted and reserved as <see cref="Inbox"/>.</summary>
+    public const string Outbox = "/outbox";
+
+    /// <summary>
     /// The roots a runner mounts on its own behalf — every run, or (<see cref="Credentials"/>)
     /// whenever the settings need them — for a caller that has to refuse a user mount claiming
     /// one. A set, not five comparisons: an omission is what the pairwise drift test could not see.

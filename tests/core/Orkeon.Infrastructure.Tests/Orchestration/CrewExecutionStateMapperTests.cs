@@ -52,6 +52,17 @@ public class CrewExecutionStateMapperTests
     }
 
     [Fact]
+    public void ShouldKeepTheImagesByReference_WhenMappingToAndFromSessionState()
+    {
+        var image = new CrewInputImage { Path = "/inbox/photo.png", MediaType = "image/png" };
+        var state = new CrewExecutionState(CrewId.Create(), ExecutionId.New(), new CrewInput("ctx", new Dictionary<string, object>()) { Images = [image] });
+
+        var restored = CrewExecutionStateMapper.FromSessionState(CrewExecutionStateMapper.ToSessionState(state));
+
+        Assert.Equal(image, Assert.Single(restored!.Input.Images));
+    }
+
+    [Fact]
     public void ShouldRoundTripMeasuredTokenUsage_WhenOutputCarriesTelemetry()
     {
         // Arrange

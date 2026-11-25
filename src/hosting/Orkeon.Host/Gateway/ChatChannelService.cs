@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Orkeon.Tools.Chat.Auth;
 using IHostApplicationLifetime = Microsoft.Extensions.Hosting.IHostApplicationLifetime;
 
 namespace Orkeon.Host.Gateway;
@@ -19,6 +20,8 @@ internal sealed partial class ChatChannelService : BackgroundService
     private readonly TeamsChannelOptions _teams;
     private readonly ICrewRunner _runner;
     private readonly CrewHostRegistry _registry;
+    private readonly Files.ConversationFiles? _files;
+    private readonly Files.CrewFileFolders? _folders;
     private readonly ILoggerFactory _loggers;
     private readonly ILogger<ChatChannelService> _logger;
     private readonly IHostApplicationLifetime _lifetime;
@@ -31,6 +34,9 @@ internal sealed partial class ChatChannelService : BackgroundService
     /// <summary>What builds the Teams channel; the tests give it a transport.</summary>
     internal Func<TeamsChannel> CreateTeams { get; set; }
 
+    /// <summary>Reads the certificate of the Teams application, null when none is configured.</summary>
+    internal Func<CancellationToken, Task<string>>? TeamsCertificate { get; }
+
     /// <summary>Builds the service over the channel configuration and the runner.</summary>
     public ChatChannelService(
         IOptions<DiscordChannelOptions> discord,
@@ -39,7 +45,10 @@ internal sealed partial class ChatChannelService : BackgroundService
         CrewHostRegistry registry,
         ILoggerFactory loggers,
         ILogger<ChatChannelService> logger,
-        IHostApplicationLifetime lifetime)
+        IHostApplicationLifetime lifetime,
+        Files.ConversationFiles? files = null,
+        Files.CrewFileFolders? folders = null,
+        ChatCredentialFileSource? credentials = null)
     {
         ArgumentNullException.ThrowIfNull(discord);
         _discord = discord.Value;
@@ -49,9 +58,18 @@ internal sealed partial class ChatChannelService : BackgroundService
         _registry = registry ?? throw new ArgumentNullException(nameof(registry));
         _loggers = loggers ?? throw new ArgumentNullException(nameof(loggers));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _files = files;
+        _folders = folders;
         _lifetime = lifetime ?? throw new ArgumentNullException(nameof(lifetime));
-        CreateDiscord = () => new DiscordChannel(Options.Create(_discord), _loggers.CreateLogger<DiscordChannel>());
-        CreateTeams = () => new TeamsChannel(Options.Create(_teams), _loggers.CreateLogger<TeamsChannel>());
+        CreateDiscord = () => new DiscordChannel(Options.Create(_discord), _loggers.CreateLogger<DiscordChannel>(), fileCommands: _files is not null && _folders is not null);
+        if (_teams.ReadCertificatePath() is { } path && _teams.CertificatePathEnvironmentVariable is { } variable)
+        {
+            TeamsCertificate = ct => credentials?.Reader is { } reader
+                ? reader.ReadAsync(path, variable, ct)
+                : throw ChatCredentialFile.Unmounted(variable);
+        }
+
+        CreateTeams = () => new TeamsChannel(Options.Create(_teams), _loggers.CreateLogger<TeamsChannel>(), files: _files is not null && _folders is not null, certificate: TeamsCertificate);
     }
 
     /// <inheritdoc />
@@ -165,13 +183,19 @@ internal sealed partial class ChatChannelService : BackgroundService
         var authorizer = configured.Authorizer;
         await using var channelLifetime = ((IAsyncDisposable)channel).ConfigureAwait(false);
         var gateway = new ChatGateway(
-            _runner, new ThreadIsRunRouter(configured.Routes), authorizer, _registry, _loggers.CreateLogger<ChatGateway>());
+            _runner, new ThreadIsRunRouter(configured.Routes), authorizer, _registry, _loggers.CreateLogger<ChatGateway>(), _files);
+
+        var commands = _files is null || _folders is null
+            ? null
+            : new ChatFileCommands(channel.Name, configured.Routes, _registry.Crews, _files, _folders);
 
         // The stop button and the /stop command arrive as ONE invocation shape, and the
         // allow list gates both: the first version checked it on the typed command only,
         // and anyone who could see the thread could kill the run with a click.
         channel.CommandInvoked += invocation =>
-            Task.FromResult(HandleCommand(gateway, authorizer, invocation));
+            HandleCommandAsync(gateway, authorizer, invocation, stoppingToken, commands);
+        if (channel is ISuggestingChannel suggesting)
+            suggesting.SuggestionsAsked += invocation => SuggestAsync(authorizer, invocation, commands, stoppingToken);
 
         try
         {
@@ -210,23 +234,58 @@ internal sealed partial class ChatChannelService : BackgroundService
 
     /// <summary>
     /// One registered command, end to end: authorize, then act, then word the answer. The
-    /// text goes back ephemerally to the invoker alone.
+    /// reply goes back ephemerally to the invoker alone.
     /// </summary>
-    internal static string HandleCommand(ChatGateway gateway, IChatAuthorizer authorizer, CommandInvocation invocation)
+    internal static async Task<CommandReply> HandleCommandAsync(
+        ChatGateway gateway, IChatAuthorizer authorizer, CommandInvocation invocation, CancellationToken ct, ChatFileCommands? files = null)
     {
         ArgumentNullException.ThrowIfNull(gateway);
         ArgumentNullException.ThrowIfNull(authorizer);
         ArgumentNullException.ThrowIfNull(invocation);
 
         if (!authorizer.IsAuthorized(invocation.SenderId))
-            return "You are not authorized to use this bot.";
+            return new CommandReply("You are not authorized to use this bot.");
 
-        return invocation.CommandName switch
+        // Their names are registered only when files are on; a client that still has them is told.
+        if (invocation.CommandName is ChatCommands.Files or ChatCommands.Get or ChatCommands.Put)
+        {
+            return files is null
+                ? new CommandReply("The file commands are off on this host.")
+                : await files.AnswerAsync(invocation, ct).ConfigureAwait(false);
+        }
+
+        return new CommandReply(invocation.CommandName switch
         {
             ChatCommands.Stop => gateway.Stop(invocation.ConversationId),
             ChatCommands.Status => gateway.Status(invocation.ConversationId),
             _ => "Unknown command.",
-        };
+        });
+    }
+
+    /// <summary>
+    /// What may be typed in a command: nothing for who is not allowed, before anything is looked up, and nothing when it
+    /// cannot be found in the time a platform waits.
+    /// </summary>
+    internal static async Task<IReadOnlyList<string>> SuggestAsync(
+        IChatAuthorizer authorizer, CommandInvocation invocation, ChatFileCommands? files, CancellationToken ct)
+    {
+        ArgumentNullException.ThrowIfNull(authorizer);
+        ArgumentNullException.ThrowIfNull(invocation);
+        if (files is null || !authorizer.IsAuthorized(invocation.SenderId))
+            return [];
+
+        using var bounded = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        bounded.CancelAfter(files.SuggestionLimit);
+        try
+        {
+            return await files.SuggestAsync(invocation, bounded.Token).ConfigureAwait(false);
+        }
+#pragma warning disable CA1031 // A suggestion that cannot be made is none: the command itself says what is wrong.
+        catch (Exception)
+#pragma warning restore CA1031
+        {
+            return [];
+        }
     }
 
     [LoggerMessage(Level = LogLevel.Error, Message = "The {Channel} channel is enabled but its allow list is empty; it would answer nobody, so it will not start. Add {Channel}:AllowedUserIds.")]

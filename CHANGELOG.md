@@ -7,6 +7,97 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — the documentation of conversation files
+
+- `docs/architecture/security.md` says what the files of a conversation open, what protects them and what does not, and
+  `examples/service-host/conversation-files/` is a crew and a configuration that use them.
+
+### Fixed — a Discord message whose channel is not known yet
+
+- Its thread was taken for one without a route and reached `DefaultCrew`. Discord is now asked for the channel, once the
+  sender is known to be allowed, and a message whose channel stays unknown is refused with a sentence.
+
+### Fixed — two hosts of one process share no sandbox directory
+
+- Built in the same millisecond, they had one directory under `/sandbox`, and disposing one deleted the other's runs.
+
+### Added — orkeon-host gives a conversation its folders
+
+- `Orkeon:Host:Files` (off by default) mounts two folders for the runs of a conversation: `/inbox`, read-only, and
+  `/outbox`, kept from one message to the next and apart from every other conversation's. Discord fills
+  `/inbox`. Limits per file, per conversation (bytes and files) and in all; what `/put` leaves in a folder of a crew counts
+  too. A conversation is deleted after `Retention`.
+- With it on, the start is refused (78) when a mount reaches the conversations' root, links followed, or claims `/inbox`,
+  `/outbox` or a path under them. `RunnerVirtualRoots.Inbox` and `Outbox` name the two roots. The comparison is made again
+  at each run and each access: a granted folder replaced by a link opens nothing.
+- In the run of a conversation, what feeds a store the process shares (`index_codebase`, `incremental_reindex`, `rag_ingest`,
+  the searches that ingest, `edit_batch`) refuses the two folders. `FileSystemMount.IsPrivate`, `MountInfo.IsPrivate` and
+  `PrivateMountGuard` carry it; a host without such a mount refuses nothing more than before.
+- With it on, the files of a Discord message are kept in `/inbox` after the acknowledgement, under the run's deadline, and
+  a block after the person's text gives the crew their path, type and size, the earlier files and `/outbox`. A file over a
+  limit, over `MaxFilesPerMessage`, of an extension not taken or that cannot be read is named with its reason, and the run
+  goes on with the others. The files come from `cdn.discordapp.com` alone, over HTTPS, without redirection or bot token.
+- A line or paragraph separator, and an invisible tag character, are replaced in the name of a received file or an e-mail
+  attachment.
+- The name a received file or an e-mail attachment is saved under is bounded to 120 bytes of UTF-8, not 120 characters.
+
+### Added — orkeon-host's file commands on Discord
+
+- With `Orkeon:Host:Files` on, Discord gets `/files [folder]`, `/get <path>` and `/put <file> <folder>`, completed as they
+  are typed, answered ephemerally, for the allow list alone. `/outbox` is always open to download, `/inbox` is listed, the
+  rest is what the crew's `files:` declares. A path that is forbidden is answered as one that is not there.
+  A file that arrives holds no other command back, and the folder it goes to is judged again once it has come.
+  `/get` sends to one person once at a time, and to four in all.
+- With it on, an answer ends with the files the run left in `/outbox`, and one too long for the channel is kept whole as
+  `/outbox/reply-<run id>.md`. No file is sent unasked.
+
+### Added — an agent sends files to its conversation (`chat_attach`)
+
+- `chat_attach` sends files of `/outbox`, or of a folder the crew opens to download, to the Discord conversation the run
+  answers, by the checks of `/get` and under the agent's `filesystem:` scope. Without a conversation the call fails.
+  The sixth motivated exception to the scope freeze (ADR-023): 135 built-in tools.
+- `Orkeon:Host:Files:MaxAttachedFilesPerRun` (10), `MaxAttachedMessagesPerRun` (5) and `MaxAttachedBytesPerRun` (50 MiB)
+  bound a run; `/stop`, the deadline and the end of the run stop the sending. The end of the run does not name again what was sent.
+
+### Added — orkeon-host's files on Teams, in the personal chat
+
+- With `Orkeon:Host:Files` on, the Teams channel keeps the files and pictures of a personal chat under the bounds of
+  Discord's, takes `/files`, `/get` and `/put` typed as messages, and sends files (`/get`, `chat_attach`) by a consent card:
+  an offer is for one person in one chat, sent once, for an hour, and is lost at a restart. A file changed since is not sent;
+  an upload that failed may be accepted again. A channel or a group chat is answered
+  that files pass in the personal chat only.
+- `Orkeon:Host:Teams:SharePointNames` names the tenant's SharePoint, the only place files are read from or sent to; empty,
+  no file passes. Of it, only the paths a file is at: SharePoint's other pages and interfaces are refused before any token is asked.
+  A picture comes from the Bot Connector the message came from, as an attachment. `Orkeon:Host:Teams:CertificatePathEnvironmentVariable` names the certificate its token is obtained with,
+  read from a folder no agent sees. Without one, Microsoft's temporary addresses serve until 2027-03-01, then no file of SharePoint passes.
+
+### Added — the images of a message are shown to the crew
+
+- `CrewInput.Images` carries images by virtual path; each task's first user turn shows them, when the model that answers is
+  known to read images. The bytes are read at each call and kept nowhere. `CrewOutput.UnseenImages` says what was not
+  shown, to whom and why.
+- An image over what its vendor documents is left out before the call, and a call the vendor refuses (400, 413, 415, 422) is made once
+  more without its images, which that model is shown no more in the run: neither fails the run. When that call fails too, the
+  first error is kept. A run resumed with another file under the same path works again. Data quoted in a vendor's error
+  reaches neither the error nor the log (Anthropic's is now redacted as the others' are) (`docs/guides/multimodal.md` gives the bounds and their sources).
+- With `Orkeon:Host:Files` on, `orkeon-host` does it for the png, jpeg, webp and gif files of a Discord message
+  or of a Teams personal chat, and the answer ends with the images that were not shown. It reads `Orkeon:MultiModal`, which gains `MaxImages` (10).
+
+### Added — a crew declares the folders it opens
+
+- `files:` in a crew's YAML names folders people may download from or leave files in, within what the operator mounted.
+  Off when absent. A script has it in `<name>.files.yaml` beside it, read without running it.
+- `orkeon-host` reads the declaration as it stands, without loading the crew, and holds it to the crew's mounts and rights.
+  An invalid one closes that crew's folders and is logged; the other crews are served. `--validate` refuses a malformed one.
+- `CrewConfiguration.Files` and `CrewFileFolder`; `CrewFileYamlConfig` in the YAML models.
+
+### Changed — orkeon-host says what it does not take from a chat message
+
+- A Discord or Teams message with attachments runs on its text, and the acknowledgement names the files left out. A
+  message with no text is answered with a sentence and starts no run; it used to run on an empty prompt on Discord, and
+  a file sent alone was ignored on Teams. A lone mention stays ignored on Teams.
+- The messages Discord writes itself (a pin, a join, a rename) start no run, and what the bot posts mentions nobody.
+
 ### Fixed — a script's tools belong to the crew that defines them
 
 - A `.ork.ts` crew with tools of its own (`toolBuilder()`) ran once per process: its tools entered the process-wide

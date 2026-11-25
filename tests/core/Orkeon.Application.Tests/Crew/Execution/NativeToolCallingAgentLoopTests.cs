@@ -101,6 +101,23 @@ public class NativeToolCallingAgentLoopTests
         }
     }
 
+    // The images are the call's: a model a tool calls is not shown them.
+    [Fact]
+    public async System.Threading.Tasks.Task ToolsRunOutsideTheTurnThatShowsTheImages()
+    {
+        bool? inTurn = null;
+        var tool = new SpyTool("look") { OnCall = () => inTurn = RunImageTurn.Current is not null };
+        var agent = BuildAgent(5, tool);
+        var (loop, provider, _) = BuildLoop(agent);
+        provider.EnqueueOpenAiToolCall("call-1", "look", "{}");
+        provider.EnqueueText("done");
+        using var run = RunImages.Begin([new Orkeon.Application.Interfaces.Services.CrewInputImage { Path = "/inbox/photo.png" }]);
+
+        await loop.ExecuteAsync(BuildInvocation(agent, BuildTask()), TestContext.Current.CancellationToken);
+
+        Assert.False(inTurn);
+    }
+
     [Fact]
     public async System.Threading.Tasks.Task FailsWithAnEmptyFinalAnswer_WhenTheTextAnswerIsEmpty()
     {

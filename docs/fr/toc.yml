@@ -206,6 +206,8 @@
       href: adr/ADR-021-chat-tool-family.md
     - name: ADR-022 — Un outil navigateur, plusieurs moteurs
       href: adr/ADR-022-browser-tool-engines.md
+    - name: ADR-023 — Un outil qui envoie des fichiers à la conversation
+      href: adr/ADR-023-chat-attach-tool.md
     - name: ADR — Graphe sémantique RaggableTree
       href: architecture/raggable-tree-adr.md
 - name: Gabarits

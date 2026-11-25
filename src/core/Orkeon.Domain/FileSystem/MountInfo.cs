@@ -17,4 +17,7 @@ public sealed record MountInfo(
     /// paths alone (ADR-008).
     /// </summary>
     public Orkeon.Domain.Common.MountId? Id { get; init; }
+
+    /// <summary>Whether the folder belongs to one execution alone (<see cref="FileSystemMount.IsPrivate"/>).</summary>
+    public bool IsPrivate { get; init; }
 }

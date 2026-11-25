@@ -19,6 +19,12 @@ internal record InboundMessage
     /// </summary>
     public string? RoomId { get; init; }
 
+    /// <summary>
+    /// Asks for a <see cref="RoomId"/> that is not known yet; null when it is known, or when there is none to ask for. Asked
+    /// once the sender is known to be allowed, and a room it does not find is refused: the crew is that of the room.
+    /// </summary>
+    public Func<CancellationToken, Task<string?>>? ResolveRoomAsync { get; init; }
+
     /// <summary>Who sent it, as the channel identifies them.</summary>
     public required string SenderId { get; init; }
 
@@ -27,6 +33,15 @@ internal record InboundMessage
 
     /// <summary>When the channel received it, in UTC.</summary>
     public required DateTimeOffset ReceivedAt { get; init; }
+
+    /// <summary>The files that came with it.</summary>
+    public IReadOnlyList<InboundAttachment> Attachments { get; init; } = [];
+
+    /// <summary>What reads <see cref="Attachments"/>; null on a channel that takes no file.</summary>
+    public IAttachmentSource? AttachmentSource { get; init; }
+
+    /// <summary>Why this place of the channel takes and sends no file, in a sentence; null where the channel decides.</summary>
+    public string? NoFilesHere { get; init; }
 }
 
 /// <summary>
@@ -50,6 +65,25 @@ internal interface IChatResponder
 
     /// <summary>Delivers the final answer, always sent even when the run failed or was stopped.</summary>
     Task CompleteAsync(InboundMessage message, string text, CancellationToken ct);
+
+    /// <summary>
+    /// Sends files to the conversation of <paramref name="message"/>: one result per file, in their order. A file that
+    /// cannot be sent is a result, never an exception, and is not opened.
+    /// </summary>
+    Task<IReadOnlyList<FileSendResult>> SendFilesAsync(InboundMessage message, IReadOnlyList<OutboundFile> files, CancellationToken ct);
+
+    /// <summary>How many characters one answer holds; a longer one is cut.</summary>
+    int MaxTextLength { get; }
+
+    /// <summary>Whether people take files here with the commands of <see cref="ChatCommands"/>: an answer names them then.</summary>
+    bool TakesFileCommands { get; }
+}
+
+/// <summary>A channel that completes what a person types in a command.</summary>
+internal interface ISuggestingChannel
+{
+    /// <summary>Raised for each request; the answer is what may be typed, to the person who types.</summary>
+    event Func<CommandInvocation, Task<IReadOnlyList<string>>>? SuggestionsAsked;
 }
 
 /// <summary>
@@ -69,10 +103,10 @@ internal interface IChatChannel
     IChatResponder Responder { get; }
 
     /// <summary>
-    /// Raised for a command — a Discord slash command or its stop button, a Teams message that is one. The returned text
+    /// Raised for a command — a Discord slash command or its stop button, a Teams message that is one. The reply
     /// answers whoever invoked it. One event, so one authorization check, whatever the platform.
     /// </summary>
-    event Func<CommandInvocation, Task<string>>? CommandInvoked;
+    event Func<CommandInvocation, Task<CommandReply>>? CommandInvoked;
 }
 
 /// <summary>The commands every channel offers.</summary>
@@ -83,6 +117,15 @@ internal static class ChatCommands
 
     /// <summary>What the conversation is running, and since when.</summary>
     public const string Status = "status";
+
+    /// <summary>The files of the conversation, and the folders its crew opens.</summary>
+    public const string Files = "files";
+
+    /// <summary>Takes a file.</summary>
+    public const string Get = "get";
+
+    /// <summary>Leaves a file in a folder the crew opens.</summary>
+    public const string Put = "put";
 }
 
 /// <summary>
@@ -108,7 +151,45 @@ internal interface IChatAuthorizer
 /// A registered command someone invoked — a slash command, or the stop button, which is the
 /// stop command with a different finger. The returned reply is shown only to the invoker.
 /// </summary>
-internal sealed record CommandInvocation(string CommandName, string ConversationId, string SenderId);
+internal sealed record CommandInvocation(string CommandName, string ConversationId, string SenderId)
+{
+    /// <summary>
+    /// The room the conversation was opened in, as <see cref="InboundMessage.RoomId"/>; null when the channel did not
+    /// resolve it, which is not a room of its own: a command that needs the conversation's crew refuses then.
+    /// </summary>
+    public string? RoomId { get; init; }
+
+    /// <summary>
+    /// Finds <see cref="RoomId"/> when it is not known yet: a call to the platform, made only once the sender is known to be
+    /// allowed. Null when the conversation has none.
+    /// </summary>
+    public Func<CancellationToken, Task<string?>>? ResolveRoomAsync { get; init; }
+
+    /// <summary>The option being typed, when suggestions are asked for rather than the command.</summary>
+    public string? Focused { get; init; }
+
+    /// <summary>The command's options, by name.</summary>
+    public IReadOnlyDictionary<string, string> Arguments { get; init; } =
+        System.Collections.ObjectModel.ReadOnlyDictionary<string, string>.Empty;
+
+    /// <summary>The files given to the command.</summary>
+    public IReadOnlyList<InboundAttachment> Attachments { get; init; } = [];
+
+    /// <summary>What reads <see cref="Attachments"/>; null on a channel that takes no file.</summary>
+    public IAttachmentSource? AttachmentSource { get; init; }
+}
+
+/// <summary>What answers a command.</summary>
+/// <param name="Text">The words.</param>
+/// <param name="Files">The files that go with them.</param>
+internal sealed record CommandReply(string Text, IReadOnlyList<OutboundFile> Files)
+{
+    /// <summary>A reply of words alone.</summary>
+    public CommandReply(string text)
+        : this(text, [])
+    {
+    }
+}
 
 /// <summary>
 /// The allow-list authorizer, and the only one the host ships.
