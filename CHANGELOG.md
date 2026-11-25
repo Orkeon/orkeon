@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — the documentation of conversation files
+
+- `docs/architecture/security.md` says what the files of a conversation open, what protects them and what does not, and
+  `examples/service-host/conversation-files/` is a crew and a configuration that use them.
+
 ### Fixed — a Discord message whose channel is not known yet
 
 - Its thread was taken for one without a route and reached `DefaultCrew`. Discord is now asked for the channel, once the

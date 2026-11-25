@@ -104,6 +104,11 @@ at the top level of the file, next to `Llm`, with the key itself in `ORKEON_A2A_
 then sends `Authorization: ApiKey <key>`. Remove the `A2A` block under `Orkeon:Host` to keep the
 daemon off the network altogether.
 
+## Files in a conversation
+
+[`conversation-files/`](conversation-files/) is a second configuration, with its crew: people send files to
+the bot, and the crew hands files back.
+
 ## What this does not do
 
 It does not schedule anything. The host has no scheduler: a crew that should run every morning
