@@ -78,8 +78,9 @@ public sealed class NativeLoopCompactionTests
         provider.Enqueue(new LlmResponse { Content = "The agent read five pages.", TokensUsed = 50 });
         provider.EnqueueOpenAiToolCall("call-6", ToolName, "{}");
         provider.EnqueueText("done");
+        byte[] png = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A];
         var files = new Orkeon.Tests.Shared.FileSystem.FakeFileSystemService().AddMount("/inbox")
-            .AddFile("/inbox/photo.png", (byte[])[0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]);
+            .AddFile("/inbox/photo.png", png);
         var shown = new Orkeon.Infrastructure.LLMs.RunImageLlmProvider(
             provider, files, new Orkeon.Application.Validation.MultiModalOptions(),
             new Orkeon.Infrastructure.LLMs.Capabilities.ModelCapabilityRegistry());

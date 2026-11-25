@@ -259,7 +259,7 @@ internal sealed partial class DiscordChannel : IChatChannel, ISuggestingChannel,
         if (command.CommandName is ChatCommands.Files or ChatCommands.Get or ChatCommands.Put)
         {
             var invocation = InvocationOf(
-                command, command.CommandName, command.Data.Options.Select(o => (o.Name, (object?)o.Value)), RoomOfAsync, _downloads);
+                command, command.CommandName, command.Data.Options.Select<SocketSlashCommandDataOption, (string, object?)>(o => (o.Name, o.Value)), RoomOfAsync, _downloads);
             if (invocation is not null)
                 await AnswerDeferredAsync(command, _sends, () => AskAsync(invocation), ct, LogFileNotSent).ConfigureAwait(false);
             return;
@@ -299,7 +299,7 @@ internal sealed partial class DiscordChannel : IChatChannel, ISuggestingChannel,
     private async Task OnAutocompleteAsync(SocketAutocompleteInteraction interaction)
     {
         var invocation = InvocationOf(
-            interaction, interaction.Data.CommandName, interaction.Data.Options.Select(o => (o.Name, (object?)o.Value)), RoomOfAsync);
+            interaction, interaction.Data.CommandName, interaction.Data.Options.Select<AutocompleteOption, (string, object?)>(o => (o.Name, o.Value)), RoomOfAsync);
         var asking = invocation is null ? null : SuggestionsAsked?.Invoke(invocation with { Focused = interaction.Data.Current.Name });
         var choices = asking is null ? [] : await asking.ConfigureAwait(false);
         await interaction.RespondAsync(choices.Select(c => new AutocompleteResult(c, c))).ConfigureAwait(false);

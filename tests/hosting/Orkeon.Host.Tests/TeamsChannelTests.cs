@@ -395,7 +395,7 @@ public sealed class TeamsChannelTests : IAsyncLifetime
         Assert.Equal("u-1", message.Attachments[0].Id);
         Assert.Equal("image/png", message.Attachments[1].ContentType);
         Assert.Null(message.AttachmentSource);
-        Assert.DoesNotContain("secret", message.ToString() + string.Concat(message.Attachments), StringComparison.Ordinal);
+        Assert.DoesNotContain("secret", message + string.Concat(message.Attachments), StringComparison.Ordinal);
     }
 
     [Theory]

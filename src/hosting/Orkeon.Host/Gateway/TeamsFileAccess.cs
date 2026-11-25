@@ -30,6 +30,7 @@ internal sealed partial class TeamsFileAccess : IDisposable
     private readonly FrozenSet<string> _personal;
     private readonly FrozenDictionary<string, HostToken> _tokens;
 
+    /// <summary>The access to one tenant's files.</summary>
     /// <param name="options">The channel's configuration.</param>
     /// <param name="http">The transport that reaches the sign-in service.</param>
     /// <param name="certificate">Reads the application's certificate; null when there is none.</param>

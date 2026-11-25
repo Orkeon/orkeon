@@ -145,7 +145,8 @@ public sealed class RunImageKickoffTests
 
         Assert.True(output.Succeeded, output.Error);
         Assert.Empty(output.UnseenImages);
-        foreach (var description in (string[])["Look at the picture", "Write about the picture"])
+        string[] descriptions = ["Look at the picture", "Write about the picture"];
+        foreach (var description in descriptions)
         {
             var call = Assert.Single(run.Vendor.Calls, c => TextOf(c.Messages).Contains("Task: " + description, StringComparison.Ordinal)
                 || c.Messages.First(m => m.Role == "user").Content.Contains(description, StringComparison.Ordinal));
@@ -167,7 +168,8 @@ public sealed class RunImageKickoffTests
         var output = await run.RunAsync(Png);
 
         Assert.Empty(output.UnseenImages);
-        foreach (var description in (string[])["Look at the picture", "Write about the picture"])
+        string[] descriptions = ["Look at the picture", "Write about the picture"];
+        foreach (var description in descriptions)
         {
             Assert.Contains(run.Vendor.Calls, c => ImagesOf(c.Messages) is [{ } image] && image.Data!.SequenceEqual(s_png)
                 && TextOf(c.Messages).Contains(description, StringComparison.Ordinal));

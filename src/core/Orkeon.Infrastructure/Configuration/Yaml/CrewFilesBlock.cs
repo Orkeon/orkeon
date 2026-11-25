@@ -42,11 +42,12 @@ internal static class CrewFilesBlock
         for (var i = 0; i < yaml.Count; i++)
         {
             // An empty item (a lone "-") is read as null.
-            CrewFileYamlConfig? item = yaml[i];
-            if (!CrewFileFolder.TryNormalizePath(item?.Path, out var path, out var refusal))
-                throw new InvalidOperationException($"files[{i}]: '{item?.Path}' is refused: {refusal}.");
+            CrewFileYamlConfig? read = yaml[i];
+            var item = read ?? new CrewFileYamlConfig();
+            if (!CrewFileFolder.TryNormalizePath(item.Path, out var path, out var refusal))
+                throw new InvalidOperationException($"files[{i}]: '{item.Path}' is refused: {refusal}.");
 
-            folders.Add(new CrewFileFolder { Path = path, Download = item?.Download ?? false, Upload = item?.Upload ?? false });
+            folders.Add(new CrewFileFolder { Path = path, Download = item.Download ?? false, Upload = item.Upload ?? false });
         }
 
         return folders;

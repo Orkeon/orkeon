@@ -1,3 +1,4 @@
+using System.Text;
 using System.Buffers.Binary;
 using System.Globalization;
 using System.Net;
@@ -142,14 +143,14 @@ public sealed class RunImageLlmProviderTests
             return (await provider.ChatAsync(messages, config, Ct), RunImages.Unseen, string.Empty);
 
         LlmResponse? final = null;
-        var text = string.Empty;
+        var text = new StringBuilder();
         await foreach (var ev in ((IStreamingLlmProvider)provider).ChatStreamingAsync(messages, config, Ct))
         {
             final = ev.FinalResponse ?? final;
-            text += ev.Delta;
+            text.Append(ev.Delta);
         }
 
-        return (final!, RunImages.Unseen, text);
+        return (final!, RunImages.Unseen, text.ToString());
     }
 
     [Theory]
@@ -337,7 +338,8 @@ public sealed class RunImageLlmProviderTests
     [InlineData("a failure without a status")]
     public async Task ShouldLeaveAnyOtherErrorAsItIs(string error)
     {
-        foreach (var streaming in (bool[])[false, true])
+        bool[] calls = [false, true];
+        foreach (var streaming in calls)
         {
             var vendor = new StubVendor { Refuse = () => Error(error) };
 

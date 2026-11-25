@@ -61,7 +61,7 @@ public sealed class DiscordAttachmentSourceTests
     {
         using var handler = new StubHttpHandler
         {
-            Answer = _ => Task.FromResult(new HttpResponseMessage(status) { Headers = { Location = new Uri("https://evil.example/") } }),
+            Answer = _ => Task.FromResult(Redirection(status)),
         };
         using var http = new HttpClient(handler);
 
@@ -70,6 +70,12 @@ public sealed class DiscordAttachmentSourceTests
         Assert.Single(handler.Requests);
         Assert.DoesNotContain("signed-part", error.ToString(), StringComparison.Ordinal);
     }
+
+    private static HttpResponseMessage Redirection(HttpStatusCode status) =>
+        new(status) { Headers = { Location = new Uri("https://evil.example/") } };
+
+    private static HttpResponseMessage SilentAnswer() =>
+        new(HttpStatusCode.OK) { Content = new StreamContent(new SilentStream()) };
 
     [Fact]
     public async Task ShouldNameNoAddress_WhenTheTransportFails()
@@ -105,7 +111,7 @@ public sealed class DiscordAttachmentSourceTests
     {
         using var handler = new StubHttpHandler
         {
-            Answer = _ => Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = new StreamContent(new SilentStream()) }),
+            Answer = _ => Task.FromResult(SilentAnswer()),
         };
         using var http = new HttpClient(handler);
         var source = new DiscordAttachmentSource(http, new Dictionary<string, string> { ["7"] = Address }, TimeSpan.FromMilliseconds(20));

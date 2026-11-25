@@ -59,9 +59,10 @@ public sealed class ChatFileCommandsTests : IDisposable
                 files?.Invoke(section);
                 var settings = (Dictionary<string, object?>)((Dictionary<string, object?>)root["Orkeon"]!)["Host"]!;
                 settings["Files"] = section;
+                string[] supportMounts = [$"{Output}:/output:rw", .. mounts];
                 settings["Crews"] = new object[]
                 {
-                    new { Name = "support", Path = _harness.CrewPath, Mounts = (string[])[$"{Output}:/output:rw", .. mounts] },
+                    new { Name = "support", Path = _harness.CrewPath, Mounts = supportMounts },
                     new { Name = "other", Path = _harness.CrewPath },
                 };
             },

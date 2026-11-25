@@ -19,6 +19,7 @@ internal sealed class TeamsAttachmentSource : IAttachmentSource
     private readonly FrozenSet<string> _connector;
     private readonly IReadOnlyDictionary<string, TeamsFileAddress> _addresses;
 
+    /// <summary>The files of one message.</summary>
     /// <param name="http">The client, over <see cref="DiscordAttachmentSource.NewHandler"/>.</param>
     /// <param name="access">The rule of the tenant's files, and their token.</param>
     /// <param name="token">The bot's token, for a picture.</param>

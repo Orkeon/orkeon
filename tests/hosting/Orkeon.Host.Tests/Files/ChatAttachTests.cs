@@ -64,7 +64,8 @@ public sealed class ChatAttachTests : IDisposable
                 files?.Invoke(section);
                 var settings = (Dictionary<string, object?>)((Dictionary<string, object?>)root["Orkeon"]!)["Host"]!;
                 settings["Files"] = section;
-                settings["Crews"] = new object[] { new { Name = "support", Path = _harness.CrewPath, Mounts = (string[])[$"{Output}:/output:rw"], Profile = new { MaxConcurrentRuns = 4 } } };
+                string[] mounts = [$"{Output}:/output:rw"];
+                settings["Crews"] = new object[] { new { Name = "support", Path = _harness.CrewPath, Mounts = mounts, Profile = new { MaxConcurrentRuns = 4 } } };
             },
             services: s =>
             {
@@ -570,7 +571,8 @@ public sealed class ChatAttachTests : IDisposable
 
         await RunAsync(async ct =>
         {
-            foreach (var name in (string[])["a.bin", "b.bin"])
+            string[] names = ["a.bin", "b.bin"];
+            foreach (var name in names)
                 await File.WriteAllBytesAsync(Path.Combine(Output, "open", name), new byte[(DiscordFiles.RequestBytes / 2) + 1], ct);
             answer = await AttachAsync(ct, "/output/open/a.bin", "/output/open/b.bin");
             return "done";

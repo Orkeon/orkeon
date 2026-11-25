@@ -130,7 +130,7 @@ autant que la conversation : le message suivant les retrouve tels que le run pr�
 sur les deux dossiers d'une autre conversation, même sur une crew à la fois ; ce que deux conversations d'un hôte partagent
 par ailleurs est dit sous **Partagé**, plus bas. Un run demandé par A2A ou par l'API de l'hôte n'a
 pas de conversation : il reçoit deux dossiers vides à lui, supprimés à sa fin. À la fin d'un run, les fichiers de `/outbox`
-qu'il a ajoutés ou modifiés sont listés, fichiers cachés et liens exclus. Discord remplit `/inbox` ([ce qu'il prend](#ce-quécoute-le-canal-discord)) ;
+qu'il a ajoutés ou modifiés sont listés, fichiers cachés et liens exclus. Discord remplit `/inbox` ([ce qu'il prend](#ce-que-le-canal-discord-écoute)) ;
 [les commandes de Discord](#les-commandes-de-fichiers) listent et envoient ce que contient `/outbox`. Rien n'est envoyé d'office,
 sauf ce qu'un agent envoie par [`chat_attach`](#les-fichiers-quenvoie-un-agent).
 

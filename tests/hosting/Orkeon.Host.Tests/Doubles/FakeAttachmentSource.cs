@@ -12,13 +12,11 @@ internal sealed class FakeAttachmentSource : IAttachmentSource
 
     public FakeAttachmentSource With(string id, string content)
     {
-        Files[id] = _ =>
-        {
-            Stream stream = new MemoryStream(Encoding.UTF8.GetBytes(content));
-            return Task.FromResult(stream);
-        };
+        Files[id] = _ => Task.FromResult(StreamOf(content));
         return this;
     }
+
+    private static Stream StreamOf(string content) => new MemoryStream(Encoding.UTF8.GetBytes(content));
 
     public Task<Stream> OpenAsync(InboundAttachment attachment, CancellationToken ct)
     {

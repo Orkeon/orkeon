@@ -200,9 +200,10 @@ internal static class HostStartup
         var mounts = new List<string>(command.Mounts);
         mounts.AddRange(crewPlan.Mounts);
 
+        IHost? host = null;
         try
         {
-            var host = RunnerHost.Build(
+            host = RunnerHost.Build(
                 settingsPath,
                 new RunnerMountPlan
                 {
@@ -219,12 +220,11 @@ internal static class HostStartup
                 configureServices: (context, services) => services.AddHostServices(context.Configuration, crewPlan),
                 configureBuilder: configureBuilder);
             if (hostOptions.Files.Enabled && FilesRefusal(host, hostOptions) is { } filesRefusal)
-            {
-                host.Dispose();
                 return Refused(report, $"orkeon-host: {filesRefusal}");
-            }
 
-            return new HostLaunch(host, 0);
+            var launch = new HostLaunch(host, 0);
+            host = null; // Handed over: the caller disposes of it.
+            return launch;
         }
         catch (RunnerSettingsException ex)
         {
@@ -233,6 +233,10 @@ internal static class HostStartup
         catch (HostConfigurationException ex)
         {
             return Refused(report, $"orkeon-host: {ex.Message}");
+        }
+        finally
+        {
+            host?.Dispose();
         }
     }
 

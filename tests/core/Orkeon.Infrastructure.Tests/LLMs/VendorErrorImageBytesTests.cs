@@ -1,3 +1,4 @@
+using System.Text;
 using System.Net;
 using Microsoft.Extensions.Logging;
 using Orkeon.Application.Interfaces.Ports;
@@ -55,14 +56,15 @@ public sealed class VendorErrorImageBytesTests : IDisposable
                 return (await provider.GenerateAsync("hello", null, Ct)).Error!;
             if (call == "chat")
                 return (await provider.ChatAsync(messages, null, Ct)).Error!;
-            var text = string.Empty;
             if (call == "text")
             {
+                var pieces = new StringBuilder();
                 await foreach (var piece in ((IStreamingLlmProvider)provider).GenerateStreamingAsync("hello", null, Ct))
-                    text += piece;
-                return text;
+                    pieces.Append(piece);
+                return pieces.ToString();
             }
 
+            var text = string.Empty;
             await foreach (var ev in ((IStreamingLlmProvider)provider).ChatStreamingAsync(messages, null, Ct))
                 text = ev.FinalResponse?.Error ?? text;
             return text;
@@ -76,9 +78,11 @@ public sealed class VendorErrorImageBytesTests : IDisposable
     public static TheoryData<string, string> Calls()
     {
         var data = new TheoryData<string, string>();
-        foreach (var vendor in (string[])["openai", "anthropic", "ollama"])
+        string[] vendors = ["openai", "anthropic", "ollama"];
+        foreach (var vendor in vendors)
         {
-            foreach (var call in (string[])["generate", "chat", "text", "stream"])
+            string[] calls = ["generate", "chat", "text", "stream"];
+            foreach (var call in calls)
                 data.Add(vendor, call);
         }
 

@@ -26,6 +26,7 @@ internal sealed class AttachmentRefusedException : IOException
     {
     }
 
+    /// <summary>A refusal, for its reason.</summary>
     /// <param name="reason">The reason, as the end of a sentence.</param>
     public AttachmentRefusedException(string reason)
         : base(reason)

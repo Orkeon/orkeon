@@ -145,7 +145,8 @@ public sealed class EndOfRunTests : IDisposable
     [Fact]
     public async Task ShouldKeepTheReply_WhateverTheExtensionsTaken()
     {
-        var (gateway, _) = Build(s => s["AllowedExtensions"] = (string[])["pdf"]);
+        string[] allowed = ["pdf"];
+        var (gateway, _) = Build(s => s["AllowedExtensions"] = allowed);
         _runner.Result = new HostedRunResult(HostedRunOutcome.Completed, "run-1", new string('t', 5000));
 
         await SayAsync(gateway);

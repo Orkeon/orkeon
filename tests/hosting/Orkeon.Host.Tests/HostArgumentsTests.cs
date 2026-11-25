@@ -89,7 +89,8 @@ public sealed partial class HostArgumentsTests : IDisposable
             if (!mounted)
                 return;
 
-            Assert.NotNull(service?.TeamsCertificate);
+            Assert.NotNull(service);
+            Assert.NotNull(service.TeamsCertificate);
             Assert.Equal("the certificate", await service.TeamsCertificate(TestContext.Current.CancellationToken));
         }
         finally

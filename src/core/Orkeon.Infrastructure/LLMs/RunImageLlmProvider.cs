@@ -161,12 +161,12 @@ internal sealed class RunImageLlmProvider(
                 }
 
                 first = false;
-                if (refused)
+                if (refused && prepared is { } withImages)
                 {
                     using (turn?.Take())
                         await enumerator.DisposeAsync().ConfigureAwait(false);
-                    notShown = prepared!.Shown;
-                    prepared = prepared.WithoutImages();
+                    notShown = withImages.Shown;
+                    prepared = withImages.WithoutImages();
                     enumerator = streaming.ChatStreamingAsync(prepared.Messages, config, cancellationToken).GetAsyncEnumerator(cancellationToken);
                     continue;
                 }

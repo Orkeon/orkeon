@@ -36,6 +36,7 @@ internal sealed partial class TeamsFileExchange : IDisposable
     // One per person of the allow list who accepted a file.
     private readonly ConcurrentDictionary<string, SemaphoreSlim> _people = new(StringComparer.OrdinalIgnoreCase);
 
+    /// <summary>The exchange of the files an agent sends.</summary>
     /// <param name="consents">The files waiting for an answer.</param>
     /// <param name="access">The rule of the tenant's files, and their token.</param>
     /// <param name="http">The client of the uploads: no redirection, no trace.</param>

@@ -142,7 +142,8 @@ public sealed class ConversationFilesTests : IDisposable
             await fs.WriteAllTextAsync("/outbox/answer.txt", mine, ct);
             Assert.True(both.SignalAndWait(TimeSpan.FromSeconds(60), ct));
             var seen = new List<string>();
-            foreach (var folder in (string[])["/inbox", "/outbox"])
+            string[] folders = ["/inbox", "/outbox"];
+            foreach (var folder in folders)
             {
                 await foreach (var entry in fs.EnumerateFilesAsync(folder, new VirtualEnumerationOptions(), ct))
                     seen.Add(entry.VirtualPath);
@@ -304,7 +305,8 @@ public sealed class ConversationFilesTests : IDisposable
 
         if (OperatingSystem.IsWindows())
             return; // Skipped above: the analyzer does not know it.
-        foreach (var folder in (string[])[Root, Path.Combine(Root, Alice.Key), Inbox(Alice), Outbox(Alice)])
+        string[] folders = [Root, Path.Combine(Root, Alice.Key), Inbox(Alice), Outbox(Alice)];
+        foreach (var folder in folders)
             Assert.Equal(UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute, File.GetUnixFileMode(folder));
     }
 

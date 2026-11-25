@@ -24,6 +24,7 @@ internal sealed class FakeBotConnector : IDisposable
     private readonly RSA _rsa = RSA.Create(2048);
     private readonly List<RSA> _others = [];
 
+    /// <summary>The service, its clock started.</summary>
     /// <param name="now">The clock's start; 2030 unless a test says otherwise.</param>
     public FakeBotConnector(DateTimeOffset? now = null)
     {

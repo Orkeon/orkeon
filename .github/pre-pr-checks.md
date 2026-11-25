@@ -63,6 +63,9 @@ paths their `on.pull_request.paths` list.
 | `cs/equality-on-floats` | warning | `value != Math.Floor(value)`, `a == b` on `double`. The script refuses the `Math.Floor`/`Round`/`Truncate` form | `double.IsInteger(value)`, or a tolerance |
 | `cs/empty-block` | warning | an empty `{ }` under `if`, `else`, `for`, `foreach`, `while`, `do`, `try`, `catch`, `finally` or `lock`, on one line (`catch { }`) or several (a drained `await foreach` whose header spans lines). An empty method, constructor or type body, an initializer and an empty `using` body pass | a comment inside the block saying why it is empty |
 | `cs/useless-upcast` | warning | `(string?)null` inside a tuple or an argument | assert the two values apart: `Assert.Null(after)` |
+| `cs/useless-cast-to-self` | warning | a collection expression cast to an array, `foreach (var x in (string[])["a", "b"])`; a cast that changes a nullable annotation only, `Select(o => (o.Name, (object?)o.Value))`. The script refuses the first on an added line | a local of that type: `string[] names = ["a", "b"];`; the type arguments of the call: `Select<Option, (string, object?)>(...)` |
+| `cs/constant-condition` | warning | `item?.X` after a call that returned only when `item` is not null | `var item = read ?? new Item();` before the call |
+| `cs/dispose-not-called-on-throw` | warning | a disposable built, then a call that may throw, then `Dispose()` outside a `finally` | a `finally` that disposes of it, the local set to null once it is handed over |
 | `cs/unused-collection` | error | a list or `JsonArray` that is filled and never read | delete it, with the lines that fill it |
 | `cs/useless-assignment-to-local` | warning | `await using (var x = Start(...))` where `x` is never read; a local assigned and not used | `await using (Start(...))`; drop the local |
 | `cs/call-to-object-tostring` | warning | `.ToString()` on a type that does not override it, as a test that a secret is not printed does. No pattern predicts it | `Convert.ToString((object)value, CultureInfo.InvariantCulture)` in such a test |
@@ -87,6 +90,10 @@ Read the alerts of a pull request with
 
 ## The rest of the list
 
+- A link to an anchor of a Markdown page names a heading of it: docs.yml builds the site with
+  `docfx --warningsAsErrors`, which refuses any other (InvalidBookmark). `scripts/check-doc-anchors.py`,
+  run by the script, reads every tracked page. An apostrophe is dropped and an accent kept:
+  `### Ce qu'écoute l'hôte` is `#ce-quécoute-lhôte`.
 - One `--no-incremental` Release build before the push: an incremental build hides CS0419 and analyzer
   errors of projects it did not rebuild (`--full` builds that way).
 - A new public member is declared in the project's `PublicAPI.Unshipped.txt` (RS0016).

@@ -9,7 +9,9 @@ internal sealed class StubHttpHandler : HttpMessageHandler
 
     /// <summary>The answer; an empty 200 by default.</summary>
     public Func<CancellationToken, Task<HttpResponseMessage>> Answer { get; set; } =
-        _ => Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent("abc") });
+        _ => Task.FromResult(Abc());
+
+    private static HttpResponseMessage Abc() => new(HttpStatusCode.OK) { Content = new StringContent("abc") };
 
     protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
     {
