@@ -188,6 +188,7 @@ internal sealed class RunImageLlmProvider(
             return new Prepared(messages, [.. turn.Images.Select(i => (i.Path, "its model was asked nothing it could join"))], []);
 
         var limits = RunImageLimits.Of(inner.Name);
+        var most = Math.Min(options.MaxImages, limits.MaxImages ?? int.MaxValue);
         var encoded = 0L;
         var shown = new List<(string Path, ImageContentPart Part)>();
         var unseen = new List<(string Path, string Reason)>();
@@ -199,9 +200,9 @@ internal sealed class RunImageLlmProvider(
         {
             foreach (var image in turn.Images)
             {
-                if (shown.Count >= options.MaxImages)
+                if (shown.Count >= most)
                 {
-                    unseen.Add((image.Path, string.Create(CultureInfo.InvariantCulture, $"a call carries at most {options.MaxImages} images")));
+                    unseen.Add((image.Path, string.Create(CultureInfo.InvariantCulture, $"a call carries at most {most} images")));
                     continue;
                 }
 

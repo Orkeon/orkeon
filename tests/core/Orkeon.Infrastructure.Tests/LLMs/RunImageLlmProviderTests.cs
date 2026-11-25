@@ -139,7 +139,7 @@ public sealed class RunImageLlmProviderTests
     [InlineData("anthropic", 7_500_000)]
     [InlineData("azure-openai", 20_000_000)]
     [InlineData("grok", 20_971_520)]
-    [InlineData("mistral", 20_000_000)]
+    [InlineData("mistral", 10_000_000)]
     [InlineData("minimax", 10_000_000)]
     [InlineData("zai", 4_999_999)]
     [InlineData("openrouter", 3_750_000)]
@@ -177,6 +177,29 @@ public sealed class RunImageLlmProviderTests
         Assert.Contains("request", Assert.Single(unseen, u => u.Path == Small).Reason, StringComparison.Ordinal);
     }
 
+    [Theory]
+    [InlineData("mistral", 8)]
+    [InlineData("openrouter", 10)]
+    public async Task ShouldShowNoMoreImagesThanItsProviderTakes(string name, int most)
+    {
+        var vendor = new StubVendor { Name = name };
+        var paths = Enumerable.Range(0, 11).Select(i => $"/inbox/{i}.png").ToArray();
+        foreach (var path in paths)
+            _files.AddFile(path, Png(20, 20));
+
+        var (_, unseen, _) = await AskAsync(Over(vendor), false, paths);
+
+        Assert.Equal(most, ImagesOf(vendor.Calls[^1]).Count);
+        Assert.Equal(paths[most..], unseen.Select(u => u.Path));
+        Assert.All(unseen, u => Assert.Contains(string.Create(CultureInfo.InvariantCulture, $"at most {most} images"), u.Reason, StringComparison.Ordinal));
+    }
+
+    private static byte[] Webp(int width, int height) => Padded(
+    [
+        .. "RIFF"u8, 0, 0, 0, 0, .. "WEBPVP8X"u8, 10, 0, 0, 0, 0, 0, 0, 0,
+        (byte)(width - 1), (byte)((width - 1) >> 8), 0, (byte)(height - 1), (byte)((height - 1) >> 8), 0,
+    ]);
+
     public static TheoryData<string, byte[], bool> Dimensions => new()
     {
         { "anthropic", Png(8000, 8000), true },
@@ -184,6 +207,15 @@ public sealed class RunImageLlmProviderTests
         { "zai", Png(10, 6001), false },
         { "qwen", Png(10, 100), false },
         { "qwen", Png(11, 100), true },
+        { "qwen", Png(4320, 7680), true },
+        { "qwen", Png(7681, 100), false },
+        { "qwen", Png(5000, 4321), false },
+        { "qwen", Webp(3840, 2160), true },
+        { "qwen", Webp(3841, 2160), false },
+        { "qwen", Padded([.. "GIF89a"u8, 20, 0, 20, 0]), false },
+        { "mistral", Png(10_000, 10_000), true },
+        { "mistral", Png(10_001, 10), false },
+        { "mistral", Padded([.. "GIF89a"u8, 10, 0, 10, 0]), false },
         { "minimax", Png(201, 1), false },
         { "minimax", Png(200, 1), true },
         { "minimax", Png(0xFFFFFFFF, 1), false },

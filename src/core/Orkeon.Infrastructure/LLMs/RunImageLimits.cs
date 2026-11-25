@@ -12,6 +12,9 @@ internal sealed record RunImageLimits
     /// <summary>What a request keeps for its text when the vendor bounds the whole of it, in bytes.</summary>
     private const long RestOfTheRequest = 1_000_000;
 
+    /// <summary>More than the prefix of a data URI takes, where the vendor counts it.</summary>
+    private const long DataUriPrefix = 64;
+
     /// <summary>The bound of a provider that documents none: 5 MB of base64.</summary>
     private static readonly RunImageLimits s_prudent = new() { MaxBytes = Decoded(5_000_000) };
 
@@ -23,9 +26,18 @@ internal sealed record RunImageLimits
         ["grok"] = new() { MaxBytes = 20 * 1024 * 1024, Formats = ["image/png", "image/jpeg"] },
         ["kimi"] = new() { MaxRequest = 100_000_000 },
         ["minimax"] = new() { MaxBytes = 10_000_000, MaxRequest = 64_000_000, MaxRatio = 200 },
-        ["mistral"] = new() { MaxBytes = 20_000_000 },
+        ["mistral"] = new() { MaxBytes = 10_000_000, MaxImages = 8, MaxSide = 10_000, Formats = ["image/png", "image/jpeg", "image/webp"] },
         ["OpenAI"] = new() { MaxRequest = 512_000_000 },
-        ["qwen"] = new() { MaxBytes = Decoded(50 * 1024 * 1024), MaxRequest = 16 * 1024 * 1024, MinSide = 11, MaxRatio = 200 },
+        ["qwen"] = new()
+        {
+            MaxBytes = Decoded((50 * 1024 * 1024) - DataUriPrefix),
+            MaxRequest = 16 * 1024 * 1024,
+            MinSide = 11,
+            MaxRatio = 200,
+            MaxBox = (7680, 4320),
+            Formats = ["image/png", "image/jpeg", "image/webp"],
+            FormatsOfLarge = ((3840, 2160), ["image/png", "image/jpeg"]),
+        },
         ["zai"] = new() { MaxBytes = 4_999_999, MaxSide = 6000, Formats = ["image/png", "image/jpeg"] },
     };
 
@@ -44,6 +56,15 @@ internal sealed record RunImageLimits
     /// <summary>The most times the long side may hold the short one.</summary>
     public long? MaxRatio { get; private init; }
 
+    /// <summary>The most images of a request.</summary>
+    public int? MaxImages { get; private init; }
+
+    /// <summary>The most pixels of the long side and of the short one.</summary>
+    public (long Long, long Short)? MaxBox { get; private init; }
+
+    /// <summary>The media types taken of an image that does not fit the box; null when they are the same.</summary>
+    public ((long Long, long Short) Box, IReadOnlyList<string> Formats)? FormatsOfLarge { get; private init; }
+
     /// <summary>The media types taken; null when every one Orkeon sends is.</summary>
     public IReadOnlyList<string>? Formats { get; private init; }
 
@@ -61,10 +82,14 @@ internal sealed record RunImageLimits
         var (shortSide, longSide) = (Math.Min(width, height), Math.Max(width, height));
         var allowed = longSide <= (MaxSide ?? long.MaxValue)
             && shortSide >= (MinSide ?? 0)
+            && (MaxBox is not { } box || IsWithin(box))
+            && (FormatsOfLarge is not { } large || IsWithin(large.Box) || large.Formats.Contains(mediaType))
             && (MaxRatio is not { } ratio || longSide <= shortSide * ratio);
         return allowed
             ? null
-            : string.Create(CultureInfo.InvariantCulture, $"its model's provider takes no image of {width} x {height} pixels");
+            : string.Create(CultureInfo.InvariantCulture, $"its model's provider takes no {mediaType} image of {width} x {height} pixels");
+
+        bool IsWithin((long Long, long Short) bounds) => longSide <= bounds.Long && shortSide <= bounds.Short;
     }
 
     /// <summary>Whether <paramref name="bytes"/> more still fit a request that carries <paramref name="encoded"/> bytes of base64.</summary>

@@ -161,13 +161,13 @@ read or copied at that point. Each task of the run is shown them in its first us
   |---|---|---|
   | `anthropic` | 10 MB in base64, 8000 x 8000 pixels; request of 128 MB | [Vision](https://platform.claude.com/docs/en/build-with-claude/vision) |
   | `azure-openai` | 20 MB | [Use vision-enabled chat models](https://learn.microsoft.com/en-us/azure/ai-services/openai/how-to/gpt-with-vision) |
-  | `gemini` | request of 20 MB; png, jpeg, webp | [Image understanding](https://aistudio.google.com/docs/image-understanding) |
+  | `gemini` | request of 20 MB (the [other page](https://aistudio.google.com/docs/file-input-methods) says 100 MB: the lower one); png, jpeg, webp | [Image understanding](https://aistudio.google.com/docs/image-understanding) |
   | `grok` | 20 MiB; png, jpeg | [Image understanding](https://docs.x.ai/docs/guides/image-understanding) |
   | `kimi` | request of 100 MB | [Vision model](https://platform.kimi.ai/docs/guide/use-kimi-vision-model) |
   | `minimax` | 10 MB, sides up to 200:1; request of 64 MB | [Chat](https://platform.minimax.io/docs/api-reference/text-chat-openai) |
-  | `mistral` | 20 MB | [Known limitations](https://docs.mistral.ai/resources/known-limitations) |
+  | `mistral` | 10 MB, 8 images, 10000 x 10000 pixels ([known limitations](https://docs.mistral.ai/resources/known-limitations) says 20 MB: the lower one); png, jpeg, webp (a gif of one frame alone is taken: Orkeon sends none) | [Vision](https://docs.mistral.ai/inference/conversations/vision) |
   | `openai` | request of 512 MB | [Images and vision](https://developers.openai.com/api/docs/guides/images-vision) |
-  | `qwen` | 50 MiB in base64, sides over 10 pixels and up to 200:1; request of 16 MiB on the DashScope domain, Orkeon's default | [Vision](https://www.alibabacloud.com/help/en/model-studio/vision) |
+  | `qwen` | 50 MiB in base64, its data URI prefix included, sides over 10 pixels and up to 200:1, 7680 x 4320 pixels; request of 16 MiB on the DashScope domain, Orkeon's default; png, jpeg, and webp up to 3840 x 2160 | [Vision](https://www.alibabacloud.com/help/en/model-studio/vision) |
   | `zai` | under 5 MB, 6000 x 6000 pixels; png, jpeg | [Chat completion](https://docs.z.ai/api-reference/llm/chat-completion) |
   | every other | 5 MB in base64 | none found: Orkeon's own, prudent |
 
