@@ -61,12 +61,7 @@ public sealed class DiscordAttachmentSourceTests
     {
         using var handler = new StubHttpHandler
         {
-            Answer = _ =>
-            {
-                var response = new HttpResponseMessage(status);
-                response.Headers.Location = new Uri("https://evil.example/");
-                return Task.FromResult(response);
-            },
+            Answer = _ => Task.FromResult(new HttpResponseMessage(status) { Headers = { Location = new Uri("https://evil.example/") } }),
         };
         using var http = new HttpClient(handler);
 
@@ -117,7 +112,7 @@ public sealed class DiscordAttachmentSourceTests
 
         await using var stream = await source.OpenAsync(Attachment, Ct);
 
-        await Assert.ThrowsAsync<IOException>(async () => await stream.ReadAsync(new byte[8], Ct));
+        await Assert.ThrowsAsync<IOException>(() => stream.ReadExactlyAsync(new byte[8], Ct).AsTask());
     }
 
     [Fact]
