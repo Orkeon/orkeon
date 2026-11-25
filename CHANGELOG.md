@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — a Discord message whose channel is not known yet
+
+- Its thread was taken for one without a route and reached `DefaultCrew`. Discord is now asked for the channel, once the
+  sender is known to be allowed, and a message whose channel stays unknown is refused with a sentence.
+
 ### Fixed — two hosts of one process share no sandbox directory
 
 - Built in the same millisecond, they had one directory under `/sandbox`, and disposing one deleted the other's runs.

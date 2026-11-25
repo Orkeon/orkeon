@@ -275,6 +275,29 @@ public class DiscordChannelTests
         Assert.DoesNotContain("secret", message.ToString() + message.Attachments[0], StringComparison.Ordinal);
     }
 
+    [Fact]
+    public async Task ShouldAskDiscordForTheRoom_OnlyOfAThreadWhoseChannelIsNotCached()
+    {
+        var asked = new List<ulong>();
+        Task<ulong?> RoomOf(ulong thread, CancellationToken ct)
+        {
+            asked.Add(thread);
+            return Task.FromResult<ulong?>(5UL);
+        }
+
+        var thread = StubDiscord.Of<Discord.IChannel>(("Id", 99UL));
+
+        var cached = DiscordChannel.ToInbound(DiscordMessage(), thread, 7UL, DateTimeOffset.UnixEpoch, null, RoomOf);
+        var unknown = DiscordChannel.ToInbound(DiscordMessage(), thread, null, DateTimeOffset.UnixEpoch, null, RoomOf);
+
+        Assert.Null(cached.ResolveRoomAsync);
+        Assert.Empty(asked);
+        Assert.Null(unknown.RoomId);
+        Assert.NotNull(unknown.ResolveRoomAsync);
+        Assert.Equal("5", await unknown.ResolveRoomAsync(TestContext.Current.CancellationToken));
+        Assert.Equal(99UL, Assert.Single(asked));
+    }
+
     [Theory]
     [InlineData(Discord.MessageType.Default, false, true)]
     [InlineData(Discord.MessageType.Reply, false, true)]

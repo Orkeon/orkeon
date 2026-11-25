@@ -74,6 +74,20 @@ internal sealed partial class ChatGateway
             return;
         }
 
+        // Without its room a message would go to the default crew, which is not the one its room has.
+        if (message is { RoomId: null, ResolveRoomAsync: { } resolve })
+        {
+            if (await resolve(ct).ConfigureAwait(false) is not { } room)
+            {
+                await responder
+                    .CompleteAsync(message, "The room of this conversation could not be found, so its crew is unknown. Try again.", ct)
+                    .ConfigureAwait(false);
+                return;
+            }
+
+            message = message with { RoomId = room };
+        }
+
         // One conversation, one run — claimed atomically. A FindRun check followed by an
         // await let two interleaving messages both pass and start two runs in one thread,
         // giving the user answers nobody could tell apart.

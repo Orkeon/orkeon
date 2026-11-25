@@ -19,6 +19,12 @@ internal record InboundMessage
     /// </summary>
     public string? RoomId { get; init; }
 
+    /// <summary>
+    /// Asks for a <see cref="RoomId"/> that is not known yet; null when it is known, or when there is none to ask for. Asked
+    /// once the sender is known to be allowed, and a room it does not find is refused: the crew is that of the room.
+    /// </summary>
+    public Func<CancellationToken, Task<string?>>? ResolveRoomAsync { get; init; }
+
     /// <summary>Who sent it, as the channel identifies them.</summary>
     public required string SenderId { get; init; }
 

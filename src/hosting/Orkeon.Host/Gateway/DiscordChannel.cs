@@ -182,7 +182,7 @@ internal sealed partial class DiscordChannel : IChatChannel, ISuggestingChannel,
         if (socketMessage.Channel is not SocketThreadChannel thread)
             return;
 
-        var message = ToInbound(socketMessage, thread, thread.ParentChannel?.Id, _time.GetUtcNow(), _downloads);
+        var message = ToInbound(socketMessage, thread, thread.ParentChannel?.Id, _time.GetUtcNow(), _downloads, RoomOfAsync);
         await onMessage(message, ct).ConfigureAwait(false);
     }
 
@@ -202,12 +202,21 @@ internal sealed partial class DiscordChannel : IChatChannel, ISuggestingChannel,
     /// <param name="roomId">The channel the thread was opened in — what a chat route names.</param>
     /// <param name="receivedAt">When the channel received it.</param>
     /// <param name="downloads">What reads its files; null, they cannot be read.</param>
-    internal static InboundMessage ToInbound(IMessage message, IChannel thread, ulong? roomId, DateTimeOffset receivedAt, HttpClient? downloads = null) =>
+    /// <param name="roomOf">Asks for the channel of a thread whose <paramref name="roomId"/> is not cached.</param>
+    internal static InboundMessage ToInbound(
+        IMessage message,
+        IChannel thread,
+        ulong? roomId,
+        DateTimeOffset receivedAt,
+        HttpClient? downloads = null,
+        Func<ulong, CancellationToken, Task<ulong?>>? roomOf = null) =>
         new()
         {
             Channel = "discord",
             ConversationId = thread.Id.ToString(System.Globalization.CultureInfo.InvariantCulture),
             RoomId = roomId?.ToString(System.Globalization.CultureInfo.InvariantCulture),
+            ResolveRoomAsync = roomId is not null || roomOf is null ? null : async ct =>
+                (await roomOf(thread.Id, ct).ConfigureAwait(false))?.ToString(System.Globalization.CultureInfo.InvariantCulture),
             SenderId = message.Author.Id.ToString(System.Globalization.CultureInfo.InvariantCulture),
             Text = message.Content ?? string.Empty,
             ReceivedAt = receivedAt,

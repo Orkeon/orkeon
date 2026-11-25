@@ -54,6 +54,72 @@ public class ChatGatewayTests
         Assert.Contains("not authorized", reply.Text, StringComparison.OrdinalIgnoreCase);
     }
 
+    private static (ChatGateway Gateway, ScriptedRunner Runner) BuildRouted()
+    {
+        var registry = new CrewHostRegistry(Options.Create(new OrkeonHostOptions
+        {
+            Crews =
+            [
+                new HostedCrewOptions { Name = "support", Path = "/crews/support.yaml" },
+                new HostedCrewOptions { Name = "legal", Path = "/crews/legal.yaml" },
+            ],
+        }));
+        var runner = new ScriptedRunner();
+        var routes = new ChatRoutes("support", new Dictionary<string, string> { ["5"] = "legal" });
+        return (
+            new ChatGateway(
+                runner, new ThreadIsRunRouter(routes), new AllowListChatAuthorizer(["trusted"]), registry, NullLogger<ChatGateway>.Instance),
+            runner);
+    }
+
+    [Fact]
+    public async Task ShouldRunTheCrewOfTheRoom_WhenTheRoomHadToBeAskedFor()
+    {
+        var (gateway, runner) = BuildRouted();
+        var responder = new RecordingResponder();
+
+        await gateway.HandleAsync(
+            Message("go") with { ResolveRoomAsync = _ => Task.FromResult<string?>("5") }, responder, TestContext.Current.CancellationToken);
+
+        Assert.Equal("legal:go", Assert.Single(runner.Ran));
+    }
+
+    [Fact]
+    public async Task ShouldRunNoCrew_WhenTheRoomCannotBeFound()
+    {
+        var (gateway, runner) = BuildRouted();
+        var responder = new RecordingResponder();
+
+        await gateway.HandleAsync(
+            Message("go") with { ResolveRoomAsync = _ => Task.FromResult<string?>(null) }, responder, TestContext.Current.CancellationToken);
+
+        Assert.Empty(runner.Ran);
+        var reply = Assert.Single(responder.Sent);
+        Assert.Equal("complete", reply.Kind);
+        Assert.Contains("room of this conversation could not be found", reply.Text, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task ShouldNotAskForTheRoom_OfASenderWhoIsNotAllowed_NorOfAKnownRoom()
+    {
+        var (gateway, runner) = BuildRouted();
+        var asked = 0;
+        Task<string?> Resolve(CancellationToken ct)
+        {
+            asked++;
+            return Task.FromResult<string?>("5");
+        }
+
+        await gateway.HandleAsync(
+            Message("go", sender: "stranger") with { ResolveRoomAsync = Resolve }, new RecordingResponder(), TestContext.Current.CancellationToken);
+        await gateway.HandleAsync(
+            Message("go") with { RoomId = "5", ResolveRoomAsync = Resolve }, new RecordingResponder(), TestContext.Current.CancellationToken);
+        await gateway.HandleAsync(Message("plain"), new RecordingResponder(), TestContext.Current.CancellationToken);
+
+        Assert.Equal(0, asked);
+        Assert.Equal(["legal:go", "support:plain"], runner.Ran);
+    }
+
     [Fact]
     public void An_empty_allow_list_denies_everyone()
     {
