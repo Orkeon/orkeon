@@ -105,7 +105,8 @@ Un agent atteint les outils de trois façons, et elles ne sont pas interchangeab
    moins. (Le moteur procédural vérifie les mêmes noms quand `ctx.llm.act` s'exécute : un nom
    inconnu fait rejeter l'appel par une `UnknownToolError`.)
 2. **Outils TypeScript en instances** — `.withAutonomousTools([...])`, construits avec
-   `toolBuilder()`. Ils voyagent avec le script : aucun enregistrement côté hôte. En forme
+   `toolBuilder()`. Ils voyagent avec le script : aucun enregistrement côté hôte ; ils appartiennent
+   au run qui l'a chargé, et un outil qui prend le nom d'un outil de l'hôte est refusé. En forme
    procédurale, un `body` les appelle directement (`diffStats.execute({ diff })`), et
    `ctx.llm.act` les propose au modèle à côté des outils intégrés — quand le modèle en appelle
    un, son `execute` s'exécute dans le script.

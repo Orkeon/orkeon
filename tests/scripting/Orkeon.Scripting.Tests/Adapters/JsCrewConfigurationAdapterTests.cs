@@ -575,7 +575,7 @@ public sealed class JsCrewConfigurationAdapterTests
     {
         // The four YAML-parity gaps EX-01 closed, plus first-class script tools:
         // instance names reach the config, and CollectScriptTools hands the loader
-        // the instances to register before strict resolution runs.
+        // the instances the crew factory resolves those names to.
         var engine = NewEngine();
         var crew = BuildCrew(engine, """
             const indicator = toolBuilder()

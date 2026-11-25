@@ -149,6 +149,7 @@ public partial class CrewFactory : ICrewFactory
         // one spelling every loader uses, not among the validator's errors.
         ValidateDecisionMode(config);
         ValidateConfiguration(config);
+        var scriptTools = await IndexScriptToolsAsync(config.ScriptTools, ct).ConfigureAwait(false);
         ValidateLlmProfiles(config);
 
         await PrepareRagCollectionsAsync(config, ct).ConfigureAwait(false);
@@ -159,14 +160,14 @@ public partial class CrewFactory : ICrewFactory
         // A required crew with the circuit off loads, and its run is refused before the first task with the
         // typed error (#429): a withheld system_one_decide must not fail the load first.
         var refuseWithheld = config.DecisionMode != Orkeon.Domain.Crew.CrewDecisionMode.Required;
-        var agentMap = await CreateAgentsAsync(config.Agents, config.Rag?.DefaultProfile, refuseWithheld, ct).ConfigureAwait(false);
+        var agentMap = await CreateAgentsAsync(config.Agents, scriptTools, config.Rag?.DefaultProfile, refuseWithheld, ct).ConfigureAwait(false);
         // A without: relay names its agent by key (#430): resolved here to the agent built for that key.
         // A script may give two agents one name: a relay then names the first of them.
         var agentIdByKey = config.Agents
             .Where(a => a.Key is not null && agentMap.ContainsKey(a.Id))
             .GroupBy(a => a.Key!, StringComparer.Ordinal)
             .ToDictionary(g => g.Key, g => agentMap[g.First().Id].Id, StringComparer.Ordinal);
-        var taskMap = await CreateTasksAsync(config.Tasks, agentMap, agentIdByKey, refuseWithheld, ct).ConfigureAwait(false);
+        var taskMap = await CreateTasksAsync(config.Tasks, scriptTools, agentMap, agentIdByKey, refuseWithheld, ct).ConfigureAwait(false);
 
         SetupTaskDependencies(config.Tasks, taskMap);
         AddTaskContextData(config.Tasks, taskMap);
@@ -486,6 +487,7 @@ public partial class CrewFactory : ICrewFactory
     }
 
     /// <param name="agentConfigs">The agents to create.</param>
+    /// <param name="scriptTools">The tools the crew's script defines, by name.</param>
     /// <param name="defaultKnowledgeProfile">
     /// The crew's <c>rag.defaults.profile</c>: copied onto every knowledge attachment that
     /// names no profile of its own (GAP-02). <c>null</c> leaves those to the host default.
@@ -493,14 +495,14 @@ public partial class CrewFactory : ICrewFactory
     /// <param name="refuseWithheld">Whether a withheld tool fails a strict load (#429: not for a required crew).</param>
     /// <param name="ct">Cancellation token.</param>
     private async Task<Dictionary<string, DomainAgent>> CreateAgentsAsync(
-        IReadOnlyList<AgentConfiguration> agentConfigs, string? defaultKnowledgeProfile, bool refuseWithheld, CancellationToken ct)
+        IReadOnlyList<AgentConfiguration> agentConfigs, Dictionary<string, IBaseTool> scriptTools, string? defaultKnowledgeProfile, bool refuseWithheld, CancellationToken ct)
     {
         var agentMap = new Dictionary<string, DomainAgent>();
 
         foreach (var agentConfig in agentConfigs)
         {
             ct.ThrowIfCancellationRequested();
-            var resolvedTools = await ResolveToolsAsync(agentConfig.Tools, refuseWithheld, ct).ConfigureAwait(false);
+            var resolvedTools = await ResolveToolsAsync(agentConfig.Tools, scriptTools, refuseWithheld, ct).ConfigureAwait(false);
 
             var agent = BuildAgent(agentConfig, resolvedTools, defaultKnowledgeProfile);
 
@@ -589,7 +591,7 @@ public partial class CrewFactory : ICrewFactory
     /// belt for that task only (GAP-07).
     /// </summary>
     private async Task<Dictionary<string, CrewTask>> CreateTasksAsync(
-        IReadOnlyList<TaskConfiguration> taskConfigs, Dictionary<string, DomainAgent> agentMap,
+        IReadOnlyList<TaskConfiguration> taskConfigs, Dictionary<string, IBaseTool> scriptTools, Dictionary<string, DomainAgent> agentMap,
         IReadOnlyDictionary<string, AgentId> agentIdByKey, bool refuseWithheld, CancellationToken ct)
     {
         var created = new Dictionary<string, CrewTask>();
@@ -599,7 +601,7 @@ public partial class CrewFactory : ICrewFactory
         foreach (var taskConfig in taskConfigs.Where(t => t.Decision is not null).Concat(taskConfigs.Where(t => t.Decision is null)))
         {
             ct.ThrowIfCancellationRequested();
-            var resolvedTools = await ResolveToolsAsync(taskConfig.Tools, refuseWithheld, ct).ConfigureAwait(false);
+            var resolvedTools = await ResolveToolsAsync(taskConfig.Tools, scriptTools, refuseWithheld, ct).ConfigureAwait(false);
 
             var task = BuildTask(taskConfig, resolvedTools, idByName, agentMap, agentIdByKey);
 
@@ -785,8 +787,35 @@ public partial class CrewFactory : ICrewFactory
         }
     }
 
+    /// <summary>
+    /// The tools the crew's script defines, by name. They are this crew's alone: the registry, which every
+    /// run of the host shares, neither holds them nor gives way to them.
+    /// </summary>
+    private async Task<Dictionary<string, IBaseTool>> IndexScriptToolsAsync(IReadOnlyList<IBaseTool> scriptTools, CancellationToken ct)
+    {
+        var byName = new Dictionary<string, IBaseTool>(StringComparer.OrdinalIgnoreCase);
+        foreach (var tool in scriptTools)
+        {
+            if (CoworkerDelegation.IsReservedName(tool.Name)
+                || await _toolRegistry.GetToolByNameAsync(tool.Name, ct).ConfigureAwait(false) is not null)
+            {
+                throw new InvalidOperationException(
+                    $"Script tool '{tool.Name}' collides with an already-registered tool of the same name. "
+                    + "Rename the script tool — shadowing a registered tool is refused.");
+            }
+
+            if (!byName.TryAdd(tool.Name, tool))
+            {
+                throw new InvalidOperationException(
+                    $"Script tool '{tool.Name}' collides with another tool the script defines under the same name. Rename one of them.");
+            }
+        }
+
+        return byName;
+    }
+
     private async Task<List<IBaseTool>> ResolveToolsAsync(
-        IReadOnlyList<string> toolNames, bool refuseWithheld, CancellationToken ct)
+        IReadOnlyList<string> toolNames, Dictionary<string, IBaseTool> scriptTools, bool refuseWithheld, CancellationToken ct)
     {
         var tools = new List<IBaseTool>();
         if (toolNames == null || toolNames.Count == 0)
@@ -808,7 +837,8 @@ public partial class CrewFactory : ICrewFactory
                 continue;
             }
 
-            var tool = await _toolRegistry.GetToolByNameAsync(toolName, ct).ConfigureAwait(false);
+            var tool = scriptTools.GetValueOrDefault(toolName)
+                ?? await _toolRegistry.GetToolByNameAsync(toolName, ct).ConfigureAwait(false);
             if (tool is not null)
             {
                 tools.Add(tool);
@@ -825,7 +855,7 @@ public partial class CrewFactory : ICrewFactory
         if (withheld is { Count: > 0 })
             throw new InvalidOperationException($"Crew configuration references {string.Join("; ", withheld)}.");
         if (_strictTools && missing is { Count: > 0 })
-            throw await BuildMissingToolsExceptionAsync(missing, ct).ConfigureAwait(false);
+            throw await BuildMissingToolsExceptionAsync(missing, scriptTools, ct).ConfigureAwait(false);
 
         return tools;
     }
@@ -840,11 +870,12 @@ public partial class CrewFactory : ICrewFactory
             ? circuit.OffReason
             : null;
 
-    private async Task<InvalidOperationException> BuildMissingToolsExceptionAsync(IReadOnlyList<string> missing, CancellationToken ct)
+    private async Task<InvalidOperationException> BuildMissingToolsExceptionAsync(
+        IReadOnlyList<string> missing, Dictionary<string, IBaseTool> scriptTools, CancellationToken ct)
     {
         var available = await _toolRegistry.GetAllToolsAsync(ct).ConfigureAwait(false);
-        var availableNames = available.Count > 0
-            ? string.Join(", ", available.Select(t => t.Name).OrderBy(n => n, StringComparer.OrdinalIgnoreCase))
+        var availableNames = available.Count + scriptTools.Count > 0
+            ? string.Join(", ", available.Select(t => t.Name).Concat(scriptTools.Keys).OrderBy(n => n, StringComparer.OrdinalIgnoreCase))
             : "(none registered)";
         return new InvalidOperationException(
             $"Crew configuration references unknown tool(s): {string.Join(", ", missing)}. " +

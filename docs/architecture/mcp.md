@@ -323,7 +323,7 @@ answering says why: its exit code and the last line it wrote on stderr join that
 (`Transport disconnected: the MCP server exited with code 1; its last line on stderr: …`).
 The tools are registered under
 their own names, without a server prefix, and a name the registry already holds — a
-built-in tool, a script tool, or a tool of a server connected earlier — is **refused**: the
+built-in tool, or a tool of a server connected earlier — is **refused**: the
 MCP tool is not registered, one error line names the server and the tool (`The tool
 'file_read' of MCP server 'x' collides with an already-registered tool and was not
 registered`), on the log and on stderr, and the tool that held the name keeps it, including
@@ -528,10 +528,10 @@ is also read by the `ORKEON_` configuration layer, as a key (`MCP_SERVE`) no set
 - **`notifications/tools/list_changed`.** `McpToolProvider` watches each connected server. After a 500 ms wait
   (the notifications that arrive meanwhile are absorbed) it lists the tools again, applies the server's `Tools`
   filter, unregisters the tools the server dropped, swaps the ones whose definition changed for a new adapter in one registry step (`IToolRegistry.ReplaceToolAsync`: the name never stops resolving), and registers the new ones. A name
-  another tool holds (a built-in, a script tool, another server's) is left to it and warned about as
+  another tool holds (a built-in, another server's) is left to it and warned about as
   `mcp.tool.rejected`; `McpServerStatus.RejectedToolNames` names it. A task already running keeps the tool
   instances it was given: only the crew built afterwards sees the new set. The notifications are read as they arrive, so a flood of other frames cannot push a `list_changed` out of the bounded channel; one that arrives during a re-listing triggers another. A failed re-listing keeps the tools
-  registered so far and is logged.
+  registered so far and is logged. The tools a `.ork.ts` crew defines are not in the registry: a script whose tool takes a name an MCP tool holds is refused when it loads.
 - **Prompts.** `McpClient.ListPromptsAsync` and `GetPromptAsync(name, arguments)` speak `prompts/*`. The built-in
   tool `mcp_prompt_get` (`server`, `name`, `arguments`) hands a prompt to an agent, or lists the server's prompts
   when `name` is empty; it is registered by `AddOrkeonMcp`. **The prompt text is untrusted content of the

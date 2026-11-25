@@ -342,7 +342,7 @@ ne s'y bloque jamais — et un serveur qui s'arrête avant de répondre dit pour
 sortie et la dernière ligne écrite sur sa sortie d'erreur rejoignent cette ligne d'erreur
 (`Transport disconnected: the MCP server exited with code 1; its last line on stderr: …`).
 Les outils sont enregistrés sous leur propre nom, sans préfixe de serveur, et un
-nom déjà tenu par le registre — un outil intégré, un outil de script ou l'outil d'un
+nom déjà tenu par le registre — un outil intégré ou l'outil d'un
 serveur connecté plus tôt — est **refusé** : l'outil MCP n'est pas enregistré, une ligne
 d'erreur nomme le serveur et l'outil (`The tool 'file_read' of MCP server 'x' collides with
 an already-registered tool and was not registered`), dans le journal et sur stderr, et
@@ -560,11 +560,11 @@ aucun réglage.
 - **`notifications/tools/list_changed`.** `McpToolProvider` surveille chaque serveur connecté. Après une attente
   de 500 ms (les notifications arrivées entre-temps sont absorbées) il liste de nouveau les outils, applique le
   filtre `Tools` du serveur, désenregistre les outils que le serveur a retirés, remplace ceux dont la définition a changé par un nouvel adaptateur en une seule étape du registre (`IToolRegistry.ReplaceToolAsync` : le nom ne cesse jamais de se résoudre), et
-  enregistre les nouveaux. Un nom qu'un autre outil détient (un intégré, un outil de script, l'outil d'un autre
+  enregistre les nouveaux. Un nom qu'un autre outil détient (un intégré, l'outil d'un autre
   serveur) lui reste et est signalé par l'avertissement `mcp.tool.rejected` ; `McpServerStatus.RejectedToolNames`
   le nomme. Une tâche déjà en cours garde les instances d'outils qu'elle a reçues : seule la crew construite
   ensuite voit le nouvel ensemble. Les notifications sont lues dès leur arrivée : un flot d'autres trames ne peut pas chasser un `list_changed` du canal borné, et un `list_changed` arrivé pendant une nouvelle liste en déclenche une autre. Une nouvelle liste qui échoue garde les outils enregistrés jusque-là et est
-  journalisée.
+  journalisée. Les outils que définit une crew `.ork.ts` ne sont pas dans le registre : un script dont un outil prend le nom que tient un outil MCP est refusé à son chargement.
 - **Prompts.** `McpClient.ListPromptsAsync` et `GetPromptAsync(name, arguments)` parlent `prompts/*`. L'outil
   intégré `mcp_prompt_get` (`server`, `name`, `arguments`) remet un prompt à un agent, ou liste les prompts du
   serveur quand `name` est vide ; `AddOrkeonMcp` l'enregistre. **Le texte d'un prompt est un contenu non fiable du

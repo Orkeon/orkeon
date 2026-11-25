@@ -159,9 +159,9 @@ public static class JsCrewConfigurationAdapter
             Backstory = builder.AgentBackstoryText ?? string.Empty,
             // .tools(["file_read", ...]) is the canonical YAML-parity surface —
             // names resolve through IToolRegistry at runtime. .withAutonomousTool(...)
-            // takes tool INSTANCES only, and they contribute their names too: the loader registers
-            // the instances with the runtime registry before the crew is created
-            // (CollectScriptTools), so the names resolve like any built-in (EX-01).
+            // takes tool INSTANCES only, and they contribute their names too: the loader hands
+            // the instances to the crew factory with the configuration
+            // (WithScriptTools), so the names resolve like any built-in (EX-01).
             Tools = CollectAgentToolNames(builder),
             AllowDelegation = builder.AllowDelegationFlag,
             MaxIterations = builder.MaxIterationsValue,
@@ -429,8 +429,7 @@ public static class JsCrewConfigurationAdapter
         }
 
         // 2. The JsTool instances of .withAutonomousTool* contribute their names — the
-        //    instances themselves are registered by the loader (CollectScriptTools) before
-        //    resolution runs.
+        //    instances themselves travel with the configuration (WithScriptTools).
         foreach (var toolName in builder.AutonomousTools.Select(tool => tool.Name))
         {
             if (!names.Contains(toolName, StringComparer.Ordinal))
@@ -457,10 +456,10 @@ public static class JsCrewConfigurationAdapter
     /// <summary>
     /// Every <c>toolBuilder()</c> instance the crew references — through
     /// <c>agentBuilder().withAutonomousTool(...)</c> or <c>taskBuilder().tools([...])</c> —
-    /// deduplicated by reference. The loader registers them with the runtime
-    /// <c>IToolRegistry</c> BEFORE <c>ICrewFactory.CreateFromConfigAsync</c> runs, so the
-    /// names emitted by <see cref="ToConfiguration"/> resolve under strict tool
-    /// resolution exactly like built-ins (EX-01; precedent: MCP tools register the same way).
+    /// deduplicated by reference. The loader hands them to
+    /// <c>ICrewFactory.CreateFromConfigAsync</c> with the configuration, so the names emitted by
+    /// <see cref="ToConfiguration"/> resolve under strict tool resolution exactly like built-ins
+    /// (EX-01), for this crew alone: the host's <c>IToolRegistry</c> never holds them.
     /// </summary>
     public static IReadOnlyList<JsTool> CollectScriptTools(JsCrew crew)
     {
@@ -485,6 +484,10 @@ public static class JsCrewConfigurationAdapter
 
         return tools;
     }
+
+    /// <summary>The configuration carrying <paramref name="scriptTools"/>, the tools its names resolve to first.</summary>
+    internal static CrewConfiguration WithScriptTools(CrewConfiguration configuration, IReadOnlyList<JsTool> scriptTools) =>
+        configuration with { ScriptTools = scriptTools };
 
     /// <summary>
     /// Lists, one actionable sentence each, the script-side declarations this adapter
