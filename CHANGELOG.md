@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — a script's tools belong to the crew that defines them
+
+- A `.ork.ts` crew with tools of its own (`toolBuilder()`) ran once per process: its tools entered the process-wide
+  `IToolRegistry`, so the second message of an `orkeon-host` conversation, a concurrent run, or another crew with a tool
+  of the same name failed with `Script tool '<name>' collides with an already-registered tool of the same name`. The
+  tools now travel with the loaded crew and never enter the registry: each run calls its own instance, and nothing stays
+  behind it. A name the registry holds is still refused, and so is a name one script gives two tools. A custom
+  `ICrewFactory` or a tool that looked a script's tool up in the registry no longer finds it there.
+
 ### Added — the REPL keeps the OAuth tokens of e-mail, drive and chat accounts (#482)
 
 - `orkeon-repl` mounts the internal `/credentials` root when a declared account signs in with OAuth, as the runners do:

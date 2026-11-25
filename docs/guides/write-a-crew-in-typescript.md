@@ -103,7 +103,8 @@ An agent reaches tools three ways, and they are not interchangeable:
    engine checks the same names when `ctx.llm.act` runs: an unknown one rejects the call with
    an `UnknownToolError`.)
 2. **TypeScript tools as instances** — `.withAutonomousTools([...])`, built with
-   `toolBuilder()`. They travel with the script, so they need no host registration. In the
+   `toolBuilder()`. They travel with the script, so they need no host registration; they belong
+   to the run that loaded it, and one that takes the name of a host tool is refused. In the
    procedural shape a body calls them directly (`diffStats.execute({ diff })`), and
    `ctx.llm.act` offers them to the model next to the built-ins — when the model calls one,
    its `execute` runs in the script.

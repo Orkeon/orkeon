@@ -57,7 +57,7 @@ public sealed class RunnerHostScopeValidationTests : IDisposable
         Assert.Throws<InvalidOperationException>(() => root.GetRequiredService<ICrewOrchestrationService>());
 
         // What RunnerExecution reads from the root: the .ork.ts load (built-in tools, LLM
-        // ports, script tools registered in the registry), --list-tools, the crew loader's VFS.
+        // ports, the registry script tools are checked against), --list-tools, the crew loader's VFS.
         Assert.NotEmpty(root.GetServices<IBaseTool>());
         Assert.NotNull(root.GetRequiredService<IToolRegistry>());
         Assert.NotNull(root.GetRequiredService<IFileSystemService>());
