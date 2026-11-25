@@ -26,7 +26,7 @@ A hosted run leaves files in `/outbox`; a person takes them with `/get`. An agen
 | Where it is registered | Beside `human_input`: the run of a YAML crew, its listing, `orkeon doctor`, `orkeon-host`, the REPL. Not in `RunnerHost`, so `orkeon mcp serve` does not expose it and the forge does not draw it. A crew that names it loads everywhere. |
 | Its access | Execute: what is sent cannot be taken back. `StaysWithCaller`: it never crosses a tool bridge. |
 | `/inbox` | Never sent: the person has those files, and one taken back from the channel must not come out again. |
-| Teams | Each file is refused until the channel sends files. |
+| Teams | A file is offered by a consent card, in the personal chat only. |
 | What counts | All but what the channel found too large, which was never posted. |
 
 ## Alternatives considered

@@ -69,7 +69,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `Orkeon:Host:Teams:SharePointNames` names the tenant's SharePoint, the only place files are read from or sent to; empty,
   no file passes. Of it, only the paths a file is at: SharePoint's other pages and interfaces are refused before any token is asked.
   A picture comes from the Bot Connector the message came from, as an attachment. `Orkeon:Host:Teams:CertificatePathEnvironmentVariable` names the certificate its token is obtained with,
-  read from a folder no agent sees. Without one, Microsoft's temporary addresses serve until 2027-03-01, then no file passes.
+  read from a folder no agent sees. Without one, Microsoft's temporary addresses serve until 2027-03-01, then no file of SharePoint passes.
 
 ### Added — the images of a message are shown to the crew
 

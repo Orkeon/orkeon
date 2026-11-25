@@ -26,7 +26,7 @@ Un run hébergé laisse des fichiers dans `/outbox` ; une personne les prend par
 | Où il est enregistré | À côté de `human_input` : le run d'un crew YAML, sa liste, `orkeon doctor`, `orkeon-host`, le REPL. Pas dans `RunnerHost` : `orkeon mcp serve` ne l'expose pas et la forge n'y puise pas. Une crew qui le nomme se charge partout. |
 | Son accès | Execute : ce qui est envoyé ne se reprend pas. `StaysWithCaller` : il ne franchit jamais un pont d'outils. |
 | `/inbox` | Jamais envoyé : la personne a ces fichiers, et l'un d'eux retiré du canal ne doit pas en ressortir. |
-| Teams | Chaque fichier est refusé tant que le canal n'envoie pas de fichiers. |
+| Teams | Un fichier est proposé par une carte de consentement, dans la conversation personnelle seulement. |
 | Ce qui compte | Tout, sauf ce que le canal a trouvé trop gros, qui n'a jamais été posté. |
 
 ## Alternatives envisagées
