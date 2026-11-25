@@ -30,7 +30,8 @@ public static class RunImages
     {
         ArgumentNullException.ThrowIfNull(images);
         var enclosing = s_ambient.Value;
-        s_ambient.Value = new Run(images);
+        // Copied: the list is the run's own, so what is known of a run is keyed on it.
+        s_ambient.Value = new Run([.. images]);
         return new Scope(enclosing);
     }
 

@@ -115,8 +115,8 @@ internal static partial class LlmFailureClassifier
          "insufficient balance", "insufficient_quota", "api key", "api_key"];
 
     /// <summary>
-    /// Whether the refusal of a call that carried images may be theirs: a 4xx that is not plainly about something else (the key,
-    /// the account, the route, the rate, the conversation's length).
+    /// Whether the refusal of a call that carried images may be theirs: the request is said to be wrong, too large or of a type
+    /// not taken, and the words are not plainly about something else (the key, the account, the conversation's length).
     /// </summary>
     public static bool MayBeItsImages(LlmResponse response)
     {
@@ -142,7 +142,7 @@ internal static partial class LlmFailureClassifier
     private static bool MayBeItsImages(HttpStatusCode? status, string error)
     {
         var refused = status is { } known
-            ? (int)known is >= 400 and < 500 and not (401 or 402 or 403 or 404 or 407 or 408 or 429)
+            ? (int)known is 400 or 413 or 415 or 422
             // A refusal in a stream carries the vendor's label alone.
             : ApiErrorStatus().Match(error) is { Success: true } label && label.Groups[1].Value == "invalid_request_error";
         return refused && !NotItsImagesMarkers.Any(marker => error.Contains(marker, StringComparison.OrdinalIgnoreCase));

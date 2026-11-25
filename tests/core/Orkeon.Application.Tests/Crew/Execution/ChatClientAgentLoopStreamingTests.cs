@@ -158,6 +158,54 @@ public class ChatClientAgentLoopStreamingTests
         Assert.Equal(1, client.StreamedCalls);
     }
 
+    [Theory]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    public async System.Threading.Tasks.Task An_error_is_no_answer_that_was_not_shown_the_images(bool failed, bool told)
+    {
+        using var client = new StreamingChatClient();
+        client.Enqueue(failed
+            ? new ChatResponseUpdate(ChatRole.Assistant, [new ErrorContent("unavailable"), new TextContent("Hel")])
+            : new ChatResponseUpdate(ChatRole.Assistant, "Hello."));
+        using var images = RunImages.Begin([new Orkeon.Application.Interfaces.Services.CrewInputImage { Path = "/inbox/photo.png" }]);
+
+        await RunAsync(BuildLoop(client, new RecordingSink()));
+
+        Assert.Equal(told, RunImages.Unseen.Count == 1);
+    }
+
+    [Theory]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    public async System.Threading.Tasks.Task A_buffered_error_is_no_answer_either(bool failed, bool told)
+    {
+        using var client = new AnsweringChatClient(failed
+            ? new ChatMessage(ChatRole.Assistant, [new ErrorContent("unavailable"), new TextContent("Hel")])
+            : new ChatMessage(ChatRole.Assistant, "Hello."));
+        using var images = RunImages.Begin([new Orkeon.Application.Interfaces.Services.CrewInputImage { Path = "/inbox/photo.png" }]);
+
+        await RunAsync(BuildLoop(client, sink: null));
+
+        Assert.Equal(told, RunImages.Unseen.Count == 1);
+    }
+
+    private sealed class AnsweringChatClient(ChatMessage answer) : IChatClient
+    {
+        public System.Threading.Tasks.Task<ChatResponse> GetResponseAsync(
+            IEnumerable<ChatMessage> messages, ChatOptions? options = null, CancellationToken cancellationToken = default) =>
+            System.Threading.Tasks.Task.FromResult(new ChatResponse(answer));
+
+        public IAsyncEnumerable<ChatResponseUpdate> GetStreamingResponseAsync(
+            IEnumerable<ChatMessage> messages, ChatOptions? options = null, CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
+        public object? GetService(Type serviceType, object? serviceKey = null) => null;
+
+        public void Dispose()
+        {
+        }
+    }
+
     [Fact]
     public async System.Threading.Tasks.Task Each_call_streams_through_the_turn_the_host_sink_opens_for_it()
     {

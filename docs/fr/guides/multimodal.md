@@ -150,7 +150,8 @@ lu ni copié à ce moment. Chaque tâche du run les voit dans son premier tour u
 - **Quand.** À chaque appel au modèle d'une tâche, les octets sont relus par le système de fichiers du run et
   rejoignent ce seul appel. Ils ne sont dans aucun message que la boucle garde : une compaction, un checkpoint,
   l'historique des runs, les traces et les journaux tiennent le chemin. Une cassette en met l'empreinte dans la
-  clé de l'appel : rejouer avec une autre image ne trouve rien. Une tâche reprise avec d'autres images est refaite.
+  clé de l'appel : rejouer avec une autre image ne trouve rien. Une tâche reprise avec d'autres images,
+  ou un autre fichier sous le même chemin, est refaite.
 - **À quel modèle.** Celui qui répond, après le routage et à chaque maillon d'un repli. Il doit être connu pour
   lire les images (`ModelCapabilities.Vision`) ; un modèle inconnu ne l'est pas.
 - **Dans quelles bornes.** `Orkeon:MultiModal` : `Enabled`, `MaxImages`, `MaxImageSizeBytes` et
@@ -173,11 +174,13 @@ lu ni copié à ce moment. Chaque tâche du run les voit dans son premier tour u
 
   Un mégaoctet vaut un million d'octets là où la page n'écrit pas MiB, et une requête en garde un pour son texte. Les
   côtés se lisent dans l'en-tête du fichier.
-- **Quand le vendeur refuse quand même.** Un 4xx à un appel qui porte des images est redemandé une fois sans elles, chacune
-  nommée comme non vue. 401, 402, 403, 404, 407, 408, 429, un 5xx, une conversation trop longue, un compte épuisé et une
-  mauvaise clé gardent leur traitement, de même qu'un flux qui a déjà dit quelque chose. Le run compte un appel, celui de
+- **Quand le vendeur refuse quand même.** Un 400, 413, 415 ou 422 à un appel qui porte des images est redemandé une fois
+  sans elles, chacune nommée comme non vue. Tout autre statut, une conversation trop longue, un compte épuisé et une mauvaise
+  clé gardent leur traitement, de même qu'un flux qui a déjà dit quelque chose. Quand le second appel échoue aussi, l'erreur
+  est la première, sauf si la seconde est de celles qu'un repli prend en charge. Le run compte un appel, celui de
   la réponse ; une cassette enregistre le refus et le second appel, chacun sous sa clé, et rejoue les deux.
-  L'appel suivant de la tâche porte de nouveau les images.
+  Une fois le second appel répondu, ces images ne sont plus montrées à ce modèle dans le run. Les données qu'un vendeur
+  cite dans son erreur ne sont ni dans l'erreur ni dans le journal.
 - **À quel agent.** Celui dont le `filesystem:` exclut le chemin ne voit pas l'image.
 
 Une image qui n'est pas montrée n'est jamais perdue en silence : sa place dans le tour le dit par son chemin, et

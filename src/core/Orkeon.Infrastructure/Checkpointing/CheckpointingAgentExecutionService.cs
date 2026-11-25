@@ -310,6 +310,33 @@ public sealed partial class CheckpointingAgentExecutionService : IAgentExecution
         }
     }
 
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "An image that cannot be read counts by its path: what its absence means is for the model call to say, never the resume's failure; the caller's cancellation still propagates.")]
+    private async System.Threading.Tasks.Task<string> ImagesTextAsync(IReadOnlyList<CrewInputImage> images, CancellationToken ct)
+    {
+        var parts = new List<string>(images.Count);
+        foreach (var image in images)
+        {
+            var digest = string.Empty;
+            if (FileSystem is not null)
+            {
+                try
+                {
+                    var bytes = await FileSystem.OpenReadStreamAsync(image.Path, ct).ConfigureAwait(false);
+                    await using (bytes.ConfigureAwait(false))
+                        digest = Convert.ToHexString(await SHA256.HashDataAsync(bytes, ct).ConfigureAwait(false));
+                }
+                catch (Exception ex) when (ex is not OperationCanceledException || !ct.IsCancellationRequested)
+                {
+                    digest = string.Empty;
+                }
+            }
+
+            parts.Add(string.Concat(image.Path, "\u0003", digest));
+        }
+
+        return string.Join('\u0002', parts);
+    }
+
     private async System.Threading.Tasks.Task<string> FingerprintAsync(DomainAgent? agent, ICrewTask task, SimpleExecutionContext? context, CancellationToken ct)
     {
         // The agent by what it is told to be, not by its id, which is new at every load; the dependencies
@@ -335,10 +362,10 @@ public sealed partial class CheckpointingAgentExecutionService : IAgentExecution
             agent?.Goal.Value ?? string.Empty,
             string.Join('\u0002', dependencies));
 
-        // The images of the input, by path: a resumed run given other ones works again. A run without any keeps its
+        // The images of the input, by path and by their bytes: a resumed run given other ones works again. A run without any keeps its
         // fingerprints, and so does a decision, which reads none.
         if (task is not CrewTask { Decision: not null } && Orkeon.Application.Crew.Execution.RunImages.Current is { Count: > 0 } images)
-            text = string.Concat(text, "\u0001", string.Join('\u0002', images.Select(i => i.Path)));
+            text = string.Concat(text, "\u0001", await ImagesTextAsync(images, ct).ConfigureAwait(false));
 
         // A decision task is also what it asks: a recorded decision is replayed only while its questions, its
         // fallback and its relay are those it was taken with; changed, it is decided again, and what runs after it

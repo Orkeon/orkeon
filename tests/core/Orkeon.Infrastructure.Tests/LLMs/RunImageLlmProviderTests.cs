@@ -50,6 +50,9 @@ public sealed class RunImageLlmProviderTests
 
         public bool RefusesEverything { get; set; }
 
+        /// <summary>What the call without images answers, when it fails too.</summary>
+        public Func<LlmResponse>? RefuseTheSecond { get; set; }
+
         public bool SpeaksBeforeItFails { get; set; }
 
         public bool SupportsStreaming => true;
@@ -62,6 +65,8 @@ public sealed class RunImageLlmProviderTests
         public Task<LlmResponse> ChatAsync(LlmMessage[] messages, LlmConfig? config = null, CancellationToken cancellationToken = default)
         {
             Calls.Add(messages);
+            if (RefuseTheSecond is not null && ImagesOf(messages).Count == 0)
+                return Task.FromResult(RefuseTheSecond());
             return Task.FromResult(Refuse is not null && (RefusesEverything || ImagesOf(messages).Count > 0)
                 ? Refuse() : new LlmResponse { Content = "seen", TokensUsed = 2 });
         }
@@ -119,14 +124,21 @@ public sealed class RunImageLlmProviderTests
         ILlmProvider provider, bool streaming, params string[] images)
     {
         using var run = RunImages.Begin([.. images.Select(i => new CrewInputImage { Path = i })]);
+        return await TurnAsync(provider, streaming);
+    }
+
+    private static async Task<(LlmResponse Response, IReadOnlyList<UnseenImage> Unseen, string Text)> TurnAsync(
+        ILlmProvider provider, bool streaming, string? model = null)
+    {
+        var config = model is null ? null : LlmConfig.Create(model);
         using var turn = RunImages.OpenTurn("Looker");
         LlmMessage[] messages = [new() { Role = "user", Content = "hello" }];
         if (!streaming)
-            return (await provider.ChatAsync(messages, null, Ct), RunImages.Unseen, string.Empty);
+            return (await provider.ChatAsync(messages, config, Ct), RunImages.Unseen, string.Empty);
 
         LlmResponse? final = null;
         var text = string.Empty;
-        await foreach (var ev in ((IStreamingLlmProvider)provider).ChatStreamingAsync(messages, null, Ct))
+        await foreach (var ev in ((IStreamingLlmProvider)provider).ChatStreamingAsync(messages, config, Ct))
         {
             final = ev.FinalResponse ?? final;
             text += ev.Delta;
@@ -260,6 +272,7 @@ public sealed class RunImageLlmProviderTests
     [InlineData("RequestEntityTooLarge", false)]
     [InlineData("RequestEntityTooLarge", true)]
     [InlineData("UnprocessableEntity", false)]
+    [InlineData("UnsupportedMediaType", false)]
     [InlineData("status", false)]
     [InlineData("status", true)]
     [InlineData("label", false)]
@@ -306,6 +319,11 @@ public sealed class RunImageLlmProviderTests
     [InlineData("X API error: RequestTimeout - no")]
     [InlineData("X API error: TooManyRequests - no")]
     [InlineData("X API error: InternalServerError - no")]
+    [InlineData("X API error: MethodNotAllowed - no")]
+    [InlineData("X API error: Conflict - no")]
+    [InlineData("X API error: Gone - no")]
+    [InlineData("X API error: FailedDependency - no")]
+    [InlineData("Anthropic API error: not_found_error - model")]
     [InlineData("X API error: BadRequest - {\"code\":\"context_length_exceeded\"}")]
     [InlineData("X API error: BadRequest - This model's maximum context length is 8192 tokens")]
     [InlineData("Anthropic API error: BadRequest - prompt is too long: 210000 tokens > 200000 maximum")]
@@ -324,6 +342,111 @@ public sealed class RunImageLlmProviderTests
             Assert.Single(vendor.Calls);
             Assert.Empty(unseen);
         }
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ShouldNotShowAgainInARunWhatTheVendorRefused(bool streaming)
+    {
+        var vendor = new StubVendor { Refuse = () => RefusalOf("BadRequest") };
+        var provider = Over(vendor);
+        using (RunImages.Begin([new CrewInputImage { Path = Photo }, new CrewInputImage { Path = Small }]))
+        {
+            await TurnAsync(provider, streaming);
+            var (response, unseen, _) = await TurnAsync(provider, streaming);
+
+            Assert.Equal("seen", response.Content);
+            Assert.Equal([2, 0, 0], vendor.Calls.Select(c => ImagesOf(c).Count));
+            Assert.Contains($"[Image not shown to you: \"{Photo}\"]", vendor.Calls[^1][0].Content, StringComparison.Ordinal);
+            Assert.Equal(2, unseen.Count);
+            Assert.All(unseen, u => Assert.Contains("refused", u.Reason, StringComparison.Ordinal));
+
+            // Another model of the vendor has refused nothing.
+            await TurnAsync(provider, streaming, "gpt-4o-mini");
+            Assert.Equal([2, 0, 0, 2, 0], vendor.Calls.Select(c => ImagesOf(c).Count));
+        }
+
+        // Nor has the vendor, of another run.
+        await AskAsync(provider, streaming, Photo);
+        Assert.Equal([2, 0, 0, 2, 0, 1, 0], vendor.Calls.Select(c => ImagesOf(c).Count));
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ShouldShowAgain_WhenTheCallWithoutTheImagesFailedToo(bool streaming)
+    {
+        var vendor = new StubVendor { Refuse = () => RefusalOf("BadRequest"), RefusesEverything = true };
+        var provider = Over(vendor);
+        using var run = RunImages.Begin([new CrewInputImage { Path = Photo }]);
+        await TurnAsync(provider, streaming);
+
+        vendor.Refuse = null;
+        var (_, unseen, _) = await TurnAsync(provider, streaming);
+
+        Assert.Single(ImagesOf(vendor.Calls[^1]));
+        Assert.Empty(unseen);
+    }
+
+    private static LlmResponse Thrown(HttpStatusCode? status) => throw new HttpRequestException("the second", null, status);
+
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    [InlineData(true, true)]
+    public async Task ShouldGiveTheFirstError_WhenTheCallWithoutTheImagesFailsToo(bool streaming, bool thrown)
+    {
+        var vendor = new StubVendor
+        {
+            Refuse = () => Error("X API error: BadRequest - the first"),
+            RefuseTheSecond = () => thrown ? Thrown(HttpStatusCode.UnprocessableEntity) : Error("X API error: UnprocessableEntity - the second"),
+        };
+
+        var (response, _, _) = await AskAsync(Over(vendor), streaming, Photo);
+
+        Assert.EndsWith("the first", response.Error!, StringComparison.Ordinal);
+        Assert.Equal(2, vendor.Calls.Count);
+    }
+
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    [InlineData(true, true)]
+    public async Task ShouldThrowTheFirstError_WhenTheCallWithoutTheImagesFailsToo(bool streaming, bool thrown)
+    {
+        var vendor = new StubVendor
+        {
+            Refuse = () => RefusalOf("throw"),
+            RefuseTheSecond = () => thrown ? Thrown(HttpStatusCode.UnprocessableEntity) : Error("X API error: UnprocessableEntity - the second"),
+        };
+
+        var error = await Assert.ThrowsAsync<HttpRequestException>(() => AskAsync(Over(vendor), streaming, Photo));
+
+        Assert.Equal("rejected", error.Message);
+        Assert.Equal(2, vendor.Calls.Count);
+    }
+
+    // What moves the call to the next profile of a chain is said as it is.
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    [InlineData(true, true)]
+    public async Task ShouldGiveTheSecondError_WhenAnotherProfileCouldAnswerIt(bool streaming, bool thrown)
+    {
+        var vendor = new StubVendor
+        {
+            Refuse = () => RefusalOf("BadRequest"),
+            RefuseTheSecond = () => thrown ? Thrown(HttpStatusCode.ServiceUnavailable) : Error("X API error: ServiceUnavailable - the second"),
+        };
+
+        if (thrown)
+            Assert.Equal("the second", (await Assert.ThrowsAsync<HttpRequestException>(() => AskAsync(Over(vendor), streaming, Photo))).Message);
+        else
+            Assert.EndsWith("the second", (await AskAsync(Over(vendor), streaming, Photo)).Response.Error!, StringComparison.Ordinal);
     }
 
     [Fact]

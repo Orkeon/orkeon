@@ -775,7 +775,7 @@ internal sealed class ChatClientAgentLoop
         if (!CrewStreamScope.IsOpen && _deltaSink is null)
         {
             var buffered = await _chatClient.GetResponseAsync(messages, options, cancellationToken).ConfigureAwait(false);
-            images?.Answered();
+            NoteAnswered(images, buffered);
             return buffered;
         }
 
@@ -815,9 +815,17 @@ internal sealed class ChatClientAgentLoop
                 turn.ReleaseToolCall(redacted);
         }
 
-        images?.Answered();
+        var streamed = updates.ToChatResponse();
+        NoteAnswered(images, streamed);
         turn.Complete();
-        return updates.ToChatResponse();
+        return streamed;
+    }
+
+    /// <summary>An answer that is an error was not given without the images: nobody is told they were left out of it.</summary>
+    private static void NoteAnswered(RunImageTurn? images, ChatResponse response)
+    {
+        if (images is not null && !response.Messages.Any(m => m.Contents.Any(c => c is ErrorContent)))
+            images.Answered();
     }
 
     /// <summary>

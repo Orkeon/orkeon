@@ -171,6 +171,19 @@ public static partial class LogSanitizer
     }
 
     /// <summary>
+    /// The words of a vendor's error, without the data it may quote back: an image sent in base64 is not to be read in a log,
+    /// an answer or a trace. Then as <see cref="SanitizeString"/>.
+    /// </summary>
+    /// <param name="input">The error as the vendor wrote it.</param>
+    /// <returns>The error, safe to log and to show.</returns>
+    internal static string SanitizeVendorError(string input) =>
+        string.IsNullOrEmpty(input) ? input : SanitizeString(QuotedData().Replace(input, "[data not shown]"));
+
+    // The data of a data URI, or a run of base64 too long to be words; as JSON escapes it too.
+    [GeneratedRegex(@"(?:(?<=;base64,)(?:[A-Za-z0-9+/_\-]|\\/|\\u002[BbFf]){16,}|(?:[A-Za-z0-9+/_\-]|\\/|\\u002[BbFf]){256,})(?:=|\\u003[Dd])*", RegexOptions.CultureInvariant)]
+    private static partial Regex QuotedData();
+
+    /// <summary>
     /// Sanitizes an exception message and stack trace, returning a safe string representation.
     /// Use this when you need a full sanitized dump of the exception for diagnostics.
     /// </summary>

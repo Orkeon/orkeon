@@ -150,7 +150,8 @@ read or copied at that point. Each task of the run is shown them in its first us
 - **When.** At each model call of a task, the bytes are read again through the run's file system and join that
   call alone. They are in no message the loop keeps: a compaction, a checkpoint, the run history, the traces
   and the logs hold the path. A cassette records a digest of them in the call's key, so replaying with another
-  picture is a miss. A resumed task given other images is worked again.
+  picture is a miss. A resumed task given other images, or
+  another file under the same path, is worked again.
 - **To which model.** The one that answers, after routing and at each link of a fallback. It must be known to
   read images (`ModelCapabilities.Vision`); an unknown model is not.
 - **Within which bounds.** `Orkeon:MultiModal`: `Enabled`, `MaxImages`, `MaxImageSizeBytes` and
@@ -173,11 +174,13 @@ read or copied at that point. Each task of the run is shown them in its first us
 
   A megabyte is a million bytes where the page does not say MiB, and a request keeps one of them for its text. The sides
   are read from the file's header.
-- **When the vendor refuses all the same.** A 4xx to a call that carries images is asked once more without them, each
-  named as unseen. 401, 402, 403, 404, 407, 408, 429, a 5xx, a conversation too long, an exhausted account and a bad key
-  keep their own handling, and so does a stream that has already said something. The run counts one call, that of the
-  answer; a cassette records the refusal and the second call, each under its own key, and replays both. The
-  next call of the task carries the images again.
+- **When the vendor refuses all the same.** A 400, 413, 415 or 422 to a call that carries images is asked once more without
+  them, each named as unseen. Any other status, a conversation too long, an exhausted account and a bad key
+  keep their own handling, and so does a stream that has already said something. When the second call fails too, the error is
+  the first one, unless the second is one a fallback takes over. The run counts one call, that of the
+  answer; a cassette records the refusal and the second call, each under its own key, and replays both. Once the
+  second call is answered, that model is shown these images no more in the run. Data a vendor quotes in its error is left
+  out of the error and of the log.
 - **To which agent.** One whose `filesystem:` leaves the path out is not shown the image.
 
 An image that is not shown is never dropped in silence: its place in the turn says so by its path, and

@@ -71,8 +71,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `CrewInput.Images` carries images by virtual path; each task's first user turn shows them, when the model that answers is
   known to read images. The bytes are read at each call and kept nowhere. `CrewOutput.UnseenImages` says what was not
   shown, to whom and why.
-- An image over what its vendor documents is left out before the call, and a call the vendor refuses with a 4xx is made once
-  more without its images: neither fails the run (`docs/guides/multimodal.md` gives the bounds and their sources).
+- An image over what its vendor documents is left out before the call, and a call the vendor refuses (400, 413, 415, 422) is made once
+  more without its images, which that model is shown no more in the run: neither fails the run. When that call fails too, the
+  first error is kept. A run resumed with another file under the same path works again. Data quoted in a vendor's error
+  reaches neither the error nor the log (Anthropic's is now redacted as the others' are) (`docs/guides/multimodal.md` gives the bounds and their sources).
 - With `Orkeon:Host:Files` on, `orkeon-host` does it for the png, jpeg, webp and gif files of a Discord message
   or of a Teams personal chat, and the answer ends with the images that were not shown. It reads `Orkeon:MultiModal`, which gains `MaxImages` (10).
 

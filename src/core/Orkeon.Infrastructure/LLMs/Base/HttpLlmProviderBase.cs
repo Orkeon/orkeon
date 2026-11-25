@@ -475,7 +475,7 @@ public abstract partial class HttpLlmProviderBase : ILlmProvider, IStreamingLlmP
 
         async Task<LlmResponse> CreateErrorResponseCoreAsync()
         {
-            var errorContent = await httpResponse.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+            var errorContent = LogSanitizer.SanitizeVendorError(await httpResponse.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false));
 
             LogHttpError(httpResponse.StatusCode, errorContent);
 
@@ -682,7 +682,7 @@ public abstract partial class HttpLlmProviderBase : ILlmProvider, IStreamingLlmP
         // Same phrasing as the buffered path's error metadata, so a reader comparing M1 and M3
         // sees one wording and not two.
         return new HttpRequestException(
-            $"{providerDisplayName} API error: {response.StatusCode} - {Security.LogSanitizer.SanitizeString(body)}{Orkeon.Infrastructure.LLMs.Profiles.LlmFailureClassifier.BalanceExhaustedHint(response.StatusCode, body)}",
+            $"{providerDisplayName} API error: {response.StatusCode} - {Security.LogSanitizer.SanitizeVendorError(body)}{Orkeon.Infrastructure.LLMs.Profiles.LlmFailureClassifier.BalanceExhaustedHint(response.StatusCode, body)}",
             inner: null,
             statusCode: response.StatusCode);
     }

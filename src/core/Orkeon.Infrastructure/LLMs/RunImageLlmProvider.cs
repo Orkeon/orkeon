@@ -1,5 +1,7 @@
+using System.Collections.Concurrent;
 using System.Globalization;
 using System.Runtime.CompilerServices;
+using System.Runtime.ExceptionServices;
 using Orkeon.Application.Crew.Execution;
 using Orkeon.Application.Interfaces.Ports;
 using Orkeon.Application.Interfaces.Services;
@@ -22,13 +24,17 @@ internal sealed record RunImageSource(IFileSystemService FileSystem, MultiModalO
 /// Shows the images of a run's input to the model: when an agent's call is in progress (<see cref="RunImageTurn"/>), reads
 /// them again and adds them to the first user message, provided the model this provider sends the call to reads images. One
 /// that it does not, a file that is not an image, or one over what its vendor documents (<see cref="RunImageLimits"/>) is named
-/// in the message and recorded for the person. A call the vendor refuses all the same is made once more without its images.
+/// in the message and recorded for the person. A call the vendor refuses all the same is made once more without its images;
+/// answered then, they are shown no more to that model in the run.
 /// Each profile of a fallback chain has its own instance, so the model judged is the one that answers.
 /// </summary>
 internal sealed class RunImageLlmProvider(
     ILlmProvider inner, IFileSystemService files, MultiModalOptions options, IModelCapabilityRegistry capabilities)
     : ILlmProvider, IStreamingLlmProvider, ILlmProviderDecorator
 {
+    /// <summary>By run, what a model refused of it. A run's images are its own list.</summary>
+    private readonly ConditionalWeakTable<IReadOnlyList<CrewInputImage>, ConcurrentDictionary<(string Model, string Path), bool>> _refused = new();
+
     public ILlmProvider Inner => inner;
 
     public string Name => inner.Name;
@@ -60,24 +66,24 @@ internal sealed class RunImageLlmProvider(
         // Taken: a provider that answers through another model call must not show the images twice.
         using var taken = turn.Take();
         var prepared = await PrepareAsync(turn, messages, config, cancellationToken).ConfigureAwait(false);
-        LlmResponse response;
-        try
+        var outcome = await AttemptAsync(prepared, config, cancellationToken).ConfigureAwait(false);
+        if (prepared.Shown.Count > 0 && outcome.MayBeItsImages)
         {
-            response = await inner.ChatAsync(prepared.Messages, config, cancellationToken).ConfigureAwait(false);
-        }
-        catch (HttpRequestException ex) when (prepared.Shown.Count > 0 && LlmFailureClassifier.MayBeItsImages(ex))
-        {
-            prepared = prepared.WithoutImages();
-            response = await inner.ChatAsync(prepared.Messages, config, cancellationToken).ConfigureAwait(false);
+            var without = prepared.WithoutImages();
+            var second = await AttemptAsync(without, config, cancellationToken).ConfigureAwait(false);
+            if (second.Answered)
+            {
+                Remember(prepared.Shown, config);
+                prepared = without;
+                outcome = second;
+            }
+            else if (second.FailsOver)
+            {
+                outcome = second;
+            }
         }
 
-        // No second refusal comes here: the call without images shows none.
-        if (prepared.Shown.Count > 0 && LlmFailureClassifier.MayBeItsImages(response))
-        {
-            prepared = prepared.WithoutImages();
-            response = await inner.ChatAsync(prepared.Messages, config, cancellationToken).ConfigureAwait(false);
-        }
-
+        var response = outcome.Get();
         if (response.Error is null)
             prepared.Note(turn);
         return response;
@@ -123,9 +129,12 @@ internal sealed class RunImageLlmProvider(
         {
             // Whether the call may still be made again: it carries images and nothing of it was handed over.
             var first = prepared is { Shown.Count: > 0 };
+            Outcome? refusal = null;
+            IReadOnlyList<string> notShown = [];
             while (true)
             {
                 var refused = false;
+                var ended = false;
                 // An async iterator resumes in its consumer's context: the turn is taken again around each step.
                 using (turn?.Take())
                 {
@@ -133,11 +142,21 @@ internal sealed class RunImageLlmProvider(
                     {
                         if (!await enumerator.MoveNextAsync().ConfigureAwait(false))
                             break;
-                        refused = first && enumerator.Current.FinalResponse is { } final && LlmFailureClassifier.MayBeItsImages(final);
+                        var final = enumerator.Current.FinalResponse;
+                        refused = first && final is not null && LlmFailureClassifier.MayBeItsImages(final);
+                        if (refused)
+                            refusal = new Outcome(final, null);
+                        else if (refusal is not null && final?.Error is not null)
+                            ended = !new Outcome(final, null).FailsOver;
                     }
                     catch (HttpRequestException ex) when (first && LlmFailureClassifier.MayBeItsImages(ex))
                     {
                         refused = true;
+                        refusal = new Outcome(null, ex);
+                    }
+                    catch (HttpRequestException ex) when (refusal is not null && !new Outcome(null, ex).FailsOver)
+                    {
+                        ended = true;
                     }
                 }
 
@@ -146,10 +165,22 @@ internal sealed class RunImageLlmProvider(
                 {
                     using (turn?.Take())
                         await enumerator.DisposeAsync().ConfigureAwait(false);
-                    prepared = prepared!.WithoutImages();
+                    notShown = prepared!.Shown;
+                    prepared = prepared.WithoutImages();
                     enumerator = streaming.ChatStreamingAsync(prepared.Messages, config, cancellationToken).GetAsyncEnumerator(cancellationToken);
                     continue;
                 }
+
+                // The call without images failed before it said anything: the first error is the one to know.
+                if (ended)
+                {
+                    yield return LlmStreamEvent.Complete(refusal!.Get());
+                    yield break;
+                }
+
+                refusal = null;
+                if (notShown.Count > 0 && enumerator.Current.FinalResponse is { Error: null })
+                    Remember(notShown, config);
 
                 if (turn is not null && prepared is not null && enumerator.Current.FinalResponse is not { Error: not null })
                 {
@@ -165,6 +196,49 @@ internal sealed class RunImageLlmProvider(
             await enumerator.DisposeAsync().ConfigureAwait(false);
         }
     }
+
+    /// <summary>What one attempt of a call ended with.</summary>
+    private sealed record Outcome(LlmResponse? Response, HttpRequestException? Failure)
+    {
+        public bool Answered => Response is { Error: null };
+
+        public bool MayBeItsImages => Failure is not null
+            ? LlmFailureClassifier.MayBeItsImages(Failure)
+            : LlmFailureClassifier.MayBeItsImages(Response!);
+
+        /// <summary>Whether another profile of a chain could answer: such a failure is never hidden behind a refusal.</summary>
+        public bool FailsOver => LlmFailureClassifier.FailsOver(
+            Failure is not null ? LlmFailureClassifier.Classify(Failure) : LlmFailureClassifier.Classify(Response!));
+
+        public LlmResponse Get()
+        {
+            if (Failure is not null)
+                ExceptionDispatchInfo.Throw(Failure);
+            return Response!;
+        }
+    }
+
+    private async System.Threading.Tasks.Task<Outcome> AttemptAsync(Prepared prepared, LlmConfig? config, CancellationToken cancellationToken)
+    {
+        try
+        {
+            return new Outcome(await inner.ChatAsync(prepared.Messages, config, cancellationToken).ConfigureAwait(false), null);
+        }
+        catch (HttpRequestException ex)
+        {
+            return new Outcome(null, ex);
+        }
+    }
+
+    private void Remember(IReadOnlyList<string> paths, LlmConfig? config)
+    {
+        var refused = _refused.GetOrCreateValue(RunImages.Current);
+        foreach (var path in paths)
+            refused[(ModelOf(config) ?? string.Empty, path)] = true;
+    }
+
+    private bool IsRefused(string path, LlmConfig? config) =>
+        _refused.TryGetValue(RunImages.Current, out var refused) && refused.ContainsKey((ModelOf(config) ?? string.Empty, path));
 
     /// <summary>The messages of one call, what they show and what they do not.</summary>
     private sealed record Prepared(
@@ -200,6 +274,12 @@ internal sealed class RunImageLlmProvider(
         {
             foreach (var image in turn.Images)
             {
+                if (IsRefused(image.Path, config))
+                {
+                    unseen.Add((image.Path, RefusedReason));
+                    continue;
+                }
+
                 if (shown.Count >= most)
                 {
                     unseen.Add((image.Path, string.Create(CultureInfo.InvariantCulture, $"a call carries at most {most} images")));
@@ -221,6 +301,8 @@ internal sealed class RunImageLlmProvider(
         return Compose(messages, first, shown, unseen);
     }
 
+    private const string RefusedReason = "its model's provider refused the call that carried it";
+
     private static Prepared Compose(
         LlmMessage[] messages, int first, List<(string Path, ImageContentPart Part)> shown, List<(string Path, string Reason)> unseen)
     {
@@ -239,7 +321,7 @@ internal sealed class RunImageLlmProvider(
         var copy = messages.ToArray();
         copy[first] = joined;
         return new Prepared(copy, unseen, [.. shown.Select(s => s.Path)], () => Compose(
-            messages, first, [], [.. unseen, .. shown.Select(s => (s.Path, "its model's provider refused the call that carried it"))]));
+            messages, first, [], [.. unseen, .. shown.Select(s => (s.Path, RefusedReason))]));
     }
 
     /// <summary>Why the model of this call is shown no image; null when it reads them.</summary>
@@ -247,16 +329,22 @@ internal sealed class RunImageLlmProvider(
     {
         if (!options.Enabled)
             return "images are turned off on this host";
-        var vendor = inner;
-        while (vendor is ILlmProviderDecorator decorator)
-            vendor = decorator.Inner;
-        var model = vendor is HttpLlmProviderBase http
-            ? http.EffectiveModel(config)
-            : string.IsNullOrWhiteSpace(config?.Model) ? inner.BaseConfig?.Model : config.Model;
+        var model = ModelOf(config);
 #pragma warning disable ORKEXP005 // The per-model table is experimental.
         var reads = inner.Capabilities.Vision && capabilities.TryGet(model, inner.Name) is { Vision: true };
 #pragma warning restore ORKEXP005
         return reads ? null : $"its model{(string.IsNullOrWhiteSpace(model) ? string.Empty : $" '{model}'")} is not known to read images";
+    }
+
+    /// <summary>The model a call of <paramref name="config"/> goes to.</summary>
+    private string? ModelOf(LlmConfig? config)
+    {
+        var vendor = inner;
+        while (vendor is ILlmProviderDecorator decorator)
+            vendor = decorator.Inner;
+        return vendor is HttpLlmProviderBase http
+            ? http.EffectiveModel(config)
+            : string.IsNullOrWhiteSpace(config?.Model) ? inner.BaseConfig?.Model : config.Model;
     }
 
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "A file that cannot be read is one image not shown, told to the person, never the task's failure; the caller's cancellation still propagates.")]
