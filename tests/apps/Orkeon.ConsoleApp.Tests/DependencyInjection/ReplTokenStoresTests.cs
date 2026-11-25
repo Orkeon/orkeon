@@ -30,7 +30,7 @@ public sealed class ReplTokenStoresTests : IDisposable
     private readonly List<string> _reported = [];
 
     public ReplTokenStoresTests() =>
-        RunnerSettings.GlobalSettingsPathOverride = Path.Combine(_root, "global", "appsettings.json");
+        RunnerSettings.GlobalSettingsPathOverride = Path.Join(_root, "global", "appsettings.json");
 
     public void Dispose()
     {
@@ -41,7 +41,7 @@ public sealed class ReplTokenStoresTests : IDisposable
     [Fact]
     public async System.Threading.Tasks.Task ShouldReadTheTokensOfASignIn_WhenAChatAccountSignsInAsAUser()
     {
-        var tokens = Path.Combine(_root, "tokens");
+        var tokens = Path.Join(_root, "tokens");
         using var host = Start(Settings("settings", Chat(ChatAccounts, tokens)));
         var store = host.Services.GetRequiredService<IChatTokenStore>();
         var written = new ChatTokenSet { AccessToken = "a", RefreshToken = "r", ExpiresAt = DateTimeOffset.UnixEpoch };
@@ -49,16 +49,16 @@ public sealed class ReplTokenStoresTests : IDisposable
         Assert.IsType<FileSystemChatTokenStore>(store);
         await store.WriteAsync("work-0123456789ab", written, TestContext.Current.CancellationToken);
 
-        Assert.True(File.Exists(Path.Combine(tokens, "chat", "work-0123456789ab.json")));
+        Assert.True(File.Exists(Path.Join(tokens, "chat", "work-0123456789ab.json")));
         Assert.Equal("a", (await store.ReadAsync("work-0123456789ab", TestContext.Current.CancellationToken))?.AccessToken);
     }
 
     [Fact]
     public async System.Threading.Tasks.Task ShouldHideTheTokensFromTheAgents_WhenAMountHoldsTheirFolder()
     {
-        var tokens = Path.Combine(_root, "workspace", "tokens");
+        var tokens = Path.Join(_root, "workspace", "tokens");
         using var host = Start(Settings("settings", Chat(ChatAccounts, tokens)));
-        await File.WriteAllTextAsync(Path.Combine(tokens, "chat", "work.json"), "{}", TestContext.Current.CancellationToken);
+        await File.WriteAllTextAsync(Path.Join(tokens, "chat", "work.json"), "{}", TestContext.Current.CancellationToken);
         var agents = host.Services.GetRequiredService<IFileSystemService>();
 
         await Assert.ThrowsAsync<FileAccessDeniedException>(() => agents.TryReadAllTextAsync($"{RunnerVirtualRoots.Credentials}/chat/work.json", TestContext.Current.CancellationToken));
@@ -68,7 +68,7 @@ public sealed class ReplTokenStoresTests : IDisposable
     [Fact]
     public void ShouldKeepTheTokensOfTheThreeFamilies_InOneDirectory()
     {
-        var tokens = Path.Combine(_root, "tokens");
+        var tokens = Path.Join(_root, "tokens");
         var oauth = (string provider) => $$"""{ "me": { "Provider": "{{provider}}", "Address": "a@b.c", "Rights": "Read", "Auth": { "Method": "OAuth2", "ClientId": "c" } } }""";
         using var host = Start(Settings("settings",
             Family("Email", oauth("Gmail"), tokens), Family("Drive", oauth("GoogleDrive"), null), Chat(ChatAccounts, null)));
@@ -77,7 +77,7 @@ public sealed class ReplTokenStoresTests : IDisposable
         Assert.IsType<FileSystemDriveTokenStore>(host.Services.GetRequiredService<IDriveTokenStore>());
         Assert.IsType<FileSystemChatTokenStore>(host.Services.GetRequiredService<IChatTokenStore>());
         foreach (var family in new[] { "email", "drive", "chat" })
-            Assert.True(Directory.Exists(Path.Combine(tokens, family)), family);
+            Assert.True(Directory.Exists(Path.Join(tokens, family)), family);
     }
 
     [Fact]
@@ -88,7 +88,7 @@ public sealed class ReplTokenStoresTests : IDisposable
 
         Assert.Null(CredentialsMount(host.Services));
         Assert.IsNotType<FileSystemChatTokenStore>(host.Services.GetRequiredService<IChatTokenStore>());
-        Assert.False(Directory.Exists(Path.Combine(_root, "global", "credentials")));
+        Assert.False(Directory.Exists(Path.Join(_root, "global", "credentials")));
     }
 
     [Fact]
@@ -96,7 +96,7 @@ public sealed class ReplTokenStoresTests : IDisposable
     {
         using var host = Start(Settings("settings", Chat(ChatAccounts, null)));
 
-        Assert.Equal(Path.Combine(_root, "global", "credentials"), CredentialsMount(host.Services)?.BasePath);
+        Assert.Equal(Path.Join(_root, "global", "credentials"), CredentialsMount(host.Services)?.BasePath);
     }
 
     [Fact]
@@ -107,13 +107,13 @@ public sealed class ReplTokenStoresTests : IDisposable
 
         using var host = Start(first, second);
 
-        Assert.Equal(Path.Combine(_root, "first", "tokens"), CredentialsMount(host.Services)?.BasePath);
+        Assert.Equal(Path.Join(_root, "first", "tokens"), CredentialsMount(host.Services)?.BasePath);
     }
 
     [Fact]
     public void ShouldWarnAndStart_WhenTheDirectoryCannotBePrepared()
     {
-        var file = Path.Combine(_root, "a-file");
+        var file = Path.Join(_root, "a-file");
         File.WriteAllText(file, "");
 
         var (host, stderr) = StartCapturingStderr(Settings("settings", Chat(ChatAccounts, file)));
@@ -128,7 +128,7 @@ public sealed class ReplTokenStoresTests : IDisposable
     public void ShouldWarnAndStart_WhenTheFolderOfACredentialFileIsMissing()
     {
         var variable = "ORKEON_TEST_REPL_FILE_" + Guid.NewGuid().ToString("N");
-        Environment.SetEnvironmentVariable(variable, Path.Combine(_root, "absent", "app.pem"));
+        Environment.SetEnvironmentVariable(variable, Path.Join(_root, "absent", "app.pem"));
         try
         {
             var application = $$"""{ "app": { "Provider": "Teams", "Rights": "Read", "Auth": { "Method": "ClientCredentials", "CertificatePathEnvVar": "{{variable}}" } } }""";
@@ -154,14 +154,14 @@ public sealed class ReplTokenStoresTests : IDisposable
 
     private string Settings(string folder, params string[] families)
     {
-        var path = Path.Combine(Directory.CreateDirectory(Path.Combine(_root, folder)).FullName, "appsettings.json");
+        var path = Path.Join(Directory.CreateDirectory(Path.Join(_root, folder)).FullName, "appsettings.json");
         File.WriteAllText(path, $$"""{ "RaggableTree": { "Enabled": false }, "Orkeon": { "Tools": { {{string.Join(", ", families)}} } } }""");
         return path;
     }
 
     private Microsoft.Extensions.Hosting.IHost Start(params string[] settings)
     {
-        var workspace = Directory.CreateDirectory(Path.Combine(_root, "workspace")).FullName;
+        var workspace = Directory.CreateDirectory(Path.Join(_root, "workspace")).FullName;
         string[] args = [.. settings.SelectMany(file => new[] { "--settings", file }), "--mount", $"{workspace}:/workspace:rw", "--allow-external-mounts"];
         var launch = ReplStartup.Prepare(args, UiMode.Plain, replWordWrap: false, _reported.Add);
         Assert.True(launch.Host is not null, string.Join(Environment.NewLine, _reported));
