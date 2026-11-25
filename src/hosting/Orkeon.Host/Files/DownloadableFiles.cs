@@ -1,4 +1,5 @@
 using Orkeon.Constants.FileSystem;
+using Orkeon.Domain.Execution;
 using Orkeon.Domain.FileSystem;
 using Orkeon.Host.Gateway;
 
@@ -34,14 +35,15 @@ internal sealed class DownloadableFiles
         if (Canonical(typed) is not { } path || await EntryAsync(conversation, crew, path, ct).ConfigureAwait(false) is not { } entry)
             return null;
 
-        // The channel opens it when and where it likes: still under the scope of who named it.
-        var flow = ExecutionContext.Capture();
+        // The channel opens it when and where it likes, an hour later perhaps: still under the scope of who named it, and
+        // nothing else of the run is kept for that.
+        var scope = AgentRunScope.EnforcedFileSystem;
         return new OutboundFile
         {
             Name = path[(path.LastIndexOf('/') + 1)..],
             Size = entry.SizeBytes,
             Written = entry.LastModified,
-            OpenAsync = token => InFlow(flow, () => OpenAsync(conversation, crew, path, entry.SizeBytes, token)),
+            OpenAsync = token => ApartAsync(() => OpenAsync(conversation, crew, path, entry.SizeBytes, entry.LastModified, scope, token), token),
         };
     }
 
@@ -49,30 +51,24 @@ internal sealed class DownloadableFiles
     /// What the crew declares, read as the host: an agent's scope narrows the files it sends, not what the crew opens, and
     /// the crew's definition is in no scope of its agents.
     /// </summary>
-    internal async Task<OpenedFolders> DeclaredAsync(HostedCrewOptions crew, CancellationToken ct)
+    internal Task<OpenedFolders> DeclaredAsync(HostedCrewOptions crew, CancellationToken ct) =>
+        ApartAsync(() => _folders.ReadAsync(crew.Name, ct), ct);
+
+    /// <summary>Runs in a flow of its own: what the caller's carries, an agent's scope among it, does not reach it.</summary>
+    private static async Task<T> ApartAsync<T>(Func<Task<T>> work, CancellationToken ct)
     {
-        Task<OpenedFolders> reading;
+        Task<T> working;
         if (ExecutionContext.IsFlowSuppressed())
         {
-            reading = Task.Run(() => _folders.ReadAsync(crew.Name, ct), ct);
+            working = Task.Run(work, ct);
         }
         else
         {
             using (ExecutionContext.SuppressFlow())
-                reading = Task.Run(() => _folders.ReadAsync(crew.Name, ct), ct);
+                working = Task.Run(work, ct);
         }
 
-        return await reading.ConfigureAwait(false);
-    }
-
-    private static Task<Stream> InFlow(ExecutionContext? flow, Func<Task<Stream>> open)
-    {
-        if (flow is null)
-            return open();
-
-        Task<Stream>? opening = null;
-        ExecutionContext.Run(flow, _ => opening = open(), null);
-        return opening!;
+        return await working.ConfigureAwait(false);
     }
 
     private async Task<VirtualFileEntry?> EntryAsync(ConversationRef conversation, HostedCrewOptions crew, string path, CancellationToken ct)
@@ -86,10 +82,14 @@ internal sealed class DownloadableFiles
 
     /// <summary>
     /// Reads the file whole, judged again: the declaration, the rights and the links may have changed since it was named.
-    /// A copy, not the open file, so neither the conversation nor an agent that writes there waits for the upload.
+    /// What changed since is not what was announced, or accepted: it is not sent. A copy, not the open file, so neither the conversation nor an agent that writes there waits for the upload.
     /// </summary>
-    private async Task<Stream> OpenAsync(ConversationRef conversation, HostedCrewOptions crew, string path, long announced, CancellationToken ct)
+    private async Task<Stream> OpenAsync(
+        ConversationRef conversation, HostedCrewOptions crew, string path, long announced, DateTimeOffset written, AgentFileSystemScope? scope, CancellationToken ct)
     {
+        var agent = AgentRunScope.Begin(null, null, null, scope);
+        await using var ended = agent.ConfigureAwait(false);
+        using var call = AgentRunScope.EnterToolCall();
         var declared = await DeclaredAsync(crew, ct).ConfigureAwait(false);
         var root = RootOf(declared, path);
         return await _files.UseAsync<Stream>(
@@ -97,8 +97,10 @@ internal sealed class DownloadableFiles
             crew,
             async (fs, token) =>
             {
-                if (root is null || await EntryAsync(fs, root, path, token).ConfigureAwait(false) is null)
+                if (root is null || await EntryAsync(fs, root, path, token).ConfigureAwait(false) is not { } entry)
                     throw new FileNotFoundException(NoFile);
+                if (entry.SizeBytes != announced || entry.LastModified != written)
+                    throw new IOException("The file changed since it was named.");
 
                 var source = await fs.OpenReadStreamAsync(path, token).ConfigureAwait(false);
                 await using var lease = source.ConfigureAwait(false);

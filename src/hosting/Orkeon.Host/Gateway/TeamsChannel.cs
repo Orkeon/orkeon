@@ -315,7 +315,7 @@ internal sealed partial class TeamsChannel : IChatChannel, IAsyncDisposable, IDi
             SenderId = sender,
             Text = activity.Text,
             Attachments = activity.Attachments,
-            AttachmentSource = SourceOf(activity),
+            AttachmentSource = SourceOf(activity, serviceUrl),
             NoFilesHere = _files is null || activity.IsPersonal ? null : TeamsFileExchange.PersonalOnly,
             ReceivedAt = _time.GetUtcNow(),
             ReplyTo = new TeamsReplyTarget(serviceUrl, activity.ThreadId, id, bot, user),
@@ -337,14 +337,14 @@ internal sealed partial class TeamsChannel : IChatChannel, IAsyncDisposable, IDi
         return HttpStatusCode.OK;
     }
 
-    private TeamsAttachmentSource? SourceOf(TeamsActivity activity) =>
+    private TeamsAttachmentSource? SourceOf(TeamsActivity activity, Uri serviceUrl) =>
         _access is null || _transfers is null || !activity.IsPersonal || activity.Attachments.Count == 0
             ? null
             : new TeamsAttachmentSource(
                 _transfers,
                 _access,
                 _token,
-                _connectors,
+                serviceUrl.Host,
                 activity.Attachments.Zip(activity.Addresses).ToDictionary(p => p.First.Id, p => p.Second, StringComparer.Ordinal));
 
     private Task DispatchAsync(TeamsInboundMessage message, bool listed, Func<InboundMessage, CancellationToken, Task> onMessage, CancellationToken ct)

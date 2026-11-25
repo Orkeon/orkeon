@@ -135,15 +135,16 @@ public sealed class ChatAttachTests : IDisposable
 
         var result = await RunAsync(async ct =>
         {
-            await WriteAsync("/outbox/sent.txt", "/outbox/changed.txt", "/outbox/kept.txt", "/outbox/offered.txt");
-            await AttachAsync(ct, "/outbox/sent.txt", "/outbox/changed.txt");
+            await WriteAsync("/outbox/sent.txt", "/outbox/changed.txt", "/outbox/kept.txt", "/outbox/offered.txt", "/outbox/rewritten.txt");
+            await AttachAsync(ct, "/outbox/sent.txt", "/outbox/changed.txt", "/outbox/rewritten.txt");
             _sender.Result = f => new FileSendResult(f.Name, FileSendOutcome.AwaitingConsent);
             await AttachAsync(ct, "/outbox/offered.txt");
             await Fs.WriteAllTextAsync("/outbox/changed.txt", "another, longer text than what was sent before", ct);
+            await RewriteAsync("/outbox/rewritten.txt", ct);
             return "done";
         });
 
-        Assert.Equal(["/outbox/changed.txt", "/outbox/kept.txt", "/outbox/offered.txt"], result.OutboxFiles.Select(f => f.Path));
+        Assert.Equal(["/outbox/changed.txt", "/outbox/kept.txt", "/outbox/offered.txt", "/outbox/rewritten.txt"], result.OutboxFiles.Select(f => f.Path));
     }
 
     [Fact]
@@ -384,6 +385,122 @@ public sealed class ChatAttachTests : IDisposable
         Assert.True(answer!.Success, answer.Error);
     }
 
+    /// <summary>Another text of the same length, at another date.</summary>
+    private async Task RewriteAsync(string path, CancellationToken ct)
+    {
+        var before = (await Fs.TryGetEntryAsync(path, ct))!;
+        while ((await Fs.TryGetEntryAsync(path, ct))!.LastModified == before.LastModified)
+        {
+            await Task.Delay(Polling.DefaultInterval, ct);
+            await Fs.WriteAllTextAsync(path, new string('x', (int)before.SizeBytes), ct);
+        }
+
+        Assert.Equal(before.SizeBytes, (await Fs.TryGetEntryAsync(path, ct))!.SizeBytes);
+    }
+
+    /// <summary>The run is over when what it offered is accepted.</summary>
+    private async Task<OutboundFile> OfferedAsync(string path)
+    {
+        OutboundFile? offered = null;
+        _sender.Result = f =>
+        {
+            offered = f;
+            return new FileSendResult(f.Name, FileSendOutcome.AwaitingConsent);
+        };
+        await RunAsync(async ct =>
+        {
+            await WriteAsync(path);
+            await AttachAsync(ct, path);
+            return "done";
+        });
+        return offered!;
+    }
+
+    [Theory]
+    [InlineData("/outbox/a.txt")]
+    [InlineData("/output/open/a.txt")]
+    public async Task ShouldOpenWhatItOffered_AfterTheRun(string path)
+    {
+        Build();
+        var offered = await OfferedAsync(path);
+
+        await using var stream = await offered.OpenAsync(Ct);
+        using var reader = new StreamReader(stream);
+
+        Assert.Equal("text of " + path, await reader.ReadToEndAsync(Ct));
+    }
+
+    [Fact]
+    public async Task ShouldNotSendWhatWasNotOffered()
+    {
+        Build();
+        var offered = await OfferedAsync("/outbox/a.txt");
+        _sender.Result = f => new FileSendResult(f.Name, FileSendOutcome.Sent);
+
+        // Another run of the conversation rewrites it, to the same length.
+        await RunAsync(async ct =>
+        {
+            await RewriteAsync("/outbox/a.txt", ct);
+            return "done";
+        });
+
+        await Assert.ThrowsAsync<IOException>(() => offered.OpenAsync(Ct));
+    }
+
+    [Fact]
+    public async Task ShouldNotSendWhatShrankSince()
+    {
+        Build();
+        var offered = await OfferedAsync("/output/open/a.txt");
+        var file = Path.Combine(Output, "open", "a.txt");
+        var date = File.GetLastWriteTimeUtc(file);
+        await File.WriteAllTextAsync(file, "less", Ct);
+        File.SetLastWriteTimeUtc(file, date);
+
+        await Assert.ThrowsAsync<IOException>(() => offered.OpenAsync(Ct));
+    }
+
+    [Fact]
+    public async Task ShouldNotSendWhatTheCrewNoLongerOpens()
+    {
+        Build();
+        var offered = await OfferedAsync("/output/open/a.txt");
+        var crew = await File.ReadAllTextAsync(_harness.CrewPath, Ct);
+        await File.WriteAllTextAsync(_harness.CrewPath, crew.Replace(Declared, string.Empty, StringComparison.Ordinal), Ct);
+
+        Assert.Equal(DownloadableFiles.NoFile, (await Assert.ThrowsAsync<FileNotFoundException>(() => offered.OpenAsync(Ct))).Message);
+    }
+
+    // What an offer keeps, it keeps for an hour.
+    [Fact]
+    public async Task ShouldKeepNothingOfTheRunThatOffered()
+    {
+        Build();
+        var offered = await OfferedAsync("/outbox/a.txt");
+
+        var kept = Reached(offered.OpenAsync.Target!);
+
+        Assert.DoesNotContain(kept, o => o is ExecutionContext or AgentRunScope or IConversationAttachments);
+    }
+
+    /// <summary>What the closure of a delegate holds, and the closures it holds.</summary>
+    private static List<object> Reached(object closure)
+    {
+        var held = new List<object>();
+        foreach (var field in closure.GetType().GetFields(System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic))
+        {
+            if (field.GetValue(closure) is not { } value || value.GetType().IsPrimitive || ReferenceEquals(value, closure))
+                continue;
+            held.Add(value);
+            if (value is Delegate { Target: { } target })
+                held.AddRange(Reached(target));
+            else if (value.GetType().Name.StartsWith("<>c", StringComparison.Ordinal))
+                held.AddRange(Reached(value));
+        }
+
+        return held;
+    }
+
     // ----- how many -----
 
     [Fact]
@@ -401,7 +518,7 @@ public sealed class ChatAttachTests : IDisposable
             return "done";
         });
 
-        Assert.Equal(2, Assert.Single(_sender.Messages).Length);
+        Assert.Equal(["a.txt=text of /outbox/a.txt", "b.txt=text of /outbox/b.txt"], Assert.Single(_sender.Messages));
         Assert.True(first!.Success, first.Error);
         Assert.Contains("MaxAttachedFilesPerRun", Shown(first), StringComparison.Ordinal);
         Assert.Contains("MaxAttachedFilesPerRun", second!.Error, StringComparison.Ordinal);
@@ -441,6 +558,25 @@ public sealed class ChatAttachTests : IDisposable
 
         Assert.True(answer!.Success, answer.Error);
         Assert.Equal([10, 10, 5], _sender.Messages.Select(m => m.Length));
+    }
+
+    [Fact]
+    public async Task ShouldHandOverNoMoreBytesThanOneRequestTakes()
+    {
+        Build();
+        ToolCallResponse? answer = null;
+
+        await RunAsync(async ct =>
+        {
+            foreach (var name in (string[])["a.bin", "b.bin"])
+                await File.WriteAllBytesAsync(Path.Combine(Output, "open", name), new byte[(DiscordFiles.RequestBytes / 2) + 1], ct);
+            answer = await AttachAsync(ct, "/output/open/a.bin", "/output/open/b.bin");
+            return "done";
+        });
+
+        Assert.True(answer!.Success, answer.Error);
+        Assert.Equal(2, _sender.Messages.Count);
+        Assert.All(_sender.Messages, m => Assert.Single(m));
     }
 
     [Fact]
@@ -620,6 +756,59 @@ public sealed class ChatAttachTests : IDisposable
 
         Assert.False(answer!.Success);
         Assert.Empty(_sender.Messages);
+    }
+
+    [Fact]
+    public async Task ShouldStopTheSending_WhenTheRunEnds()
+    {
+        Build();
+        var sending = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var stopped = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        _sender.Before = async ct =>
+        {
+            await using var registration = ct.Register(stopped.SetResult);
+            sending.SetResult();
+            await stopped.Task.WaitAsync(Polling.DefaultTimeout, CancellationToken.None);
+            ct.ThrowIfCancellationRequested();
+        };
+        Task<ToolCallResponse>? left = null;
+
+        await RunAsync(async ct =>
+        {
+            await WriteAsync("/outbox/a.txt");
+            left = Task.Run(() => AttachAsync(CancellationToken.None, "/outbox/a.txt"), CancellationToken.None);
+            await sending.Task.WaitAsync(Polling.DefaultTimeout, ct);
+            return "done";
+        });
+
+        Assert.False((await left!.WaitAsync(Polling.DefaultTimeout, Ct)).Success);
+        Assert.Empty(_sender.Messages);
+    }
+
+    [Fact]
+    public async Task ShouldInheritNoConversation_WhenARunIsStartedInsideAnother()
+    {
+        Build();
+        ToolCallResponse? inner = null;
+        var started = false;
+
+        await RunAsync(async ct =>
+        {
+            if (started)
+            {
+                inner = await AttachAsync(ct, "/outbox/a.txt");
+                return "inner";
+            }
+
+            started = true;
+            await WriteAsync("/outbox/a.txt");
+            await _host.Services.GetRequiredService<ICrewRunner>().RunAsync("support", "go", "api");
+            Assert.True((await AttachAsync(ct, "/outbox/a.txt")).Success);
+            return "done";
+        });
+
+        Assert.Equal(ChatAttachTool.NoConversation, inner!.Error);
+        Assert.Single(_sender.Messages);
     }
 
     // ----- the gateway, and where the tool is -----

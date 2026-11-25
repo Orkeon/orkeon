@@ -9,11 +9,14 @@ internal sealed class PendingConsent
     public required TeamsReplyTarget ReplyTo { get; init; }
     public required OutboundFile File { get; init; }
     public required DateTimeOffset ExpiresAt { get; init; }
+
+    /// <summary>Whether it is being sent: nobody else answers it meanwhile.</summary>
+    internal bool Taken { get; set; }
 }
 
 /// <summary>
-/// The files waiting for an answer, in memory: bounded, each one for an hour, and taken once, by the person and in the
-/// conversation it was offered to. A restart of the host loses them.
+/// The files waiting for an answer, in memory: bounded, each one for an hour, and taken by one answer at a time, of
+/// the person and in the conversation it was offered to; what could not be sent is given back. A restart of the host loses them.
 /// </summary>
 internal sealed class TeamsConsents(TimeProvider time)
 {
@@ -42,25 +45,44 @@ internal sealed class TeamsConsents(TimeProvider time)
         }
     }
 
-    /// <summary>Takes a file, once; null when none waits for this person in this conversation.</summary>
+    /// <summary>
+    /// Takes a file, until it is dropped or given back; null when none waits for this person in this conversation.
+    /// </summary>
     public PendingConsent? Take(string? id, string senderId, string conversationId)
     {
         lock (_lock)
         {
             if (id is null
                 || !_pending.TryGetValue(id, out var pending)
+                || pending.Taken
                 || !string.Equals(pending.SenderId, senderId, StringComparison.OrdinalIgnoreCase)
                 || pending.ReplyTo.ConversationId != conversationId)
             {
                 return null;
             }
 
-            _pending.Remove(id);
-            return pending.ExpiresAt > time.GetUtcNow() ? pending : null;
+            if (pending.ExpiresAt <= time.GetUtcNow())
+            {
+                _pending.Remove(id);
+                return null;
+            }
+
+            pending.Taken = true;
+            return pending;
         }
     }
 
-    /// <summary>Lets go of a file whose card was not shown.</summary>
+    /// <summary>Gives back a file that was taken: it may be answered again, for what is left of its hour.</summary>
+    public void GiveBack(string id)
+    {
+        lock (_lock)
+        {
+            if (_pending.TryGetValue(id, out var pending))
+                pending.Taken = false;
+        }
+    }
+
+    /// <summary>Lets go of a file whose card was not shown, or that was answered.</summary>
     public void Drop(string id)
     {
         lock (_lock)

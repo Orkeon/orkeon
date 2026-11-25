@@ -16,25 +16,26 @@ internal sealed class TeamsAttachmentSource : IAttachmentSource
     private readonly HttpClient _http;
     private readonly TeamsFileAccess _access;
     private readonly TeamsBotToken _token;
-    private readonly FrozenSet<string> _connectors;
+    private readonly FrozenSet<string> _connector;
     private readonly IReadOnlyDictionary<string, TeamsFileAddress> _addresses;
 
     /// <param name="http">The client, over <see cref="DiscordAttachmentSource.NewHandler"/>.</param>
     /// <param name="access">The rule of the tenant's files, and their token.</param>
     /// <param name="token">The bot's token, for a picture.</param>
-    /// <param name="connectors">The hosts of the Bot Connector.</param>
+    /// <param name="connector">The host of the Bot Connector the message came from.</param>
     /// <param name="addresses">Where each file says it is, by identifier.</param>
     public TeamsAttachmentSource(
         HttpClient http,
         TeamsFileAccess access,
         TeamsBotToken token,
-        FrozenSet<string> connectors,
+        string connector,
         IReadOnlyDictionary<string, TeamsFileAddress> addresses)
     {
         _http = http ?? throw new ArgumentNullException(nameof(http));
         _access = access ?? throw new ArgumentNullException(nameof(access));
         _token = token ?? throw new ArgumentNullException(nameof(token));
-        _connectors = connectors ?? throw new ArgumentNullException(nameof(connectors));
+        ArgumentNullException.ThrowIfNull(connector);
+        _connector = FrozenSet.Create(StringComparer.OrdinalIgnoreCase, connector);
         _addresses = addresses ?? throw new ArgumentNullException(nameof(addresses));
     }
 
@@ -52,7 +53,7 @@ internal sealed class TeamsAttachmentSource : IAttachmentSource
     {
         if (_access.Unavailable is { } unavailable)
             throw new AttachmentRefusedException(unavailable);
-        if (_access.Address(file) is not { } address)
+        if (_access.Download(file) is not { } address)
             throw new AttachmentRefusedException(TeamsFileAccess.ForeignAddress);
 
         var (header, refusal) = await _access.AuthorizeAsync(address, ct).ConfigureAwait(false);
@@ -64,7 +65,8 @@ internal sealed class TeamsAttachmentSource : IAttachmentSource
 
     private async Task<Stream> PictureAsync(TeamsFileAddress file, CancellationToken ct)
     {
-        if (TeamsFileAccess.Address(file.Written, _connectors) is not { } address)
+        // The bot's token goes to the service the activity's own token named, for an attachment and nothing else of it.
+        if (TeamsFileAccess.Address(file.Written, _connector) is not { } address || !TeamsFilePaths.IsPicture(address))
             throw new AttachmentRefusedException("its address is not the Bot Connector's");
 
         string token;

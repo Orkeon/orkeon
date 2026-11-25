@@ -16,7 +16,7 @@ internal sealed partial class TeamsFileAccess : IDisposable
     /// <summary>When Microsoft ends the temporary addresses.</summary>
     internal static readonly DateTimeOffset TemporaryUntil = new(2027, 3, 1, 0, 0, 0, TimeSpan.Zero);
 
-    internal const string ForeignAddress = "its address is not on the tenant's SharePoint the host names";
+    internal const string ForeignAddress = "its address is not a file's on the tenant's SharePoint the host names";
     internal const string NoNames = "the host names no SharePoint to exchange files with (Teams:SharePointNames)";
     internal const string NoCertificate = "SharePoint needs the host's certificate, and it has none (Teams:CertificatePathEnvironmentVariable)";
     internal const string NoSignIn = "the host could not sign in to SharePoint";
@@ -27,8 +27,8 @@ internal sealed partial class TeamsFileAccess : IDisposable
     private readonly ILogger _logger;
     private readonly OAuth2Client _oauth;
     private readonly FrozenSet<string> _hosts;
-    private readonly SemaphoreSlim _gate = new(1, 1);
-    private readonly Dictionary<string, OAuthTokenSet> _tokens = new(StringComparer.OrdinalIgnoreCase);
+    private readonly FrozenSet<string> _personal;
+    private readonly FrozenDictionary<string, HostToken> _tokens;
 
     /// <param name="options">The channel's configuration.</param>
     /// <param name="http">The transport that reaches the sign-in service.</param>
@@ -44,6 +44,8 @@ internal sealed partial class TeamsFileAccess : IDisposable
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _oauth = new OAuth2Client(http, time);
         _hosts = options.SharePointHosts.ToFrozenSet(StringComparer.OrdinalIgnoreCase);
+        _personal = _hosts.Where(h => h.EndsWith("-my.sharepoint.com", StringComparison.OrdinalIgnoreCase)).ToFrozenSet(StringComparer.OrdinalIgnoreCase);
+        _tokens = _hosts.ToFrozenDictionary(h => h, _ => new HostToken(), StringComparer.OrdinalIgnoreCase);
     }
 
     /// <summary>Why no file can be exchanged at all, null when one may be.</summary>
@@ -52,12 +54,20 @@ internal sealed partial class TeamsFileAccess : IDisposable
         : _certificate is null && _time.GetUtcNow() >= TemporaryUntil ? NoCertificate
         : null;
 
-    /// <summary>An address of the tenant's SharePoint, null when it is not one, or is of another tenant.</summary>
-    public Uri? Address(TeamsFileAddress file)
+    /// <summary>An address of the tenant's SharePoint, null when it is not one, or is of another tenant. Nothing is sent to it.</summary>
+    public Uri? Address(TeamsFileAddress file) => OfTenant(file, _hosts);
+
+    /// <summary>Where a file of the tenant is read, null when it is anything else.</summary>
+    public Uri? Download(TeamsFileAddress file) => OfTenant(file, _hosts) is { } address && TeamsFilePaths.IsDownload(address) ? address : null;
+
+    /// <summary>Where a file is put in the OneDrive of a person of the tenant, null when it is anything else.</summary>
+    public Uri? Upload(TeamsFileAddress file) => OfTenant(file, _personal) is { } address && TeamsFilePaths.IsUpload(address) ? address : null;
+
+    private Uri? OfTenant(TeamsFileAddress file, FrozenSet<string> hosts)
     {
         ArgumentNullException.ThrowIfNull(file);
         return file.TenantId is null || string.Equals(file.TenantId, _options.TenantId, StringComparison.OrdinalIgnoreCase)
-            ? Address(file.Written, _hosts)
+            ? Address(file.Written, hosts)
             : null;
     }
 
@@ -84,10 +94,10 @@ internal sealed partial class TeamsFileAccess : IDisposable
     public async Task<(AuthenticationHeaderValue? Header, string? Refusal)> AuthorizeAsync(Uri address, CancellationToken ct)
     {
         ArgumentNullException.ThrowIfNull(address);
-        if (!_hosts.Contains(address.Host))
+        if (!_tokens.TryGetValue(address.Host, out var held))
             return (null, ForeignAddress);
 
-        if (_certificate is not null && await TokenAsync(address.Host, _certificate, ct).ConfigureAwait(false) is { } token)
+        if (_certificate is not null && await TokenAsync(address.Host, held, _certificate, ct).ConfigureAwait(false) is { } token)
             return (new AuthenticationHeaderValue("Bearer", token), null);
         if (_time.GetUtcNow() < TemporaryUntil && IsTemporary(address))
             return (null, null);
@@ -97,14 +107,17 @@ internal sealed partial class TeamsFileAccess : IDisposable
     /// <summary>Forgets the token of a host that refused it: the next file asks for another.</summary>
     public async Task ForgetAsync(string host, CancellationToken ct)
     {
-        await _gate.WaitAsync(ct).ConfigureAwait(false);
+        if (!_tokens.TryGetValue(host, out var held))
+            return;
+
+        await held.Gate.WaitAsync(ct).ConfigureAwait(false);
         try
         {
-            _tokens.Remove(host);
+            held.Token = null;
         }
         finally
         {
-            _gate.Release();
+            held.Gate.Release();
         }
     }
 
@@ -115,13 +128,13 @@ internal sealed partial class TeamsFileAccess : IDisposable
             .Any(p => string.Equals(p.Split('=', 2)[0], "tempauth", StringComparison.OrdinalIgnoreCase));
     }
 
-    private async Task<string?> TokenAsync(string host, Func<CancellationToken, Task<string>> certificate, CancellationToken ct)
+    private async Task<string?> TokenAsync(string host, HostToken held, Func<CancellationToken, Task<string>> certificate, CancellationToken ct)
     {
-        await _gate.WaitAsync(ct).ConfigureAwait(false);
+        await held.Gate.WaitAsync(ct).ConfigureAwait(false);
         try
         {
-            if (_tokens.TryGetValue(host, out var held) && _oauth.IsFresh(held))
-                return held.AccessToken;
+            if (held.Token is { } kept && _oauth.IsFresh(kept))
+                return kept.AccessToken;
 
             var settings = new OAuthSettings
             {
@@ -134,7 +147,7 @@ internal sealed partial class TeamsFileAccess : IDisposable
             // Read again for each token: a certificate is replaced without a restart.
             var assertion = OAuthClientAssertion.FromCertificatePem(await certificate(ct).ConfigureAwait(false));
             var tokens = await _oauth.RequestClientCredentialsAsync(settings, assertion, ct).ConfigureAwait(false);
-            _tokens[host] = tokens;
+            held.Token = tokens;
             return tokens.AccessToken;
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
@@ -160,12 +173,23 @@ internal sealed partial class TeamsFileAccess : IDisposable
         }
         finally
         {
-            _gate.Release();
+            held.Gate.Release();
         }
     }
 
     /// <inheritdoc />
-    public void Dispose() => _gate.Dispose();
+    public void Dispose()
+    {
+        foreach (var held in _tokens.Values)
+            held.Gate.Dispose();
+    }
+
+    /// <summary>The token of one host, asked for by one caller at a time: a host whose sign-in waits holds up no other.</summary>
+    private sealed class HostToken
+    {
+        public SemaphoreSlim Gate { get; } = new(1, 1);
+        public OAuthTokenSet? Token { get; set; }
+    }
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "The certificate of the Teams application could not be read: {Reason}")]
     private partial void LogNoCertificate(string reason);

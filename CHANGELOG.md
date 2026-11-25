@@ -58,10 +58,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - With `Orkeon:Host:Files` on, the Teams channel keeps the files and pictures of a personal chat under the bounds of
   Discord's, takes `/files`, `/get` and `/put` typed as messages, and sends files (`/get`, `chat_attach`) by a consent card:
-  an offer is for one person in one chat, once, for an hour, and is lost at a restart. A channel or a group chat is answered
+  an offer is for one person in one chat, sent once, for an hour, and is lost at a restart. A file changed since is not sent;
+  an upload that failed may be accepted again. A channel or a group chat is answered
   that files pass in the personal chat only.
 - `Orkeon:Host:Teams:SharePointNames` names the tenant's SharePoint, the only place files are read from or sent to; empty,
-  no file passes. `Orkeon:Host:Teams:CertificatePathEnvironmentVariable` names the certificate its token is obtained with,
+  no file passes. Of it, only the paths a file is at: SharePoint's other pages and interfaces are refused before any token is asked.
+  A picture comes from the Bot Connector the message came from, as an attachment. `Orkeon:Host:Teams:CertificatePathEnvironmentVariable` names the certificate its token is obtained with,
   read from a folder no agent sees. Without one, Microsoft's temporary addresses serve until 2027-03-01, then no file passes.
 
 ### Added — the images of a message are shown to the crew

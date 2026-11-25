@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Net;
 using System.Net.Http.Headers;
 using Microsoft.Extensions.Logging;
@@ -13,6 +14,12 @@ internal sealed partial class TeamsFileExchange : IDisposable
     /// <summary>The largest file offered: the channel's own bound, Microsoft's page states none.</summary>
     internal const long MaxFileBytes = 25L * 1024 * 1024;
 
+    /// <summary>The uploads at once, each of a file held in memory.</summary>
+    internal const int MaxUploads = 4;
+
+    /// <summary>How long an accepted file waits for the others', and may take to be read.</summary>
+    internal static readonly TimeSpan Wait = TimeSpan.FromMinutes(1);
+
     internal const string PersonalOnly = "In Teams, files are exchanged in the personal chat with the bot only.";
 
     private const string ConsentCard = "application/vnd.microsoft.teams.card.file.consent";
@@ -24,7 +31,10 @@ internal sealed partial class TeamsFileExchange : IDisposable
     private readonly TeamsFileAccess _access;
     private readonly HttpClient _http;
     private readonly ILogger _logger;
-    private readonly SemaphoreSlim _uploads = new(2, 2);
+    private readonly SemaphoreSlim _uploads = new(MaxUploads, MaxUploads);
+
+    // One per person of the allow list who accepted a file.
+    private readonly ConcurrentDictionary<string, SemaphoreSlim> _people = new(StringComparer.OrdinalIgnoreCase);
 
     /// <param name="consents">The files waiting for an answer.</param>
     /// <param name="access">The rule of the tenant's files, and their token.</param>
@@ -109,7 +119,7 @@ internal sealed partial class TeamsFileExchange : IDisposable
         if (!accepted && answer.Action != "decline")
             return;
 
-        if (_consents.Take(answer.FileId, senderId, from.ConversationId) is not { } pending)
+        if (answer.FileId is not { } id || _consents.Take(id, senderId, from.ConversationId) is not { } pending)
         {
             await responder.PostTextAsync(from, Gone, ct).ConfigureAwait(false);
             return;
@@ -118,14 +128,29 @@ internal sealed partial class TeamsFileExchange : IDisposable
         var name = FileNotices.Path(pending.File.Name);
         if (!accepted)
         {
+            _consents.Drop(id);
             await responder.PostTextAsync(pending.ReplyTo, $"{name} was declined.", ct).ConfigureAwait(false);
             return;
         }
 
-        var failure = await UploadAsync(answer, pending.File, ct).ConfigureAwait(false);
+        var failure = new Failure("the host failed", Again: true);
+        try
+        {
+            failure = await UploadAsync(answer, pending.File, senderId, ct).ConfigureAwait(false);
+        }
+        finally
+        {
+            // Before it is answered: the answer says whether the card may be accepted again.
+            if (failure is { Again: true })
+                _consents.GiveBack(id);
+            else
+                _consents.Drop(id);
+        }
+
         if (failure is not null)
         {
-            await responder.PostTextAsync(pending.ReplyTo, $"{name} was not sent: {failure}. Ask for it again.", ct).ConfigureAwait(false);
+            var then = failure.Again ? "Accept its card again within the hour it was offered for" : "Ask for it again";
+            await responder.PostTextAsync(pending.ReplyTo, $"{name} was not sent: {failure.Reason}. {then}.", ct).ConfigureAwait(false);
             return;
         }
 
@@ -149,31 +174,48 @@ internal sealed partial class TeamsFileExchange : IDisposable
         answer.FileType is { Length: > 0 } type ? type : Path.GetExtension(name).TrimStart('.');
 
     /// <summary>Puts the file where Teams says; returns why it could not, null when it did.</summary>
-    private async Task<string?> UploadAsync(TeamsConsentAnswer answer, OutboundFile file, CancellationToken ct)
+    private async Task<Failure?> UploadAsync(TeamsConsentAnswer answer, OutboundFile file, string senderId, CancellationToken ct)
     {
-        if (_access.Address(answer.Upload) is not { } address)
+        if (_access.Upload(answer.Upload) is not { } address)
         {
             LogForeignUpload();
-            return TeamsFileAccess.ForeignAddress;
+            return new Failure(TeamsFileAccess.ForeignAddress, Again: true);
         }
 
-        await _uploads.WaitAsync(ct).ConfigureAwait(false);
+        // One person's files one after the other, so nobody holds every slot; a slot not free in time is said, not waited for.
+        var own = _people.GetOrAdd(senderId, _ => new SemaphoreSlim(1, 1));
+        if (!await own.WaitAsync(Wait, ct).ConfigureAwait(false))
+            return new Failure("another of your files is still being sent", Again: true);
         try
         {
-            using var content = await ReadAsync(file, ct).ConfigureAwait(false);
-            if (content is null)
-                return "it can no longer be read";
-            if (content.Length is 0 or > MaxFileBytes)
-                return "its size changed since";
-
+            // Before a slot: a sign-in that waits holds up nobody's file.
             var (header, refusal) = await _access.AuthorizeAsync(address, ct).ConfigureAwait(false);
-            return refusal ?? await PutAsync(address, header, content, ct).ConfigureAwait(false);
+            if (refusal is not null)
+                return new Failure(refusal, Again: true);
+            if (!await _uploads.WaitAsync(Wait, ct).ConfigureAwait(false))
+                return new Failure("too many files are being sent", Again: true);
+            try
+            {
+                using var content = await ReadAsync(file, ct).ConfigureAwait(false);
+                if (content is null)
+                    return new Failure("it can no longer be read", Again: false);
+                if (content.Length is 0 or > MaxFileBytes)
+                    return new Failure("its size changed since", Again: false);
+                return await PutAsync(address, header, content, ct).ConfigureAwait(false) is { } reason ? new Failure(reason, Again: true) : null;
+            }
+            finally
+            {
+                _uploads.Release();
+            }
         }
         finally
         {
-            _uploads.Release();
+            own.Release();
         }
     }
+
+    /// <summary>Why a file was not sent, and whether accepting it again may do better.</summary>
+    private sealed record Failure(string Reason, bool Again);
 
     private async Task<string?> PutAsync(Uri address, AuthenticationHeaderValue? header, MemoryStream content, CancellationToken ct)
     {
@@ -214,13 +256,15 @@ internal sealed partial class TeamsFileExchange : IDisposable
     private async Task<MemoryStream?> ReadAsync(OutboundFile file, CancellationToken ct)
     {
         var content = new MemoryStream();
+        using var bound = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        bound.CancelAfter(Wait);
         try
         {
-            var source = await file.OpenAsync(ct).ConfigureAwait(false);
+            var source = await file.OpenAsync(bound.Token).ConfigureAwait(false);
             await using var lease = source.ConfigureAwait(false);
             var block = new byte[81920];
             int read;
-            while (content.Length <= MaxFileBytes && (read = await source.ReadAsync(block, ct).ConfigureAwait(false)) > 0)
+            while (content.Length <= MaxFileBytes && (read = await source.ReadAsync(block, bound.Token).ConfigureAwait(false)) > 0)
                 await content.WriteAsync(block.AsMemory(0, read), ct).ConfigureAwait(false);
             return content;
         }
@@ -240,7 +284,12 @@ internal sealed partial class TeamsFileExchange : IDisposable
     }
 
     /// <inheritdoc />
-    public void Dispose() => _uploads.Dispose();
+    public void Dispose()
+    {
+        _uploads.Dispose();
+        foreach (var own in _people.Values)
+            own.Dispose();
+    }
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "A Teams upload was refused: its address is not on the SharePoint of the configured tenant (Teams:SharePointNames)")]
     private partial void LogForeignUpload();

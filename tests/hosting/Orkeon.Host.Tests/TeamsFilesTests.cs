@@ -213,6 +213,9 @@ public sealed class TeamsFilesTests : IAsyncDisposable
     [Theory]
     [InlineData("https://fabrikam-my.sharepoint.com/f?tempauth=1")]
     [InlineData("https://contoso-my.sharepoint.com.evil.example/f?tempauth=1")]
+    [InlineData("https://evilcontoso-my.sharepoint.com/f?tempauth=1")]
+    [InlineData("https://evilcontoso.sharepoint.com/f?tempauth=1")]
+    [InlineData("https://x.contoso.sharepoint.com/f?tempauth=1")]
     [InlineData("https://contoso.sharepoint.com@evil.example/f?tempauth=1")]
     [InlineData("https://evil.example/contoso-my.sharepoint.com?tempauth=1")]
     [InlineData("https://evil.example\\.contoso-my.sharepoint.com/?tempauth=1")]
@@ -280,11 +283,175 @@ public sealed class TeamsFilesTests : IAsyncDisposable
             ? new FakeHttpResponse(HttpStatusCode.Unauthorized, """{"error":"invalid_client","error_description":"marker"}""") : bot(r);
         _microsoft.Transport.Map(HttpMethod.Get, OneDrive, new FakeHttpResponse(HttpStatusCode.OK, "hello"));
 
-        Assert.Equal("hello", await ReadAsync(await NextAsync(Activities.Personal("x", "1", File(Temporary)))));
+        var temporary = await NextAsync(Activities.Personal("x", "1", File(Temporary)));
+        Assert.Equal("hello", await ReadAsync(temporary));
         Assert.Null(Assert.Single(Elsewhere).Authorization);
         Assert.Contains("sign", await RefusedAsync(await NextAsync(Activities.Personal("x", "2", File(Download)))), StringComparison.Ordinal);
         Assert.Single(Elsewhere);
+
+        // Past the date, the temporary address is worth no more than another.
+        _microsoft.Time.Advance(s_after - s_before);
+        Assert.Contains("sign", await RefusedAsync(temporary), StringComparison.Ordinal);
+        Assert.Single(Elsewhere);
         AssertNothingLeaks("marker");
+    }
+
+    [Theory]
+    [InlineData("/personal/u/Documents/q%201/a%2Bb.pdf")]
+    [InlineData("/sites/team/Shared%20Documents/%C3%A9t%C3%A9%20100%25.pdf")]
+    [InlineData("/personal/u/_layouts/15/download.aspx?UniqueId=1")]
+    [InlineData("/personal/u/_api/v2.0/drive/items/01/content?x=1")]
+    [InlineData("/_api/v2.1/drives/b!1/items/01/content")]
+    public async Task The_paths_a_file_is_at_are_read_as_they_are_written(string path)
+    {
+        await StartAsync();
+        _microsoft.Transport.Map(HttpMethod.Get, "https://contoso", new FakeHttpResponse(HttpStatusCode.OK, "hello"));
+        foreach (var host in new[] { OneDrive, "https://contoso.sharepoint.com" })
+        {
+            Assert.Equal("hello", await ReadAsync(await NextAsync(Activities.Personal("x", host, File(host + path)))));
+            Assert.Equal(host + path, Elsewhere[^1].Uri.AbsoluteUri);
+        }
+    }
+
+    // The token is the application's: what it may read beyond files is not a file anyone shared.
+    [Theory]
+    [InlineData("/personal/u/_api/web/lists")]
+    [InlineData("/_API/web/siteusers")]
+    [InlineData("/_api/v2.0/drive/items/01/children")]
+    [InlineData("/_api/v2.0/sites/root/content")]
+    [InlineData("/_api/v2.0/drive/items/_api/web/content")]
+    [InlineData("/_api/web/drive/items/01/content")]
+    [InlineData("/personal/u/%5Fapi/web/lists")]
+    [InlineData("/personal/u/_api./web/lists")]
+    [InlineData("/personal/u/_api%20/web/lists")]
+    [InlineData("/_vti_bin/client.svc/ProcessQuery")]
+    [InlineData("/_vti_history/512/a.docx")]
+    [InlineData("/_layouts/15/viewlsts.aspx")]
+    [InlineData("/_layouts/15/download.aspx/x")]
+    [InlineData("/_layouts/15/../15/download.aspx")]
+    [InlineData("/_catalogs/masterpage/a.master")]
+    [InlineData("/_admin/a.aspx")]
+    [InlineData("/personal/u/../../sites/secret/a.pdf")]
+    [InlineData("/personal/u/%2E%2e/a.pdf")]
+    [InlineData("/personal/u/.../a.pdf")]
+    [InlineData("/personal/u/%2e%2e%2fa.pdf")]
+    [InlineData("/personal/u%5ca.pdf")]
+    [InlineData("/personal/u/%252e%252e/a.pdf")]
+    [InlineData("/personal/u/%c0%ae/a.pdf")]
+    [InlineData("/personal/u/%00/a.pdf")]
+    [InlineData("/personal//u/a.pdf")]
+    [InlineData("/personal/u/")]
+    [InlineData("/")]
+    [InlineData("")]
+    public async Task A_path_that_is_no_file_is_refused_on_the_tenants_own_hosts_and_no_token_is_asked(string path)
+    {
+        await StartAsync(now: s_before);
+        foreach (var host in new[] { OneDrive, "https://contoso.sharepoint.com" })
+        {
+            var message = await NextAsync(Activities.Personal("x", Guid.NewGuid().ToString("N"), File(host + path + "?tempauth=1")));
+            Assert.Contains("SharePoint", await RefusedAsync(message), StringComparison.Ordinal);
+        }
+
+        Assert.Empty(Elsewhere);
+        Assert.Empty(FileSignIns);
+    }
+
+    [Theory]
+    [InlineData(8192, true)]
+    [InlineData(8193, false)]
+    public async Task An_address_has_a_length(int length, bool read)
+    {
+        await StartAsync();
+        _microsoft.Transport.Map(HttpMethod.Get, OneDrive, new FakeHttpResponse(HttpStatusCode.OK, "hello"));
+        var message = await NextAsync(Activities.Personal("x", "1", File((OneDrive + "/f?x=").PadRight(length, 'a'))));
+
+        if (read)
+            Assert.Equal("hello", await ReadAsync(message));
+        else
+            await RefusedAsync(message);
+        Assert.Equal(read ? 1 : 0, Elsewhere.Count);
+    }
+
+    [Fact]
+    public async Task A_token_goes_to_the_host_it_was_asked_for_until_it_expires_or_is_refused()
+    {
+        await StartAsync();
+        var asked = 0;
+        _microsoft.SignInFor = r => FakeHttpResponse.Json($$"""{"token_type":"Bearer","expires_in":3600,"access_token":"{{new Uri(r.Form["scope"]).Host}}-{{++asked}}"}""");
+        var status = HttpStatusCode.OK;
+        _microsoft.Transport.Map(HttpMethod.Get, "https://contoso", _ => new FakeHttpResponse(status, "hello"));
+        var mine = await NextAsync(Activities.Personal("x", "1", File(OneDrive + "/f")));
+        var team = await NextAsync(Activities.Personal("x", "2", File("https://contoso.sharepoint.com/f")));
+
+        await ReadAsync(mine);
+        await ReadAsync(team);
+        await ReadAsync(mine);
+        _microsoft.Time.Advance(TimeSpan.FromHours(2));
+        await ReadAsync(mine);
+        status = HttpStatusCode.Unauthorized;
+        await RefusedAsync(mine);
+        status = HttpStatusCode.OK;
+        await ReadAsync(mine);
+
+        Assert.Equal(
+            [
+                "Bearer contoso-my.sharepoint.com-1", "Bearer contoso.sharepoint.com-2", "Bearer contoso-my.sharepoint.com-1",
+                "Bearer contoso-my.sharepoint.com-3", "Bearer contoso-my.sharepoint.com-3", "Bearer contoso-my.sharepoint.com-4",
+            ],
+            Elsewhere.Select(r => r.Authorization));
+    }
+
+    [Fact]
+    public async Task A_sign_in_that_waits_for_one_host_holds_up_no_other()
+    {
+        await StartAsync();
+        using var answered = new ManualResetEventSlim();
+        _microsoft.SignInFor = r =>
+        {
+            if (r.Form["scope"] == OneDrive + "/.default")
+                answered.Wait(Polling.DefaultTimeout, Ct);
+            return FakeHttpResponse.Json("""{"token_type":"Bearer","expires_in":3600,"access_token":"file"}""");
+        };
+        _microsoft.Transport.Map(HttpMethod.Get, "https://contoso", new FakeHttpResponse(HttpStatusCode.OK, "hello"));
+        var mine = await NextAsync(Activities.Personal("x", "1", File(OneDrive + "/f")));
+        var team = await NextAsync(Activities.Personal("x", "2", File("https://contoso.sharepoint.com/f")));
+
+        var slow = Task.Run(() => ReadAsync(mine), Ct);
+        await Polling.WaitUntilAsync(() => FileSignIns.Count == 1, Polling.DefaultTimeout);
+        try
+        {
+            Assert.Equal("hello", await ReadAsync(team).WaitAsync(Polling.DefaultTimeout / 2, Ct));
+        }
+        finally
+        {
+            answered.Set();
+        }
+
+        Assert.Equal("hello", await slow);
+    }
+
+    [Fact]
+    public async Task A_transport_that_fails_says_nothing_of_the_address()
+    {
+        await StartAsync();
+        _microsoft.Transport.Map(HttpMethod.Get, OneDrive, _ => throw new HttpRequestException("marker " + Download));
+        _microsoft.Transport.Map(HttpMethod.Get, ImageAddress, _ => throw new HttpRequestException("marker " + ImageAddress));
+        _microsoft.Transport.Map(HttpMethod.Put, OneDrive, _ => throw new HttpRequestException("marker " + Upload));
+        var message = await NextAsync(Activities.Personal("x", "1", File(Download), Image(ImageAddress)));
+
+        foreach (var index in new[] { 0, 1 })
+        {
+            var refused = await Assert.ThrowsAsync<AttachmentRefusedException>(() => ReadAsync(message, index));
+            Assert.Contains("could not be read", refused.Message, StringComparison.Ordinal);
+            Assert.DoesNotContain("marker", refused.ToString(), StringComparison.Ordinal);
+        }
+
+        var fileId = await OfferAsync();
+        await PostAsync(Activities.Consent(fileId, "i1", uploadInfo: UploadInfo()));
+        var said = await TextAsync(1);
+        Assert.Contains("SharePoint could not be reached", said, StringComparison.Ordinal);
+        Assert.DoesNotContain("marker", said, StringComparison.Ordinal);
+        AssertNothingLeaks("marker", "download.aspx", "uploadSession", "views/original");
     }
 
     [Theory]
@@ -318,7 +485,17 @@ public sealed class TeamsFilesTests : IAsyncDisposable
     [InlineData("https://evil.example/v3/attachments/0/views/original")]
     [InlineData("https://contoso-my.sharepoint.com/i.png")]
     [InlineData("http://smba.trafficmanager.net/emea/v3/attachments/0")]
-    [InlineData("https://smba.trafficmanager.net.evil.example/v3")]
+    [InlineData("https://smba.trafficmanager.net.evil.example/v3/attachments/0")]
+    [InlineData("https://evilsmba.trafficmanager.net/v3/attachments/0")]
+    [InlineData("https://x.smba.trafficmanager.net/v3/attachments/0")]
+    [InlineData("https://smba.infra.gcc.teams.microsoft.com/v3/attachments/0/views/original")]
+    [InlineData("https://smba.trafficmanager.net/emea/v3/conversations/a/members")]
+    [InlineData("https://smba.trafficmanager.net/emea/v3/attachments/../conversations/a/members")]
+    [InlineData("https://smba.trafficmanager.net/emea/v3/attachments/%2e%2e/conversations/a/members")]
+    [InlineData("https://smba.trafficmanager.net/emea/v3/attachments/0%2f..%2f..%2fconversations")]
+    [InlineData("https://smba.trafficmanager.net/emea/v3/attachments/")]
+    [InlineData("https://smba.trafficmanager.net/emea/v3/attachments")]
+    [InlineData("https://smba.trafficmanager.net/emea?x=/v3/attachments/0")]
     public async Task An_image_elsewhere_is_refused_and_the_bots_token_stays(string address)
     {
         await StartAsync();
@@ -601,7 +778,17 @@ public sealed class TeamsFilesTests : IAsyncDisposable
     [Theory]
     [InlineData("https://evil.example/upload?tempauth=1", FakeBotConnector.TenantId)]
     [InlineData("http://contoso-my.sharepoint.com/upload?tempauth=1", FakeBotConnector.TenantId)]
-    [InlineData("https://contoso-my.sharepoint.com.evil.example/upload?tempauth=1", FakeBotConnector.TenantId)]
+    [InlineData("https://contoso-my.sharepoint.com.evil.example/personal/u/_api/v2.0/drive/items/01/uploadSession?tempauth=1", FakeBotConnector.TenantId)]
+    [InlineData("https://evilcontoso-my.sharepoint.com/personal/u/_api/v2.0/drive/items/01/uploadSession?tempauth=1", FakeBotConnector.TenantId)]
+    [InlineData("https://contoso.sharepoint.com/personal/u/_api/v2.0/drive/items/01/uploadSession?tempauth=1", FakeBotConnector.TenantId)]
+    [InlineData(OneDrive + "/personal/u/Documents/report.docx", FakeBotConnector.TenantId)]
+    [InlineData(OneDrive + "/personal/u/_api/v2.0/drive/items/01/content", FakeBotConnector.TenantId)]
+    [InlineData(OneDrive + "/personal/u/_api/v2.0/drive/items/01?x=/uploadSession", FakeBotConnector.TenantId)]
+    [InlineData(OneDrive + "/personal/u/_api/web/lists/uploadSession", FakeBotConnector.TenantId)]
+    [InlineData(OneDrive + "/personal/u/uploadSession", FakeBotConnector.TenantId)]
+    [InlineData(OneDrive + "/personal/u/_api/v2.0/drive/../../web/uploadSession", FakeBotConnector.TenantId)]
+    [InlineData(OneDrive + "/personal/u/_api/v2.0/drive/items/01%2f..%2fuploadSession", FakeBotConnector.TenantId)]
+    [InlineData(OneDrive + "/personal/u/_api/v2.0/drive/items/_vti_bin/uploadSession", FakeBotConnector.TenantId)]
     [InlineData(Upload, "00000000-bbbb-cccc-dddd-eeeeeeeeeeee")]
     public async Task An_upload_elsewhere_is_refused_and_no_token_is_asked(string address, string tenant)
     {
@@ -643,6 +830,185 @@ public sealed class TeamsFilesTests : IAsyncDisposable
     }
 
     [Fact]
+    public async Task What_an_upload_could_not_send_may_be_accepted_again_with_another_token()
+    {
+        await StartAsync();
+        var asked = 0;
+        _microsoft.SignInFor = _ => FakeHttpResponse.Json($$"""{"token_type":"Bearer","expires_in":3600,"access_token":"t{{++asked}}"}""");
+        var status = HttpStatusCode.Unauthorized;
+        _microsoft.Transport.Map(HttpMethod.Put, OneDrive, _ => new FakeHttpResponse(status, "{}"));
+        var fileId = await OfferAsync();
+        var bot = asked;
+
+        await PostAsync(Activities.Consent(fileId, "i1", uploadInfo: UploadInfo()));
+        Assert.Contains("within the hour", await TextAsync(1), StringComparison.Ordinal);
+        await PostAsync(Activities.Consent(fileId, "i2", uploadInfo: UploadInfo("https://evil.example/")));
+        Assert.Contains("within the hour", await TextAsync(2), StringComparison.Ordinal);
+        status = HttpStatusCode.Created;
+        await PostAsync(Activities.Consent(fileId, "i3", uploadInfo: UploadInfo()));
+        Card(await ReplyAsync(3), InfoType);
+
+        Assert.Equal([$"Bearer t{bot + 1}", $"Bearer t{bot + 2}"], Puts.Select(p => p.Authorization));
+        await PostAsync(Activities.Consent(fileId, "i4", uploadInfo: UploadInfo()));
+        Assert.Contains("no longer", await TextAsync(4), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task A_failed_upload_gives_the_offer_no_longer_life()
+    {
+        await StartAsync();
+        _microsoft.Transport.Map(HttpMethod.Put, OneDrive, new FakeHttpResponse(HttpStatusCode.Forbidden, "{}"));
+        var fileId = await OfferAsync();
+        await PostAsync(Activities.Consent(fileId, "i1", uploadInfo: UploadInfo()));
+        await TextAsync(1);
+        _microsoft.Time.Advance(TimeSpan.FromMinutes(61));
+
+        await PostAsync(Activities.Consent(fileId, "i2", uploadInfo: UploadInfo()));
+
+        Assert.Contains("no longer", await TextAsync(2), StringComparison.Ordinal);
+        Assert.Single(Puts);
+    }
+
+    private static (OutboundFile File, TaskCompletionSource Go, TaskCompletionSource Opened) Held(string content)
+    {
+        var go = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var opened = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        return (
+            new OutboundFile
+            {
+                Name = "slow.txt",
+                Size = content.Length,
+                OpenAsync = async ct =>
+                {
+                    opened.TrySetResult();
+                    await go.Task.WaitAsync(ct);
+                    return new MemoryStream(Encoding.UTF8.GetBytes(content));
+                },
+            },
+            go,
+            opened);
+    }
+
+    private static Dictionary<string, object?> ConsentOf(string user, string fileId, string id)
+    {
+        var activity = Activities.Consent(fileId, id, uploadInfo: UploadInfo());
+        activity["from"] = new { id = "29:" + user, aadObjectId = user };
+        return activity;
+    }
+
+    private async Task<string> OfferToAsync(string user, OutboundFile file)
+    {
+        var activity = Activities.Personal("send it", $"m{Guid.NewGuid():N}");
+        activity["from"] = new { id = "29:" + user, aadObjectId = user };
+        var message = await NextAsync(activity);
+        var index = _microsoft.Replies.Count;
+        Assert.Single(await _channel.Responder.SendFilesAsync(message, [file], Ct));
+        return Card(await ReplyAsync(index), ConsentType).GetProperty("content").GetProperty("acceptContext").GetProperty("fileId").GetString()!;
+    }
+
+    [Fact]
+    public async Task One_persons_uploads_wait_for_one_another_and_for_nobody_elses()
+    {
+        await StartAsync();
+        _microsoft.Transport.Map(HttpMethod.Put, OneDrive, new FakeHttpResponse(HttpStatusCode.Created, "{}"));
+        var held = Enumerable.Range(0, 5).Select(i => Held($"mine{i}")).ToList();
+        try
+        {
+            foreach (var (one, i) in held.Select((h, i) => (h, i)))
+                await PostAsync(ConsentOf(Activities.UserId, await OfferToAsync(Activities.UserId, one.File), $"i{i}"));
+            await Polling.WaitUntilAsync(() => held.Any(h => h.Opened.Task.IsCompleted), Polling.DefaultTimeout);
+
+            var theirs = await OfferToAsync(OtherUser, Outbound("theirs"));
+            var replies = _microsoft.Replies.Count;
+            await PostAsync(ConsentOf(OtherUser, theirs, "other"));
+            Card(await ReplyAsync(replies), InfoType);
+
+            Assert.Equal("theirs", Assert.Single(Puts).Body);
+            Assert.Single(held, h => h.Opened.Task.IsCompleted);
+        }
+        finally
+        {
+            held.ForEach(h => h.Go.TrySetResult());
+        }
+
+        await Polling.WaitUntilAsync(() => Puts.Count == 6, Polling.DefaultTimeout);
+    }
+
+    [Fact]
+    public async Task An_offer_being_sent_is_not_sent_twice()
+    {
+        await StartAsync();
+        _microsoft.Transport.Map(HttpMethod.Put, OneDrive, new FakeHttpResponse(HttpStatusCode.Created, "{}"));
+        var (file, go, opened) = Held("mine");
+        var fileId = await OfferAsync(file);
+        await PostAsync(Activities.Consent(fileId, "i1", uploadInfo: UploadInfo()));
+        await opened.Task.WaitAsync(Polling.DefaultTimeout, Ct);
+
+        await PostAsync(Activities.Consent(fileId, "i2", uploadInfo: UploadInfo()));
+        Assert.Contains("no longer", await TextAsync(1), StringComparison.Ordinal);
+        await PostAsync(Activities.Consent(fileId, "i3", "decline"));
+        Assert.Contains("no longer", await TextAsync(2), StringComparison.Ordinal);
+        go.SetResult();
+
+        Card(await ReplyAsync(3), InfoType);
+        Assert.Single(Puts);
+    }
+
+    /// <summary>A stream far longer than it was said to be, which counts what is read of it.</summary>
+    private sealed class LongStream : MemoryStream
+    {
+        public long Taken { get; private set; }
+
+        public override ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default)
+        {
+            Taken += buffer.Length;
+            return new(Taken > 2 * TeamsFileExchange.MaxFileBytes ? 0 : buffer.Length);
+        }
+    }
+
+    [Fact]
+    public async Task A_file_that_grew_is_read_to_the_bound_and_not_sent()
+    {
+        await StartAsync();
+        await using var source = new LongStream();
+        var fileId = await OfferAsync(new OutboundFile { Name = "a.bin", Size = 5, OpenAsync = _ => Task.FromResult<Stream>(source) });
+
+        await PostAsync(Activities.Consent(fileId, "i1", uploadInfo: UploadInfo()));
+
+        Assert.Contains("size changed", await TextAsync(1), StringComparison.Ordinal);
+        Assert.InRange(source.Taken, TeamsFileExchange.MaxFileBytes, TeamsFileExchange.MaxFileBytes + 81920);
+        Assert.Empty(Puts);
+        await PostAsync(Activities.Consent(fileId, "i2", uploadInfo: UploadInfo()));
+        Assert.Contains("no longer", await TextAsync(2), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task A_card_shows_only_an_address_of_the_tenant()
+    {
+        await StartAsync();
+        _microsoft.Transport.Map(HttpMethod.Put, OneDrive, new FakeHttpResponse(HttpStatusCode.Created, "{}"));
+        var fileId = await OfferAsync();
+
+        await PostAsync(Activities.Consent(fileId, "i1", uploadInfo: new
+        {
+            uploadUrl = Upload, contentUrl = "https://evil.example/report.txt", uniqueId = "item-1", fileType = "txt", tenantId = FakeBotConnector.TenantId,
+        }));
+
+        Assert.Contains("is in your OneDrive", await TextAsync(1), StringComparison.Ordinal);
+        Assert.DoesNotContain("evil", _microsoft.Replies[1].Body, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void The_whole_host_holds_so_many_requests()
+    {
+        var consents = new TeamsConsents(TimeProvider.System);
+        string? Add(int i) => consents.TryAdd("u", new TeamsReplyTarget(new Uri(FakeBotConnector.ServiceUrl), $"c{i}", "1", "b", "u"), Outbound("x"));
+
+        Assert.All(Enumerable.Range(0, TeamsConsents.Total), i => Assert.NotNull(Add(i)));
+        Assert.Null(Add(TeamsConsents.Total));
+    }
+
+    [Fact]
     public async Task A_file_gone_or_emptied_since_it_was_offered_is_not_sent()
     {
         await StartAsync();
@@ -662,7 +1028,7 @@ public sealed class TeamsFilesTests : IAsyncDisposable
         await StartAsync(certificate: false, now: s_before);
         _microsoft.Transport.Map(HttpMethod.Put, OneDrive, new FakeHttpResponse(HttpStatusCode.OK, "{}"));
         var fileId = await OfferAsync();
-        await PostAsync(Activities.Consent(fileId, "i1", uploadInfo: UploadInfo(Temporary)));
+        await PostAsync(Activities.Consent(fileId, "i1", uploadInfo: UploadInfo(Upload + "&tempauth=v1.marker")));
         Card(await ReplyAsync(1), InfoType);
         Assert.Null(Assert.Single(Puts).Authorization);
 
@@ -732,6 +1098,12 @@ public sealed class TeamsFilesTests : IAsyncDisposable
         await MessageAsync("sentinel");
         Assert.Single(_microsoft.Replies);
         Assert.Empty(Puts);
+
+        // Neither took the offer.
+        _microsoft.Transport.Map(HttpMethod.Put, OneDrive, new FakeHttpResponse(HttpStatusCode.Created, "{}"));
+        await PostAsync(Activities.Consent(fileId, "i3", uploadInfo: UploadInfo()));
+        Card(await ReplyAsync(1), InfoType);
+        Assert.Single(Puts);
     }
 
     // ---- Settings --------------------------------------------------------------------------
