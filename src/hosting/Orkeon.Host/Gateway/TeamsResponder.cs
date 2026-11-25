@@ -55,6 +55,14 @@ internal sealed partial class TeamsResponder : IChatResponder
     /// <inheritdoc />
     public Task CompleteAsync(InboundMessage message, string text, CancellationToken ct) => SendAsync(message, text, Attempts, ct);
 
+    // Sending files in Teams goes through a consent card this channel does not have.
+    /// <inheritdoc />
+    public Task<IReadOnlyList<FileSendResult>> SendFilesAsync(InboundMessage message, IReadOnlyList<OutboundFile> files, CancellationToken ct) =>
+        FileSendResult.NoneSent(files);
+
+    /// <inheritdoc />
+    int IChatResponder.MaxTextLength => MaxTextLength;
+
     private async Task SendAsync(InboundMessage message, string text, int attempts, CancellationToken ct)
     {
         ArgumentNullException.ThrowIfNull(message);

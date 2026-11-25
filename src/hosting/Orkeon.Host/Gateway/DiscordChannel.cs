@@ -62,12 +62,12 @@ internal sealed partial class DiscordChannel : IChatChannel, IAsyncDisposable
     public IChatResponder Responder { get; }
 
     /// <summary>
-    /// Raised for a slash command or the stop button; the returned text is shown only to the
+    /// Raised for a slash command or the stop button; the reply is shown only to the
     /// person who invoked it. One event for both on purpose: the button is `/stop` with a
     /// different finger, and two paths would drift — the first version proved it by checking
     /// the allow list on the typed command and not on the click.
     /// </summary>
-    public event Func<CommandInvocation, Task<string>>? CommandInvoked;
+    public event Func<CommandInvocation, Task<CommandReply>>? CommandInvoked;
 
     /// <inheritdoc />
     public async Task RunAsync(Func<InboundMessage, CancellationToken, Task> onMessage, CancellationToken ct)
@@ -161,8 +161,7 @@ internal sealed partial class DiscordChannel : IChatChannel, IAsyncDisposable
         Func<InboundMessage, CancellationToken, Task> onMessage,
         CancellationToken ct)
     {
-        // A bot answering itself is an infinite loop with a rate limit at the end of it.
-        if (socketMessage.Author.IsBot)
+        if (!IsFromAPerson(socketMessage))
             return;
 
         // A thread is a run. A message in a plain channel has no run to belong to, so it is
@@ -173,6 +172,13 @@ internal sealed partial class DiscordChannel : IChatChannel, IAsyncDisposable
         var message = ToInbound(socketMessage, thread, thread.ParentChannel?.Id, _time.GetUtcNow());
         await onMessage(message, ct).ConfigureAwait(false);
     }
+
+    /// <summary>
+    /// Whether a person wrote it: a bot answering itself is an infinite loop with a rate limit at the end of it, and what
+    /// Discord writes itself (a pin, a join, a rename) carries its author's name and asks for nothing.
+    /// </summary>
+    internal static bool IsFromAPerson(IMessage message) =>
+        !message.Author.IsBot && (message.Type is MessageType.Default or MessageType.Reply);
 
     /// <summary>
     /// Translates a Discord message into the gateway's own shape. Static and separate so the
@@ -191,6 +197,16 @@ internal sealed partial class DiscordChannel : IChatChannel, IAsyncDisposable
             SenderId = message.Author.Id.ToString(System.Globalization.CultureInfo.InvariantCulture),
             Text = message.Content ?? string.Empty,
             ReceivedAt = receivedAt,
+            Attachments =
+            [
+                .. (message.Attachments ?? []).Select(a => new InboundAttachment
+                {
+                    Id = a.Id.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                    Name = a.Filename ?? string.Empty,
+                    ContentType = a.ContentType,
+                    Size = a.Size,
+                }),
+            ],
         };
 
     private async Task OnButtonAsync(SocketMessageComponent component)
@@ -203,7 +219,7 @@ internal sealed partial class DiscordChannel : IChatChannel, IAsyncDisposable
         // anyone who could see the thread could kill the run, while typing /stop was gated.
         await RespondToInvocationAsync(
             ToInvocation(StopCommandName, component.ChannelId, component.User.Id),
-            text => component.RespondAsync(text, ephemeral: true)).ConfigureAwait(false);
+            reply => component.RespondAsync(reply.Text, ephemeral: true, allowedMentions: AllowedMentions.None)).ConfigureAwait(false);
     }
 
     private async Task OnSlashCommandAsync(SocketSlashCommand command)
@@ -212,10 +228,10 @@ internal sealed partial class DiscordChannel : IChatChannel, IAsyncDisposable
         // Channel object is null for an uncached channel — a fresh thread, typically.
         await RespondToInvocationAsync(
             ToInvocation(command.CommandName, command.ChannelId, command.User.Id),
-            text => command.RespondAsync(text, ephemeral: true)).ConfigureAwait(false);
+            reply => command.RespondAsync(reply.Text, ephemeral: true, allowedMentions: AllowedMentions.None)).ConfigureAwait(false);
     }
 
-    private async Task RespondToInvocationAsync(CommandInvocation? invocation, Func<string, Task> respond)
+    private async Task RespondToInvocationAsync(CommandInvocation? invocation, Func<CommandReply, Task> respond)
     {
         if (invocation is null)
             return;
@@ -229,11 +245,12 @@ internal sealed partial class DiscordChannel : IChatChannel, IAsyncDisposable
         // of the delegate, same call, and the invocation is visible as one to a reader (and to
         // the analyzers) instead of hiding behind a local.
         var answering = CommandInvoked?.Invoke(invocation);
-        var text = answering is null
-            ? "The host is not listening to commands."
+        var reply = answering is null
+            ? new CommandReply("The host is not listening to commands.")
             : await answering.ConfigureAwait(false);
 
-        await respond(text).ConfigureAwait(false);
+        // No command answers with files yet: they need a deferred response and a follow-up.
+        await respond(reply).ConfigureAwait(false);
     }
 
     /// <summary>The name of the registered stop command — the button reuses it.</summary>
@@ -340,6 +357,9 @@ internal sealed partial class DiscordChannel : IChatChannel, IAsyncDisposable
 /// </summary>
 internal sealed partial class DiscordResponder : IChatResponder
 {
+    /// <summary>The longest message Discord takes.</summary>
+    private const int TextLimit = 2000;
+
     private readonly DiscordSocketClient _client;
     private readonly ILogger _logger;
 
@@ -362,6 +382,13 @@ internal sealed partial class DiscordResponder : IChatResponder
     public Task CompleteAsync(InboundMessage message, string text, CancellationToken ct) =>
         SendAsync(message, Truncate(text), components: null);
 
+    /// <inheritdoc />
+    public Task<IReadOnlyList<FileSendResult>> SendFilesAsync(InboundMessage message, IReadOnlyList<OutboundFile> files, CancellationToken ct) =>
+        FileSendResult.NoneSent(files);
+
+    /// <inheritdoc />
+    public int MaxTextLength => TextLimit;
+
     private async Task SendAsync(InboundMessage message, string text, MessageComponent? components)
     {
         ArgumentNullException.ThrowIfNull(message);
@@ -383,7 +410,7 @@ internal sealed partial class DiscordResponder : IChatResponder
                 return;
             }
 
-            await channel.SendMessageAsync(Truncate(text), components: components).ConfigureAwait(false);
+            await PostAsync(channel, text, components).ConfigureAwait(false);
         }
 #pragma warning disable CA1031 // A channel that refuses a reply must not fail the run.
         catch (Exception ex)
@@ -393,13 +420,17 @@ internal sealed partial class DiscordResponder : IChatResponder
         }
     }
 
+    /// <summary>Posts one message, which mentions nobody: a model's words and a file's name are not trusted to.</summary>
+    internal static Task PostAsync(IMessageChannel channel, string text, MessageComponent? components) =>
+        channel.SendMessageAsync(Truncate(text), components: components, allowedMentions: AllowedMentions.None);
+
     /// <summary>
     /// Discord refuses a message over 2000 characters. A crew's answer regularly exceeds it, so
     /// it is cut rather than rejected — losing the tail beats losing the whole answer.
     /// </summary>
     /// <param name="text">The text to send.</param>
     /// <param name="limit">The platform's limit, Discord's unless told otherwise.</param>
-    internal static string Truncate(string text, int limit = 2000)
+    internal static string Truncate(string text, int limit = TextLimit)
     {
         const string ellipsis = "\n…(truncated)";
 

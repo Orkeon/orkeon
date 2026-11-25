@@ -27,6 +27,12 @@ internal record InboundMessage
 
     /// <summary>When the channel received it, in UTC.</summary>
     public required DateTimeOffset ReceivedAt { get; init; }
+
+    /// <summary>The files that came with it.</summary>
+    public IReadOnlyList<InboundAttachment> Attachments { get; init; } = [];
+
+    /// <summary>What reads <see cref="Attachments"/>; null on a channel that takes no file.</summary>
+    public IAttachmentSource? AttachmentSource { get; init; }
 }
 
 /// <summary>
@@ -50,6 +56,15 @@ internal interface IChatResponder
 
     /// <summary>Delivers the final answer, always sent even when the run failed or was stopped.</summary>
     Task CompleteAsync(InboundMessage message, string text, CancellationToken ct);
+
+    /// <summary>
+    /// Sends files to the conversation of <paramref name="message"/>: one result per file, in their order. A file that
+    /// cannot be sent is a result, never an exception, and is not opened.
+    /// </summary>
+    Task<IReadOnlyList<FileSendResult>> SendFilesAsync(InboundMessage message, IReadOnlyList<OutboundFile> files, CancellationToken ct);
+
+    /// <summary>How many characters one answer holds; a longer one is cut.</summary>
+    int MaxTextLength { get; }
 }
 
 /// <summary>
@@ -69,10 +84,10 @@ internal interface IChatChannel
     IChatResponder Responder { get; }
 
     /// <summary>
-    /// Raised for a command — a Discord slash command or its stop button, a Teams message that is one. The returned text
+    /// Raised for a command — a Discord slash command or its stop button, a Teams message that is one. The reply
     /// answers whoever invoked it. One event, so one authorization check, whatever the platform.
     /// </summary>
-    event Func<CommandInvocation, Task<string>>? CommandInvoked;
+    event Func<CommandInvocation, Task<CommandReply>>? CommandInvoked;
 }
 
 /// <summary>The commands every channel offers.</summary>
@@ -108,7 +123,36 @@ internal interface IChatAuthorizer
 /// A registered command someone invoked — a slash command, or the stop button, which is the
 /// stop command with a different finger. The returned reply is shown only to the invoker.
 /// </summary>
-internal sealed record CommandInvocation(string CommandName, string ConversationId, string SenderId);
+internal sealed record CommandInvocation(string CommandName, string ConversationId, string SenderId)
+{
+    /// <summary>
+    /// The room the conversation was opened in, as <see cref="InboundMessage.RoomId"/>; null when the channel did not
+    /// resolve it, which is not a room of its own: a command that needs the conversation's crew refuses then.
+    /// </summary>
+    public string? RoomId { get; init; }
+
+    /// <summary>The command's options, by name.</summary>
+    public IReadOnlyDictionary<string, string> Arguments { get; init; } =
+        System.Collections.ObjectModel.ReadOnlyDictionary<string, string>.Empty;
+
+    /// <summary>The files given to the command.</summary>
+    public IReadOnlyList<InboundAttachment> Attachments { get; init; } = [];
+
+    /// <summary>What reads <see cref="Attachments"/>; null on a channel that takes no file.</summary>
+    public IAttachmentSource? AttachmentSource { get; init; }
+}
+
+/// <summary>What answers a command.</summary>
+/// <param name="Text">The words.</param>
+/// <param name="Files">The files that go with them.</param>
+internal sealed record CommandReply(string Text, IReadOnlyList<OutboundFile> Files)
+{
+    /// <summary>A reply of words alone.</summary>
+    public CommandReply(string text)
+        : this(text, [])
+    {
+    }
+}
 
 /// <summary>
 /// The allow-list authorizer, and the only one the host ships.

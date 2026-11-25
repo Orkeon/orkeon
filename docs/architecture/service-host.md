@@ -172,7 +172,9 @@ A message becomes a run in a fixed order: **authorize, route, acknowledge, work.
 
 ### What the Discord channel listens to
 
-Messages **inside a thread**, from people: a message posted in a plain channel is ignored, and so is every message from a bot. The client connects with the `Guilds`, `GuildMessages` and `MessageContent` intents — `MessageContent` is a privileged intent, to be switched on for the bot in the Discord developer portal, or every message arrives empty. `AllowedUserIds` is the only access control: `GuildIds` chooses where the slash commands are registered, it does not restrict who may talk to the bot.
+Messages **inside a thread**, from people: a message posted in a plain channel is ignored, and so is every message from a bot and every message Discord writes itself (a pin, a join, a rename). The client connects with the `Guilds`, `GuildMessages` and `MessageContent` intents — `MessageContent` is a privileged intent, to be switched on for the bot in the Discord developer portal, or every message arrives empty. `AllowedUserIds` is the only access control: `GuildIds` chooses where the slash commands are registered, it does not restrict who may talk to the bot. The bot's messages mention nobody: an `@everyone` in an answer is plain text.
+
+**Files are not taken.** A message with attachments runs on its text alone, and the acknowledgement names the files left out. A message with no text starts no run and is answered with a sentence.
 
 ### The Microsoft Teams channel
 
@@ -202,7 +204,7 @@ Messages **inside a thread**, from people: a message posted in a plain channel i
 
 **Replies go to the validated service only.** The `serviceurl` claim must be `https` on a host Microsoft publishes for Teams, or one named by `ServiceHosts`; redirects are not followed. The bot's own token is obtained with the client credentials, cached until shortly before it expires, and neither it nor the secret is logged. The national clouds (GCC High, DoD, 21Vianet) use other issuers and sign-in addresses and are not supported.
 
-**A thread is a run** here too: in a team's channel, the thread; in a personal or group chat, the whole chat. In a channel Teams delivers only the messages that **mention the bot** (unless the app was granted more), and the mention is removed. A message without an Entra object id, from another bot, or empty is ignored; an activity delivered twice runs once. The request is answered at once, and the run goes on. Answers are cut to 20,000 characters. HTML in an answer is escaped outside code, so `List<string>` shows literally and no image tag is rendered; a Markdown image becomes a plain link. A final reply is retried when the connection fails, when the bot's sign-in fails for a transient reason, and on HTTP 412, 429, 502, 503 and 504.
+**A thread is a run** here too: in a team's channel, the thread; in a personal or group chat, the whole chat. In a channel Teams delivers only the messages that **mention the bot** (unless the app was granted more), and the mention is removed. A message without an Entra object id, from another bot, or empty is ignored, while a file sent alone is answered as on Discord — except in a team's channel, where Teams gives a file only as a link in the HTML copy of the message, which is not read; an activity delivered twice runs once. The request is answered at once, and the run goes on. Answers are cut to 20,000 characters. HTML in an answer is escaped outside code, so `List<string>` shows literally and no image tag is rendered; a Markdown image becomes a plain link. A final reply is retried when the connection fails, when the bot's sign-in fails for a transient reason, and on HTTP 412, 429, 502, 503 and 504.
 
 ### Commands
 

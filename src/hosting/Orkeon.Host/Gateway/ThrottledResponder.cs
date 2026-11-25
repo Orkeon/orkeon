@@ -105,6 +105,13 @@ internal sealed class ThrottledResponder : IChatResponder
         SweepIdleWindows();
     }
 
+    /// <inheritdoc />
+    public Task<IReadOnlyList<FileSendResult>> SendFilesAsync(InboundMessage message, IReadOnlyList<OutboundFile> files, CancellationToken ct) =>
+        _inner.SendFilesAsync(message, files, ct);
+
+    /// <inheritdoc />
+    public int MaxTextLength => _inner.MaxTextLength;
+
     /// <summary>
     /// Drops windows that have been quiet for many intervals. Bounded housekeeping instead of
     /// per-reply teardown: one entry per idle conversation is daemon arithmetic, but tying the

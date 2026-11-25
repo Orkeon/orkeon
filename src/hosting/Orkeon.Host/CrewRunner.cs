@@ -40,6 +40,12 @@ internal sealed record HostedRunResult(HostedRunOutcome Outcome, string? RunId, 
 {
     /// <summary>Whether the crew actually ran and finished.</summary>
     public bool Succeeded => Outcome == HostedRunOutcome.Completed;
+
+    /// <summary>The files of the conversation's message that were not taken.</summary>
+    public IReadOnlyList<RefusedFile> RefusedFiles { get; init; } = [];
+
+    /// <summary>The files of the conversation's outbox that are new or changed, whatever the outcome.</summary>
+    public IReadOnlyList<OutboxFile> OutboxFiles { get; init; } = [];
 }
 
 /// <summary>
@@ -62,7 +68,8 @@ internal interface ICrewRunner
         Action<string>? onProgress = null,
         Func<string, Task>? onStarted = null,
         IReadOnlyDictionary<string, string>? variables = null,
-        RunIdempotency? idempotency = null);
+        RunIdempotency? idempotency = null,
+        HostedConversation? conversation = null);
 }
 
 /// <summary>The idempotency key of a run asked over the host API, and the hash of the request it came with (FWK-14).</summary>
@@ -153,6 +160,10 @@ internal sealed partial class CrewRunner : ICrewRunner
     /// The idempotency key and request hash of a run asked over the host API (FWK-14), written into
     /// <c>run.started</c> so a restarted host still finds the key.
     /// </param>
+    /// <param name="conversation">
+    /// The chat conversation the run belongs to, null for a run of the host API or of an A2A peer. It is prepared after
+    /// <paramref name="onStarted"/>, under the run's token and deadline.
+    /// </param>
     public async Task<HostedRunResult> RunAsync(
         string crewName,
         string prompt,
@@ -160,7 +171,8 @@ internal sealed partial class CrewRunner : ICrewRunner
         Action<string>? onProgress = null,
         Func<string, Task>? onStarted = null,
         IReadOnlyDictionary<string, string>? variables = null,
-        RunIdempotency? idempotency = null)
+        RunIdempotency? idempotency = null,
+        HostedConversation? conversation = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(crewName);
 
@@ -189,6 +201,7 @@ internal sealed partial class CrewRunner : ICrewRunner
         LogRunStarted(run.Id, hosted.Name, origin);
 
         Orkeon.Domain.Common.CrewId? crewId = null;
+        IReadOnlyList<RefusedFile> refusedFiles = [];
         try
         {
             // The deadline is armed BEFORE the acknowledgement: the ack is a network round
@@ -202,6 +215,15 @@ internal sealed partial class CrewRunner : ICrewRunner
             // failure, or the crew stays one seat closer to permanently "busy".
             if (onStarted is not null)
                 await onStarted(run.Id).ConfigureAwait(false);
+
+            if (conversation is not null)
+            {
+                var (prepared, ended) = await PrepareAsync(conversation, run, hosted.Name).ConfigureAwait(false);
+                if (prepared is null)
+                    return ended!;
+                (prompt, variables) = prepared;
+                refusedFiles = prepared.RefusedFiles;
+            }
 
             // The run's own mount namespace, when the host grants this crew folders of its
             // own. Ambient rather than DI-scoped on purpose: IFileSystemService is a singleton
@@ -257,11 +279,11 @@ internal sealed partial class CrewRunner : ICrewRunner
                 recording.DecisionUnavailable = output.ErrorCode == Orkeon.Constants.Protocol.RunEventErrorCodes.DecisionUnavailable;
             }
 
-            return ResultOf(output, run, hosted.Name);
+            return ResultOf(output, run, hosted.Name) with { RefusedFiles = refusedFiles };
         }
         catch (OperationCanceledException)
         {
-            return Cancelled(run, hosted.Name);
+            return Cancelled(run, hosted.Name) with { RefusedFiles = refusedFiles };
         }
 #pragma warning disable CA1031 // A hosted run must not take the daemon down with it.
         catch (Exception ex)
@@ -271,12 +293,38 @@ internal sealed partial class CrewRunner : ICrewRunner
             // server paths and a provider failure carries endpoints, and the thread's
             // membership is not the operator set.
             LogRunFailed(ex, run.Id, hosted.Name);
-            return new HostedRunResult(HostedRunOutcome.Failed, run.Id, FailureMessage(run.Id));
+            return new HostedRunResult(HostedRunOutcome.Failed, run.Id, FailureMessage(run.Id)) { RefusedFiles = refusedFiles };
         }
         finally
         {
             _registry.Finish(run.Id);
             ReleasePerRunState(crewId);
+        }
+    }
+
+    /// <summary>The conversation's preparation, or the result its failure is: one the person reads, never the detail.</summary>
+    private async Task<(PreparedRun? Prepared, HostedRunResult? Ended)> PrepareAsync(
+        HostedConversation conversation, HostedRun run, string crewName)
+    {
+        try
+        {
+            return (await conversation.PrepareAsync(run.Cancellation.Token).ConfigureAwait(false), null);
+        }
+#pragma warning disable CA1031 // Any failure of the preparation, a cancellation of its own included, is this run's answer.
+        catch (Exception ex)
+#pragma warning restore CA1031
+        {
+            // Stopped or out of time: whatever the preparation threw then is the stop's doing.
+            if (run.Cancellation.IsCancellationRequested)
+                return (null, Cancelled(run, crewName));
+
+            LogPreparationFailed(ex, run.Id, crewName);
+            return (null, new HostedRunResult(
+                HostedRunOutcome.Failed,
+                run.Id,
+                ex is ConversationPreparationException
+                    ? ex.Message
+                    : $"This message could not be prepared (run {run.Id}). Details are in the host log."));
         }
     }
 
@@ -377,6 +425,9 @@ internal sealed partial class CrewRunner : ICrewRunner
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Run {RunId} of '{CrewName}' timed out after {Timeout}")]
     private partial void LogRunTimedOut(string runId, string crewName, TimeSpan timeout);
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "The conversation of run {RunId} of '{CrewName}' could not be prepared")]
+    private partial void LogPreparationFailed(Exception ex, string runId, string crewName);
 
     [LoggerMessage(Level = LogLevel.Error, Message = "Run {RunId} of '{CrewName}' failed")]
     private partial void LogRunFailed(Exception ex, string runId, string crewName);

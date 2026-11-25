@@ -1,0 +1,96 @@
+using System.Globalization;
+using System.Text;
+
+namespace Orkeon.Tools.Email.Mime;
+
+/// <summary>
+/// Turns the file name a sender chose into one that is safe to write: no directory part, no
+/// traversal, no control or reserved characters, no device name, bounded length. The sender
+/// controls this string entirely, so nothing of it is trusted.
+/// <para>
+/// Linked into <c>Orkeon.Host</c> as source as well, for the files of a chat message: nothing here may
+/// depend on a package or on another type of this assembly.
+/// </para>
+/// </summary>
+internal static class SafeFileNames
+{
+    private const int MaxLength = 120;
+
+    private static readonly char[] ForbiddenCharacters = ['<', '>', ':', '"', '/', '\\', '|', '?', '*'];
+
+    private static readonly HashSet<string> ReservedDeviceNames = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "CON", "PRN", "AUX", "NUL",
+        "COM1", "COM2", "COM3", "COM4", "COM5", "COM6", "COM7", "COM8", "COM9",
+        "LPT1", "LPT2", "LPT3", "LPT4", "LPT5", "LPT6", "LPT7", "LPT8", "LPT9",
+    };
+
+    /// <summary>
+    /// A safe file name for the file at <paramref name="index"/> (zero-based), falling back to
+    /// <c>attachment-N</c> plus <paramref name="fallbackExtension"/>.
+    /// </summary>
+    public static string Sanitize(string? declaredName, int index, string fallbackExtension = ".bin")
+    {
+        var name = LastSegment(declaredName ?? string.Empty);
+        var cleaned = new StringBuilder(name.Length);
+        foreach (var c in name)
+        {
+            // Format characters are invisible and reorder or hide text: "invoice\u202Efdp.exe"
+            // reads "invoiceexe.pdf" to a human, and to an agent that shows it one.
+            if (char.IsControl(c) || char.GetUnicodeCategory(c) == UnicodeCategory.Format || Array.IndexOf(ForbiddenCharacters, c) >= 0)
+                cleaned.Append('_');
+            else
+                cleaned.Append(c);
+        }
+
+        var safe = cleaned.ToString().Trim().TrimStart('.').TrimEnd('.', ' ');
+        if (safe.Length == 0)
+            safe = string.Create(CultureInfo.InvariantCulture, $"attachment-{index + 1}{fallbackExtension}");
+
+        // Windows reserves a device name whatever follows its first dot: CON.tar.gz is CON too.
+        var dot = safe.IndexOf('.', StringComparison.Ordinal);
+        var stem = (dot < 0 ? safe : safe[..dot]).TrimEnd(' ');
+        if (ReservedDeviceNames.Contains(stem))
+            safe = "_" + safe;
+
+        return Truncate(safe);
+    }
+
+    /// <summary>
+    /// <paramref name="name"/>, or the first <c>name (n).ext</c> not in <paramref name="taken"/>;
+    /// the chosen name is added to <paramref name="taken"/>.
+    /// </summary>
+    public static string Unique(string name, ISet<string> taken)
+    {
+        ArgumentNullException.ThrowIfNull(name);
+        ArgumentNullException.ThrowIfNull(taken);
+        if (taken.Add(name))
+            return name;
+
+        var stem = Path.GetFileNameWithoutExtension(name);
+        var extension = Path.GetExtension(name);
+        for (var n = 1; ; n++)
+        {
+            var candidate = string.Create(CultureInfo.InvariantCulture, $"{stem} ({n}){extension}");
+            if (taken.Add(candidate))
+                return candidate;
+        }
+    }
+
+    private static string LastSegment(string name)
+    {
+        var cut = name.LastIndexOfAny(['/', '\\']);
+        return cut >= 0 ? name[(cut + 1)..] : name;
+    }
+
+    private static string Truncate(string name)
+    {
+        if (name.Length <= MaxLength)
+            return name;
+
+        var extension = Path.GetExtension(name);
+        if (extension.Length >= MaxLength / 2)
+            extension = string.Empty;
+        return string.Concat(name.AsSpan(0, MaxLength - extension.Length), extension);
+    }
+}

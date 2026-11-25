@@ -58,6 +58,16 @@ internal sealed partial class ChatGateway
         // prompt like any other.
         var text = message.Text.Trim();
 
+        // Nothing to run on. Said before the conversation is claimed: an empty prompt is no run, and silence looks like
+        // a broken bot. No file is taken, so files alone are nothing to run on either.
+        var notTaken = message.Attachments.Count > 0 ? FileNotices.NotTaken(message.Attachments) : null;
+        if (text.Length == 0)
+        {
+            const string nothing = "There is nothing to work on: the message has no text.";
+            await responder.CompleteAsync(message, notTaken is null ? nothing : $"{notTaken}\n{nothing}", ct).ConfigureAwait(false);
+            return;
+        }
+
         // One conversation, one run — claimed atomically. A FindRun check followed by an
         // await let two interleaving messages both pass and start two runs in one thread,
         // giving the user answers nobody could tell apart.
@@ -86,7 +96,16 @@ internal sealed partial class ChatGateway
                 onStarted: async runId =>
                 {
                     _router.Attach(message.ConversationId, runId);
-                    await responder.AcknowledgeAsync(message, $"Working on it with '{crewName}'…", ct).ConfigureAwait(false);
+                    var working = $"Working on it with '{crewName}'…";
+                    await responder
+                        .AcknowledgeAsync(message, notTaken is null ? working : $"{working}\n{notTaken}", ct)
+                        .ConfigureAwait(false);
+                },
+                conversation: new HostedConversation
+                {
+                    Channel = message.Channel,
+                    ConversationId = message.ConversationId,
+                    PrepareAsync = _ => Task.FromResult(new PreparedRun(text)),
                 }).ConfigureAwait(false);
         }
         finally

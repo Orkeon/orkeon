@@ -35,6 +35,12 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- The safe-file-name core of the e-mail tools, as source: it is internal there, and the host
+         needs neither the assembly's surface nor MimeKit for it. -->
+    <Compile Include="..\..\tools\Orkeon.Tools.Email\Mime\SafeFileNames.cs" Link="Gateway\SafeFileNames.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
     <!-- Host types are internal to the executable; the test project consumes them
          through a ProjectReference. -->
     <InternalsVisibleTo Include="Orkeon.Host.Tests" />

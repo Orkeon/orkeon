@@ -13,12 +13,12 @@ internal sealed class FakeChatChannel : IChatChannel, IAsyncDisposable
 
     public IChatResponder Responder => Recorded;
 
-    public event Func<CommandInvocation, Task<string>>? CommandInvoked;
+    public event Func<CommandInvocation, Task<CommandReply>>? CommandInvoked;
 
     /// <summary>What the service does with a message, once it listens.</summary>
     public Task<Func<InboundMessage, CancellationToken, Task>> Listening => _listening.Task;
 
-    public Task<string> InvokeAsync(CommandInvocation invocation) =>
+    public Task<CommandReply> InvokeAsync(CommandInvocation invocation) =>
         CommandInvoked?.Invoke(invocation) ?? throw new InvalidOperationException("Nobody listens to the commands.");
 
     public Task RunAsync(Func<InboundMessage, CancellationToken, Task> onMessage, CancellationToken ct)

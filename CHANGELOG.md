@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — orkeon-host says what it does not take from a chat message
+
+- A Discord or Teams message with attachments runs on its text, and the acknowledgement names the files left out. A
+  message with no text is answered with a sentence and starts no run; it used to run on an empty prompt on Discord, and
+  a file sent alone was ignored on Teams. A lone mention stays ignored on Teams.
+- The messages Discord writes itself (a pin, a join, a rename) start no run, and what the bot posts mentions nobody.
+
 ### Added — the REPL keeps the OAuth tokens of e-mail, drive and chat accounts (#482)
 
 - `orkeon-repl` mounts the internal `/credentials` root when a declared account signs in with OAuth, as the runners do:

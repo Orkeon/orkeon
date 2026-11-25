@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.Json;
 
 namespace Orkeon.Host.Gateway;
@@ -9,6 +10,7 @@ namespace Orkeon.Host.Gateway;
 internal sealed record TeamsActivity
 {
     private const int MaxIdLength = 1024;
+    private const string FileAttachmentType = "application/vnd.microsoft.teams.file.download.info";
 
     public string? Type { get; private init; }
     public string? Id { get; private init; }
@@ -22,6 +24,12 @@ internal sealed record TeamsActivity
     public string? ConversationType { get; private init; }
     public IReadOnlyList<string> Tenants { get; private init; } = [];
     public string Text { get; private init; } = string.Empty;
+
+    /// <summary>
+    /// The files of the message, by name only. A channel's message shows its files as links in the HTML copy of its text:
+    /// those are not read, nor is any address a file could be downloaded from.
+    /// </summary>
+    public IReadOnlyList<InboundAttachment> Attachments { get; private init; } = [];
 
     /// <summary>Reads a body, null when it is not a JSON object.</summary>
     public static TeamsActivity? Parse(ReadOnlyMemory<byte> body)
@@ -58,6 +66,7 @@ internal sealed record TeamsActivity
             ConversationType = TextOf(conversation, "conversationType"),
             Tenants = [.. tenants.OfType<string>().Where(t => t.Length > 0)],
             Text = WithoutMention(TextOf(root, "text") ?? string.Empty, root, recipientId),
+            Attachments = FilesOf(root),
         };
     }
 
@@ -96,6 +105,31 @@ internal sealed record TeamsActivity
 
     private static string? TextOf(JsonElement parent, string name) =>
         Child(parent, name) is { ValueKind: JsonValueKind.String } value ? value.GetString() : null;
+
+    /// <summary>The attachments that are files or pictures: the HTML copy of the text, a card and a quote are none.</summary>
+    private static List<InboundAttachment> FilesOf(JsonElement root)
+    {
+        if (Child(root, "attachments") is not { ValueKind: JsonValueKind.Array } attachments)
+            return [];
+
+        var files = new List<InboundAttachment>();
+        foreach (var attachment in attachments.EnumerateArray())
+        {
+            var type = TextOf(attachment, "contentType");
+            var picture = type?.StartsWith("image/", StringComparison.OrdinalIgnoreCase) == true;
+            if (!picture && !string.Equals(type, FileAttachmentType, StringComparison.OrdinalIgnoreCase))
+                continue;
+
+            files.Add(new InboundAttachment
+            {
+                Id = TextOf(Child(attachment, "content"), "uniqueId") ?? files.Count.ToString(CultureInfo.InvariantCulture),
+                Name = TextOf(attachment, "name") ?? (picture ? "image" : string.Empty),
+                ContentType = picture ? type : null,
+            });
+        }
+
+        return files;
+    }
 
     /// <summary>The message without the mention of the bot Teams puts in it; other people's mentions stay.</summary>
     private static string WithoutMention(string text, JsonElement root, string? botId)

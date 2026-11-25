@@ -129,6 +129,20 @@ public class ThrottledResponderTests
     }
 
     [Fact]
+    public async Task Files_and_the_text_limit_pass_through()
+    {
+        var (responder, inner, _) = Build();
+        inner.MaxTextLength = 123;
+        var file = new OutboundFile { Name = "a.pdf", Size = 1, OpenAsync = _ => Task.FromResult(Stream.Null) };
+
+        var results = await responder.SendFilesAsync(Message(), [file], TestContext.Current.CancellationToken);
+
+        Assert.Equal(123, responder.MaxTextLength);
+        Assert.Same(file, Assert.Single(inner.Files));
+        Assert.Equal(new FileSendResult("a.pdf", FileSendOutcome.Sent), Assert.Single(results));
+    }
+
+    [Fact]
     public async Task Two_conversations_have_two_windows_and_never_swap_content()
     {
         // The first version shared one window across every thread: thread B finishing first

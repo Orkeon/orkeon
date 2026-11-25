@@ -171,7 +171,7 @@ internal sealed partial class ChatChannelService : BackgroundService
         // allow list gates both: the first version checked it on the typed command only,
         // and anyone who could see the thread could kill the run with a click.
         channel.CommandInvoked += invocation =>
-            Task.FromResult(HandleCommand(gateway, authorizer, invocation));
+            HandleCommandAsync(gateway, authorizer, invocation, stoppingToken);
 
         try
         {
@@ -210,23 +210,24 @@ internal sealed partial class ChatChannelService : BackgroundService
 
     /// <summary>
     /// One registered command, end to end: authorize, then act, then word the answer. The
-    /// text goes back ephemerally to the invoker alone.
+    /// reply goes back ephemerally to the invoker alone.
     /// </summary>
-    internal static string HandleCommand(ChatGateway gateway, IChatAuthorizer authorizer, CommandInvocation invocation)
+    internal static Task<CommandReply> HandleCommandAsync(
+        ChatGateway gateway, IChatAuthorizer authorizer, CommandInvocation invocation, CancellationToken ct)
     {
         ArgumentNullException.ThrowIfNull(gateway);
         ArgumentNullException.ThrowIfNull(authorizer);
         ArgumentNullException.ThrowIfNull(invocation);
 
         if (!authorizer.IsAuthorized(invocation.SenderId))
-            return "You are not authorized to use this bot.";
+            return Task.FromResult(new CommandReply("You are not authorized to use this bot."));
 
-        return invocation.CommandName switch
+        return Task.FromResult(new CommandReply(invocation.CommandName switch
         {
             ChatCommands.Stop => gateway.Stop(invocation.ConversationId),
             ChatCommands.Status => gateway.Status(invocation.ConversationId),
             _ => "Unknown command.",
-        };
+        }));
     }
 
     [LoggerMessage(Level = LogLevel.Error, Message = "The {Channel} channel is enabled but its allow list is empty; it would answer nobody, so it will not start. Add {Channel}:AllowedUserIds.")]

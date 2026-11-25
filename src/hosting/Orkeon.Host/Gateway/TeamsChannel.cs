@@ -96,7 +96,7 @@ internal sealed partial class TeamsChannel : IChatChannel, IAsyncDisposable, IDi
     public IChatResponder Responder { get; }
 
     /// <inheritdoc />
-    public event Func<CommandInvocation, Task<string>>? CommandInvoked;
+    public event Func<CommandInvocation, Task<CommandReply>>? CommandInvoked;
 
     /// <summary>Takes the port, so that a port already held refuses the start of the host; <see cref="RunAsync"/> answers on it.</summary>
     /// <exception cref="HostConfigurationException">The prefix could not be bound.</exception>
@@ -271,8 +271,8 @@ internal sealed partial class TeamsChannel : IChatChannel, IAsyncDisposable, IDi
             return HttpStatusCode.OK;
         }
 
-        // A lone mention or attachment has nothing to run on.
-        if (activity.Text.Length == 0)
+        // A lone mention has nothing to run on. A lone file goes on: the gateway says it was not taken.
+        if (activity.Text.Length == 0 && activity.Attachments.Count == 0)
             return HttpStatusCode.OK;
 
         // A delivery already seen was already acted on. Someone off the list is told so once at a time, and fills no memory.
@@ -287,6 +287,7 @@ internal sealed partial class TeamsChannel : IChatChannel, IAsyncDisposable, IDi
             RoomId = activity.RoomId,
             SenderId = sender,
             Text = activity.Text,
+            Attachments = activity.Attachments,
             ReceivedAt = _time.GetUtcNow(),
             ReplyTo = new TeamsReplyTarget(serviceUrl, activity.ThreadId, id, bot, user),
         };
@@ -324,9 +325,12 @@ internal sealed partial class TeamsChannel : IChatChannel, IAsyncDisposable, IDi
 
     private async Task RunCommandAsync(string command, TeamsInboundMessage message, CancellationToken ct)
     {
-        var answering = CommandInvoked?.Invoke(new CommandInvocation(command, message.ConversationId, message.SenderId));
-        var text = answering is null ? "The host is not listening to commands." : await answering.ConfigureAwait(false);
-        await Responder.CompleteAsync(message, text, ct).ConfigureAwait(false);
+        var answering = CommandInvoked?.Invoke(
+            new CommandInvocation(command, message.ConversationId, message.SenderId) { RoomId = message.RoomId });
+        var reply = answering is null ? new CommandReply("The host is not listening to commands.") : await answering.ConfigureAwait(false);
+
+        // No command answers with files yet: the reply's files have nowhere to go here.
+        await Responder.CompleteAsync(message, reply.Text, ct).ConfigureAwait(false);
     }
 
     [SuppressMessage("Design", "CA1031", Justification = "Fault barrier for detached handlers: an exception here has no caller left to reach, so it is logged instead of lost.")]

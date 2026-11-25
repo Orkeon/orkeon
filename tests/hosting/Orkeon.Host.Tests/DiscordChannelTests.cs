@@ -224,6 +224,88 @@ public class DiscordChannelTests
             () => channel.RunAsync(null!, TestContext.Current.CancellationToken));
     }
 
+    // ---- What a message becomes ----------------------------------------------------------
+
+    private static Discord.IMessage DiscordMessage(
+        Discord.MessageType type = Discord.MessageType.Default, bool bot = false, params Discord.IAttachment[] attachments)
+    {
+        var author = StubDiscord.Of<Discord.IUser>(("Id", 42UL), ("IsBot", bot));
+        return StubDiscord.Of<Discord.IMessage>(
+            ("Type", type),
+            ("Author", author),
+            ("Content", "summarise"),
+            ("Attachments", attachments));
+    }
+
+    [Fact]
+    public void Attachments_are_carried_without_their_signed_address()
+    {
+        var attachment = StubDiscord.Of<Discord.IAttachment>(
+            ("Id", 7UL), ("Filename", "march.pdf"), ("ContentType", "application/pdf"), ("Size", 12),
+            ("Url", "https://cdn.discordapp.com/secret"), ("ProxyUrl", "https://media.discordapp.net/secret"));
+        var thread = StubDiscord.Of<Discord.IChannel>(("Id", 99UL));
+
+        var message = DiscordChannel.ToInbound(DiscordMessage(attachments: attachment), thread, 5UL, DateTimeOffset.UnixEpoch);
+
+        Assert.Equal(("99", "5", "42", "summarise"), (message.ConversationId, message.RoomId, message.SenderId, message.Text));
+        Assert.Equal(
+            new InboundAttachment { Id = "7", Name = "march.pdf", ContentType = "application/pdf", Size = 12 },
+            Assert.Single(message.Attachments));
+        Assert.Null(message.AttachmentSource);
+        Assert.DoesNotContain("secret", message.ToString() + message.Attachments[0], StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData(Discord.MessageType.Default, false, true)]
+    [InlineData(Discord.MessageType.Reply, false, true)]
+    [InlineData(Discord.MessageType.Default, true, false)]
+    [InlineData(Discord.MessageType.ChannelPinnedMessage, false, false)]
+    [InlineData(Discord.MessageType.GuildMemberJoin, false, false)]
+    [InlineData(Discord.MessageType.RecipientAdd, false, false)]
+    [InlineData(Discord.MessageType.ChannelNameChange, false, false)]
+    [InlineData(Discord.MessageType.ThreadStarterMessage, false, false)]
+    public void Only_what_a_person_writes_is_listened_to(Discord.MessageType type, bool bot, bool expected) =>
+        Assert.Equal(expected, DiscordChannel.IsFromAPerson(DiscordMessage(type, bot)));
+
+    [Fact]
+    public async Task No_answer_mentions_anyone()
+    {
+        // An answer carries text nobody vouched for: a file's name, a model's words.
+        var channel = StubDiscord.Of<Discord.IMessageChannel>();
+
+        await DiscordResponder.PostAsync(channel, "@everyone", components: null);
+
+        var (method, arguments) = Assert.Single(StubDiscord.CallsOf(channel));
+        Assert.Equal("SendMessageAsync", method);
+        Assert.Contains("@everyone", arguments);
+        Assert.Same(Discord.AllowedMentions.None, Assert.Single(arguments.OfType<Discord.AllowedMentions>()));
+    }
+
+    [Fact]
+    public async Task Files_are_refused_one_by_one_until_the_channel_sends_them()
+    {
+        await using var client = new DiscordSocketClient();
+        var responder = new DiscordResponder(client, new RecordingLogger());
+        var opened = false;
+        OutboundFile File(string name) => new()
+        {
+            Name = name,
+            Size = 1,
+            OpenAsync = _ =>
+            {
+                opened = true;
+                return Task.FromResult(Stream.Null);
+            },
+        };
+
+        var results = await responder.SendFilesAsync(Message("1"), [File("a"), File("b")], TestContext.Current.CancellationToken);
+
+        Assert.Equal(["a", "b"], results.Select(r => r.Name));
+        Assert.All(results, r => Assert.Equal(FileSendOutcome.Refused, r.Outcome));
+        Assert.False(opened);
+        Assert.Equal(2000, responder.MaxTextLength);
+    }
+
     // ---- The responder: a conversation id that is no Discord channel ---------------------
 
     private static InboundMessage Message(string conversation) => new()

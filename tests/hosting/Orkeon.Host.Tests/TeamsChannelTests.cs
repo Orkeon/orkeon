@@ -53,7 +53,7 @@ public sealed class TeamsChannelTests : IAsyncLifetime
         channel.CommandInvoked += invocation =>
         {
             _commands.Enqueue(invocation);
-            return Task.FromResult("Stopping.");
+            return Task.FromResult(new CommandReply("Stopping."));
         };
         return channel;
     }
@@ -370,6 +370,34 @@ public sealed class TeamsChannelTests : IAsyncLifetime
         await AssertNothingRanAsync();
     }
 
+    [Fact]
+    public async Task A_lone_file_reaches_the_gateway_by_its_name_and_never_its_address()
+    {
+        var activity = Activities.Message("<at>Orkeon</at>");
+        activity["attachments"] = new object[]
+        {
+            new { contentType = "text/html", content = "<p>hello</p>" },
+            new { contentType = "application/vnd.microsoft.card.adaptive", name = "card" },
+            new
+            {
+                contentType = "application/vnd.microsoft.teams.file.download.info",
+                name = "march.pdf",
+                content = new { uniqueId = "u-1", downloadUrl = "https://contoso.sharepoint.com/secret" },
+            },
+            new { contentType = "image/png", contentUrl = "https://smba.example/image" },
+            "not an object",
+        };
+
+        var message = await NextAsync(activity);
+
+        Assert.Equal(string.Empty, message.Text);
+        Assert.Equal(["march.pdf", "image"], message.Attachments.Select(a => a.Name));
+        Assert.Equal("u-1", message.Attachments[0].Id);
+        Assert.Equal("image/png", message.Attachments[1].ContentType);
+        Assert.Null(message.AttachmentSource);
+        Assert.DoesNotContain("secret", message.ToString() + string.Concat(message.Attachments), StringComparison.Ordinal);
+    }
+
     [Theory]
     [InlineData("..")]
     [InlineData("")]
@@ -414,7 +442,7 @@ public sealed class TeamsChannelTests : IAsyncLifetime
         Assert.Equal(HttpStatusCode.OK, await PostAsync(Activities.Message(text)));
         await Polling.WaitUntilAsync(() => _microsoft.Replies.Count == 1, Polling.DefaultTimeout);
 
-        Assert.Equal(new CommandInvocation(command, Activities.Thread, Activities.UserId), Assert.Single(_commands));
+        Assert.Equal(new CommandInvocation(command, Activities.Thread, Activities.UserId) { RoomId = Activities.Room }, Assert.Single(_commands));
         Assert.Empty(_received);
         Assert.Contains("Stopping.", _microsoft.Replies[0].Body, StringComparison.Ordinal);
     }

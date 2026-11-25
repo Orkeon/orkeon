@@ -265,7 +265,7 @@ public sealed class ChatChannelServiceTests
             // A user of one channel is a stranger to the other, whatever the id.
             await fromDiscord(Discord(Activities.UserId), ct);
             Assert.Empty(runner.Ran);
-            Assert.Contains("not authorized", await discordChannel.InvokeAsync(new CommandInvocation("status", "1", Activities.UserId)), StringComparison.OrdinalIgnoreCase);
+            Assert.Contains("not authorized", (await discordChannel.InvokeAsync(new CommandInvocation("status", "1", Activities.UserId))).Text, StringComparison.OrdinalIgnoreCase);
 
             await fromDiscord(Discord("123"), ct);
             Assert.Equal(["support:hello"], runner.Ran);
@@ -305,7 +305,7 @@ public sealed class ChatChannelServiceTests
     }
 
     [Fact]
-    public void A_command_from_a_stranger_is_refused_before_it_acts()
+    public async Task A_command_from_a_stranger_is_refused_before_it_acts()
     {
         // The gap this pins closed: the stop BUTTON used to skip the allow list entirely —
         // anyone who could see the thread could kill the run, while typing /stop was gated.
@@ -313,50 +313,58 @@ public sealed class ChatChannelServiceTests
         var run = registry.TryStart("support", "discord:thread-1", out _)!;
         router.Attach("thread-1", run.Id);
 
-        var text = ChatChannelService.HandleCommand(
-            gateway, authorizer, new CommandInvocation("stop", "thread-1", "stranger"));
+        var (text, files) = await ChatChannelService.HandleCommandAsync(
+            gateway, authorizer, new CommandInvocation("stop", "thread-1", "stranger"), TestContext.Current.CancellationToken);
+
+        Assert.Empty(files);
 
         Assert.Contains("not authorized", text, StringComparison.OrdinalIgnoreCase);
         Assert.False(run.Cancellation.IsCancellationRequested);
     }
 
     [Fact]
-    public void Stop_from_an_allowed_sender_reaches_the_conversations_run()
+    public async Task Stop_from_an_allowed_sender_reaches_the_conversations_run()
     {
         var (gateway, authorizer, registry, router) = Wiring();
         var run = registry.TryStart("support", "discord:thread-1", out _)!;
         router.Attach("thread-1", run.Id);
 
-        var text = ChatChannelService.HandleCommand(
-            gateway, authorizer, new CommandInvocation("stop", "thread-1", "trusted"));
+        var (text, files) = await ChatChannelService.HandleCommandAsync(
+            gateway, authorizer, new CommandInvocation("stop", "thread-1", "trusted"), TestContext.Current.CancellationToken);
+
+        Assert.Empty(files);
 
         Assert.Equal("Stopping.", text);
         Assert.True(run.Cancellation.IsCancellationRequested);
     }
 
     [Fact]
-    public void Status_from_an_allowed_sender_reports_the_conversation()
+    public async Task Status_from_an_allowed_sender_reports_the_conversation()
     {
         var (gateway, authorizer, registry, router) = Wiring();
         var run = registry.TryStart("support", "discord:thread-1", out _)!;
         router.Attach("thread-1", run.Id);
 
-        var text = ChatChannelService.HandleCommand(
-            gateway, authorizer, new CommandInvocation("status", "thread-1", "trusted"));
+        var (text, files) = await ChatChannelService.HandleCommandAsync(
+            gateway, authorizer, new CommandInvocation("status", "thread-1", "trusted"), TestContext.Current.CancellationToken);
+
+        Assert.Empty(files);
 
         Assert.Contains("support", text, StringComparison.Ordinal);
         Assert.Contains(" for ", text, StringComparison.Ordinal);
     }
 
     [Fact]
-    public void An_unknown_command_name_is_answered_not_dropped()
+    public async Task An_unknown_command_name_is_answered_not_dropped()
     {
         // Registration and dispatch could drift (an old client, a stale global cache); the
         // invoker deserves words, not the "this interaction failed" banner.
         var (gateway, authorizer, _, _) = Wiring();
 
-        var text = ChatChannelService.HandleCommand(
-            gateway, authorizer, new CommandInvocation("restart", "thread-1", "trusted"));
+        var (text, files) = await ChatChannelService.HandleCommandAsync(
+            gateway, authorizer, new CommandInvocation("restart", "thread-1", "trusted"), TestContext.Current.CancellationToken);
+
+        Assert.Empty(files);
 
         Assert.Equal("Unknown command.", text);
     }
