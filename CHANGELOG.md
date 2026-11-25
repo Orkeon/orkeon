@@ -42,6 +42,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   are typed, answered ephemerally, for the allow list alone. `/outbox` is always open to download, `/inbox` is listed, the
   rest is what the crew's `files:` declares. A path that is forbidden is answered as one that is not there.
   A file that arrives holds no other command back, and the folder it goes to is judged again once it has come.
+  `/get` sends to one person once at a time, and to four in all.
 - With it on, an answer ends with the files the run left in `/outbox`, and one too long for the channel is kept whole as
   `/outbox/reply-<run id>.md`. No file is sent unasked.
 

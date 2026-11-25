@@ -108,6 +108,7 @@ internal static class DiscordFiles
                 null => new FileSendResult(files[i].Name, FileSendOutcome.Sent),
                 HttpException { HttpCode: HttpStatusCode.RequestEntityTooLarge } => TooLarge(files[i], most),
                 HttpException { HttpCode: HttpStatusCode.Forbidden } => new FileSendResult(files[i].Name, FileSendOutcome.Refused, "the bot may not attach files here"),
+                TimeoutException or OperationCanceledException => new FileSendResult(files[i].Name, FileSendOutcome.Refused, "it took too long to send, and may have arrived"),
                 _ => new FileSendResult(files[i].Name, FileSendOutcome.Refused, "Discord did not take it"),
             };
             Exception? refusal = null;

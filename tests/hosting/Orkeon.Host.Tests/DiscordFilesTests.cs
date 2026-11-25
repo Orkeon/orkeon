@@ -149,8 +149,8 @@ public sealed class DiscordFilesTests
         Assert.Empty(_opened);
     }
 
-    private static IDiscordInteraction Interaction(ulong? channel = 99, int limit = 100) => StubDiscord.Of<IDiscordInteraction>(
-        ("ChannelId", channel), ("AttachmentSizeLimit", (ulong)limit), ("User", StubDiscord.Of<IUser>(("Id", 42UL))));
+    private static IDiscordInteraction Interaction(ulong? channel = 99, int limit = 100, ulong person = 42) => StubDiscord.Of<IDiscordInteraction>(
+        ("ChannelId", channel), ("AttachmentSizeLimit", (ulong)limit), ("User", StubDiscord.Of<IUser>(("Id", person))));
 
     [Fact]
     public async Task ShouldDeferPrivately_BeforeTheAnswerIsMade()
@@ -160,6 +160,7 @@ public sealed class DiscordFilesTests
 
         await DiscordChannel.AnswerDeferredAsync(
             interaction,
+            new DiscordSends(),
             () =>
             {
                 before = StubDiscord.CallsOf(interaction).Count;
@@ -187,7 +188,7 @@ public sealed class DiscordFilesTests
         });
 
         await DiscordChannel.AnswerDeferredAsync(
-            interaction, () => Task.FromResult(new CommandReply("here", [File("a"), File("big", 101)])), Ct);
+            interaction, new DiscordSends(), () => Task.FromResult(new CommandReply("here", [File("a"), File("big", 101)])), Ct);
 
         var calls = StubDiscord.CallsOf(interaction);
         Assert.Equal(["DeferAsync", "FollowupWithFilesAsync", "FollowupAsync"], calls.Select(c => c.Method));
@@ -199,12 +200,67 @@ public sealed class DiscordFilesTests
     }
 
     [Fact]
+    public async Task ShouldSendToFewAtOnce_AndOnceToOnePerson()
+    {
+        var sends = new DiscordSends();
+        var open = new TaskCompletionSource<Stream>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var opened = 0;
+        (IDiscordInteraction Interaction, Task Answer) Ask(ulong person)
+        {
+            var interaction = Interaction(person: person);
+            var file = new OutboundFile
+            {
+                Name = "a",
+                Size = 1,
+                OpenAsync = _ =>
+                {
+                    Interlocked.Increment(ref opened);
+                    return open.Task;
+                },
+            };
+            return (interaction, DiscordChannel.AnswerDeferredAsync(interaction, sends, () => Task.FromResult(new CommandReply("here", [file])), Ct));
+        }
+
+        static string SaidBy(IDiscordInteraction interaction) =>
+            Assert.Single(StubDiscord.CallsOf(interaction)[^1].Arguments.OfType<string>());
+
+        var first = Ask(1);
+        var again = Ask(1);
+        var others = Enumerable.Range(2, DiscordSends.Most - 1).Select(i => Ask((ulong)i)).ToList();
+        var more = Ask(100);
+        await again.Answer;
+        await more.Answer;
+
+        Assert.Contains("already", SaidBy(again.Interaction), StringComparison.Ordinal);
+        Assert.Contains("already", SaidBy(more.Interaction), StringComparison.Ordinal);
+        Assert.Equal(DiscordSends.Most, opened);
+
+        open.SetException(new IOException("gone"));
+        await first.Answer;
+        await Task.WhenAll(others.Select(o => o.Answer));
+        await Ask(1).Answer;
+        await Ask(100).Answer;
+        Assert.Equal(DiscordSends.Most + 2, opened);
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task ShouldSayItMayHaveArrived_WhenTheUploadTimesOut(bool cancelled)
+    {
+        var results = await DiscordFiles.SendAsync(
+            [File("a")], 100, _ => throw (cancelled ? new TaskCanceledException() : new TimeoutException()), Ct);
+
+        Assert.Contains("may have arrived", Assert.Single(results).Reason, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task ShouldStillAnswer_WhenTheCommandFails()
     {
         var interaction = Interaction();
 
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            DiscordChannel.AnswerDeferredAsync(interaction, () => throw new InvalidOperationException("/srv/secret"), Ct));
+            DiscordChannel.AnswerDeferredAsync(interaction, new DiscordSends(), () => throw new InvalidOperationException("/srv/secret"), Ct));
 
         var calls = StubDiscord.CallsOf(interaction);
         Assert.Equal(["DeferAsync", "FollowupAsync"], calls.Select(c => c.Method));

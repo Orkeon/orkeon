@@ -29,6 +29,7 @@ internal sealed partial class DiscordChannel : IChatChannel, ISuggestingChannel,
     private readonly DiscordSocketClient _client;
     private readonly TimeProvider _time;
     private readonly bool _fileCommands;
+    private readonly DiscordSends _sends = new();
     private readonly HttpClient _downloads = new(DiscordAttachmentSource.NewHandler());
 
     /// <summary>Builds the channel over its configuration.</summary>
@@ -260,7 +261,7 @@ internal sealed partial class DiscordChannel : IChatChannel, ISuggestingChannel,
             var invocation = InvocationOf(
                 command, command.CommandName, command.Data.Options.Select(o => (o.Name, (object?)o.Value)), RoomOfAsync, _downloads);
             if (invocation is not null)
-                await AnswerDeferredAsync(command, () => AskAsync(invocation), ct, LogFileNotSent).ConfigureAwait(false);
+                await AnswerDeferredAsync(command, _sends, () => AskAsync(invocation), ct, LogFileNotSent).ConfigureAwait(false);
             return;
         }
 
@@ -403,9 +404,10 @@ internal sealed partial class DiscordChannel : IChatChannel, ISuggestingChannel,
     /// leave named.
     /// </summary>
     internal static async Task AnswerDeferredAsync(
-        IDiscordInteraction interaction, Func<Task<CommandReply>> answer, CancellationToken ct, Action<Exception>? failed = null)
+        IDiscordInteraction interaction, DiscordSends sends, Func<Task<CommandReply>> answer, CancellationToken ct, Action<Exception>? failed = null)
     {
         ArgumentNullException.ThrowIfNull(interaction);
+        ArgumentNullException.ThrowIfNull(sends);
         ArgumentNullException.ThrowIfNull(answer);
         await interaction.DeferAsync(ephemeral: true).ConfigureAwait(false);
         CommandReply reply;
@@ -422,6 +424,13 @@ internal sealed partial class DiscordChannel : IChatChannel, ISuggestingChannel,
         if (reply.Files.Count == 0)
         {
             await SayAsync(reply.Text).ConfigureAwait(false);
+            return;
+        }
+
+        using var place = sends.TryTake(interaction.User.Id);
+        if (place is null)
+        {
+            await SayAsync("Files are being sent already. Try again when they have arrived.").ConfigureAwait(false);
             return;
         }
 
