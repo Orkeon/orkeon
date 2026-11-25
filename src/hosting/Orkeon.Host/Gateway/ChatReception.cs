@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -69,11 +70,12 @@ internal static partial class ChatReception
     }
 
     /// <summary>Whether the announced type says an image, be it any (<c>image/*</c>, a picture pasted in Teams).</summary>
-    private static bool IsImage(string? announced) => announced?.StartsWith("image/", StringComparison.OrdinalIgnoreCase) == true;
+    private static bool IsImage([NotNullWhen(true)] string? announced) =>
+        announced is not null && announced.StartsWith("image/", StringComparison.OrdinalIgnoreCase);
 
     /// <summary>The announced type, when it says which image. A claim: the bytes decide what a model is shown.</summary>
     private static string? ImageType(string? announced) =>
-        IsImage(announced) && announced!.Split(';')[0].Trim() is var media && MediaType().IsMatch(media)
+        IsImage(announced) && announced.Split(';')[0].Trim() is var media && MediaType().IsMatch(media)
             ? media
             : null;
 
