@@ -244,6 +244,20 @@ public sealed class RunImageKickoffTests
     }
 
     [Fact]
+    public async Task ShouldShowNothingOfTheRunItIsStartedIn()
+    {
+        var setup = new Setup();
+        using var enclosing = Orkeon.Application.Crew.Execution.RunImages.Begin([new CrewInputImage { Path = Png }]);
+
+        var output = await setup.RunAsync();
+
+        Assert.Empty(output.UnseenImages);
+        Assert.NotEmpty(setup.Vendor.Calls);
+        Assert.All(setup.Vendor.Calls, c => Assert.Empty(ImagesOf(c.Messages)));
+        Assert.Single(Orkeon.Application.Crew.Execution.RunImages.Current);
+    }
+
+    [Fact]
     public async Task ShouldLeaveTheCallsAsTheyWere_WhenTheRunHasNoImage()
     {
         var run = new Setup();

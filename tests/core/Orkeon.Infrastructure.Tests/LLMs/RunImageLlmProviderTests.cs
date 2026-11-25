@@ -42,9 +42,12 @@ public sealed class RunImageLlmProviderTests
 
         public LlmConfig? BaseConfig { get; } = LlmConfig.Create("gpt-4o");
 
-        public LlmProviderCapabilities Capabilities { get; } = LlmProviderCapabilities.Unknown with { Vision = true };
+        public LlmProviderCapabilities Capabilities { get; init; } = LlmProviderCapabilities.Unknown with { Vision = true };
 
         public List<LlmMessage[]> Calls { get; } = [];
+
+        /// <summary>Whether a turn was in progress at each step of a call.</summary>
+        public List<bool> Turns { get; } = [];
 
         public Func<LlmResponse>? Refuse { get; set; }
 
@@ -65,6 +68,7 @@ public sealed class RunImageLlmProviderTests
         public Task<LlmResponse> ChatAsync(LlmMessage[] messages, LlmConfig? config = null, CancellationToken cancellationToken = default)
         {
             Calls.Add(messages);
+            Turns.Add(RunImageTurn.Current is not null);
             if (RefuseTheSecond is not null && ImagesOf(messages).Count == 0)
                 return Task.FromResult(RefuseTheSecond());
             return Task.FromResult(Refuse is not null && (RefusesEverything || ImagesOf(messages).Count > 0)
@@ -86,6 +90,7 @@ public sealed class RunImageLlmProviderTests
             var response = await ChatAsync(messages, config, cancellationToken);
             if (response.Content.Length > 0)
                 yield return LlmStreamEvent.Content(response.Content);
+            Turns.Add(RunImageTurn.Current is not null);
             yield return LlmStreamEvent.Complete(response);
         }
     }
@@ -166,7 +171,7 @@ public sealed class RunImageLlmProviderTests
         _files.AddFile(Photo, Png(20, 20, limit + 1));
         var (response, unseen, _) = await AskAsync(Over(vendor), false, Photo, Small);
 
-        Assert.Null(response.Error);
+        Assert.Equal("seen", response.Error ?? response.Content);
         Assert.Single(ImagesOf(vendor.Calls[^1]));
         var left = Assert.Single(unseen);
         Assert.Equal(Photo, left.Path);
@@ -351,7 +356,8 @@ public sealed class RunImageLlmProviderTests
     {
         var vendor = new StubVendor { Refuse = () => RefusalOf("BadRequest") };
         var provider = Over(vendor);
-        using (RunImages.Begin([new CrewInputImage { Path = Photo }, new CrewInputImage { Path = Small }]))
+        CrewInputImage[] given = [new CrewInputImage { Path = Photo }, new CrewInputImage { Path = Small }];
+        using (RunImages.Begin(given))
         {
             await TurnAsync(provider, streaming);
             var (response, unseen, _) = await TurnAsync(provider, streaming);
@@ -367,9 +373,10 @@ public sealed class RunImageLlmProviderTests
             Assert.Equal([2, 0, 0, 2, 0], vendor.Calls.Select(c => ImagesOf(c).Count));
         }
 
-        // Nor has the vendor, of another run.
-        await AskAsync(provider, streaming, Photo);
-        Assert.Equal([2, 0, 0, 2, 0, 1, 0], vendor.Calls.Select(c => ImagesOf(c).Count));
+        // Nor has the vendor, of another run given the same images.
+        using (RunImages.Begin(given))
+            await TurnAsync(provider, streaming);
+        Assert.Equal([2, 0, 0, 2, 0, 2, 0], vendor.Calls.Select(c => ImagesOf(c).Count));
     }
 
     [Theory]
@@ -447,6 +454,132 @@ public sealed class RunImageLlmProviderTests
             Assert.Equal("the second", (await Assert.ThrowsAsync<HttpRequestException>(() => AskAsync(Over(vendor), streaming, Photo))).Message);
         else
             Assert.EndsWith("the second", (await AskAsync(Over(vendor), streaming, Photo)).Response.Error!, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    [InlineData(true, true)]
+    public async Task ShouldSendPlainText_WhenTheProviderIsBlindOrTheFormatIsNotTaken(bool streaming, bool blind)
+    {
+        var vendor = new StubVendor { Capabilities = LlmProviderCapabilities.Unknown with { Vision = !blind } };
+        var options = blind ? _options : new MultiModalOptions { SupportedImageFormats = ["image/jpeg"] };
+
+        var (_, unseen, _) = await AskAsync(new RunImageLlmProvider(vendor, _files, options, new ModelCapabilityRegistry()), streaming, Photo);
+
+        Assert.Contains(blind ? "not known to read images" : "not taken on this host", Assert.Single(unseen).Reason, StringComparison.Ordinal);
+        Assert.Null(Assert.Single(vendor.Calls)[0].MultiModalContent);
+        Assert.Contains("[Image not shown to you", vendor.Calls[0][0].Content, StringComparison.Ordinal);
+    }
+
+    // The default model of a provider is named by nobody: neither the call nor its configuration.
+    [Fact]
+    public async Task ShouldJudgeTheProvidersDefaultModel_WhenNoneIsNamed()
+    {
+        using var http = new Doubles.MockHttpClientFactory();
+        var sent = string.Empty;
+        http.SetupDefaultHandler().SetResponseFactory(request =>
+        {
+            sent = request.Content!.ReadAsStringAsync(Ct).GetAwaiter().GetResult();
+            return new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent("""{"id":"1","model":"m","choices":[{"index":0,"message":{"role":"assistant","content":"seen"},"finish_reason":"stop"}],"usage":{"prompt_tokens":1,"completion_tokens":1,"total_tokens":2}}"""),
+            };
+        });
+        using var vendor = new OpenAILlmProvider(LlmConfig.Create("x") with { Model = string.Empty, ApiKey = "sk-test" }, http, Polly.Policy.NoOpAsync<HttpResponseMessage>(),
+            Microsoft.Extensions.Logging.Abstractions.NullLogger<OpenAILlmProvider>.Instance);
+
+        var (response, unseen, _) = await AskAsync(new RunImageLlmProvider(vendor, _files, _options, new ModelCapabilityRegistry()), streaming: false, Photo);
+
+        Assert.Equal("seen", response.Error ?? response.Content);
+        Assert.Empty(unseen);
+        Assert.Contains("data:image/png;base64,", sent, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData(1L)]
+    [InlineData(null)]
+    [InlineData(100L)]
+    public async Task ShouldLeaveOutWhatIsTooLarge_WhateverItsEntrySays(long? announced)
+    {
+        // Announced small, then too large; as it is; and announced too large, then small.
+        _options.MaxImageSizeBytes = announced == 100 ? 80 : 63;
+        var read = 0;
+        var files = new Doubles.FakeHookedFileSystemService(_files) { AnnouncedSize = announced, OnRead = () => read++ };
+        var vendor = new StubVendor();
+
+        var (_, unseen, _) = await AskAsync(new RunImageLlmProvider(vendor, files, _options, new ModelCapabilityRegistry()), streaming: false, Photo);
+
+        Assert.Contains("it is over", Assert.Single(unseen).Reason, StringComparison.Ordinal);
+        Assert.Equal(announced == 1 ? 1 : 0, read);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ShouldGoOnWithoutAFileThatCannotBeRead(bool streaming)
+    {
+        var files = new Doubles.FakeHookedFileSystemService(_files) { OnRead = () => throw new UnauthorizedAccessException("no") };
+
+        var (response, unseen, _) = await AskAsync(
+            new RunImageLlmProvider(new StubVendor(), files, _options, new ModelCapabilityRegistry()), streaming, Photo);
+
+        Assert.Equal("seen", response.Content);
+        Assert.Equal("the file could not be read", Assert.Single(unseen).Reason);
+    }
+
+    [Fact]
+    public async Task ShouldStopWithItsCaller_WhenAFileIsRead()
+    {
+        using var caller = new CancellationTokenSource();
+        var files = new Doubles.FakeHookedFileSystemService(_files)
+        {
+            OnRead = () =>
+            {
+                caller.Cancel();
+                caller.Token.ThrowIfCancellationRequested();
+            },
+        };
+        var vendor = new StubVendor();
+        using var run = RunImages.Begin([new CrewInputImage { Path = Photo }]);
+        using var turn = RunImages.OpenTurn("Looker");
+
+        await Assert.ThrowsAsync<OperationCanceledException>(() =>
+            new RunImageLlmProvider(vendor, files, _options, new ModelCapabilityRegistry()).ChatAsync([new() { Role = "user", Content = "hello" }], null, caller.Token));
+
+        Assert.Empty(vendor.Calls);
+    }
+
+    // A model called by what reads the file, or by the vendor, is not the one the images are for.
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ShouldHoldTheTurnAtEveryStep(bool streaming)
+    {
+        var reading = new List<bool>();
+        var files = new Doubles.FakeHookedFileSystemService(_files) { OnRead = () => reading.Add(RunImageTurn.Current is not null) };
+        var vendor = new StubVendor();
+
+        await AskAsync(new RunImageLlmProvider(vendor, files, _options, new ModelCapabilityRegistry()), streaming, Photo);
+
+        Assert.Equal([false], reading);
+        Assert.NotEmpty(vendor.Turns);
+        Assert.DoesNotContain(true, vendor.Turns);
+    }
+
+    [Fact]
+    public void ShouldRestoreTheEnclosingRun()
+    {
+        using var outer = RunImages.Begin([new CrewInputImage { Path = Photo }]);
+        using (RunImages.Begin([]))
+        {
+            Assert.Empty(RunImages.Current);
+            using var turn = RunImages.OpenTurn("Looker");
+            Assert.Null(turn);
+        }
+
+        Assert.Equal(Photo, Assert.Single(RunImages.Current).Path);
     }
 
     [Fact]
