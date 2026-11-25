@@ -467,6 +467,118 @@ public sealed class ConversationFilesTests : IDisposable
         Assert.Null((await first).Refused);
     }
 
+    // ----- reservations -----
+
+    public static MatrixTheoryData<string, string> Unkept => new(
+        ["MaxConversationBytes", "MaxConversationFiles", "MaxTotalBytes"],
+        ["refused", "failed to open", "failed midway", "cancelled"]);
+
+    public static MatrixTheoryData<string, string, bool> Ends => new(
+        ["MaxConversationBytes", "MaxConversationFiles", "MaxTotalBytes"],
+        ["placed", "refused before", "refused", "failed midway"],
+        [true, false]);
+
+    /// <summary>A file announced at 10 bytes that ends as <paramref name="end"/> says, where a file is at most 100 bytes.</summary>
+    private static IncomingFile Ending(string end, Func<Task>? meanwhile = null) => new("ends.txt", async ct =>
+    {
+        if (meanwhile is not null)
+            await meanwhile();
+        ct.ThrowIfCancellationRequested();
+        return end switch
+        {
+            "placed" => Content(new string('e', 10)),
+            "refused" => Content(new string('e', 101)),
+            "failed midway" => new LateStream("eeee", new TaskCompletionSource(), Task.FromException(new IOException("cut"))),
+            _ => throw new HttpRequestException("gone"),
+        };
+    }) { Size = end == "refused before" ? 101 : 10 };
+
+    private static async Task<bool> TakesAsync(ConversationFiles files, ConversationRef conversation, int bytes) =>
+        (await files.StoreAsync(conversation, null, Incoming("next.txt", new string('n', bytes), announced: bytes), 0, ct: Ct)).Refused is null;
+
+    [Theory]
+    [MemberData(nameof(Unkept))]
+    public async Task ShouldGiveThePlaceOfAFileBack_WhenItEndsUnkept(string limit, string end)
+    {
+        var (_, files) = Build(files: s =>
+        {
+            s["MaxFileBytes"] = 100;
+            s[limit] = limit == "MaxConversationFiles" ? 1 : 100;
+        });
+        using var cancel = CancellationTokenSource.CreateLinkedTokenSource(Ct);
+        var next = limit == "MaxTotalBytes" ? Bob : Alice;
+        bool? taken = null;
+        var file = Ending(end, async () =>
+        {
+            taken = await TakesAsync(files, next, 100);
+            if (end == "cancelled")
+                await cancel.CancelAsync();
+        });
+
+        if (end == "cancelled")
+            await Assert.ThrowsAnyAsync<OperationCanceledException>(() => files.StoreAsync(Alice, null, file, 0, ct: cancel.Token));
+        else
+            Assert.NotNull((await files.StoreAsync(Alice, null, file, 0, ct: cancel.Token)).Refused);
+
+        Assert.False(taken);
+        Assert.True(await TakesAsync(files, next, 100));
+    }
+
+    [Theory]
+    [MemberData(nameof(Ends))]
+    public async Task ShouldKeepThePlaceOfAFileThatComes_WhenAnotherOneEnds(string limit, string end, bool ofTheConversation)
+    {
+        // Alice has room for the 60 bytes that come, the 10 of the other when it is kept and counts, and 30 more.
+        var counted = end == "placed" && (ofTheConversation || limit == "MaxTotalBytes");
+        var (_, files) = Build(files: s =>
+        {
+            s["MaxFileBytes"] = 100;
+            s[limit] = limit == "MaxConversationFiles" ? (counted ? 3 : 2) : (counted ? 100 : 90);
+        });
+        var arrived = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var open = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var coming = files.StoreAsync(Alice, null, new IncomingFile("comes.txt", async ct =>
+        {
+            arrived.SetResult();
+            await open.Task.WaitAsync(ct);
+            return Content(new string('c', 60));
+        }) { Size = 60 }, 0, ct: Ct);
+        await arrived.Task.WaitAsync(Ct);
+
+        var other = await files.StoreAsync(ofTheConversation ? Alice : Bob, null, Ending(end), 0, ct: Ct);
+        var tooMany = limit != "MaxConversationFiles" && await TakesAsync(files, Alice, 31);
+        var exact = await TakesAsync(files, Alice, 30);
+        var more = await TakesAsync(files, Alice, 1);
+        open.SetResult();
+
+        Assert.Equal(end == "placed", other.Refused is null);
+        Assert.False(tooMany);
+        Assert.True(exact);
+        Assert.False(more);
+        Assert.Null((await coming).Refused);
+    }
+
+    [Fact]
+    public async Task ShouldCountAFileOnce_WhenItIsPlacedAndItsReceptionNotOver()
+    {
+        // The record of the conversation is dated once the file is in its place: another one arrives then.
+        var clock = new HookedTimeProvider();
+        var (_, files) = Build(files: s => s["MaxTotalBytes"] = 100, services: s => s.AddSingleton<TimeProvider>(clock));
+        Task<bool>? next = null;
+        clock.OnRead = () =>
+        {
+            if (next is not null || !File.Exists(Path.Combine(Inbox(Alice), "a.txt")))
+                return;
+            next = Task.Run(() => TakesAsync(files, Bob, 40), Ct);
+            ((IAsyncResult)next).AsyncWaitHandle.WaitOne();
+        };
+
+        Assert.Null((await files.StoreAsync(Alice, null, Incoming("a.txt", new string('a', 60), announced: 60), 0, ct: Ct)).Refused);
+
+        Assert.NotNull(next);
+        Assert.True(await next);
+    }
+
     [Fact]
     public async Task ShouldKeepOneOfTwo_WhenOneAttachmentArrivesTwiceAtOnce()
     {

@@ -597,11 +597,13 @@ public sealed class TeamsFilesTests : IAsyncDisposable
 
     // ---- Sent by consent -------------------------------------------------------------------
 
+    private static Stream Bytes(string content) => new MemoryStream(Encoding.UTF8.GetBytes(content));
+
     private static OutboundFile Outbound(string content, string name = "report.txt", long? size = null) => new()
     {
         Name = name,
         Size = size ?? Encoding.UTF8.GetByteCount(content),
-        OpenAsync = _ => Task.FromResult<Stream>(new MemoryStream(Encoding.UTF8.GetBytes(content))),
+        OpenAsync = _ => Task.FromResult(Bytes(content)),
     };
 
     private static object UploadInfo(string address = Upload, string? tenant = FakeBotConnector.TenantId) => new

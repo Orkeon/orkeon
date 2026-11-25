@@ -252,6 +252,8 @@ public sealed class ChatAttachTests : IDisposable
 
     // ----- which files -----
 
+    private static Stream OneByte() => new MemoryStream([1]);
+
     [Theory]
     [InlineData("/inbox/in.txt")]
     [InlineData("/output/closed/c.txt")]
@@ -267,7 +269,7 @@ public sealed class ChatAttachTests : IDisposable
     {
         Build();
         await _host.Services.GetRequiredService<ConversationFiles>()
-            .StoreAsync(Alice, null, new IncomingFile("in.txt", _ => Task.FromResult<Stream>(new MemoryStream([1]))), 0, ct: Ct);
+            .StoreAsync(Alice, null, new IncomingFile("in.txt", _ => Task.FromResult(OneByte())), 0, ct: Ct);
         ToolCallResponse? answer = null;
 
         await RunAsync(async ct =>

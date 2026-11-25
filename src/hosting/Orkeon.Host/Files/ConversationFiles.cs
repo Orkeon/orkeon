@@ -206,8 +206,11 @@ internal sealed partial class ConversationFiles : IDisposable
     {
         ArgumentNullException.ThrowIfNull(text);
         var bytes = System.Text.Encoding.UTF8.GetBytes(text);
-        var file = new IncomingFile($"reply-{runId}.md", _ => Task.FromResult<Stream>(new MemoryStream(bytes, writable: false))) { Size = bytes.Length };
+        var file = new IncomingFile($"reply-{runId}.md", _ => Task.FromResult(Open(bytes))) { Size = bytes.Length };
         return ReceiveFileAsync(new Reception(conversation, Crew: null, file, SafeFileNames.Sanitize(file.Name, 0), RunnerVirtualRoots.Outbox) { AnyType = true }, ct);
+
+        // Its reader disposes it.
+        static Stream Open(byte[] content) => new MemoryStream(content, writable: false);
     }
 
     /// <summary>
