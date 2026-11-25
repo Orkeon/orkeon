@@ -35,6 +35,7 @@ public sealed class TeamsFilesTests : IAsyncDisposable
     private readonly CancellationTokenSource _stop = new();
     private readonly HttpClient _client = new();
     private readonly string _pem = Pem();
+    private string[] _people = [];
     private Func<CommandInvocation, CommandReply> _answer = _ => new CommandReply("Answered.");
     private FakeBotConnector _microsoft = null!;
     private ILoggerFactory _loggers = null!;
@@ -67,7 +68,7 @@ public sealed class TeamsFilesTests : IAsyncDisposable
                 var options = _microsoft.Options(LoopbackPorts.BaseAddress(p).AbsoluteUri) with
                 {
                     SharePointNames = names.Length == 0 ? ["contoso"] : [.. names.Where(n => n.Length > 0)],
-                    AllowedUserIds = [Activities.UserId, OtherUser],
+                    AllowedUserIds = [Activities.UserId, OtherUser, .. _people],
                 };
                 return new TeamsChannel(
                     Options.Create(options),
@@ -934,6 +935,37 @@ public sealed class TeamsFilesTests : IAsyncDisposable
         await Polling.WaitUntilAsync(() => Puts.Count == 6, Polling.DefaultTimeout);
     }
 
+    // Each upload is a file in memory: the host holds so many, whoever sends them.
+    [Fact]
+    public async Task The_whole_host_sends_so_many_files_at_once()
+    {
+        _people = [.. Enumerable.Range(1, TeamsFileExchange.MaxUploads + 1).Select(i => $"00000000-0000-0000-0000-00000000000{i}")];
+        await StartAsync();
+        _microsoft.Transport.Map(HttpMethod.Put, OneDrive, new FakeHttpResponse(HttpStatusCode.Created, "{}"));
+        var held = _people.Select(p => (Person: p, File: Held(p))).ToList();
+        try
+        {
+            foreach (var (person, file) in held)
+                await PostAsync(ConsentOf(person, await OfferToAsync(person, file.File), person));
+            await Polling.WaitUntilAsync(
+                () => held.Count(h => h.File.Opened.Task.IsCompleted) >= TeamsFileExchange.MaxUploads,
+                Polling.DefaultTimeout);
+
+            // Long enough for a file that waits for nothing to be opened; a slow machine fails nothing here.
+            await Task.Delay(TimeSpan.FromMilliseconds(300), Ct);
+            var next = Assert.Single(held, h => !h.File.Opened.Task.IsCompleted).File;
+
+            held.First(h => h.File.Opened.Task.IsCompleted).File.Go.SetResult();
+            await next.Opened.Task.WaitAsync(Polling.DefaultTimeout, Ct);
+        }
+        finally
+        {
+            held.ForEach(h => h.File.Go.TrySetResult());
+        }
+
+        await Polling.WaitUntilAsync(() => Puts.Count == _people.Length, Polling.DefaultTimeout);
+    }
+
     [Fact]
     public async Task An_offer_being_sent_is_not_sent_twice()
     {
@@ -1091,7 +1123,8 @@ public sealed class TeamsFilesTests : IAsyncDisposable
     {
         await StartAsync();
         var fileId = await OfferAsync();
-        var activity = Activities.Consent(fileId, "i1", uploadInfo: UploadInfo());
+        // Read as an acceptance, it would be answered: its address is nobody's.
+        var activity = Activities.Consent(fileId, "i1", uploadInfo: UploadInfo("https://evil.example/upload"));
         activity["name"] = "task/fetch";
         Assert.Equal(HttpStatusCode.OK, await PostAsync(activity));
         Assert.Equal(HttpStatusCode.OK, await PostAsync(Activities.Consent(fileId, "i2", "other", UploadInfo())));

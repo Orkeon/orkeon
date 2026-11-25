@@ -781,6 +781,7 @@ public sealed class ChatAttachTests : IDisposable
             return "done";
         });
 
+        await stopped.Task.WaitAsync(Polling.DefaultTimeout, Ct);
         Assert.False((await left!.WaitAsync(Polling.DefaultTimeout, Ct)).Success);
         Assert.Empty(_sender.Messages);
     }
