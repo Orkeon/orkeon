@@ -251,7 +251,7 @@ internal sealed partial class CrewRunner : ICrewRunner
             // when what it started outlives it. Entered without one too: no conversation is inherited from a caller.
             using var attachments = AttachmentsOf(conversation, hosted, run);
             using var entered = Orkeon.Hosting.Conversations.ConversationScope.Enter(attachments);
-            result = await RunMountedAsync(hosted, run, folders, prompt, onProgress, variables, idempotency).ConfigureAwait(false)
+            result = await RunMountedAsync(hosted, run, folders, attachments, prompt, onProgress, variables, idempotency).ConfigureAwait(false)
                 with { RefusedFiles = refusedFiles };
             return result;
         }
@@ -303,12 +303,13 @@ internal sealed partial class CrewRunner : ICrewRunner
 
     /// <summary>
     /// The run in its own mount namespace, entered here and left when this returns, and what it changed in
-    /// <c>/outbox</c>, read before the namespace is left, whatever the outcome.
+    /// <c>/outbox</c> and did not send, read before the namespace is left, whatever the outcome.
     /// </summary>
     private async Task<HostedRunResult> RunMountedAsync(
         HostedCrewOptions hosted,
         HostedRun run,
         Files.ConversationRun? folders,
+        Files.ConversationAttachments? attachments,
         string prompt,
         Action<string>? onProgress,
         IReadOnlyDictionary<string, string>? variables,
@@ -334,6 +335,7 @@ internal sealed partial class CrewRunner : ICrewRunner
             [
                 .. after
                     .Where(f => !before!.TryGetValue(f.Key, out var was) || was != f.Value)
+                    .Where(f => attachments?.WasSent(f.Key, f.Value.Size, f.Value.Written) != true)
                     .OrderBy(f => f.Key, StringComparer.Ordinal)
                     .Select(f => new OutboxFile(f.Key, f.Value.Size)),
             ],

@@ -129,6 +129,24 @@ public sealed class ChatAttachTests : IDisposable
     }
 
     [Fact]
+    public async Task ShouldNameAtTheEndOnlyWhatTheConversationHasNot()
+    {
+        Build();
+
+        var result = await RunAsync(async ct =>
+        {
+            await WriteAsync("/outbox/sent.txt", "/outbox/changed.txt", "/outbox/kept.txt", "/outbox/offered.txt");
+            await AttachAsync(ct, "/outbox/sent.txt", "/outbox/changed.txt");
+            _sender.Result = f => new FileSendResult(f.Name, FileSendOutcome.AwaitingConsent);
+            await AttachAsync(ct, "/outbox/offered.txt");
+            await Fs.WriteAllTextAsync("/outbox/changed.txt", "another, longer text than what was sent before", ct);
+            return "done";
+        });
+
+        Assert.Equal(["/outbox/changed.txt", "/outbox/kept.txt", "/outbox/offered.txt"], result.OutboxFiles.Select(f => f.Path));
+    }
+
+    [Fact]
     public async Task ShouldRefuse_WhenThereIsNoConversation()
     {
         Build();

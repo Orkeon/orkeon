@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using Microsoft.Extensions.Logging;
 using Orkeon.Domain.FileSystem;
 using Orkeon.Host.Gateway;
@@ -21,6 +22,7 @@ internal sealed partial class ConversationAttachments : IConversationAttachments
     private readonly CancellationTokenSource _ended;
     private readonly CancellationToken _token;
 
+    private readonly ConcurrentDictionary<string, (long Size, DateTimeOffset? Written)> _sent = new(StringComparer.Ordinal);
     private readonly Lock _countsLock = new();
     private int _files;
     private int _messages;
@@ -59,6 +61,9 @@ internal sealed partial class ConversationAttachments : IConversationAttachments
     /// <inheritdoc />
     public bool IsOpen => !_closed;
 
+    /// <summary>Whether the conversation has the file as it is: what changed since it was sent, or awaits consent, it has not.</summary>
+    public bool WasSent(string path, long size, DateTimeOffset written) => _sent.TryGetValue(path, out var sent) && sent == (size, written);
+
     /// <summary>Ends the sending with the run: what outlives it sends nothing, and what it was sending stops.</summary>
     public void Dispose()
     {
@@ -93,7 +98,9 @@ internal sealed partial class ConversationAttachments : IConversationAttachments
             var sent = await SendAsync(message, token).ConfigureAwait(false);
             for (var n = 0; n < message.Count; n++)
             {
-                var (index, _) = message[n];
+                var (index, file) = message[n];
+                if (sent[n].Outcome == FileSendOutcome.Sent)
+                    _sent[asked[index]] = (file.Size, file.Written);
                 results[index] = new AttachedFile(asked[index], StatusOf(sent[n].Outcome), sent[n].Reason);
             }
 

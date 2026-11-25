@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — two hosts of one process share no sandbox directory
+
+- Built in the same millisecond, they had one directory under `/sandbox`, and disposing one deleted the other's runs.
+
 ### Added — orkeon-host gives a conversation its folders
 
 - `Orkeon:Host:Files` (off by default) mounts two folders for the runs of a conversation: `/inbox`, read-only, and
@@ -40,7 +44,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   answers, by the checks of `/get` and under the agent's `filesystem:` scope. Without a conversation the call fails.
   The sixth motivated exception to the scope freeze (ADR-023): 135 built-in tools.
 - `Orkeon:Host:Files:MaxAttachedFilesPerRun` (10), `MaxAttachedMessagesPerRun` (5) and `MaxAttachedBytesPerRun` (50 MiB)
-  bound a run; `/stop`, the deadline and the end of the run stop the sending.
+  bound a run; `/stop`, the deadline and the end of the run stop the sending. The end of the run does not name again what was sent.
 
 ### Added — orkeon-host's files on Teams, in the personal chat
 
@@ -59,8 +63,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   shown, to whom and why.
 - An image over what its vendor documents is left out before the call, and a call the vendor refuses with a 4xx is made once
   more without its images: neither fails the run (`docs/guides/multimodal.md` gives the bounds and their sources).
-- With `Orkeon:Host:Files` on, `orkeon-host` does it for the png, jpeg, webp and gif files of a Discord message, and the answer ends
-  with the images that were not shown. It reads `Orkeon:MultiModal`, which gains `MaxImages` (10).
+- With `Orkeon:Host:Files` on, `orkeon-host` does it for the png, jpeg, webp and gif files of a Discord message
+  or of a Teams personal chat, and the answer ends with the images that were not shown. It reads `Orkeon:MultiModal`, which gains `MaxImages` (10).
 
 ### Added — a crew declares the folders it opens
 

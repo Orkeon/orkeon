@@ -140,6 +140,18 @@ public sealed class ChatReceptionTests : IDisposable
     }
 
     [Fact]
+    public async Task ShouldReferToAPicturePastedInTeams_WhenItsTypeIsAnyImage()
+    {
+        var bench = Build();
+
+        await bench.SayAsync(Message("Look.", new FakeAttachmentSource().With("1", "x"), File("1", "image", type: "image/*")));
+
+        var image = Assert.Single(Assert.Single(bench.Runner.Prepared).Images);
+        Assert.StartsWith("/inbox/image", image.Path, StringComparison.Ordinal);
+        Assert.Null(image.MediaType);
+    }
+
+    [Fact]
     public async Task ShouldTellThePersonWhichImagesWereNotSeen_WhenTheLoopCarriesNone()
     {
         // A kickoff with the host's own echo provider: what it says of the images must come back to the person.

@@ -62,15 +62,18 @@ internal static partial class ChatReception
             Images =
             [
                 .. kept
-                    .Select(k => new CrewInputImage { Path = k.Path, MediaType = ImageType(k.Type) })
-                    .Where(i => i.MediaType is not null || HasImageExtension(i.Path)),
+                    .Where(k => IsImage(k.Type) || HasImageExtension(k.Path))
+                    .Select(k => new CrewInputImage { Path = k.Path, MediaType = ImageType(k.Type) }),
             ],
         };
     }
 
-    /// <summary>The announced type, when it says an image. A claim: the bytes decide what a model is shown.</summary>
+    /// <summary>Whether the announced type says an image, be it any (<c>image/*</c>, a picture pasted in Teams).</summary>
+    private static bool IsImage(string? announced) => announced?.StartsWith("image/", StringComparison.OrdinalIgnoreCase) == true;
+
+    /// <summary>The announced type, when it says which image. A claim: the bytes decide what a model is shown.</summary>
     private static string? ImageType(string? announced) =>
-        announced?.Split(';')[0].Trim() is { } media && media.StartsWith("image/", StringComparison.OrdinalIgnoreCase) && MediaType().IsMatch(media)
+        IsImage(announced) && announced!.Split(';')[0].Trim() is var media && MediaType().IsMatch(media)
             ? media
             : null;
 

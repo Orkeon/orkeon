@@ -40,6 +40,7 @@ internal sealed class DownloadableFiles
         {
             Name = path[(path.LastIndexOf('/') + 1)..],
             Size = entry.SizeBytes,
+            Written = entry.LastModified,
             OpenAsync = token => InFlow(flow, () => OpenAsync(conversation, crew, path, entry.SizeBytes, token)),
         };
     }

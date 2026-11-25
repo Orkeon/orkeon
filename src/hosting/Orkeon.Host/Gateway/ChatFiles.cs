@@ -57,6 +57,9 @@ internal sealed record OutboundFile
     /// <summary>Its size in bytes: channels bound each file and each request.</summary>
     public required long Size { get; init; }
 
+    /// <summary>When it was last written, as it was found; with the size, it tells whether it changed since.</summary>
+    public DateTimeOffset? Written { get; init; }
+
     /// <summary>Opens its content. Called only when the file is about to leave; the channel disposes the stream.</summary>
     public required Func<CancellationToken, Task<Stream>> OpenAsync { get; init; }
 }
