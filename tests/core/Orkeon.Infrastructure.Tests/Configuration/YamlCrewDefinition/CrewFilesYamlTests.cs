@@ -87,6 +87,11 @@ public sealed class CrewFilesYamlTests
     [InlineData("files:\n  - path: /output//a\n    download: true", "segment")]
     [InlineData("files:\n  - path: /output/private.\n    download: true", "segment")]
     [InlineData("files:\n  - path: /output\\a\n    download: true", "'\\'")]
+    [InlineData("files:\n  - path: \"/output/a:b\"\n    download: true", "no ':'")]
+    [InlineData("files:\n  - path: \"/output/a\\tb\"\n    download: true", "control character")]
+    [InlineData("files:\n  - path: \"/output/ a\"\n    download: true", "segment")]
+    [InlineData("files:\n  - path: \"/output/a \"\n    download: true", "segment")]
+    [InlineData("files:\n  - path: \"/output/a /b\"\n    download: true", "segment")]
     [InlineData("files:\n  - path: /output\n    download: true\n  - path: /Output/\n    upload: true", "listed twice")]
     public async Task A_block_that_cannot_be_served_fails_the_load_and_the_probe(string block, string expected)
     {
@@ -102,6 +107,20 @@ public sealed class CrewFilesYamlTests
         if (expected != "perhaps")
             Assert.Contains(expected, probed.Fault, StringComparison.Ordinal);
         Assert.Contains("/crews/support.yaml", probed.Fault, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("3")]
+    [InlineData("- files: 3")]
+    public void A_document_that_is_no_block_of_keys_is_a_fault(string yaml) =>
+        Assert.Contains("a crew is a block of keys", CrewFilesBlock.ReadCrew(yaml, "/c.yaml").Fault, StringComparison.Ordinal);
+
+    [Fact]
+    public void A_path_set_in_code_is_written_in_its_one_form()
+    {
+        var fault = Assert.Single(CrewFilesBlock.Faults([new CrewFileFolder { Path = "/output/", Download = true }]));
+
+        Assert.Contains("'/output/' is written '/output'", fault, StringComparison.Ordinal);
     }
 
     [Fact]

@@ -222,6 +222,84 @@ public sealed class CrewFileFoldersTests : IDisposable
         Assert.Equal(1, Warnings);
     }
 
+    [Theory]
+    [InlineData("/inbox", "/inbox", "belongs to the conversation")]
+    [InlineData("/INBOX/x", "/INBOX", "belongs to the conversation")]
+    [InlineData("/outbox", "/outbox", "belongs to the conversation, and is always open")]
+    [InlineData("/OUTBOX/x", "/OUTBOX", "belongs to the conversation, and is always open")]
+    [InlineData("/crews/elsewhere", "/crews/elsewhere", "definitions")]
+    [InlineData("/Crews", "/Crews", "definitions")]
+    [InlineData("/crews-7", "/crews-7", "definitions")]
+    [InlineData("/crews-7/x", "/crews-7", "definitions")]
+    public async Task A_folder_that_is_not_the_operators_is_refused_even_where_one_is_mounted(string path, string mounted, string reason)
+    {
+        Declare("a.yaml", $"files:\n  - path: {path}\n    download: true\n");
+        var reader = Reader([Crew("a", "a.yaml")], new FileSystemMount(Folder("mounted"), mounted, FileAccessRights.ReadWrite));
+
+        var opened = await reader.ReadAsync("a", Ct);
+
+        Assert.Empty(opened.Open);
+        Assert.Contains($"'{path}' is refused", opened.Reason, StringComparison.Ordinal);
+        Assert.Contains(reason, opened.Reason, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData(FileAccessRights.Write | FileAccessRights.Create, "download: true")]
+    [InlineData(FileAccessRights.Read | FileAccessRights.Write, "download: true\n    upload: true")]
+    [InlineData(FileAccessRights.Read | FileAccessRights.Create, "download: true\n    upload: true")]
+    public async Task A_folder_is_refused_where_one_right_it_takes_is_missing(FileAccessRights granted, string opens)
+    {
+        Declare("a.yaml", $"files:\n  - path: /part\n    {opens}\n");
+        var reader = Reader([Crew("a", "a.yaml")], new FileSystemMount(Folder("part"), "/part", granted));
+
+        var opened = await reader.ReadAsync("a", Ct);
+
+        Assert.Empty(opened.Open);
+        Assert.Contains("'/part' is refused", opened.Reason, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task A_declaration_that_cannot_be_read_closes_its_crew_and_shows_no_path_of_the_machine()
+    {
+        Declare("a.yaml", Output);
+        var reader = Reader([Crew("a", "a.yaml", Mount("out", "/output"))]);
+        OpenedFolders opened;
+        using (new FileStream(Path.Combine(Crews, "a.yaml"), FileMode.Open, FileAccess.ReadWrite, FileShare.None))
+            opened = await reader.ReadAsync("a", Ct);
+
+        Assert.Empty(opened.Open);
+        Assert.True(opened.Invalid);
+        Assert.Contains("cannot be read", opened.Reason, StringComparison.Ordinal);
+        Assert.DoesNotContain(_harness.Root, opened.Reason, StringComparison.Ordinal);
+        Assert.Equal(["/output True False"], Text(await reader.ReadAsync("a", Ct)));
+    }
+
+    [Fact]
+    public async Task A_fault_that_comes_back_is_logged_again()
+    {
+        var reader = Reader([Crew("a", "a.yaml", Mount("out", "/output"))]);
+        foreach (var text in new[] { "files: 3", Output, "files: 3" })
+        {
+            Declare("a.yaml", text);
+            await reader.ReadAsync("a", Ct);
+        }
+
+        Assert.Equal(2, Warnings);
+    }
+
+    [Fact]
+    public async Task A_second_address_of_crews_that_are_reached_by_a_link_is_refused()
+    {
+        if (OperatingSystem.IsWindows())
+            return;
+        var real = Folder("real");
+        Directory.CreateSymbolicLink(Crews, real);
+        Declare("a.yaml", "files:\n  - path: /second\n    download: true\n");
+        var reader = Reader([Crew("a", "a.yaml")], new FileSystemMount(real, "/second", FileAccessRights.Read));
+
+        Assert.Contains("crew's definition", (await reader.ReadAsync("a", Ct)).Reason, StringComparison.Ordinal);
+    }
+
     [Fact]
     public async Task A_folder_written_only_takes_uploads()
     {
