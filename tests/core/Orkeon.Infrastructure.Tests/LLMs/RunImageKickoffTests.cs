@@ -72,6 +72,8 @@ public sealed class RunImageKickoffTests
 
         public Dictionary<string, string?> Settings { get; } = new() { ["Llm:Provider"] = "fake-cli", ["Llm:Model"] = "gpt-4o" };
 
+        public string? Manager { get; set; }
+
         public string Process { get; set; } = "sequential";
 
         public string FileSystem { get; set; } = string.Empty;
@@ -82,6 +84,7 @@ public sealed class RunImageKickoffTests
                 name: pictures
                 goal: Read the pictures
                 process: {{Process}}
+                {{(Manager is null ? "" : "managerAgent: " + Manager)}}
                 agents:
                   looker:
                     role: Looker
@@ -90,6 +93,7 @@ public sealed class RunImageKickoffTests
                   writer:
                     role: Writer
                     goal: Write
+                  {{(Manager is null ? "" : "manager: { role: Manager, goal: Manage }")}}
                 tasks:
                   look:
                     description: Look at the picture
@@ -149,6 +153,24 @@ public sealed class RunImageKickoffTests
             Assert.Equal("image/png", image.MimeType);
             Assert.Equal(s_png, image.Data!);
             Assert.NotNull(call.Messages.First(m => m.Role == "user").MultiModalContent);
+        }
+    }
+
+    // The scripted vendor neither approves nor votes: what the agents were sent is judged, not how the run ends.
+    [Theory]
+    [InlineData("hierarchical")]
+    [InlineData("consensual")]
+    public async Task ShouldShowTheImageToTheAgentsOfAManagedCrew(string process)
+    {
+        var run = new Setup { Process = process, Manager = "manager" };
+
+        var output = await run.RunAsync(Png);
+
+        Assert.Empty(output.UnseenImages);
+        foreach (var description in (string[])["Look at the picture", "Write about the picture"])
+        {
+            Assert.Contains(run.Vendor.Calls, c => ImagesOf(c.Messages) is [{ } image] && image.Data!.SequenceEqual(s_png)
+                && TextOf(c.Messages).Contains(description, StringComparison.Ordinal));
         }
     }
 

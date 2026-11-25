@@ -72,6 +72,19 @@ public class LegacyTextAgentLoopTests
     }
 
     [Fact]
+    public async System.Threading.Tasks.Task SaysThatItsModelIsShownNoImage()
+    {
+        var (loop, provider) = BuildLoop();
+        provider.Enqueue("The final answer.");
+        using var run = RunImages.Begin([new CrewInputImage { Path = "/inbox/photo.png" }]);
+
+        await loop.ExecuteAsync(BuildInvocation(BuildAgent(), BuildTask()), TestContext.Current.CancellationToken);
+
+        var unseen = Assert.Single(RunImages.Unseen);
+        Assert.Equal(("/inbox/photo.png", "Legacy Agent", "its model is called with text alone"), (unseen.Path, unseen.Reader, unseen.Reason));
+    }
+
+    [Fact]
     public async System.Threading.Tasks.Task RunsAMultiTurnToolRound_ThenReturnsTheFinalAnswer()
     {
         var tool = new SpyTool("echo_tool", result: "tool says hello");

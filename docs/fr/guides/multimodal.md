@@ -155,6 +155,29 @@ lu ni copié à ce moment. Chaque tâche du run les voit dans son premier tour u
   lire les images (`ModelCapabilities.Vision`) ; un modèle inconnu ne l'est pas.
 - **Dans quelles bornes.** `Orkeon:MultiModal` : `Enabled`, `MaxImages`, `MaxImageSizeBytes` et
   `SupportedImageFormats`. Le type se lit sur les octets — png, jpeg, webp et gif —, jamais sur le nom.
+- **Dans les bornes de son vendeur.** Sous `MaxImageSizeBytes`, ce que la page du vendeur énonce, lu avant l'appel :
+
+  | Provider | Borne | Source |
+  |---|---|---|
+  | `anthropic` | 10 Mo en base64, 8000 x 8000 pixels ; requête de 128 Mo | [Vision](https://platform.claude.com/docs/en/build-with-claude/vision) |
+  | `azure-openai` | 20 Mo | [Use vision-enabled chat models](https://learn.microsoft.com/en-us/azure/ai-services/openai/how-to/gpt-with-vision) |
+  | `gemini` | requête de 20 Mo ; png, jpeg, webp | [Image understanding](https://aistudio.google.com/docs/image-understanding) |
+  | `grok` | 20 Mio ; png, jpeg | [Image understanding](https://docs.x.ai/docs/guides/image-understanding) |
+  | `kimi` | requête de 100 Mo | [Vision model](https://platform.kimi.ai/docs/guide/use-kimi-vision-model) |
+  | `minimax` | 10 Mo, côtés jusqu'à 200:1 ; requête de 64 Mo | [Chat](https://platform.minimax.io/docs/api-reference/text-chat-openai) |
+  | `mistral` | 20 Mo | [Known limitations](https://docs.mistral.ai/resources/known-limitations) |
+  | `openai` | requête de 512 Mo | [Images and vision](https://developers.openai.com/api/docs/guides/images-vision) |
+  | `qwen` | 50 Mio en base64, côtés de plus de 10 pixels et jusqu'à 200:1 ; requête de 16 Mio sur le domaine DashScope, celui d'Orkeon par défaut | [Vision](https://www.alibabacloud.com/help/en/model-studio/vision) |
+  | `zai` | moins de 5 Mo, 6000 x 6000 pixels ; png, jpeg | [Chat completion](https://docs.z.ai/api-reference/llm/chat-completion) |
+  | tout autre | 5 Mo en base64 | aucune trouvée : celle d'Orkeon, prudente |
+
+  Un mégaoctet vaut un million d'octets là où la page n'écrit pas MiB, et une requête en garde un pour son texte. Les
+  côtés se lisent dans l'en-tête du fichier.
+- **Quand le vendeur refuse quand même.** Un 4xx à un appel qui porte des images est redemandé une fois sans elles, chacune
+  nommée comme non vue. 401, 402, 403, 404, 407, 408, 429, un 5xx, une conversation trop longue, un compte épuisé et une
+  mauvaise clé gardent leur traitement, de même qu'un flux qui a déjà dit quelque chose. Le run compte un appel, celui de
+  la réponse ; une cassette enregistre le refus et le second appel, chacun sous sa clé, et rejoue les deux.
+  L'appel suivant de la tâche porte de nouveau les images.
 - **À quel agent.** Celui dont le `filesystem:` exclut le chemin ne voit pas l'image.
 
 Une image qui n'est pas montrée n'est jamais perdue en silence : sa place dans le tour le dit par son chemin, et
