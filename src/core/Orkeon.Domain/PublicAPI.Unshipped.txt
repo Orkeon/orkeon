@@ -1,1 +1,19 @@
 #nullable enable
+Orkeon.Domain.Configuration.CrewConfiguration.Files.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Domain.Configuration.CrewFileFolder!>?
+Orkeon.Domain.Configuration.CrewConfiguration.Files.init -> void
+Orkeon.Domain.Configuration.CrewFileFolder
+Orkeon.Domain.Configuration.CrewFileFolder.CrewFileFolder() -> void
+Orkeon.Domain.Configuration.CrewFileFolder.Download.get -> bool
+Orkeon.Domain.Configuration.CrewFileFolder.Download.init -> void
+Orkeon.Domain.Configuration.CrewFileFolder.Path.get -> string!
+Orkeon.Domain.Configuration.CrewFileFolder.Path.init -> void
+Orkeon.Domain.Configuration.CrewFileFolder.Upload.get -> bool
+Orkeon.Domain.Configuration.CrewFileFolder.Upload.init -> void
+static Orkeon.Domain.Configuration.CrewFileFolder.TryNormalizePath(string? value, out string! path, out string? refusal) -> bool
+Orkeon.Domain.Configuration.CrewFileFolder.<Clone>$() -> Orkeon.Domain.Configuration.CrewFileFolder!
+Orkeon.Domain.Configuration.CrewFileFolder.Equals(Orkeon.Domain.Configuration.CrewFileFolder? other) -> bool
+override Orkeon.Domain.Configuration.CrewFileFolder.Equals(object? obj) -> bool
+override Orkeon.Domain.Configuration.CrewFileFolder.GetHashCode() -> int
+override Orkeon.Domain.Configuration.CrewFileFolder.ToString() -> string!
+static Orkeon.Domain.Configuration.CrewFileFolder.operator ==(Orkeon.Domain.Configuration.CrewFileFolder? left, Orkeon.Domain.Configuration.CrewFileFolder? right) -> bool
+static Orkeon.Domain.Configuration.CrewFileFolder.operator !=(Orkeon.Domain.Configuration.CrewFileFolder? left, Orkeon.Domain.Configuration.CrewFileFolder? right) -> bool

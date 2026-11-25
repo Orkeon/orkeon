@@ -31,6 +31,8 @@ public static class CrewDefinitionValidator
         ValidateConsensualManager(config, errors);
         ValidateAsyncExecution(config, errors);
         ValidateMounts(config, errors);
+        if (config.Files is { } files)
+            errors.AddRange(CrewFilesBlock.Faults(files).Select(fault => "Crew " + fault));
 
         // The validator raises no warning of its own: a loader's go through its logger.
         return new CrewDefinitionValidationResult(

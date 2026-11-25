@@ -137,6 +137,25 @@ public sealed class RunnerExecutionDiagnosticsTests : IDisposable
         Assert.Contains("definitely_not_a_real_tool", stderr, StringComparison.Ordinal);
     }
 
+    [Theory]
+    [InlineData("files:\n  - path: /output\n    download: true\n", true)]
+    [InlineData("files:\n  - path: /output\n", false)]
+    [InlineData("name: support\nfiles: []\n", false)]
+    [InlineData(null, true)]
+    public async Task Validate_judges_the_folders_declared_beside_a_script(string? neighbour, bool valid)
+    {
+        var script = WriteConfig("support.ork.ts", "export const support = 1;");
+        if (neighbour is not null)
+            WriteConfig("support.files.yaml", neighbour);
+        var opts = new TestOptions { ConfigPath = script, AllowExternalMounts = true };
+
+        var (exit, _, stderr) = await CaptureAsync(() => RunnerExecution.RunValidateAsync(opts, "Orkeon.Hosting.Tests"));
+
+        // The script itself is no crew: what is asked here is which of the two is reported.
+        Assert.NotEqual(0, exit);
+        Assert.Equal(!valid, stderr.Contains("support.files.yaml", StringComparison.Ordinal));
+    }
+
     private const string DeliverableWithoutFileWriteCrewYaml = """
         name: "validate-deliverable"
         goal: "A tool_call deliverable whose agent cannot write it"

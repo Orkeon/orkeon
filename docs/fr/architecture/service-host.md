@@ -164,6 +164,33 @@ n'envoie ce que contient `/outbox`.
 - **Hors de l'hôte.** Les deux racines sont réservées dans `orkeon-host` avec `Files` allumé, et nulle part ailleurs. Une
   crew qui s'en sert tourne dans un terminal avec `--mount ./in:/inbox:ro --mount ./out:/outbox:rw`.
 
+#### `files:` — les dossiers qu'une crew ouvre
+
+Une crew nomme les dossiers accessibles en plus de `/outbox`, toujours ouvert au téléchargement. Elle choisit **dans** ce
+que l'opérateur a monté pour elle, et n'ouvre rien par défaut. Aucune commande de chat ne les lit encore.
+
+```yaml
+files:
+  - path: /output
+    download: true
+  - path: /output/drop
+    upload: true
+```
+
+- **Où l'écrire.** Dans le YAML de la crew, ou le `config.yaml` (sinon `crew.yaml`) d'un dossier de crew. Un script l'a
+  dans un fichier voisin, `support.files.yaml` pour `support.ork.ts`, qui ne contient que cette clé et se lit sans exécuter
+  le script ; un script sans ce fichier n'ouvre aucun dossier hors `/outbox`. Le voisin d'une crew YAML n'est pas lu.
+- **Quand il est lu.** À chaque question, dans le fichier tel qu'il est : un changement ne demande pas de redémarrage.
+- **Refusés.** Un chemin hors des mounts de la crew, sous un mount interne, sous `/crews*`, sur `/inbox` ou `/outbox` ; un
+  téléchargement là où le mount n'accorde pas la lecture, un dépôt là où il n'accorde pas l'écriture et la création ; un
+  dossier qui est ou contient celui d'une définition de crew, ou fait partie d'un dossier de crew, liens suivis. La casse
+  ne contourne rien : un chemin est comparé aux mounts tel qu'il est écrit, et à ce qu'il ne doit pas atteindre sans égard
+  à la casse.
+- **Une déclaration invalide** ferme les dossiers de cette crew, tous, et d'aucune autre. Le journal dit pourquoi, une fois.
+  Un bloc mal formé en lui-même fait aussi échouer le chargement de sa crew ; un dossier que l'hôte refuse, non.
+- **`orkeon run --validate`** refuse un bloc mal formé, celui d'un fichier voisin compris. Il ne connaît pas les mounts de
+  l'hôte.
+
 La configuration est **validée au démarrage** : aucune crew sous `Orkeon:Host:Crews`, une crew sans `Name` ou sans `Path`, deux crews de même nom (sans tenir compte de la casse), un chemin de crew qui n'existe pas, un `MaxConcurrentRuns` inférieur à 1, un `RunTimeout` nul, négatif ou au-delà d'environ 24,8 jours, un `ShutdownGracePeriod` négatif, une entrée de `LlmProfiles` qui nomme un profil que `Llm:Profiles` ne définit pas, et — pour un canal activé — une liste d'autorisation vide, une variable de jeton absente, un `ProgressInterval` nul ou négatif, une entrée de `GuildIds` ou une clé de `Routes` qui n'est pas un nombre, ou une entrée de `Routes` ou un `DefaultCrew` qui nomme une crew que l'hôte ne déclare pas ; pour un serveur A2A activé, aucune crew exposée, une crew exposée que l'hôte ne déclare pas, un `Host` ou un `Port` mal formé, ou une écoute au-delà de la boucle locale sans authentification, et — quel que soit l'interrupteur A2A — une clé `A2A:EnableServer`, `A2A:Host` ou `A2A:Port`, que le démon ne lit pas (voir [Autres agents (A2A)](#5-autres-agents-a2a)), et une écoute que le système refuse — une URL que HTTP.sys n'a réservée pour personne, un port qu'un autre processus tient (voir [Windows](#windows)) ; et, avant tous ceux-là, un réglage que refuse l'hôte des runners — une valeur que le lieur de configuration ne convertit pas (`"RunTimeout": "abc"`, `"Orkeon:Guardian:Enabled": "oui"`) ou qu'une règle de sa section refuse, une clé qu'aucune section ne porte (`Orkeon:Host:RunTimeoutt`, ou une clé qui n'est plus un réglage, `RaggableTree:Exclude`), un nom de section ou de composant qu'il ne connaît pas (`Orkeon:Guardain`, un fournisseur de mémoire, un reranker RAG), un niveau de journal qui n'en est pas un, un profil LLM qu'il ne sait pas construire, un fichier de réglages qu'il ne peut pas lire, une adresse qui n'en est pas une (`RaggableTree:Embedding:BaseUrl`, `Telemetry:OtlpEndpoint`), refusent tous le démarrage avec le code de sortie 78 — avant que le service ne se déclare prêt — plutôt que d'être découverts un run raté à la fois. Tout réglage que lit le démon est jugé à ce moment, qu'un run s'en serve ou non ; les comptes e-mail sont la seule exception — un compte illisible est mis de côté et signalé quand un run le nomme ([quand un réglage est refusé](../reference/configuration.md#quand-un-réglage-est-refusé)).
 
 Le démarrage refuse aussi une référence `${NOM}` ou `%NOM%` dans un réglage que l'hôte transmet tel qu'il est écrit, en nommant le chemin et jamais la valeur, avec le code 78 et avant la connexion d'un serveur MCP : Orkeon ne développe jamais une variable ([la liste](../reference/configuration.md#une-référence-de-variable-nest-jamais-développée)).

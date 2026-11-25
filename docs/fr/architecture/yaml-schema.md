@@ -53,6 +53,11 @@ mounts:                   # Les racines virtuelles que la crew utilise (optionne
   - /output               # une racine qu'une entrée des settings (ou un --mount) doit fournir ; refusée en une ligne si rien ne le fait
   - 01J9Z3K4M5N6P7Q8R9S0T1V2W3|/data   # une racine épinglée à UNE entrée des settings par son identifiant, quand plusieurs la déclarent
 
+files:                    # Les dossiers ouverts à ceux qui parlent à la crew (optionnel) — lus par orkeon-host seul, fermés en l'absence du bloc
+  - path: string          # Un dossier virtuel des mounts de la crew : absolu, sans segment "..", "." ou vide
+    download: bool        # défaut : false — ses fichiers, et ceux des dossiers en dessous, peuvent être téléchargés
+    upload: bool          # défaut : false — on peut y déposer des fichiers, et dans les dossiers en dessous ; l'un, l'autre ou les deux
+
 announce_mounts: bool     # default: true — chaque agent qui a un outil de fichiers liste ses chemins virtuels dans son prompt système (alias announceMounts) ; la clé propre d'un agent l'emporte
 
 rag:                      # Configuration RAG au niveau crew (optionnel)
@@ -187,7 +192,8 @@ tasks:
 La validation a lieu
 au chargement (`CrewDefinitionValidator`) : une crew exige un `name`, un `goal`, au moins un agent
 (chacun avec un goal) et au moins une tâche (chacune avec une `description` et, sauf tâche de décision, un
-`expectedOutput`) ; des `dependencies` circulaires, un item de `mounts:` listé deux fois ou deux
+`expectedOutput`) ; des `dependencies` circulaires, un item de `files:` au chemin mal formé, listé deux
+fois ou qui n'ouvre rien, un item de `mounts:` listé deux fois ou deux
 identifiants qui sélectionnent la même racine font échouer le chargement. Une clé
 `circuitBreaker:` aussi, à la racine comme sur une tâche : le bloc a été supprimé (voir « Supprimé :
 `circuitBreaker` » plus bas), et le chargement nomme le bloc `graph` au lieu de l'ignorer. Le
@@ -699,6 +705,7 @@ Tous les modèles YAML vivent dans `Orkeon.Infrastructure.Configuration` (`src/c
 - `GuardrailsYamlConfig` (les `guardrails:` d'agent et de tâche)
 - `LinkYamlConfig` (l'ACL `links:` de crew)
 - `CrewYamlConfig.Mounts` / `CrewSettingsYamlConfig.Mounts` (le bloc `mounts:` de crew — items `/racine` ou `<ulid>|/racine`) → `CrewConfiguration.Mounts` (`MountReference`)
+- `CrewYamlConfig.Files` / `CrewSettingsYamlConfig.Files` (le bloc `files:` de crew, items `CrewFileYamlConfig`) → `CrewConfiguration.Files` (`CrewFileFolder`)
 - `AgentYamlConfig.Filesystem` (items chemin ou `{path, access}`) → `AgentConfiguration.FileSystem` (`FileSystemScopeEntry`) ; `AgentYamlConfig.AnnounceMounts`, sinon l'`announce_mounts` de la crew → `AgentConfiguration.AnnounceMounts`
 - `GraphYamlConfig` (start, nœuds, arêtes, circuitBreakerPreset et ses limites) avec `GraphNodeYamlConfig`, `GraphEdgeYamlConfig`
 - `RagYamlConfig` (collections + sources/chunking, défauts — avec `RagCollectionYamlConfig`, `RagChunkingYamlConfig`, `RagDefaultsYamlConfig`) → `RagCrewConfig`

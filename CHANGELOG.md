@@ -15,6 +15,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - With it on, the start is refused (78) when a mount reaches the conversations' root, links followed, or claims `/inbox`,
   `/outbox` or a path under them. `RunnerVirtualRoots.Inbox` and `Outbox` name the two roots.
 
+### Added — a crew declares the folders it opens
+
+- `files:` in a crew's YAML names folders people may download from or leave files in, within what the operator mounted.
+  Off when absent; no chat command reads it yet. A script has it in `<name>.files.yaml` beside it, read without running it.
+- `orkeon-host` reads the declaration as it stands, without loading the crew, and holds it to the crew's mounts and rights.
+  An invalid one closes that crew's folders and is logged; the other crews are served. `--validate` refuses a malformed one.
+- `CrewConfiguration.Files` and `CrewFileFolder`; `CrewFileYamlConfig` in the YAML models.
+
 ### Changed — orkeon-host says what it does not take from a chat message
 
 - A Discord or Teams message with attachments runs on its text, and the acknowledgement names the files left out. A

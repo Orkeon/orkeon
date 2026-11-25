@@ -160,6 +160,32 @@ the end of a run, the files of `/outbox` it added or changed are listed, hidden 
 - **Outside the host.** The two roots are reserved in `orkeon-host` with `Files` on, and nowhere else. A crew that uses
   them runs in a terminal with `--mount ./in:/inbox:ro --mount ./out:/outbox:rw`.
 
+#### `files:` — the folders a crew opens
+
+A crew names the folders people may reach besides `/outbox`, which is always open to download. It chooses **within** what
+the operator mounted for it, and opens nothing by default. No chat command reads them yet.
+
+```yaml
+files:
+  - path: /output
+    download: true
+  - path: /output/drop
+    upload: true
+```
+
+- **Where it is written.** In the YAML of the crew, or the `config.yaml` (else `crew.yaml`) of a crew directory. A script
+  has it in a file beside it, `support.files.yaml` for `support.ork.ts`, which holds that key alone and is read without
+  running the script; a script without that file opens no folder but `/outbox`. The file beside a YAML crew is not read.
+- **When it is read.** At each question, from the file as it stands: a change needs no restart.
+- **Refused.** A path under no mount of the crew, under an internal one, under `/crews*`, on `/inbox` or `/outbox`; a
+  download where the mount does not grant reading, an upload where it does not grant both writing and creating; a folder
+  that is or holds the folder of a crew's definition, or is part of a crew directory, links followed. Case is never a way
+  around: paths are compared with the mounts as written, and with what they must not reach whatever the case.
+- **An invalid declaration** closes the folders of that crew, all of them, and no other crew's. The log says why, once. A
+  block that is malformed in itself also fails the crew's own load; a folder the host refuses does not.
+- **`orkeon run --validate`** refuses a malformed block, the one beside a script included. It does not know the host's
+  mounts.
+
 The configuration is **validated at start**: no crew under `Orkeon:Host:Crews`, a crew without a `Name` or a `Path`, two crews with one name (compared case-insensitively), a crew path that does not exist, a `MaxConcurrentRuns` below 1, a `RunTimeout` that is zero, negative or beyond about 24.8 days, a negative `ShutdownGracePeriod`, an `LlmProfiles` entry naming a profile `Llm:Profiles` does not define, and — for an enabled channel — an empty allow list, an unset token variable, a `ProgressInterval` that is zero or negative, a `GuildIds` entry or `Routes` key that is not a number, or a `Routes` entry or `DefaultCrew` naming a crew the host does not declare; for an enabled A2A server, no exposed crew, an exposed crew the host does not declare, a malformed `Host` or `Port`, or a listener beyond the loopback interface with no authentication, and — whatever the A2A switch — an `A2A:EnableServer`, `A2A:Host` or `A2A:Port` key, which the daemon does not read (see [Other agents (A2A)](#5-other-agents-a2a)), and a listener the system refuses — a URL HTTP.sys reserved for no one, a port another process holds (see [Windows](#windows)); and, before any of them, a setting the runner host refuses — a value the configuration binder cannot convert (`"RunTimeout": "abc"`, `"Orkeon:Guardian:Enabled": "oui"`) or that a rule of its section refuses, a key no section carries (`Orkeon:Host:RunTimeoutt`, or one that is no setting any more, `RaggableTree:Exclude`), a section or a component's name it does not know (`Orkeon:Guardain`, a memory provider, a RAG reranker), a log level that is none, an LLM profile it cannot build, a settings file it cannot read, an address that is no address (`RaggableTree:Embedding:BaseUrl`, `Telemetry:OtlpEndpoint`), all refuse the start with exit code 78 — before the service ever reports ready — rather than being discovered one failed run at a time. Every setting the daemon reads is judged then, whether a run uses it or not; the e-mail accounts are the one exception — an account that cannot be read is set aside and reported when a run names it ([when a setting is refused](../reference/configuration.md#when-a-setting-is-refused)).
 
 The start also refuses a `${NAME}` or `%NAME%` reference in a setting the host passes as written, naming the path and never the value, with exit 78 and before any MCP server connects: Orkeon never expands a variable ([the list](../reference/configuration.md#a-variable-reference-is-never-expanded)).

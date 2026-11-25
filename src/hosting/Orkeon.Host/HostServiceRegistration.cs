@@ -125,6 +125,7 @@ internal static class HostServiceRegistration
         {
             services.TryAddSingleton<HostApiOptionalServices>();
             services.AddSingleton<Files.ConversationFiles>();
+            services.AddSingleton<Files.CrewFileFolders>();
             // The path validator keeps to the working directory: a root elsewhere is allowed as the sandbox session's is.
             // No mount but the conversations' own reaches it, or the start was refused.
             services.Configure<PathSecurityOptions>(options =>

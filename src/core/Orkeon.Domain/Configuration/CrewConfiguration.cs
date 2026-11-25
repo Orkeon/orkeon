@@ -65,6 +65,12 @@ public sealed record CrewConfiguration
     public IReadOnlyList<Orkeon.Domain.FileSystem.MountReference>? Mounts { get; init; }
 
     /// <summary>
+    /// Gets the folders the crew opens to the people who talk to it (<c>files:</c>); <see langword="null"/> when the crew
+    /// wrote no block. Nothing but a host that serves files reads it.
+    /// </summary>
+    public IReadOnlyList<CrewFileFolder>? Files { get; init; }
+
+    /// <summary>
     /// Gets whether the crew needs System One (<c>decision: { mode: ... }</c> at crew level, #429);
     /// <see cref="Orkeon.Domain.Crew.CrewDecisionMode.Unspecified"/> when the crew declares none.
     /// </summary>
