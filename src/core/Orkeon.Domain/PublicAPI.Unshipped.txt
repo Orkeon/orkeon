@@ -17,3 +17,10 @@ override Orkeon.Domain.Configuration.CrewFileFolder.GetHashCode() -> int
 override Orkeon.Domain.Configuration.CrewFileFolder.ToString() -> string!
 static Orkeon.Domain.Configuration.CrewFileFolder.operator ==(Orkeon.Domain.Configuration.CrewFileFolder? left, Orkeon.Domain.Configuration.CrewFileFolder? right) -> bool
 static Orkeon.Domain.Configuration.CrewFileFolder.operator !=(Orkeon.Domain.Configuration.CrewFileFolder? left, Orkeon.Domain.Configuration.CrewFileFolder? right) -> bool
+Orkeon.Domain.FileSystem.FileSystemMount.IsPrivate.get -> bool
+Orkeon.Domain.FileSystem.FileSystemMount.IsPrivate.init -> void
+Orkeon.Domain.FileSystem.MountInfo.IsPrivate.get -> bool
+Orkeon.Domain.FileSystem.MountInfo.IsPrivate.init -> void
+Orkeon.Domain.FileSystem.PrivateMountGuard
+static Orkeon.Domain.FileSystem.PrivateMountGuard.Reached(Orkeon.Domain.FileSystem.IFileSystemService! fileSystem, string! virtualPath) -> string?
+static Orkeon.Domain.FileSystem.PrivateMountGuard.ThrowIfReached(Orkeon.Domain.FileSystem.IFileSystemService! fileSystem, string! virtualPath) -> void

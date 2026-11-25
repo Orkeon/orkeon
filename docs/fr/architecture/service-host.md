@@ -126,8 +126,9 @@ hors du dossier de travail, sans le drapeau, est refusé avec `78` et la ligne d
 
 Éteint par défaut. Avec `Orkeon:Host:Files:Enabled`, chaque run d'une crew hébergée trouve deux dossiers : `/inbox`, en
 lecture seule, ce que la conversation a reçu, et `/outbox`, en lecture-écriture, ce que ses runs rendent. Les deux durent
-autant que la conversation : le message suivant les retrouve tels que le run précédent les a laissés. Deux conversations ne
-voient jamais les dossiers l'une de l'autre, même sur une crew à la fois. Un run demandé par A2A ou par l'API de l'hôte n'a
+autant que la conversation : le message suivant les retrouve tels que le run précédent les a laissés. Aucun run n'est monté
+sur les deux dossiers d'une autre conversation, même sur une crew à la fois ; ce que deux conversations d'un hôte partagent
+par ailleurs est dit sous **Partagé**, plus bas. Un run demandé par A2A ou par l'API de l'hôte n'a
 pas de conversation : il reçoit deux dossiers vides à lui, supprimés à sa fin. À la fin d'un run, les fichiers de `/outbox`
 qu'il a ajoutés ou modifiés sont listés, fichiers cachés et liens exclus. Aucun canal ne remplit encore `/inbox` ni
 n'envoie ce que contient `/outbox`.
@@ -151,16 +152,28 @@ n'envoie ce que contient `/outbox`.
 - **Refusé au démarrage (`78`).** Un `Root` qui est un dossier que monte l'hôte, qui en contient un ou qui se trouve
   dessous — un `--mount`, un mount des settings, le dossier d'une crew, les `Mounts` d'une crew —, liens suivis des deux
   côtés ; un mount sur `/inbox` ou `/outbox`, ou sur un chemin dessous, où qu'il soit déclaré ; une limite qui n'est pas
-  positive ; une extension vide.
+  positive ; une extension vide. Les dossiers sont comparés sans tenir compte de la casse sous Windows et macOS. Un montage
+  bind mène là où aucun lien ne se voit, et n'est pas détecté : ne liez pas `Root` ainsi.
+- **Contrôlé à nouveau.** Une crew qui écrit dans un dossier peut y remplacer un sous-dossier par un lien : la comparaison
+  est refaite à chaque run, qui est refusé, et à chaque accès, si bien qu'un lien posé pendant un run n'ouvre rien non plus.
+- **Partagé.** L'index de code, les bases documentaires et le journal d'`edit_batch` servent tout le processus. Dans le run
+  d'une conversation, `index_codebase`, `incremental_reindex`, `rag_ingest`, `edit_batch` et les recherches qui ingèrent ce
+  qu'elles lisent (`directory_search`, `txt_search`, `pdf_search`, `mdx_search`) refusent `/inbox`, `/outbox`, ce qui est
+  dessous, et un dossier ou un motif qui les contient. `file_read`, `grep` et les autres outils de fichiers les lisent. Ce
+  qu'un agent écrit lui-même dans un endroit partagé — un dossier déclaré comme `/output`, `session_store`, le hub
+  d'événements — est lu par les runs qui le partagent.
 - **Limites.** Un fichier au-delà d'une limite, ou d'une extension qu'`AllowedExtensions` ne prend pas, est refusé seul. Un
   run écrit librement tant qu'il tourne : les limites sont contrôlées à l'arrivée d'un fichier et au démarrage d'un run, et
   une conversation au-delà de `MaxConversationBytes`, ou un hôte au-delà de `MaxTotalBytes`, ne démarre aucun run avant que
-  la rétention ou l'opérateur ne fasse de la place.
+  la rétention ou l'opérateur ne fasse de la place. Une conversation dont un dossier ne peut être listé compte comme au-delà
+  de sa propre limite, et n'en arrête aucune autre.
 - **Rétention.** Une conversation est supprimée `Retention` après sa dernière activité ; le contrôle passe au démarrage,
   puis toutes les heures. Celle dont un run est en cours, ou suspendu sur une question, est gardée. Un run suspendu se
   reprend hors de l'hôte (`orkeon run --resume`), sans conversation.
-- **Le shell.** Un `shell_command` non confiné n'est pas tenu par les mounts et lit toutes les conversations : l'hôte le dit
-  au démarrage quand le shell tourne sans confinement, et [le confinement](security.md#confinement-du-shell) est la réponse.
+- **Le shell et le code.** Un `shell_command` non confiné, ou du code exécuté sur l'hôte
+  (`Orkeon:CodeSandbox:AllowHostExecution`), n'est pas tenu par les mounts et lit toutes les conversations : l'hôte le dit
+  au démarrage, et [le confinement](security.md#confinement-du-shell) est la réponse. Les serveurs MCP stdio et le processus
+  du fournisseur `agent-cli` tournent aussi sous le compte du service : voir [les limites](../reference/limitations.md).
 - **Hors de l'hôte.** Les deux racines sont réservées dans `orkeon-host` avec `Files` allumé, et nulle part ailleurs. Une
   crew qui s'en sert tourne dans un terminal avec `--mount ./in:/inbox:ro --mount ./out:/outbox:rw`.
 

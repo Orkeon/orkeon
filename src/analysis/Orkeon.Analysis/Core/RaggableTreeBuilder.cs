@@ -126,6 +126,7 @@ public sealed class RaggableTreeBuilder
     // its graph. Touches no shared state: files are extracted in parallel, then merged in discovery order.
     private async Task<ExtractedFile?> ExtractFileAsync(DiscoveredFile file, CancellationToken ct)
     {
+        PrivateMountGuard.ThrowIfReached(_fileSystem, file.VirtualPath);
         if (file.Language == MarkdownLanguage)
         {
             var markdown = await _fileSystem.TryReadAllTextAsync(file.VirtualPath, ct).ConfigureAwait(false);

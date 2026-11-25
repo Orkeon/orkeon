@@ -125,7 +125,8 @@ outside the working directory, without the flag, is refused with `78` and the ru
 
 Off by default. With `Orkeon:Host:Files:Enabled`, every run of a hosted crew finds two folders: `/inbox`, read-only, what
 the conversation was given, and `/outbox`, read-write, what its runs hand back. Both last as long as the conversation: the
-next message finds them as the previous run left them. Two conversations never see each other's, even on one crew at once.
+next message finds them as the previous run left them. No run is mounted on another conversation's two folders, even on one
+crew at once; what else two conversations of one host share is said under **Shared** below.
 A run asked over A2A or the host API has no conversation: it gets two empty folders of its own, deleted when it ends. At
 the end of a run, the files of `/outbox` it added or changed are listed, hidden files and links left out. No channel fills
 `/inbox` or sends what `/outbox` holds yet.
@@ -148,15 +149,26 @@ the end of a run, the files of `/outbox` it added or changed are listed, hidden 
   folder wherever it lies; no agent reaches it but by its own two mounts.
 - **Refused at start (`78`).** A `Root` that is, holds or is under any folder the host mounts — a `--mount`, a mount of
   the settings, a crew's folder, a crew's `Mounts` —, links followed on both sides; a mount on `/inbox` or `/outbox`, or
-  on a path under them, wherever it is declared; a limit that is not positive; an empty extension.
+  on a path under them, wherever it is declared; a limit that is not positive; an empty extension. The folders are compared
+  without regard to case on Windows and macOS. A bind mount leads where no link shows, and is not seen: do not bind `Root`.
+- **Checked again.** A crew that writes in a folder may replace a folder under it by a link: the comparison is made again
+  at each run, which is refused, and at each access, so a link made during a run opens nothing either.
+- **Shared.** The code index, the document stores and the journal of `edit_batch` serve the whole process. In the run of a
+  conversation, `index_codebase`, `incremental_reindex`, `rag_ingest`, `edit_batch` and the searches that ingest what they
+  read (`directory_search`, `txt_search`, `pdf_search`, `mdx_search`) refuse `/inbox`, `/outbox`, what is under them, and a
+  folder or a pattern that holds them. `file_read`, `grep` and the other file tools read them. What an agent writes itself
+  in a shared place — a declared folder such as `/output`, `session_store`, the event hub — is read by the runs that share it.
 - **Limits.** A file over a limit, or of an extension `AllowedExtensions` leaves out, is refused alone. A run writes freely
   while it runs: the limits are checked when a file arrives and when a run starts, and a conversation over
-  `MaxConversationBytes`, or a host over `MaxTotalBytes`, starts no run until the retention or the operator makes room.
+  `MaxConversationBytes`, or a host over `MaxTotalBytes`, starts no run until the retention or the operator makes room. A
+  conversation with a folder that cannot be listed counts as over its own limit, and stops no other.
 - **Retention.** A conversation is deleted `Retention` after its last activity; the check runs at start, then every hour.
   One with a run in progress, or suspended on a question, is kept. A suspended run is resumed outside the host
   (`orkeon run --resume`), with no conversation.
-- **The shell.** An unconfined `shell_command` is not bound by the mounts and reads every conversation: the host says so at
-  start when the shell runs unconfined, and [the confinement](security.md#shell-confinement) is the answer.
+- **The shell and the code.** An unconfined `shell_command`, or code run on the host
+  (`Orkeon:CodeSandbox:AllowHostExecution`), is not bound by the mounts and reads every conversation: the host says so at
+  start, and [the confinement](security.md#shell-confinement) is the answer. MCP stdio servers and the process of the
+  `agent-cli` provider run as the account of the service too: see [the limits](../reference/limitations.md).
 - **Outside the host.** The two roots are reserved in `orkeon-host` with `Files` on, and nowhere else. A crew that uses
   them runs in a terminal with `--mount ./in:/inbox:ro --mount ./out:/outbox:rw`.
 

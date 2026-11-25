@@ -13,9 +13,9 @@ public sealed class FakeFileSystemService : IFileSystemService
     private readonly Dictionary<string, FakeEntry> _entries = new(StringComparer.Ordinal);
     private readonly List<MountInfo> _mounts = [];
 
-    public FakeFileSystemService AddMount(string virtualPath, FileAccessRights rights = FileAccessRights.ReadOnly)
+    public FakeFileSystemService AddMount(string virtualPath, FileAccessRights rights = FileAccessRights.ReadOnly, bool isPrivate = false)
     {
-        _mounts.Add(new MountInfo(virtualPath, rights, Array.Empty<SubPathOverride>()));
+        _mounts.Add(new MountInfo(virtualPath, rights, Array.Empty<SubPathOverride>()) { IsPrivate = isPrivate });
         return this;
     }
 

@@ -643,7 +643,10 @@ public sealed class HostStartupSequenceTests : IDisposable
 
     [Theory]
     [InlineData("None", false, true)]
+    [InlineData("0", false, true)]
+    [InlineData(" none ", false, true)]
     [InlineData("Auto", true, true)]
+    [InlineData("2", true, true)]
     [InlineData(null, true, true)]
     [InlineData(null, false, false)]
     [InlineData("Required", true, false)]
@@ -653,6 +656,18 @@ public sealed class HostStartupSequenceTests : IDisposable
         configuration["Orkeon:Tools:Shell:Confinement:Mode"] = mode;
 
         Assert.Equal(warns, Orkeon.Host.Files.HostFilesStartup.ShellWarning(configuration, inContainer) is not null);
+    }
+
+    [Theory]
+    [InlineData("true", true)]
+    [InlineData("false", false)]
+    [InlineData(null, false)]
+    public void ShouldWarnOfTheCode_WhenItRunsOnTheHost(string? allowed, bool warns)
+    {
+        using var configuration = new Microsoft.Extensions.Configuration.ConfigurationManager();
+        configuration["Orkeon:CodeSandbox:AllowHostExecution"] = allowed;
+
+        Assert.Equal(warns, Orkeon.Host.Files.HostFilesStartup.ShellWarning(configuration, inContainer: false) is not null);
     }
 
     private string Link(string name, string target)

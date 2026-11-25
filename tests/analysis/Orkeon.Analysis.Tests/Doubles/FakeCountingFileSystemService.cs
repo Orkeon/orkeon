@@ -46,7 +46,10 @@ public sealed class FakeCountingFileSystemService : IFileSystemService
 
     public string? ToVirtualPath(string physicalPath) => _inner.ToVirtualPath(physicalPath);
 
-    public IReadOnlyList<MountInfo> GetAvailableMounts() => _inner.GetAvailableMounts();
+    /// <summary>The mounts announced instead of the inner service's.</summary>
+    public IReadOnlyList<MountInfo>? Mounts { get; set; }
+
+    public IReadOnlyList<MountInfo> GetAvailableMounts() => Mounts ?? _inner.GetAvailableMounts();
 
     /// <summary>When set, listings come back sorted by ordinal virtual path, whatever the disk order is.</summary>
     public bool SortListing { get; init; }

@@ -83,14 +83,25 @@ internal static class SafeFileNames
         return cut >= 0 ? name[(cut + 1)..] : name;
     }
 
+    // In UTF-8 bytes, what most file systems bound a name by, and never in the middle of a character.
     private static string Truncate(string name)
     {
-        if (name.Length <= MaxLength)
+        if (Encoding.UTF8.GetByteCount(name) <= MaxLength)
             return name;
 
         var extension = Path.GetExtension(name);
-        if (extension.Length >= MaxLength / 2)
+        if (Encoding.UTF8.GetByteCount(extension) >= MaxLength / 2)
             extension = string.Empty;
-        return string.Concat(name.AsSpan(0, MaxLength - extension.Length), extension);
+        var left = MaxLength - Encoding.UTF8.GetByteCount(extension);
+        var stem = new StringBuilder(MaxLength);
+        foreach (var rune in name.EnumerateRunes())
+        {
+            left -= rune.Utf8SequenceLength;
+            if (left < 0)
+                break;
+            stem.Append(rune.ToString());
+        }
+
+        return stem.Append(extension).ToString();
     }
 }

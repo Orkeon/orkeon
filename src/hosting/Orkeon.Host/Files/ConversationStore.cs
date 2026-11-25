@@ -7,16 +7,15 @@ namespace Orkeon.Host.Files;
 /// the root, which no mount covers (an Internal one would hide every conversation from its own runs). Every read and
 /// write of a file goes through the VFS, in <see cref="ConversationFiles"/>.
 /// </summary>
-[Orkeon.Compliance.Vfs.SuppressVfsCompliance("EXCEPTION-BOOTSTRAP: provisions the folders the conversations' mounts point at, and lists and measures their root, which no mount covers.")]
+[Orkeon.Compliance.Vfs.SuppressVfsCompliance("EXCEPTION-BOOTSTRAP: provisions the folders the conversations' mounts point at, and lists, measures and gives rights back on their root, which no mount covers.")]
 internal sealed class ConversationStore
 {
     private const string RunPrefix = "run-";
     private const UnixFileMode Private = UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute;
 
-    private static readonly EnumerationOptions Everything = new()
+    private static readonly EnumerationOptions OneLevel = new()
     {
-        RecurseSubdirectories = true,
-        IgnoreInaccessible = true,
+        IgnoreInaccessible = false,
         AttributesToSkip = FileAttributes.ReparsePoint,
     };
 
@@ -63,11 +62,37 @@ internal sealed class ConversationStore
             .Where(n => n.StartsWith(RunPrefix, StringComparison.Ordinal))
             .Select(n => (n, (DateTimeOffset)Directory.GetLastWriteTimeUtc(FolderOf(n))))];
 
-    /// <summary>The bytes one conversation holds, what is being received left out.</summary>
-    public long SizeOf(string name) => Measure(InboxOf(name)) + Measure(OutboxOf(name));
+    /// <summary>
+    /// The bytes one conversation holds, what is being received left out; null when a folder of it cannot be listed, which
+    /// counts as over any limit.
+    /// </summary>
+    public long? SizeOf(string name) => Measure(InboxOf(name)) + Measure(OutboxOf(name));
 
     /// <summary>The bytes everything under the root holds, what is being received left out.</summary>
-    public long TotalSize() => Names().Sum(SizeOf);
+    /// <param name="unmeasured">What a conversation that cannot be measured counts for: it must not stop the others.</param>
+    public long TotalSize(long unmeasured) => Names().Sum(name => Math.Min(SizeOf(name) ?? unmeasured, long.MaxValue >> 20));
+
+    /// <summary>Gives the service's account its rights back on the folders of <paramref name="name"/>, links left alone.</summary>
+    public void MakeAccessible(string name)
+    {
+        if (OperatingSystem.IsWindows())
+            return;
+        var left = new Stack<DirectoryInfo>([new DirectoryInfo(FolderOf(name))]);
+        while (left.TryPop(out var directory))
+        {
+            try
+            {
+                if ((directory.UnixFileMode & Private) != Private)
+                    directory.UnixFileMode |= Private;
+                foreach (var child in directory.EnumerateDirectories("*", OneLevel))
+                    left.Push(child);
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                continue; // Deleted meanwhile, or another account's: the delete that follows says so.
+            }
+        }
+    }
 
     private IEnumerable<string> Names()
     {
@@ -81,20 +106,46 @@ internal sealed class ConversationStore
 
     private static bool IsKey(string name) => name.Length == 64 && name.All(char.IsAsciiHexDigitLower);
 
-    private static long Measure(string folder)
+    // Null when a folder cannot be listed: what it holds could be anything.
+    private static long? Measure(string folder)
     {
         long total = 0;
-        try
+        var left = new Stack<DirectoryInfo>([new DirectoryInfo(folder)]);
+        while (left.TryPop(out var directory))
         {
-            foreach (var file in new DirectoryInfo(folder).EnumerateFiles("*", Everything))
-                total += file.Length;
-        }
-        catch (Exception ex) when (ex is FileNotFoundException or DirectoryNotFoundException)
-        {
-            // Deleted while it was measured: what was counted so far is the measure.
+            try
+            {
+                foreach (var entry in directory.EnumerateFileSystemInfos("*", OneLevel))
+                {
+                    if (entry is DirectoryInfo child)
+                        left.Push(child);
+                    else if (entry is FileInfo file)
+                        total += LengthOf(file);
+                }
+            }
+            catch (DirectoryNotFoundException)
+            {
+                continue; // Deleted while it was measured.
+            }
+            catch (Exception ex) when (ex is UnauthorizedAccessException or IOException or System.Security.SecurityException)
+            {
+                return null;
+            }
         }
 
         return total;
+    }
+
+    private static long LengthOf(FileInfo file)
+    {
+        try
+        {
+            return file.Length;
+        }
+        catch (FileNotFoundException)
+        {
+            return 0; // Deleted while it was measured.
+        }
     }
 
     private static void Create(string folder)

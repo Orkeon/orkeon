@@ -246,6 +246,11 @@ internal sealed partial class CrewRunner : ICrewRunner
         {
             return Cancelled(run, hosted.Name) with { RefusedFiles = refusedFiles };
         }
+        catch (ConversationPreparationException ex)
+        {
+            LogPreparationFailed(ex, run.Id, hosted.Name);
+            return new HostedRunResult(HostedRunOutcome.Failed, run.Id, ex.Message) { RefusedFiles = refusedFiles };
+        }
 #pragma warning disable CA1031 // A hosted run must not take the daemon down with it.
         catch (Exception ex)
 #pragma warning restore CA1031
@@ -257,7 +262,7 @@ internal sealed partial class CrewRunner : ICrewRunner
         {
             // Inside the slot: a drain waits for it, and the crew's next run finds the folders settled.
             if (folders is not null)
-                await folders.CloseAsync(result?.Outcome == HostedRunOutcome.WaitingForInput ? run.Id : null).ConfigureAwait(false);
+                await folders.CloseAsync(result?.Outcome == HostedRunOutcome.WaitingForInput).ConfigureAwait(false);
             _registry.Finish(run.Id);
         }
     }

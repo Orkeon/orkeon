@@ -126,10 +126,10 @@ internal static class HostServiceRegistration
             services.TryAddSingleton<HostApiOptionalServices>();
             services.AddSingleton<Files.ConversationFiles>();
             services.AddSingleton<Files.CrewFileFolders>();
-            // The path validator keeps to the working directory: a root elsewhere is allowed as the sandbox session's is.
-            // No mount but the conversations' own reaches it, or the start was refused.
-            services.Configure<PathSecurityOptions>(options =>
-                options.AdditionalAllowedDirectories.Add(new Files.ConversationStore(hostSection.Files.Root).Root));
+            // The path validator keeps to the working directory: a root elsewhere is allowed as the sandbox session's is,
+            // and one it already holds is not widened. No mount but the conversations' own reaches it: the start was refused,
+            // and the registry refuses each access that would (FileSystemRegistry.ReservedFolder).
+            services.PostConfigure<PathSecurityOptions>(options => Files.HostFilesStartup.Allow(options, hostSection.Files.Root));
             services.AddHostedService<Files.ConversationRetentionService>();
         }
 

@@ -4,6 +4,7 @@ using Orkeon.Analysis.Abstractions.Interfaces;
 using Orkeon.Analysis.Core.Editing;
 using Orkeon.Analysis.Tests.Doubles;
 using Orkeon.Analysis.TreeSitter;
+using Orkeon.Domain.FileSystem;
 using Orkeon.Tests.Shared.FileSystem;
 
 namespace Orkeon.Analysis.Tests.Editing;
@@ -305,4 +306,40 @@ public sealed class EditTransactionTests : IDisposable
     }
 
     private static int Line(string text, int offset) => text.Take(offset).Count(c => c == '\n') + 1;
+
+    [Fact]
+    public async Task ShouldRefuseAndJournalNothing_WhenAFileIsOfAPrivateMount()
+    {
+        await SeedAsync("a.cs");
+        var hash = await HashAsync("a.cs", "C.A");
+        _fs.Mounts = [PrivateWorkspace];
+        var transaction = Transaction(_fs);
+        transaction.Add(Virtual("a.cs"), Replace("C.A", hash, NewA));
+
+        await Assert.ThrowsAsync<FileAccessDeniedException>(
+            () => transaction.CommitAsync(EditValidation.Parse, TestContext.Current.CancellationToken));
+
+        Assert.Empty(JournalFiles());
+        Assert.Equal(TwoMethods, Encoding.UTF8.GetString(await OnDiskAsync("a.cs")));
+    }
+
+    [Fact]
+    public async Task ShouldLeaveAPrivateMountAlone_WhenALeftoverJournalReplays()
+    {
+        await LeaveJournalBehindAsync(new InvalidOperationException("disk exploded"), new IOException("restore refused"));
+        var left = await OnDiskAsync("a.cs");
+        await _disk.WriteAllBytesAsync("/other/c.cs", Encoding.UTF8.GetBytes(TwoMethods), CancellationToken.None);
+        var file = await StructuralFile.LoadAsync(_disk, _pool, "/other/c.cs");
+        _fs.WriteOutcomesByPath.Clear();
+        _fs.Mounts = [PrivateWorkspace];
+
+        var transaction = Transaction(_fs);
+        transaction.Add("/other/c.cs", Replace("C.A", file.Resolve(NodeSelector.Parse("C.A")).Sha256, NewA));
+        await transaction.CommitAsync(EditValidation.Parse, TestContext.Current.CancellationToken);
+
+        Assert.Equal(left, await OnDiskAsync("a.cs"));
+    }
+
+    private static MountInfo PrivateWorkspace =>
+        new("/workspace", FileAccessRights.ReadWrite, []) { IsPrivate = true };
 }

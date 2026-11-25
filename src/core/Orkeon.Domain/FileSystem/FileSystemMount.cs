@@ -23,6 +23,17 @@ public sealed record FileSystemMount
     public IReadOnlyList<SubPathOverride> Overrides { get; }
     /// <summary>Controls visibility in GetAvailableMounts(); Internal mounts are hidden from agents.</summary>
     public MountVisibility Visibility { get; }
+    /// <summary>
+    /// Whether the folder belongs to one execution among several that share the process (a conversation's files): its
+    /// content must not enter a store the other ones read (<see cref="PrivateMountGuard"/>).
+    /// </summary>
+    public bool IsPrivate { get; init; }
+
+    /// <summary>Whether the runtime made the mount inside its reserved folder (<see cref="FileSystemRegistry.ReservedFolder"/>).</summary>
+    internal bool InReservedFolder { get; init; }
+
+    /// <summary>Whether the mounted folder itself cannot be deleted, whatever the rights on what it holds.</summary>
+    internal bool KeepsRoot { get; init; }
 
     /// <summary>Creates a new file system mount with the specified parameters.</summary>
     public FileSystemMount(

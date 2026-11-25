@@ -2,6 +2,8 @@ using Microsoft.Extensions.Configuration;
 using Orkeon.Constants.FileSystem;
 using Orkeon.Domain.FileSystem;
 using Orkeon.Hosting;
+using Orkeon.Infrastructure.Configuration;
+using Orkeon.Tools.Code;
 
 namespace Orkeon.Host.Files;
 
@@ -34,18 +36,16 @@ internal static class HostFilesStartup
         if (PhysicalRealPath.Resolve(root) is null)
             return $"{key} '{options.Files.Root}' is a loop of symbolic links.";
 
-        foreach (var mount in boot.GetMounts())
+        if (Reaching(root, boot.GetMounts()) is { } mount)
         {
-            if (Overlap(root, mount.BasePath))
-                return $"{key} '{options.Files.Root}' is, holds or is under the folder mounted on '{mount.VirtualPath}': give the conversations a folder no mount reaches.";
+            return $"{key} '{options.Files.Root}' is, holds or is under the folder mounted on '{mount.VirtualPath}': give the conversations a folder no mount reaches.";
         }
 
         foreach (var crew in options.Crews)
         {
-            foreach (var mount in CrewRunner.GrantedMounts(crew))
+            if (Reaching(root, CrewRunner.GrantedMounts(crew)) is { } granted)
             {
-                if (Overlap(root, mount.BasePath))
-                    return $"{key} '{options.Files.Root}' is, holds or is under the folder granted to crew '{crew.Name}' on '{mount.VirtualPath}': give the conversations a folder no mount reaches.";
+                return $"{key} '{options.Files.Root}' is, holds or is under the folder granted to crew '{crew.Name}' on '{granted.VirtualPath}': give the conversations a folder no mount reaches.";
             }
         }
 
@@ -61,18 +61,39 @@ internal static class HostFilesStartup
     }
 
     /// <summary>
-    /// What the operator must know when an agent's shell is not confined: it reads the folders of every conversation.
+    /// What the operator must know when an agent's shell, or the code it runs, is not confined: it reads the folders of every conversation.
     /// Null when the settings ask for a confinement.
     /// </summary>
     public static string? ShellWarning(IConfiguration configuration, bool inContainer)
     {
         ArgumentNullException.ThrowIfNull(configuration);
-        var mode = configuration["Orkeon:Tools:Shell:Confinement:Mode"];
-        var unconfined = string.Equals(mode, "None", StringComparison.OrdinalIgnoreCase)
-            || (inContainer && (string.IsNullOrEmpty(mode) || string.Equals(mode, "Auto", StringComparison.OrdinalIgnoreCase)));
-        return unconfined
-            ? $"WARNING: {HostFilesOptions.SectionName} is on and the shell is not confined: a crew with shell_command reads the files of every conversation."
+        // By name or by number, as the settings are read; what is neither refuses the start elsewhere.
+        var written = configuration["Orkeon:Tools:Shell:Confinement:Mode"];
+        var mode = string.IsNullOrWhiteSpace(written) ? ShellConfinementMode.Auto
+            : Enum.TryParse<ShellConfinementMode>(written, ignoreCase: true, out var read) ? read
+            : (ShellConfinementMode?)null;
+        var tools = new List<string>();
+        if (mode == ShellConfinementMode.None || (inContainer && mode == ShellConfinementMode.Auto))
+            tools.Add("the shell is not confined (shell_command)");
+        if (bool.TryParse(configuration["Orkeon:CodeSandbox:AllowHostExecution"], out var onHost) && onHost)
+            tools.Add("Orkeon:CodeSandbox:AllowHostExecution lets code run on the host (code_interpreter)");
+        return tools.Count > 0
+            ? $"WARNING: {HostFilesOptions.SectionName} is on and {string.Join(", and ", tools)}: a crew with such a tool reads the files of every conversation."
             : null;
+    }
+
+    /// <summary>Lets the path validator reach the conversations' root, when it does not already.</summary>
+    public static void Allow(PathSecurityOptions options, string root)
+    {
+        ArgumentNullException.ThrowIfNull(options);
+        var full = new ConversationStore(root).Root;
+        var workspace = Path.GetFullPath(options.DefaultWorkspaceRoot ?? Directory.GetCurrentDirectory());
+        var real = PhysicalRealPath.Resolve(full) ?? full;
+        if (!PhysicalPathContainment.IsUnder(full, workspace)
+            || !PhysicalPathContainment.IsUnder(real, PhysicalRealPath.Resolve(workspace) ?? workspace))
+        {
+            options.AdditionalAllowedDirectories.Add(full);
+        }
     }
 
     /// <summary>Whether this process runs in a container, where the shell is not confined unless the settings say so.</summary>
@@ -81,12 +102,10 @@ internal static class HostFilesStartup
         || File.Exists("/.dockerenv")
         || File.Exists("/run/.containerenv");
 
-    // As written and as the links lead: either way to the same bytes is one way too many.
-    private static bool Overlap(string root, string mounted)
+    /// <summary>The first of the mounts that reaches the conversations' root now, or null: a link may lead there since the start.</summary>
+    public static FileSystemMount? Reaching(string root, IEnumerable<FileSystemMount> mounts)
     {
-        string[] roots = [root, PhysicalRealPath.Resolve(root) ?? root];
-        var folder = Path.GetFullPath(mounted);
-        string[] folders = [folder, PhysicalRealPath.Resolve(folder) ?? folder];
-        return roots.Any(r => folders.Any(f => PhysicalPathContainment.IsUnder(r, f) || PhysicalPathContainment.IsUnder(f, r)));
+        ArgumentNullException.ThrowIfNull(mounts);
+        return mounts.FirstOrDefault(mount => PhysicalOverlap.BetweenFolders(root, mount.BasePath));
     }
 }

@@ -120,6 +120,7 @@ public sealed partial class CachingTreeBuilder
 
     private async Task<CachedBuildResult> BuildCoreAsync(string virtualRoot, IndexCodebaseRequest request, CancellationToken ct)
     {
+        PrivateMountGuard.ThrowIfReached(_fs, virtualRoot);
         var key = CacheKeyOf(request);
         var saved = request.UseCache ? await _cache.LoadAsync(virtualRoot, key, ct).ConfigureAwait(false) : null;
 

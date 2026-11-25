@@ -88,7 +88,13 @@ public sealed class ConversationFilesTests : IDisposable
         host.Services.GetRequiredService<ICrewRunner>().RunAsync("support", "go", "test", conversation: conversation);
 
     private static IncomingFile Incoming(string name, string content, string? id = null, long? announced = null) =>
-        new(name, _ => Task.FromResult<Stream>(new MemoryStream(Encoding.UTF8.GetBytes(content)))) { Id = id, Size = announced };
+        new(name, _ => Task.FromResult(Content(content))) { Id = id, Size = announced };
+
+    private static Stream Content(string text)
+    {
+        var stream = new MemoryStream(Encoding.UTF8.GetBytes(text));
+        return stream;
+    }
 
     private string Inbox(ConversationRef conversation) => Path.Combine(Root, conversation.Key, "in");
 
@@ -653,5 +659,173 @@ public sealed class ConversationFilesTests : IDisposable
         Assert.Empty(result.OutboxFiles);
         Assert.False(Directory.Exists(Root));
         Assert.DoesNotContain(host.Services.GetServices<IHostedService>(), s => s is ConversationRetentionService);
+    }
+
+    // ----- what a kill, an agent or an odd setting leaves -----
+
+    private string Part(ConversationRef conversation)
+    {
+        var part = Path.Combine(Root, conversation.Key, "part", "left.part");
+        Write(part, "half");
+        return part;
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task ShouldDeleteWhatAReceptionCutShortLeft_WhenARunOpensOrASweepPasses(bool run)
+    {
+        var (host, files) = Build((_, _) => Task.FromResult("done"));
+        await files.StoreAsync(Alice, null, Incoming("a.txt", "a"), 0, ct: Ct);
+        var part = Part(Alice);
+
+        if (run)
+            await RunAsync(host, In(Alice));
+        else
+            await files.SweepAsync(Ct);
+
+        Assert.False(File.Exists(part));
+        Assert.True(File.Exists(Path.Combine(Inbox(Alice), "a.txt")));
+    }
+
+    [Fact]
+    public async Task ShouldStopTheConversationAlone_WhenAFolderOfItCannotBeListed()
+    {
+        Assert.SkipWhen(OperatingSystem.IsWindows() || Environment.IsPrivilegedProcess, "A mode forbids nothing here.");
+        var (host, files) = Build((_, _) => Task.FromResult("done"));
+        await files.StoreAsync(Alice, null, Incoming("a.txt", "a"), 0, ct: Ct);
+        var locked = Directory.CreateDirectory(Path.Combine(Outbox(Alice), "locked")).FullName;
+        if (!OperatingSystem.IsWindows())
+            File.SetUnixFileMode(locked, UnixFileMode.None);
+
+        var stopped = await RunAsync(host, In(Alice));
+        var refused = await files.StoreAsync(Alice, null, Incoming("b.txt", "b"), 1, ct: Ct);
+        var other = await RunAsync(host, In(Bob));
+
+        Assert.Equal(HostedRunOutcome.Failed, stopped.Outcome);
+        Assert.NotNull(refused.Refused);
+        Assert.Equal("done", other.Message);
+
+        // And retention deletes it all the same.
+        Age(Alice, TimeSpan.FromDays(30));
+        await files.SweepAsync(Ct);
+        Assert.False(Directory.Exists(Path.Combine(Root, Alice.Key)));
+    }
+
+    [Fact]
+    public async Task ShouldDeleteAFileNobodyMayMeasureThrough_WhenALinkInTheOutboxLeadsNowhere()
+    {
+        Assert.SkipWhen(OperatingSystem.IsWindows(), "Symbolic links need a privilege.");
+        var (host, files) = Build((_, _) => Task.FromResult("done"));
+        await files.StoreAsync(Alice, null, Incoming("a.txt", "a"), 0, ct: Ct);
+        File.CreateSymbolicLink(Path.Combine(Outbox(Alice), "gone.txt"), Path.Combine(_harness.Root, "nowhere"));
+
+        Assert.Equal("done", (await RunAsync(host, In(Alice))).Message);
+    }
+
+    [Fact]
+    public async Task ShouldSweepTheRunFolders_WhenTheRetentionIsLongerThanTime()
+    {
+        var (_, files) = Build(files: s => s["Retention"] = TimeSpan.MaxValue.ToString());
+        Directory.CreateDirectory(Path.Combine(Root, "run-1"));
+
+        await files.SweepAsync(Ct);
+
+        Assert.True(Directory.Exists(Path.Combine(Root, "run-1")));
+    }
+
+    [Fact]
+    public async Task ShouldMarkTheRunBeforeItWorks_WhenTheHostCouldBeKilledDuringIt()
+    {
+        var during = string.Empty;
+        var (host, _) = Build((_, _) =>
+        {
+            during = Read(Meta(Alice));
+            return Task.FromResult("done");
+        });
+
+        var result = await RunAsync(host, In(Alice));
+
+        Assert.Contains(result.RunId!, during, StringComparison.Ordinal);
+        Assert.DoesNotContain(result.RunId!, Read(Meta(Alice)), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task ShouldKeepTheFileWhereItIsAsked_WhenItsIdIsKeptInAnotherFolder()
+    {
+        var (_, files) = Build();
+
+        var first = await files.StoreAsync(Alice, null, Incoming("a.txt", "a", id: "7"), 0, ct: Ct);
+        var second = await files.StoreAsync(Alice, null, Incoming("a.txt", "a", id: "7"), 0, "/outbox", Ct);
+        var third = await files.StoreAsync(Alice, null, Incoming("a.txt", "a", id: "7"), 0, ct: Ct);
+
+        Assert.Equal(["/inbox/a.txt", "/outbox/a.txt", "/inbox/a.txt"], new[] { first.Path, second.Path, third.Path });
+    }
+
+    [Fact]
+    public async Task ShouldKeepTheFileForEachCrew_WhenTheyGrantOneFolderEach()
+    {
+        var (_, files) = Build(services: s => s.Configure<Orkeon.Infrastructure.Configuration.PathSecurityOptions>(o => o.AdditionalAllowedDirectories.Add(_harness.Root)));
+        HostedCrewOptions Crew(string name)
+        {
+            var folder = Directory.CreateDirectory(Path.Combine(_harness.Root, name)).FullName;
+            return new HostedCrewOptions { Name = name, Path = _harness.CrewPath, Mounts = [$"{folder}:/data:rw"] };
+        }
+
+        await files.StoreAsync(Alice, Crew("one"), Incoming("a.txt", "a", id: "7"), 0, "/data", Ct);
+        var two = Crew("two");
+        Write(Path.Combine(_harness.Root, "two", "a.txt"), "another file");
+        var second = await files.StoreAsync(Alice, two, Incoming("a.txt", "a", id: "7"), 0, "/data", Ct);
+        var without = await files.StoreAsync(Alice, null, Incoming("a.txt", "a", id: "7"), 0, "/data", Ct);
+
+        Assert.Equal("/data/a (1).txt", second.Path);
+        Assert.NotNull(without.Refused);
+    }
+
+    [Fact]
+    public async Task ShouldDownloadNothing_WhenTheHostKeepsNoFileOfThisName()
+    {
+        var opened = 0;
+        var (_, files) = Build();
+
+        var stored = await files.StoreAsync(Alice, null, new IncomingFile("tool.exe", _ =>
+        {
+            opened++;
+            return Task.FromResult(Content(""));
+        }), 0, ct: Ct);
+
+        Assert.NotNull(stored.Refused);
+        Assert.Equal(0, opened);
+    }
+
+    [Fact]
+    public async Task ShouldKeepTheOutboxItself_WhenAnAgentDeletesIt()
+    {
+        var denied = new List<bool>();
+        var (host, _) = Build(async (fs, ct) =>
+        {
+            await fs.WriteAllTextAsync("/outbox/sub/a.txt", "a", ct);
+            denied.Add(await DeniedAsync(() => fs.DeleteAsync("/outbox", recursive: true, ct)));
+            denied.Add(await DeniedAsync(() => fs.DeleteAsync("/outbox/sub", recursive: true, ct)));
+            await fs.WriteAllTextAsync("/outbox/b.txt", "b", ct);
+            return "done";
+        });
+
+        var result = await RunAsync(host, In(Alice));
+        Assert.Equal([true, false], denied);
+        Assert.Equal("/outbox/b.txt", Assert.Single(result.OutboxFiles).Path);
+    }
+
+    [Theory]
+    [InlineData(true, 0)]
+    [InlineData(false, 1)]
+    public void ShouldAllowTheRoot_OnlyWhenTheWorkspaceDoesNotHoldIt(bool inside, int added)
+    {
+        var options = new Orkeon.Infrastructure.Configuration.PathSecurityOptions { DefaultWorkspaceRoot = inside ? _harness.Root : Path.Combine(_harness.Root, "elsewhere") };
+        var before = options.AdditionalAllowedDirectories.Count;
+
+        HostFilesStartup.Allow(options, Root);
+
+        Assert.Equal(added, options.AdditionalAllowedDirectories.Count - before);
     }
 }

@@ -162,6 +162,8 @@ public sealed class FileSystemDiscoverer : IFileSystemDiscoverer
         FilterStatsAccumulator stats,
         [EnumeratorCancellation] CancellationToken ct)
     {
+        // What is discovered is indexed, in a store the whole process shares.
+        PrivateMountGuard.ThrowIfReached(_fs, ctx.VirtualRoot);
         stats.PhysicalRoot = ctx.PhysicalRoot;
         ProbePhysicalEntries(ctx, stats);
 

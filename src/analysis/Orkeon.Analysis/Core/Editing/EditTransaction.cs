@@ -61,6 +61,8 @@ internal sealed class EditTransaction
         var appliedByPath = new Dictionary<string, IReadOnlyList<bool>>(StringComparer.Ordinal);
         foreach (var path in paths)
         {
+            // The journal keeps the original bytes in a folder other conversations may share.
+            PrivateMountGuard.ThrowIfReached(_fs, path);
             var original = await _fs.TryReadAllBytesAsync(path, cancellationToken).ConfigureAwait(false)
                 ?? throw new FileNotFoundException("File not found.", path);
             var operations = _operations.Where(o => o.Path == path).Select(o => o.Operation).ToList();
@@ -172,6 +174,8 @@ internal sealed class EditTransaction
             if (journal is null) continue;
             foreach (var (path, bytes, editedHash) in EditJournal.Deserialize(journal))
             {
+                // A private folder here is not the one the journal was written from.
+                if (PrivateMountGuard.Reached(_fs, path) is not null) continue;
                 var current = await _fs.TryReadAllBytesAsync(path, cancellationToken).ConfigureAwait(false);
                 if (current is not null && IsOurs(current, bytes, editedHash))
                     await _fs.WriteAllBytesAsync(path, bytes, cancellationToken).ConfigureAwait(false);

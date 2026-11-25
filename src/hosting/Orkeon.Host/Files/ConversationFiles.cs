@@ -44,6 +44,8 @@ internal sealed partial class ConversationFiles : IDisposable
     /// clashes with none; the agents' mount set does not hold it.
     /// </summary>
     private const string Own = RunnerVirtualRoots.Inbox + "/.conversation";
+    private const string Parts = Own + "/part";
+    private static readonly string[] s_contents = [RunnerVirtualRoots.Inbox, RunnerVirtualRoots.Outbox, Parts];
 
     private const string MetaPath = Own + "/meta.json";
     private const int BlockBytes = 64 * 1024;
@@ -80,6 +82,7 @@ internal sealed partial class ConversationFiles : IDisposable
         _optional = optional ?? throw new ArgumentNullException(nameof(optional));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _store = new ConversationStore(_options.Root);
+        _boot.ReservedFolder = _store.Root;
     }
 
     /// <summary>The settings the conversations' files obey.</summary>
@@ -103,7 +106,7 @@ internal sealed partial class ConversationFiles : IDisposable
             try
             {
                 _store.CreateFolders(name);
-                return new ConversationRun(this, temporary, reference: null);
+                return new ConversationRun(this, temporary, reference: null, runId);
             }
             catch
             {
@@ -117,8 +120,17 @@ internal sealed partial class ConversationFiles : IDisposable
         try
         {
             await RefuseWhenFullAsync(reference.Key, ct).ConfigureAwait(false);
-            await UseAsync(reference, crew: null, (_, token) => TouchAsync(reference, meta => meta, token), ct).ConfigureAwait(false);
-            return new ConversationRun(this, held, reference);
+            // Marked before it runs: a host that is killed leaves the mark, and retention asks whether the run waits.
+            await UseAsync(
+                reference,
+                crew: null,
+                async (_, token) =>
+                {
+                    await ClearPartsAsync(token).ConfigureAwait(false);
+                    return await TouchAsync(reference, meta => meta with { SuspendedRuns = [.. meta.SuspendedRuns.Where(r => r != runId), runId] }, token).ConfigureAwait(false);
+                },
+                ct).ConfigureAwait(false);
+            return new ConversationRun(this, held, reference, runId);
         }
         catch
         {
@@ -167,7 +179,7 @@ internal sealed partial class ConversationFiles : IDisposable
         CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(file);
-        return UseAsync(conversation, crew, (_, token) => StoreLockedAsync(conversation, file, index, folder, token), ct);
+        return UseAsync(conversation, crew, (_, token) => StoreLockedAsync(conversation, file, index, crew, folder, token), ct);
     }
 
     /// <summary>
@@ -182,23 +194,45 @@ internal sealed partial class ConversationFiles : IDisposable
             await SweepOneAsync(key, KeptAsync, ct).ConfigureAwait(false);
         }
 
-        var limit = _optional.Time.GetUtcNow() - _options.Retention;
+        // An age against the retention: no date far enough back exists for a long one.
+        var now = _optional.Time.GetUtcNow();
         foreach (var (name, written) in _store.RunFolders())
         {
             ct.ThrowIfCancellationRequested();
-            if (written < limit)
+            if (now - written > _options.Retention)
                 await SweepOneAsync(name, (_, _) => Task.FromResult(false), ct).ConfigureAwait(false);
         }
     }
 
     /// <summary>The mount set of a run's agents.</summary>
-    internal FileSystemRegistry RunRegistry(string name, HostedCrewOptions crew) => ScopedMountComposition.ForExecution(
-        _boot,
+    /// <param name="name">The folder of the run or of its conversation.</param>
+    /// <param name="crew">The crew, whose granted folders are added.</param>
+    /// <param name="ofConversation">Whether the folder is a conversation's: what it holds is kept out of the stores other runs read.</param>
+    /// <exception cref="ConversationPreparationException">A mount leads to the conversations' folder.</exception>
+    internal FileSystemRegistry RunRegistry(string name, HostedCrewOptions crew, bool ofConversation) => Compose(
+        crew,
         [
-            new FileSystemMount(_store.InboxOf(name), RunnerVirtualRoots.Inbox, FileAccessRights.Read),
-            new FileSystemMount(_store.OutboxOf(name), RunnerVirtualRoots.Outbox, FileAccessRights.ReadWrite),
-            .. CrewRunner.GrantedMounts(crew),
+            OwnMount(_store.InboxOf(name), RunnerVirtualRoots.Inbox, FileAccessRights.Read) with { IsPrivate = ofConversation, KeepsRoot = true },
+            OwnMount(_store.OutboxOf(name), RunnerVirtualRoots.Outbox, FileAccessRights.ReadWrite) with { IsPrivate = ofConversation, KeepsRoot = true },
         ]);
+
+    private static FileSystemMount OwnMount(string folder, string virtualPath, FileAccessRights rights) =>
+        new(folder, virtualPath, rights) { InReservedFolder = true };
+
+    // A folder the crew is granted may have been replaced by a link since the start, by a crew that writes in its parent.
+    // The registry refuses each access that follows; saying it here ends the run before it does anything.
+    private FileSystemRegistry Compose(HostedCrewOptions? crew, IReadOnlyList<FileSystemMount> own)
+    {
+        IReadOnlyList<FileSystemMount> granted = crew is null ? [] : [.. CrewRunner.GrantedMounts(crew)];
+        if (crew is not null && HostFilesStartup.Reaching(_store.Root, [.. granted, .. _boot.GetMounts()]) is { } mount)
+        {
+            LogMountReaches(mount.VirtualPath, crew.Name);
+            throw new ConversationPreparationException(
+                $"The folder mounted on '{mount.VirtualPath}' leads to where the files of the conversations are kept. The operator must move it.");
+        }
+
+        return ScopedMountComposition.ForExecution(_boot, [.. own, .. granted]);
+    }
 
     internal IDisposable Enter(FileSystemRegistry registry) => _scope.Enter(registry);
 
@@ -228,7 +262,7 @@ internal sealed partial class ConversationFiles : IDisposable
     }
 
     /// <summary>Ends a run: the conversation's activity, and the run it waits on when that one is suspended.</summary>
-    internal async Task CloseRunAsync(ConversationRef? conversation, Hold held, string? suspendedRun)
+    internal async Task CloseRunAsync(ConversationRef? conversation, Hold held, string runId, bool suspended)
     {
         try
         {
@@ -237,18 +271,16 @@ internal sealed partial class ConversationFiles : IDisposable
                 await UseAsync(
                     reference,
                     crew: null,
-                    (_, token) => TouchAsync(reference, meta => suspendedRun is null ? meta : meta with { SuspendedRuns = [.. meta.SuspendedRuns, suspendedRun] }, token),
+                    (_, token) => TouchAsync(reference, meta => suspended ? meta : meta with { SuspendedRuns = [.. meta.SuspendedRuns.Where(r => r != runId)] }, token),
                     CancellationToken.None).ConfigureAwait(false);
-                if (_store.SizeOf(reference.Key) is var size && size > _options.MaxConversationBytes)
+                if (_store.SizeOf(reference.Key) is not { } size)
+                    LogUnmeasured(reference.Channel);
+                else if (size > _options.MaxConversationBytes)
                     LogOverLimit(reference.Channel, size, _options.MaxConversationBytes);
             }
             else
             {
-                await InHostNamespaceAsync(held.Name, crew: null, async (fs, token) =>
-                {
-                    await fs.DeleteAsync(Own, recursive: true, token).ConfigureAwait(false);
-                    return true;
-                }, CancellationToken.None).ConfigureAwait(false);
+                await InHostNamespaceAsync(held.Name, crew: null, (fs, token) => DeleteAllAsync(held.Name, fs, token), CancellationToken.None).ConfigureAwait(false);
             }
         }
 #pragma warning disable CA1031 // The run is over and has its answer: what its folders could not do is the log's matter.
@@ -263,29 +295,46 @@ internal sealed partial class ConversationFiles : IDisposable
         }
     }
 
-    private async Task<StoredFile> StoreLockedAsync(ConversationRef conversation, IncomingFile file, int index, string folder, CancellationToken ct)
+    private async Task<StoredFile> StoreLockedAsync(ConversationRef conversation, IncomingFile file, int index, HostedCrewOptions? crew, string folder, CancellationToken ct)
     {
         var name = SafeFileNames.Sanitize(file.Name, index);
         StoredFile Refuse(string reason) => new(null, 0, new RefusedFile(name, reason));
 
-        var meta = await ReadMetaAsync(conversation, ct).ConfigureAwait(false);
-        if (file.Id is not null
-            && meta.Attachments.FirstOrDefault(a => a.Id == file.Id) is { } known
-            && await _fs.TryGetEntryAsync(known.Path, ct).ConfigureAwait(false) is { } kept)
+        // The conversation's own folders are one for every crew; a granted one is each crew's own.
+        var owner = folder.TrimEnd('/') is RunnerVirtualRoots.Inbox or RunnerVirtualRoots.Outbox ? null : crew?.Name;
+        bool IsSame(StoredAttachment a) => a.Id == file.Id && a.Crew == owner && FolderIs(a.Path, folder);
+
+        if (file.Id is not null)
         {
-            return new StoredFile(known.Path, kept.SizeBytes, null);
+            try
+            {
+                var meta = await ReadMetaAsync(conversation, ct).ConfigureAwait(false);
+                if (meta.Attachments.FirstOrDefault(IsSame) is { } known
+                    && await _fs.TryGetEntryAsync(known.Path, ct).ConfigureAwait(false) is { Kind: VirtualEntryKind.File } kept)
+                {
+                    return new StoredFile(known.Path, kept.SizeBytes, null);
+                }
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or FileAccessDeniedException)
+            {
+                LogRefused(ex, conversation.Channel);
+                return Refuse("it could not be read");
+            }
         }
 
         if (!_options.Takes(name))
             return Refuse("files of this type are not taken");
         if (file.Size > _options.MaxFileBytes)
             return Refuse(TooLarge());
+        // Judged by its name before a byte of it is downloaded.
+        if (!_fs.ResolveAndValidate($"{folder.TrimEnd('/')}/{name}", FileAccessRights.Write | FileAccessRights.Create).IsAllowed)
+            return Refuse("the host does not keep a file of this name");
 
         using var reservation = new Reservation(this, conversation.Key);
         if (await reservation.GrowToAsync(Math.Max(file.Size ?? 0, 1), ct).ConfigureAwait(false) is { } full)
             return Refuse(full);
 
-        var part = string.Create(CultureInfo.InvariantCulture, $"{Own}/part/{Guid.NewGuid():N}.part");
+        var part = string.Create(CultureInfo.InvariantCulture, $"{Parts}/{Guid.NewGuid():N}.part");
         try
         {
             var (size, refusal) = await ReceiveAsync(file, part, reservation, ct).ConfigureAwait(false);
@@ -295,7 +344,7 @@ internal sealed partial class ConversationFiles : IDisposable
             var path = await PlaceAsync(part, folder, name, reservation, ct).ConfigureAwait(false);
             await TouchAsync(
                 conversation,
-                m => file.Id is null ? m : m with { Attachments = [.. m.Attachments.Where(a => a.Id != file.Id), new StoredAttachment(file.Id, path)] },
+                m => file.Id is null ? m : m with { Attachments = [.. m.Attachments.Where(a => !IsSame(a)), new StoredAttachment(file.Id, path, owner)] },
                 CancellationToken.None).ConfigureAwait(false);
             return new StoredFile(path, size, null);
         }
@@ -411,6 +460,9 @@ internal sealed partial class ConversationFiles : IDisposable
     private string TooLarge() =>
         string.Create(CultureInfo.InvariantCulture, $"it is larger than {_options.MaxFileBytes} bytes");
 
+    private static bool FolderIs(string path, string folder) =>
+        string.Equals(path[..path.LastIndexOf('/')], folder.TrimEnd('/'), StringComparison.Ordinal);
+
     private static bool IsHidden(string path) => path.Split('/').Any(s => s.StartsWith('.'));
 
     private async Task RefuseWhenFullAsync(string key, CancellationToken ct)
@@ -418,9 +470,9 @@ internal sealed partial class ConversationFiles : IDisposable
         await _budget.WaitAsync(ct).ConfigureAwait(false);
         try
         {
-            if (_store.SizeOf(key) > _options.MaxConversationBytes)
+            if (_store.SizeOf(key) is not { } size || size > _options.MaxConversationBytes)
                 throw new ConversationPreparationException("The files of this conversation exceed their limit. Open a new thread.");
-            if (_store.TotalSize() > _options.MaxTotalBytes)
+            if (_store.TotalSize(_options.MaxConversationBytes) > _options.MaxTotalBytes)
                 throw new ConversationPreparationException("The files of the conversations exceed the limit of this host. Its operator must make room.");
         }
         finally
@@ -432,13 +484,12 @@ internal sealed partial class ConversationFiles : IDisposable
     private async Task<T> InHostNamespaceAsync<T>(
         string name, HostedCrewOptions? crew, Func<IFileSystemService, CancellationToken, Task<T>> work, CancellationToken ct)
     {
-        using var registry = ScopedMountComposition.ForExecution(
-            _boot,
+        using var registry = Compose(
+            crew,
             [
-                new FileSystemMount(_store.InboxOf(name), RunnerVirtualRoots.Inbox, FileAccessRights.ReadWrite),
-                new FileSystemMount(_store.OutboxOf(name), RunnerVirtualRoots.Outbox, FileAccessRights.ReadWrite),
-                new FileSystemMount(_store.FolderOf(name), Own, FileAccessRights.ReadWrite),
-                .. crew is null ? [] : CrewRunner.GrantedMounts(crew),
+                OwnMount(_store.InboxOf(name), RunnerVirtualRoots.Inbox, FileAccessRights.ReadWrite),
+                OwnMount(_store.OutboxOf(name), RunnerVirtualRoots.Outbox, FileAccessRights.ReadWrite),
+                OwnMount(_store.FolderOf(name), Own, FileAccessRights.ReadWrite),
             ]);
         using var entered = _scope.Enter(registry);
         return await work(_fs, ct).ConfigureAwait(false);
@@ -459,7 +510,7 @@ internal sealed partial class ConversationFiles : IDisposable
         public IReadOnlyList<string> SuspendedRuns { get; init; } = [];
     }
 
-    private sealed record StoredAttachment(string Id, string Path);
+    private sealed record StoredAttachment(string Id, string Path, string? Crew = null);
 
     /// <summary>The conversation's record; a new one when it has none, or one that cannot be read.</summary>
     private async Task<ConversationMeta> ReadMetaAsync(ConversationRef conversation, CancellationToken ct) =>
@@ -514,8 +565,7 @@ internal sealed partial class ConversationFiles : IDisposable
             {
                 if (await keptAsync(name, token).ConfigureAwait(false))
                     return false;
-                await fs.DeleteAsync(Own, recursive: true, token).ConfigureAwait(false);
-                return true;
+                return await DeleteAllAsync(name, fs, token).ConfigureAwait(false);
             }, ct).ConfigureAwait(false);
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
@@ -534,16 +584,48 @@ internal sealed partial class ConversationFiles : IDisposable
         }
     }
 
+    /// <summary>
+    /// Deletes a folder, what the agents wrote first and the record last: a delete that fails half-way leaves the record, so
+    /// the next pass goes on from there. What an agent took the rights away from is given them back.
+    /// </summary>
+    private async Task<bool> DeleteAllAsync(string name, IFileSystemService fs, CancellationToken ct)
+    {
+        _store.MakeAccessible(name);
+        foreach (var folder in s_contents)
+            await fs.DeleteAsync(folder, recursive: true, ct).ConfigureAwait(false);
+        await fs.DeleteAsync(Own, recursive: true, ct).ConfigureAwait(false);
+        return true;
+    }
+
+    /// <summary>Deletes what a reception cut short left behind. Under the conversation's lock no reception is in progress.</summary>
+    private async Task ClearPartsAsync(CancellationToken ct)
+    {
+        try
+        {
+            var left = new List<string>();
+            await foreach (var entry in _fs.EnumerateFilesAsync(Parts, new VirtualEnumerationOptions(Recursive: false), ct).ConfigureAwait(false))
+                left.Add(entry.VirtualPath);
+            foreach (var part in left)
+                await _fs.DeleteAsync(part, recursive: false, ct).ConfigureAwait(false);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or FileAccessDeniedException)
+        {
+            LogPartLeft(ex);
+        }
+    }
+
     /// <summary>Whether a conversation is kept: it was active, or a run of it waits for an answer.</summary>
     private async Task<bool> KeptAsync(string name, CancellationToken ct)
     {
         if (await TryReadMetaAsync(ct).ConfigureAwait(false) is not { } meta)
         {
             // Nothing says when it was last active: its time starts now, and what it holds is kept until it ends.
+            await ClearPartsAsync(ct).ConfigureAwait(false);
             await WriteMetaAsync(new ConversationMeta(), ct).ConfigureAwait(false);
             return true;
         }
 
+        await ClearPartsAsync(ct).ConfigureAwait(false);
         if (_optional.Time.GetUtcNow() - meta.LastActivity < _options.Retention)
             return true;
 
@@ -638,9 +720,9 @@ internal sealed partial class ConversationFiles : IDisposable
                     inAll = files._reserved.Values.Sum();
                 }
 
-                if (files._store.SizeOf(key) + ofConversation + more > files._options.MaxConversationBytes)
+                if (files._store.SizeOf(key) is not { } size || more > files._options.MaxConversationBytes - size - ofConversation)
                     return "the files of this conversation have reached their limit";
-                if (files._store.TotalSize() + inAll + more > files._options.MaxTotalBytes)
+                if (more > files._options.MaxTotalBytes - files._store.TotalSize(files._options.MaxConversationBytes) - inAll)
                     return "the files of the conversations have reached the limit of this host";
 
                 lock (files._reserved)
@@ -676,6 +758,9 @@ internal sealed partial class ConversationFiles : IDisposable
     [LoggerMessage(Level = LogLevel.Warning, Message = "A file received on {Channel} was not kept")]
     private partial void LogRefused(Exception ex, string channel);
 
+    [LoggerMessage(Level = LogLevel.Error, Message = "The folder mounted on {Mount} leads, through a link, to where the conversations' files are kept: crew {Crew} is refused")]
+    private partial void LogMountReaches(string mount, string crew);
+
     [LoggerMessage(Level = LogLevel.Warning, Message = "A partial file could not be deleted")]
     private partial void LogPartLeft(Exception ex);
 
@@ -687,6 +772,9 @@ internal sealed partial class ConversationFiles : IDisposable
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "A conversation on {Channel} holds {Size} bytes of files, over its limit of {Limit}: it starts no other run")]
     private partial void LogOverLimit(string channel, long size, long limit);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "A conversation on {Channel} holds a folder that cannot be listed, so its files cannot be measured: it starts no other run")]
+    private partial void LogUnmeasured(string channel);
 
     [LoggerMessage(Level = LogLevel.Error, Message = "The files of {Folder} could not be closed")]
     private partial void LogCloseFailed(Exception ex, string folder);
@@ -701,21 +789,23 @@ internal sealed class ConversationRun
     private readonly ConversationFiles _files;
     private readonly ConversationFiles.Hold _held;
     private readonly ConversationRef? _conversation;
+    private readonly string _runId;
 
-    internal ConversationRun(ConversationFiles files, ConversationFiles.Hold held, ConversationRef? reference)
+    internal ConversationRun(ConversationFiles files, ConversationFiles.Hold held, ConversationRef? reference, string runId)
     {
         _files = files;
         _held = held;
         _conversation = reference;
+        _runId = runId;
     }
 
     /// <summary>The mount set of the run's agents. The caller enters it, in the method that uses it.</summary>
-    public FileSystemRegistry Registry(HostedCrewOptions crew) => _files.RunRegistry(_held.Name, crew);
+    public FileSystemRegistry Registry(HostedCrewOptions crew) => _files.RunRegistry(_held.Name, crew, _conversation is not null);
 
     /// <summary>The outbox as the run's mount set, entered, shows it.</summary>
     public Task<IReadOnlyDictionary<string, (long Size, DateTimeOffset Written)>> ListOutboxAsync() => _files.ListOutboxAsync();
 
     /// <summary>Ends the run: the folders of a run without a conversation are deleted, a conversation's are kept.</summary>
-    /// <param name="suspendedRun">The run, when it stopped on a question to a person.</param>
-    public Task CloseAsync(string? suspendedRun) => _files.CloseRunAsync(_conversation, _held, suspendedRun);
+    /// <param name="suspended">Whether it stopped on a question to a person.</param>
+    public Task CloseAsync(bool suspended) => _files.CloseRunAsync(_conversation, _held, _runId, suspended);
 }

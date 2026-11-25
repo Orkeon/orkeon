@@ -95,7 +95,10 @@ public sealed class IncrementalReindexEngine
     {
         var started = Stopwatch.GetTimestamp();
         var root = virtualRoot.TrimEnd('/');
+        PrivateMountGuard.ThrowIfReached(_fileSystem, virtualRoot);
         var changedVirtual = NormalizeChangedPaths(changedFilePaths, root);
+        foreach (var path in changedVirtual)
+            PrivateMountGuard.ThrowIfReached(_fileSystem, path);
         changedVirtual.UnionWith(GoImportersOfChangedPackages(currentTree, changedVirtual));
         changedVirtual.UnionWith(PythonImportersOfNewFiles(currentTree, changedVirtual, root));
 
