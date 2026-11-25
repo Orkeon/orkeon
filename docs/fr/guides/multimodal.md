@@ -131,7 +131,7 @@ services.AddOrkeonMultiModal(configuration);   // lie Orkeon:MultiModal
 ```
 
 Options (`Orkeon:MultiModal`, `MultiModalOptions`) : `Enabled` (true), `MaxImageSizeBytes`
-(20 Mo par défaut), `SupportedImageFormats` (png, jpeg, gif, webp par défaut),
+(20 Mo par défaut), `MaxImages` (10 par appel pour les [images d'un run](#les-images-dun-run)), `SupportedImageFormats` (png, jpeg, gif, webp par défaut),
 `MaxAudioDurationSeconds` (300), `SupportedAudioFormats` (wav, mp3, ogg). Aucune image n'est
 redimensionnée : une image au-delà de la taille limite échoue à la validation.
 
@@ -141,6 +141,27 @@ redimensionnée : une image au-delà de la taille limite échoue à la validatio
 > partagée `OpenAICompatibleProviderBase` fait la traduction une fois).
 > `AddOrkeonMultiModal` active la validation (`IContentValidationService`) et le
 > chargeur VFS (`IMultiModalContentLoader`).
+
+## Les images d'un run
+
+`CrewInput.Images` nomme par chemin virtuel les images venues avec le message auquel un crew répond ; rien n'est
+lu ni copié à ce moment. Chaque tâche du run les voit dans son premier tour utilisateur :
+
+- **Quand.** À chaque appel au modèle d'une tâche, les octets sont relus par le système de fichiers du run et
+  rejoignent ce seul appel. Ils ne sont dans aucun message que la boucle garde : une compaction, un checkpoint,
+  l'historique des runs, les traces et les journaux tiennent le chemin. Une cassette en met l'empreinte dans la
+  clé de l'appel : rejouer avec une autre image ne trouve rien. Une tâche reprise avec d'autres images est refaite.
+- **À quel modèle.** Celui qui répond, après le routage et à chaque maillon d'un repli. Il doit être connu pour
+  lire les images (`ModelCapabilities.Vision`) ; un modèle inconnu ne l'est pas.
+- **Dans quelles bornes.** `Orkeon:MultiModal` : `Enabled`, `MaxImages`, `MaxImageSizeBytes` et
+  `SupportedImageFormats`. Le type se lit sur les octets — png, jpeg, webp et gif —, jamais sur le nom.
+- **À quel agent.** Celui dont le `filesystem:` exclut le chemin ne voit pas l'image.
+
+Une image qui n'est pas montrée n'est jamais perdue en silence : sa place dans le tour le dit par son chemin, et
+`CrewOutput.UnseenImages` donne le chemin, qui ne l'a pas vue et pourquoi. La boucle texte, une tâche de décision
+et un provider que l'hôte enregistre hors de la fabrique (`AddOrkeonLlmProvider(_ => ...)`) ne portent aucune
+image, et le disent de même. Un compte de tokens fait avant un appel ne compte pas les images ; l'usage que le
+vendeur rapporte, si.
 
 ## Providers et formats supportés
 

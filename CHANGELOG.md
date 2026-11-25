@@ -34,6 +34,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - With it on, an answer ends with the files the run left in `/outbox`, and one too long for the channel is kept whole as
   `/outbox/reply-<run id>.md`. No file is sent unasked.
 
+### Added — the images of a message are shown to the crew
+
+- `CrewInput.Images` carries images by virtual path; each task's first user turn shows them, when the model that answers is
+  known to read images. The bytes are read at each call and kept nowhere. `CrewOutput.UnseenImages` says what was not
+  shown, to whom and why.
+- With `Orkeon:Host:Files` on, `orkeon-host` does it for the png, jpeg, webp and gif files of a Discord message, and the answer ends
+  with the images that were not shown. It reads `Orkeon:MultiModal`, which gains `MaxImages` (10).
+
 ### Added — a crew declares the folders it opens
 
 - `files:` in a crew's YAML names folders people may download from or leave files in, within what the operator mounted.

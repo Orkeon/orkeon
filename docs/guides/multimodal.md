@@ -131,7 +131,7 @@ services.AddOrkeonMultiModal(configuration);   // binds Orkeon:MultiModal
 ```
 
 Options (`Orkeon:MultiModal`, `MultiModalOptions`): `Enabled` (true), `MaxImageSizeBytes`
-(20 MB by default), `SupportedImageFormats` (png, jpeg, gif, webp by default),
+(20 MB by default), `MaxImages` (10 per call of a [run's images](#the-images-of-a-run)), `SupportedImageFormats` (png, jpeg, gif, webp by default),
 `MaxAudioDurationSeconds` (300), `SupportedAudioFormats` (wav, mp3, ogg). No image is resized:
 an image over the size limit fails validation.
 
@@ -141,6 +141,26 @@ an image over the size limit fails validation.
 > `OpenAICompatibleProviderBase` does the translation once). `AddOrkeonMultiModal`
 > enables the validation (`IContentValidationService`) and the VFS loader
 > (`IMultiModalContentLoader`).
+
+## The images of a run
+
+`CrewInput.Images` names the images that came with the message a crew answers, by virtual path; nothing is
+read or copied at that point. Each task of the run is shown them in its first user turn:
+
+- **When.** At each model call of a task, the bytes are read again through the run's file system and join that
+  call alone. They are in no message the loop keeps: a compaction, a checkpoint, the run history, the traces
+  and the logs hold the path. A cassette records a digest of them in the call's key, so replaying with another
+  picture is a miss. A resumed task given other images is worked again.
+- **To which model.** The one that answers, after routing and at each link of a fallback. It must be known to
+  read images (`ModelCapabilities.Vision`); an unknown model is not.
+- **Within which bounds.** `Orkeon:MultiModal`: `Enabled`, `MaxImages`, `MaxImageSizeBytes` and
+  `SupportedImageFormats`. The type is read from the bytes — png, jpeg, webp and gif —, never from the name.
+- **To which agent.** One whose `filesystem:` leaves the path out is not shown the image.
+
+An image that is not shown is never dropped in silence: its place in the turn says so by its path, and
+`CrewOutput.UnseenImages` gives the path, who was not shown it and why. The text loop, a decision task and a
+provider the host registers outside the factory (`AddOrkeonLlmProvider(_ => ...)`) carry no image, and say so
+the same way. A token count made before a call does not count images; the usage the vendor reports does.
 
 ## Supported providers and formats
 

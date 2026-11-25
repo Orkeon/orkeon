@@ -47,6 +47,9 @@ internal sealed record HostedRunResult(HostedRunOutcome Outcome, string? RunId, 
 
     /// <summary>The files of the conversation's outbox that are new or changed, whatever the outcome.</summary>
     public IReadOnlyList<OutboxFile> OutboxFiles { get; init; } = [];
+
+    /// <summary>The images of the message that an agent was not shown, whatever the outcome.</summary>
+    public IReadOnlyList<Application.Interfaces.Services.UnseenImage> UnseenImages { get; init; } = [];
 }
 
 /// <summary>
@@ -237,6 +240,8 @@ internal sealed partial class CrewRunner : ICrewRunner
                     return ended!;
                 (prompt, variables) = prepared;
                 refusedFiles = prepared.RefusedFiles;
+                if (folders is not null)
+                    folders.Images = prepared.Images;
             }
 
             result = await RunMountedAsync(hosted, run, folders, prompt, onProgress, variables, idempotency).ConfigureAwait(false)
@@ -368,6 +373,8 @@ internal sealed partial class CrewRunner : ICrewRunner
             var input = variables is { Count: > 0 }
                 ? Application.Interfaces.Services.CrewInput.WithStringVariables(prompt, variables)
                 : Application.Interfaces.Services.CrewInput.Empty(prompt);
+            if (folders is not null)
+                input = input with { Images = folders.Images };
             // The kickoff adopts the identity the recording opened (the run's ExecutionId), and carries the crew key.
             var output = await orchestrator
                 .KickoffAsync(
@@ -383,7 +390,7 @@ internal sealed partial class CrewRunner : ICrewRunner
                 recording.DecisionUnavailable = output.ErrorCode == Orkeon.Constants.Protocol.RunEventErrorCodes.DecisionUnavailable;
             }
 
-            return ResultOf(output, run, hosted.Name);
+            return ResultOf(output, run, hosted.Name) with { UnseenImages = output.UnseenImages };
         }
         catch (OperationCanceledException)
         {

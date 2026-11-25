@@ -149,12 +149,18 @@ internal sealed partial class ChatGateway
     {
         var body = string.IsNullOrWhiteSpace(result.Message) ? "(no output)" : result.Message;
         var tail = string.Empty;
+        if (result.UnseenImages.Count > 0)
+        {
+            var unseen = FileNotices.Bounded([.. result.UnseenImages.Select(FileNotices.NotShown)], ", ", responder.MaxTextLength / 4);
+            tail = $"\n\nImages not shown: {unseen}.";
+        }
+
         if (result.OutboxFiles.Count > 0)
         {
             var take = responder.TakesFileCommands ? "/get sends one." : "This channel does not send them.";
             var names = FileNotices.Bounded(
                 [.. result.OutboxFiles.Select(f => FileNotices.PathAndSize(f.Path, f.Size))], ", ", responder.MaxTextLength / 3);
-            tail = $"\n\nFiles: {names}. {take}";
+            tail += $"\n\nFiles: {names}. {take}";
         }
 
         if (body.Length + tail.Length <= responder.MaxTextLength)
