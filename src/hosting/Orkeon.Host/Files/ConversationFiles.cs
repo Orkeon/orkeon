@@ -183,6 +183,18 @@ internal sealed partial class ConversationFiles : IDisposable
     }
 
     /// <summary>
+    /// Keeps a run's answer whole in <c>/outbox</c>, under the limits of any file; the types taken from people do not bind it.
+    /// </summary>
+    internal Task<StoredFile> StoreReplyAsync(ConversationRef conversation, string runId, string text, CancellationToken ct)
+    {
+        ArgumentNullException.ThrowIfNull(text);
+        var bytes = System.Text.Encoding.UTF8.GetBytes(text);
+        var file = new IncomingFile($"reply-{runId}.md", _ => Task.FromResult<Stream>(new MemoryStream(bytes, writable: false))) { Size = bytes.Length };
+        return UseAsync(
+            conversation, crew: null, (_, token) => StoreLockedAsync(conversation, file, index: 0, crew: null, RunnerVirtualRoots.Outbox, token, anyType: true), ct);
+    }
+
+    /// <summary>
     /// Deletes the conversations with no activity since <see cref="HostFilesOptions.Retention"/>, but those with a run in
     /// progress or suspended, and what runs without a conversation left behind.
     /// </summary>
@@ -319,7 +331,7 @@ internal sealed partial class ConversationFiles : IDisposable
         }
     }
 
-    private async Task<StoredFile> StoreLockedAsync(ConversationRef conversation, IncomingFile file, int index, HostedCrewOptions? crew, string folder, CancellationToken ct)
+    private async Task<StoredFile> StoreLockedAsync(ConversationRef conversation, IncomingFile file, int index, HostedCrewOptions? crew, string folder, CancellationToken ct, bool anyType = false)
     {
         var name = SafeFileNames.Sanitize(file.Name, index);
         StoredFile Refuse(string reason) => new(null, 0, new RefusedFile(name, reason));
@@ -346,7 +358,7 @@ internal sealed partial class ConversationFiles : IDisposable
             }
         }
 
-        if (!_options.Takes(name))
+        if (!anyType && !_options.Takes(name))
             return Refuse("files of this type are not taken");
         if (file.Size > _options.MaxFileBytes)
             return Refuse(TooLarge());

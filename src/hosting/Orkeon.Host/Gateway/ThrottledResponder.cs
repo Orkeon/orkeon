@@ -112,6 +112,9 @@ internal sealed class ThrottledResponder : IChatResponder
     /// <inheritdoc />
     public int MaxTextLength => _inner.MaxTextLength;
 
+    /// <inheritdoc />
+    public bool TakesFileCommands => _inner.TakesFileCommands;
+
     /// <summary>
     /// Drops windows that have been quiet for many intervals. Bounded housekeeping instead of
     /// per-reply teardown: one entry per idle conversation is daemon arithmetic, but tying the

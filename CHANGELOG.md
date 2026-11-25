@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `Orkeon:Host:Files` (off by default) mounts two folders for the runs of a conversation: `/inbox`, read-only, and
   `/outbox`, kept from one message to the next and apart from every other conversation's. Discord fills
-  `/inbox`; no channel sends what `/outbox` holds yet. Limits per file, per conversation and in all; a conversation is deleted after `Retention`.
+  `/inbox`. Limits per file, per conversation and in all; a conversation is deleted after `Retention`.
 - With it on, the start is refused (78) when a mount reaches the conversations' root, links followed, or claims `/inbox`,
   `/outbox` or a path under them. `RunnerVirtualRoots.Inbox` and `Outbox` name the two roots. The comparison is made again
   at each run and each access: a granted folder replaced by a link opens nothing.
@@ -26,10 +26,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   attachment.
 - The name a received file or an e-mail attachment is saved under is bounded to 120 bytes of UTF-8, not 120 characters.
 
+### Added — orkeon-host's file commands on Discord
+
+- With `Orkeon:Host:Files` on, Discord gets `/files [folder]`, `/get <path>` and `/put <file> <folder>`, completed as they
+  are typed, answered ephemerally, for the allow list alone. `/outbox` is always open to download, `/inbox` is listed, the
+  rest is what the crew's `files:` declares. A path that is forbidden is answered as one that is not there.
+- With it on, an answer ends with the files the run left in `/outbox`, and one too long for the channel is kept whole as
+  `/outbox/reply-<run id>.md`. No file is sent unasked.
+
 ### Added — a crew declares the folders it opens
 
 - `files:` in a crew's YAML names folders people may download from or leave files in, within what the operator mounted.
-  Off when absent; no chat command reads it yet. A script has it in `<name>.files.yaml` beside it, read without running it.
+  Off when absent. A script has it in `<name>.files.yaml` beside it, read without running it.
 - `orkeon-host` reads the declaration as it stands, without loading the crew, and holds it to the crew's mounts and rights.
   An invalid one closes that crew's folders and is logged; the other crews are served. `--validate` refuses a malformed one.
 - `CrewConfiguration.Files` and `CrewFileFolder`; `CrewFileYamlConfig` in the YAML models.

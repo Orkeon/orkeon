@@ -329,8 +329,8 @@ internal sealed partial class TeamsChannel : IChatChannel, IAsyncDisposable, IDi
             new CommandInvocation(command, message.ConversationId, message.SenderId) { RoomId = message.RoomId });
         var reply = answering is null ? new CommandReply("The host is not listening to commands.") : await answering.ConfigureAwait(false);
 
-        // No command answers with files yet: the reply's files have nowhere to go here.
-        await Responder.CompleteAsync(message, reply.Text, ct).ConfigureAwait(false);
+        var text = reply.Files.Count == 0 ? reply.Text : $"{reply.Text}\nThis channel does not send files.";
+        await Responder.CompleteAsync(message, text, ct).ConfigureAwait(false);
     }
 
     [SuppressMessage("Design", "CA1031", Justification = "Fault barrier for detached handlers: an exception here has no caller left to reach, so it is logged instead of lost.")]

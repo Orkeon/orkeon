@@ -12,6 +12,8 @@ internal sealed class RecordingResponder : IChatResponder
 
     public int MaxTextLength { get; set; } = 2000;
 
+    public bool TakesFileCommands { get; set; } = true;
+
     public Task AcknowledgeAsync(InboundMessage message, string text, CancellationToken ct)
     {
         Sent.Add(("ack", text));

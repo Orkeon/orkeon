@@ -96,6 +96,71 @@ internal static class FileNotices
         return $"These files were not taken: {string.Join(", ", names)}{More(refused.Count)}.";
     }
 
+    /// <summary>One sentence naming the files that were not sent, each with its reason.</summary>
+    public static string NotSent(IReadOnlyList<FileSendResult> results)
+    {
+        ArgumentNullException.ThrowIfNull(results);
+        var names = results.Take(MaxNames).Select((r, i) => $"{Shown(r.Name, i)} ({r.Reason})");
+        return $"These files were not sent: {string.Join(", ", names)}{More(results.Count)}.";
+    }
+
+    /// <summary>A virtual path, as code: what an agent named its file renders nothing and mentions nobody.</summary>
+    public static string Path(string path) => $"`{Inline(path, int.MaxValue)}`";
+
+    /// <summary>A virtual path and the size of the file.</summary>
+    public static string PathAndSize(string path, long size) =>
+        string.Create(System.Globalization.CultureInfo.InvariantCulture, $"{Path(path)} ({size} bytes)");
+
+    /// <summary>One line of plain text, cut at <paramref name="limit"/>.</summary>
+    public static string Inline(string text, int limit)
+    {
+        ArgumentNullException.ThrowIfNull(text);
+        var line = string.Concat(text.EnumerateRunes().Select(r => IsPlain(r) ? r.Value == '`' ? "'" : r.ToString() : "_"));
+        if (line.Length <= limit)
+            return line;
+        var end = char.IsHighSurrogate(line[limit - 2]) ? limit - 2 : limit - 1;
+        return line[..end] + "\u2026";
+    }
+
+    /// <summary>Whether the text shows as it is: no control, no invisible or direction mark, no line break.</summary>
+    public static bool IsPlain(string text)
+    {
+        ArgumentNullException.ThrowIfNull(text);
+        return text.EnumerateRunes().All(IsPlain);
+    }
+
+    private static bool IsPlain(System.Text.Rune rune) => System.Text.Rune.GetUnicodeCategory(rune)
+        is not (System.Globalization.UnicodeCategory.Control
+            or System.Globalization.UnicodeCategory.Format
+            or System.Globalization.UnicodeCategory.Surrogate
+            or System.Globalization.UnicodeCategory.PrivateUse
+            or System.Globalization.UnicodeCategory.LineSeparator
+            or System.Globalization.UnicodeCategory.ParagraphSeparator)
+        && rune != System.Text.Rune.ReplacementChar;
+
+    /// <summary>As many of the items as the limit holds, and how many are left.</summary>
+    public static string Bounded(IReadOnlyList<string> items, string separator, int limit)
+    {
+        ArgumentNullException.ThrowIfNull(items);
+        ArgumentNullException.ThrowIfNull(separator);
+        var text = new System.Text.StringBuilder();
+        var shown = 0;
+        foreach (var item in items)
+        {
+            if (text.Length + separator.Length + item.Length > limit)
+                break;
+            if (shown++ > 0)
+                text.Append(separator);
+            text.Append(item);
+        }
+
+        if (shown == items.Count)
+            return text.ToString();
+        if (shown > 0)
+            text.Append(separator);
+        return text.Append(System.Globalization.CultureInfo.InvariantCulture, $"and {items.Count - shown} more").ToString();
+    }
+
     private static string More(int count) => count > MaxNames ? $" and {count - MaxNames} more" : string.Empty;
 
     // Quoted as code, so neither Markdown nor a mention in a name is rendered; the names are the sender's.

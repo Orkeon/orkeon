@@ -63,6 +63,9 @@ internal sealed partial class TeamsResponder : IChatResponder
     /// <inheritdoc />
     int IChatResponder.MaxTextLength => MaxTextLength;
 
+    /// <inheritdoc />
+    public bool TakesFileCommands => false;
+
     private async Task SendAsync(InboundMessage message, string text, int attempts, CancellationToken ct)
     {
         ArgumentNullException.ThrowIfNull(message);

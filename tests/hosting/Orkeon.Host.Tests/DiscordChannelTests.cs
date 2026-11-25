@@ -301,31 +301,6 @@ public class DiscordChannelTests
         Assert.Same(Discord.AllowedMentions.None, Assert.Single(arguments.OfType<Discord.AllowedMentions>()));
     }
 
-    [Fact]
-    public async Task Files_are_refused_one_by_one_until_the_channel_sends_them()
-    {
-        await using var client = new DiscordSocketClient();
-        var responder = new DiscordResponder(client, new RecordingLogger());
-        var opened = false;
-        OutboundFile File(string name) => new()
-        {
-            Name = name,
-            Size = 1,
-            OpenAsync = _ =>
-            {
-                opened = true;
-                return Task.FromResult(Stream.Null);
-            },
-        };
-
-        var results = await responder.SendFilesAsync(Message("1"), [File("a"), File("b")], TestContext.Current.CancellationToken);
-
-        Assert.Equal(["a", "b"], results.Select(r => r.Name));
-        Assert.All(results, r => Assert.Equal(FileSendOutcome.Refused, r.Outcome));
-        Assert.False(opened);
-        Assert.Equal(2000, responder.MaxTextLength);
-    }
-
     // ---- The responder: a conversation id that is no Discord channel ---------------------
 
     private static InboundMessage Message(string conversation) => new()

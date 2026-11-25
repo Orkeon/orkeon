@@ -19,7 +19,7 @@ namespace Orkeon.Host.Gateway;
 /// Anything smarter here would have to be written again for the next platform.
 /// </para>
 /// </summary>
-internal sealed partial class DiscordChannel : IChatChannel, IAsyncDisposable
+internal sealed partial class DiscordChannel : IChatChannel, ISuggestingChannel, IAsyncDisposable
 {
     /// <summary>The custom id carried by the stop button, and read back when it is pressed.</summary>
     public const string StopButtonId = "orkeon-stop";
@@ -28,14 +28,17 @@ internal sealed partial class DiscordChannel : IChatChannel, IAsyncDisposable
     private readonly ILogger<DiscordChannel> _logger;
     private readonly DiscordSocketClient _client;
     private readonly TimeProvider _time;
+    private readonly bool _fileCommands;
     private readonly HttpClient _downloads = new(DiscordAttachmentSource.NewHandler());
 
     /// <summary>Builds the channel over its configuration.</summary>
     public DiscordChannel(
         IOptions<DiscordChannelOptions> options,
         ILogger<DiscordChannel> logger,
-        TimeProvider? timeProvider = null)
+        TimeProvider? timeProvider = null,
+        bool fileCommands = false)
     {
+        _fileCommands = fileCommands;
         ArgumentNullException.ThrowIfNull(options);
         _options = options.Value;
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
@@ -69,6 +72,9 @@ internal sealed partial class DiscordChannel : IChatChannel, IAsyncDisposable
     /// the allow list on the typed command and not on the click.
     /// </summary>
     public event Func<CommandInvocation, Task<CommandReply>>? CommandInvoked;
+
+    /// <inheritdoc />
+    public event Func<CommandInvocation, Task<IReadOnlyList<string>>>? SuggestionsAsked;
 
     /// <inheritdoc />
     public async Task RunAsync(Func<InboundMessage, CancellationToken, Task> onMessage, CancellationToken ct)
@@ -112,7 +118,13 @@ internal sealed partial class DiscordChannel : IChatChannel, IAsyncDisposable
         };
         _client.SlashCommandExecuted += command =>
         {
-            Dispatch(() => OnSlashCommandAsync(command));
+            Dispatch(() => OnSlashCommandAsync(command, ct));
+            return Task.CompletedTask;
+        };
+
+        _client.AutocompleteExecuted += autocomplete =>
+        {
+            Dispatch(() => OnAutocompleteAsync(autocomplete));
             return Task.CompletedTask;
         };
 
@@ -199,22 +211,24 @@ internal sealed partial class DiscordChannel : IChatChannel, IAsyncDisposable
             SenderId = message.Author.Id.ToString(System.Globalization.CultureInfo.InvariantCulture),
             Text = message.Content ?? string.Empty,
             ReceivedAt = receivedAt,
-            Attachments =
-            [
-                .. (message.Attachments ?? []).Select(a => new InboundAttachment
-                {
-                    Id = a.Id.ToString(System.Globalization.CultureInfo.InvariantCulture),
-                    Name = a.Filename ?? string.Empty,
-                    ContentType = a.ContentType,
-                    Size = a.Size,
-                }),
-            ],
-            AttachmentSource = downloads is null ? null : new DiscordAttachmentSource(
-                downloads,
-                (message.Attachments ?? [])
-                    .DistinctBy(a => a.Id)
-                    .ToDictionary(a => a.Id.ToString(System.Globalization.CultureInfo.InvariantCulture), a => a.Url ?? string.Empty, StringComparer.Ordinal)),
+            Attachments = [.. (message.Attachments ?? []).Select(ToAttachment)],
+            AttachmentSource = SourceOf(message.Attachments ?? [], downloads),
         };
+
+    private static InboundAttachment ToAttachment(IAttachment attachment) => new()
+    {
+        Id = attachment.Id.ToString(System.Globalization.CultureInfo.InvariantCulture),
+        Name = attachment.Filename ?? string.Empty,
+        ContentType = attachment.ContentType,
+        Size = attachment.Size,
+    };
+
+    private static DiscordAttachmentSource? SourceOf(IEnumerable<IAttachment> attachments, HttpClient? downloads) =>
+        downloads is null ? null : new DiscordAttachmentSource(
+            downloads,
+            attachments
+                .DistinctBy(a => a.Id)
+                .ToDictionary(a => a.Id.ToString(System.Globalization.CultureInfo.InvariantCulture), a => a.Url ?? string.Empty, StringComparer.Ordinal));
 
     private async Task OnButtonAsync(SocketMessageComponent component)
     {
@@ -229,8 +243,18 @@ internal sealed partial class DiscordChannel : IChatChannel, IAsyncDisposable
             reply => component.RespondAsync(reply.Text, ephemeral: true, allowedMentions: AllowedMentions.None)).ConfigureAwait(false);
     }
 
-    private async Task OnSlashCommandAsync(SocketSlashCommand command)
+    private async Task OnSlashCommandAsync(SocketSlashCommand command, CancellationToken ct)
     {
+        // A file command reads files and may ask Discord for the thread: the answer is deferred, which Discord waits on.
+        if (command.CommandName is ChatCommands.Files or ChatCommands.Get or ChatCommands.Put)
+        {
+            var invocation = InvocationOf(
+                command, command.CommandName, command.Data.Options.Select(o => (o.Name, (object?)o.Value)), RoomOfAsync, _downloads);
+            if (invocation is not null)
+                await AnswerDeferredAsync(command, () => AskAsync(invocation), ct, LogFileNotSent).ConfigureAwait(false);
+            return;
+        }
+
         // ChannelId over Channel: the interaction payload always carries the id, while the
         // Channel object is null for an uncached channel — a fresh thread, typically.
         await RespondToInvocationAsync(
@@ -251,13 +275,24 @@ internal sealed partial class DiscordChannel : IChatChannel, IAsyncDisposable
         // Invoked through ?.Invoke rather than through a null-checked local: same single read
         // of the delegate, same call, and the invocation is visible as one to a reader (and to
         // the analyzers) instead of hiding behind a local.
+        await respond(await AskAsync(invocation).ConfigureAwait(false)).ConfigureAwait(false);
+    }
+
+    private async Task<CommandReply> AskAsync(CommandInvocation invocation)
+    {
         var answering = CommandInvoked?.Invoke(invocation);
-        var reply = answering is null
+        return answering is null
             ? new CommandReply("The host is not listening to commands.")
             : await answering.ConfigureAwait(false);
+    }
 
-        // No command answers with files yet: they need a deferred response and a follow-up.
-        await respond(reply).ConfigureAwait(false);
+    private async Task OnAutocompleteAsync(SocketAutocompleteInteraction interaction)
+    {
+        var invocation = InvocationOf(
+            interaction, interaction.Data.CommandName, interaction.Data.Options.Select(o => (o.Name, (object?)o.Value)), RoomOfAsync);
+        var asking = invocation is null ? null : SuggestionsAsked?.Invoke(invocation with { Focused = interaction.Data.Current.Name });
+        var choices = asking is null ? [] : await asking.ConfigureAwait(false);
+        await interaction.RespondAsync(choices.Select(c => new AutocompleteResult(c, c))).ConfigureAwait(false);
     }
 
     /// <summary>The name of the registered stop command — the button reuses it.</summary>
@@ -271,7 +306,7 @@ internal sealed partial class DiscordChannel : IChatChannel, IAsyncDisposable
     /// registered names to the ones the executed-command handler reads back — a mismatch here
     /// is a command that does nothing.
     /// </summary>
-    internal static SlashCommandProperties[] SlashCommands() =>
+    internal static SlashCommandProperties[] SlashCommands(bool files = false) =>
     [
         new SlashCommandBuilder()
             .WithName(StatusCommandName)
@@ -280,6 +315,35 @@ internal sealed partial class DiscordChannel : IChatChannel, IAsyncDisposable
         new SlashCommandBuilder()
             .WithName(StopCommandName)
             .WithDescription("Stops this conversation's run.")
+            .Build(),
+        .. files ? FileCommands() : [],
+    ];
+
+    private static SlashCommandProperties[] FileCommands() =>
+    [
+        new SlashCommandBuilder()
+            .WithName(ChatCommands.Files)
+            .WithDescription("The files of this conversation, and the folders its crew opens.")
+            .AddOption(new SlashCommandOptionBuilder()
+                .WithName("folder").WithDescription("The folder to list; all of them without one.")
+                .WithType(ApplicationCommandOptionType.String).WithAutocomplete(true))
+            .Build(),
+        new SlashCommandBuilder()
+            .WithName(ChatCommands.Get)
+            .WithDescription("Sends you a file.")
+            .AddOption(new SlashCommandOptionBuilder()
+                .WithName("path").WithDescription("The file, such as /outbox/report.csv.")
+                .WithType(ApplicationCommandOptionType.String).WithRequired(true).WithAutocomplete(true))
+            .Build(),
+        new SlashCommandBuilder()
+            .WithName(ChatCommands.Put)
+            .WithDescription("Leaves a file in a folder of the crew. Nothing is run.")
+            .AddOption(new SlashCommandOptionBuilder()
+                .WithName("file").WithDescription("The file.")
+                .WithType(ApplicationCommandOptionType.Attachment).WithRequired(true))
+            .AddOption(new SlashCommandOptionBuilder()
+                .WithName("folder").WithDescription("The folder that takes it.")
+                .WithType(ApplicationCommandOptionType.String).WithRequired(true).WithAutocomplete(true))
             .Build(),
     ];
 
@@ -296,6 +360,113 @@ internal sealed partial class DiscordChannel : IChatChannel, IAsyncDisposable
                 userId.ToString(System.Globalization.CultureInfo.InvariantCulture))
             : null;
 
+    /// <summary>
+    /// Translates a file command. Its room stays to resolve: the interaction does not carry the thread's parent, and asking
+    /// Discord for it waits until the sender is known to be allowed.
+    /// </summary>
+    internal static CommandInvocation? InvocationOf(
+        IDiscordInteraction interaction,
+        string commandName,
+        IEnumerable<(string Name, object? Value)> options,
+        Func<ulong, CancellationToken, Task<ulong?>> roomOf,
+        HttpClient? downloads = null)
+    {
+        ArgumentNullException.ThrowIfNull(interaction);
+        ArgumentNullException.ThrowIfNull(options);
+        ArgumentNullException.ThrowIfNull(roomOf);
+        if (interaction.ChannelId is not { } channel || ToInvocation(commandName, channel, interaction.User.Id) is not { } invocation)
+            return null;
+
+        var given = options.ToList();
+        var attachments = given.Select(o => o.Value).OfType<IAttachment>().ToList();
+        return invocation with
+        {
+            Arguments = given.Where(o => o.Value is string).ToDictionary(o => o.Name, o => (string)o.Value!, StringComparer.Ordinal),
+            Attachments = [.. attachments.Select(ToAttachment)],
+            AttachmentSource = attachments.Count == 0 ? null : SourceOf(attachments, downloads),
+            ResolveRoomAsync = async ct =>
+                (await roomOf(channel, ct).ConfigureAwait(false))?.ToString(System.Globalization.CultureInfo.InvariantCulture),
+        };
+    }
+
+    /// <summary>
+    /// Defers, so Discord waits, then answers the invoker alone: the words with the first files, and the files that did not
+    /// leave named.
+    /// </summary>
+    internal static async Task AnswerDeferredAsync(
+        IDiscordInteraction interaction, Func<Task<CommandReply>> answer, CancellationToken ct, Action<Exception>? failed = null)
+    {
+        ArgumentNullException.ThrowIfNull(interaction);
+        ArgumentNullException.ThrowIfNull(answer);
+        await interaction.DeferAsync(ephemeral: true).ConfigureAwait(false);
+        CommandReply reply;
+        try
+        {
+            reply = await answer().ConfigureAwait(false);
+        }
+        catch
+        {
+            await SayAsync("The command failed. The host's log says why.").ConfigureAwait(false);
+            throw;
+        }
+
+        if (reply.Files.Count == 0)
+        {
+            await SayAsync(reply.Text).ConfigureAwait(false);
+            return;
+        }
+
+        var words = DiscordResponder.Truncate(reply.Text);
+        var results = await DiscordFiles.SendAsync(
+            reply.Files,
+            DiscordFiles.LimitOf(interaction.AttachmentSizeLimit),
+            async batch =>
+            {
+                await interaction.FollowupWithFilesAsync(
+                    batch, words, ephemeral: true, allowedMentions: AllowedMentions.None, options: DiscordFiles.Upload(ct)).ConfigureAwait(false);
+                words = null;
+            },
+            ct,
+            failed).ConfigureAwait(false);
+
+        var left = results.Where(r => r.Outcome != FileSendOutcome.Sent).ToList();
+        if (left.Count > 0)
+            await SayAsync(FileNotices.NotSent(left)).ConfigureAwait(false);
+
+        Task SayAsync(string text) =>
+            interaction.FollowupAsync(DiscordResponder.Truncate(text), ephemeral: true, allowedMentions: AllowedMentions.None);
+    }
+
+    private Task<ulong?> RoomOfAsync(ulong channel, CancellationToken ct) => RoomOfAsync(
+        channel,
+        id => (_client.GetChannel(id) as SocketThreadChannel)?.ParentChannel?.Id,
+        async id => await _client.Rest.GetChannelAsync(id, new RequestOptions { CancelToken = ct }).ConfigureAwait(false) is Discord.Rest.RestThreadChannel thread
+            ? thread.ParentChannelId
+            : null,
+        LogRoomUnknown);
+
+    /// <summary>The channel a thread was opened in, asked of Discord when it is not cached; null when it is no thread, or Discord does not say.</summary>
+    internal static async Task<ulong?> RoomOfAsync(
+        ulong channel, Func<ulong, ulong?> cached, Func<ulong, Task<ulong?>> rest, Action<Exception>? failed = null)
+    {
+        ArgumentNullException.ThrowIfNull(cached);
+        ArgumentNullException.ThrowIfNull(rest);
+        if (cached(channel) is { } known)
+            return known;
+
+        try
+        {
+            return await rest(channel).ConfigureAwait(false);
+        }
+#pragma warning disable CA1031 // A room that cannot be found is none: the command refuses.
+        catch (Exception ex)
+#pragma warning restore CA1031
+        {
+            failed?.Invoke(ex);
+            return null;
+        }
+    }
+
     private async Task RegisterCommandsAsync()
     {
         try
@@ -307,13 +478,13 @@ internal sealed partial class DiscordChannel : IChatChannel, IAsyncDisposable
                 foreach (var guildId in _options.GuildIds)
                 {
                     await _client.Rest.BulkOverwriteGuildCommands(
-                        SlashCommands(),
+                        SlashCommands(_fileCommands),
                         ulong.Parse(guildId, System.Globalization.CultureInfo.InvariantCulture)).ConfigureAwait(false);
                 }
             }
             else
             {
-                await _client.BulkOverwriteGlobalApplicationCommandsAsync(SlashCommands()).ConfigureAwait(false);
+                await _client.BulkOverwriteGlobalApplicationCommandsAsync(SlashCommands(_fileCommands)).ConfigureAwait(false);
             }
 
             LogCommandsRegistered(_options.GuildIds.Count);
@@ -342,6 +513,12 @@ internal sealed partial class DiscordChannel : IChatChannel, IAsyncDisposable
     [LoggerMessage(Level = LogLevel.Error, Message = "The Discord channel is enabled but ${TokenVariable} is not set; the channel will not start.")]
     private partial void LogNoToken(string tokenVariable);
 
+    [LoggerMessage(Level = LogLevel.Warning, Message = "The channel of a Discord thread could not be found")]
+    private partial void LogRoomUnknown(Exception ex);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "A file could not be sent to Discord")]
+    private partial void LogFileNotSent(Exception ex);
+
     [LoggerMessage(Level = LogLevel.Information, Message = "Discord channel connected")]
     private partial void LogConnected();
 
@@ -354,7 +531,7 @@ internal sealed partial class DiscordChannel : IChatChannel, IAsyncDisposable
     [LoggerMessage(Level = LogLevel.Information, Message = "Slash commands registered ({GuildCount} guild(s); 0 means global)")]
     private partial void LogCommandsRegistered(int guildCount);
 
-    [LoggerMessage(Level = LogLevel.Warning, Message = "Slash command registration failed; /status and /stop will be unavailable until the next reconnect, the message channel still works")]
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Slash command registration failed; the commands will be unavailable until the next reconnect, the message channel still works")]
     private partial void LogCommandRegistrationFailed(Exception ex);
 }
 
@@ -394,11 +571,51 @@ internal sealed partial class DiscordResponder : IChatResponder
         SendAsync(message, Truncate(text), components: null);
 
     /// <inheritdoc />
-    public Task<IReadOnlyList<FileSendResult>> SendFilesAsync(InboundMessage message, IReadOnlyList<OutboundFile> files, CancellationToken ct) =>
-        FileSendResult.NoneSent(files);
+    public async Task<IReadOnlyList<FileSendResult>> SendFilesAsync(InboundMessage message, IReadOnlyList<OutboundFile> files, CancellationToken ct)
+    {
+        ArgumentNullException.ThrowIfNull(message);
+        ArgumentNullException.ThrowIfNull(files);
+        try
+        {
+            if (ulong.TryParse(message.ConversationId, out var id)
+                && await _client.GetChannelAsync(id).ConfigureAwait(false) is IMessageChannel channel)
+            {
+                var announced = channel is IGuildChannel inGuild ? _client.GetGuild(inGuild.GuildId)?.MaxUploadLimit ?? 0 : 0;
+                return await PostFilesAsync(
+                    channel, DiscordFiles.LimitOf(announced), files, ct, ex => LogSendFailed(ex, message.ConversationId)).ConfigureAwait(false);
+            }
+
+            LogNoChannel(message.ConversationId);
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
+        }
+#pragma warning disable CA1031 // A channel that cannot be found refuses the files; it must not fail the run.
+        catch (Exception ex)
+#pragma warning restore CA1031
+        {
+            LogSendFailed(ex, message.ConversationId);
+        }
+
+        return [.. files.Select(f => new FileSendResult(f.Name, FileSendOutcome.Refused, "the conversation cannot be reached"))];
+    }
 
     /// <inheritdoc />
     public int MaxTextLength => TextLimit;
+
+    /// <inheritdoc />
+    public bool TakesFileCommands => true;
+
+    /// <summary>Posts files, which mention nobody.</summary>
+    internal static Task<IReadOnlyList<FileSendResult>> PostFilesAsync(
+        IMessageChannel channel, long limit, IReadOnlyList<OutboundFile> files, CancellationToken ct, Action<Exception>? failed = null) =>
+        DiscordFiles.SendAsync(
+            files,
+            limit,
+            batch => channel.SendFilesAsync(batch, allowedMentions: AllowedMentions.None, options: DiscordFiles.Upload(ct)),
+            ct,
+            failed);
 
     private async Task SendAsync(InboundMessage message, string text, MessageComponent? components)
     {

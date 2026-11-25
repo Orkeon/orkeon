@@ -129,7 +129,8 @@ next message finds them as the previous run left them. No run is mounted on anot
 crew at once; what else two conversations of one host share is said under **Shared** below.
 A run asked over A2A or the host API has no conversation: it gets two empty folders of its own, deleted when it ends. At
 the end of a run, the files of `/outbox` it added or changed are listed, hidden files and links left out. Discord fills
-`/inbox` ([what it takes](#what-the-discord-channel-listens-to)); no channel sends what `/outbox` holds yet.
+`/inbox` ([what it takes](#what-the-discord-channel-listens-to)); [Discord's commands](#the-file-commands) list
+and send what `/outbox` holds. Nothing is sent on its own.
 
 ```json
 "Files": {
@@ -177,7 +178,7 @@ the end of a run, the files of `/outbox` it added or changed are listed, hidden 
 #### `files:` — the folders a crew opens
 
 A crew names the folders people may reach besides `/outbox`, which is always open to download. It chooses **within** what
-the operator mounted for it, and opens nothing by default. No chat command reads them yet.
+the operator mounted for it, and opens nothing by default. [The file commands](#the-file-commands) read them.
 
 ```yaml
 files:
@@ -247,13 +248,13 @@ A message becomes a run in a fixed order: **authorize, route, acknowledge, work.
 
 **Acknowledge.** Every chat platform's response window is measured in seconds; a crew is measured in minutes. The acknowledgement rides on **admission**: it goes out the moment the run's slot is reserved — still before any crew work, and carrying the stop button, so a run can be interrupted from its first second. A refusal (unknown crew, busy) is answered without an acknowledgement: "working on it" plus a Stop button, followed by "we are busy", would be a promise retracted by its own next line — with a button attached to nothing.
 
-**Work**, reporting as it goes. The final answer is posted in the thread, cut to Discord's 2,000 characters (with a `…(truncated)` marker); an empty answer reads `(no output)`. Progress is **throttled** (`ProgressInterval`, 2 seconds by default): a run emits an event per agent thought and per tool call, and relaying each one would exhaust Discord's per-channel rate limit inside a single crew. The last suppressed update is flushed just before the final answer, so a run does not end on a view several steps stale.
+**Work**, reporting as it goes. The final answer is posted in the thread, cut to Discord's 2,000 characters (with a `…(truncated)` marker); an empty answer reads `(no output)`. With [`Files`](#files--the-folders-of-a-conversation) on, the answer ends with the files of `/outbox` the run added or changed, whose place is reserved before the text is cut, and an answer that is cut is kept whole as `/outbox/reply-<run id>.md`, before the conversation is free for its next message; when a limit refuses it, the answer says so. A success, a failure, a stop and a run that waits for an input end alike. The files are named, never sent unasked. Progress is **throttled** (`ProgressInterval`, 2 seconds by default): a run emits an event per agent thought and per tool call, and relaying each one would exhaust Discord's per-channel rate limit inside a single crew. The last suppressed update is flushed just before the final answer, so a run does not end on a view several steps stale.
 
 ### What the Discord channel listens to
 
 Messages **inside a thread**, from people: a message posted in a plain channel is ignored, and so is every message from a bot and every message Discord writes itself (a pin, a join, a rename). The client connects with the `Guilds`, `GuildMessages` and `MessageContent` intents — `MessageContent` is a privileged intent, to be switched on for the bot in the Discord developer portal, or every message arrives empty. `AllowedUserIds` is the only access control: `GuildIds` chooses where the slash commands are registered, it does not restrict who may talk to the bot. The bot's messages mention nobody: an `@everyone` in an answer is plain text.
 
-**Files.** Without [`Files`](#files-the-folders-of-a-conversation), none is taken: a message with attachments runs on its text alone, and the acknowledgement names the files left out. A message with no text and no file taken starts no agent and is answered with a sentence. With `Files` on:
+**Files.** Without [`Files`](#files--the-folders-of-a-conversation), none is taken: a message with attachments runs on its text alone, and the acknowledgement names the files left out. A message with no text and no file taken starts no agent and is answered with a sentence. With `Files` on:
 
 - **Reception.** The files are downloaded once the run is admitted and acknowledged, under its deadline, so `/stop` stops a download too. They come from `cdn.discordapp.com` alone, over HTTPS, with no redirection and without the bot token; their signed address is neither kept nor logged. The announced size refuses a file early, and the bytes are counted as they come. A file already kept, by its Discord identifier, is not kept twice.
 - **Refusals.** A file over a limit, past `MaxFilesPerMessage`, of an extension not taken, or that cannot be read is left out alone; the answer names each with its reason. The run goes on with the rest. When nothing arrived and the message has no text, no agent runs.
@@ -299,8 +300,23 @@ Messages **inside a thread**, from people: a message posted in a plain channel i
 |---|---|
 | `/status` | What this conversation is running, and since when. |
 | `/stop` | Stops this conversation's run. The **Stop button** is the same invocation with a different finger — same allow-list check, same wording back. |
+| `/files [folder]` | Discord, `Files` on: the files of the conversation's folders and of those the crew opens. |
+| `/get <path>` | Discord, `Files` on: sends one file. |
+| `/put <file> <folder>` | Discord, `Files` on: keeps a file in a folder the crew opens to uploads. |
 
 Every path is gated by the `AllowedUserIds` of its channel. That includes the button: a click from someone off the list is refused ephemerally instead of stopping the run.
+
+#### The file commands
+
+Registered on Discord when [`Files`](#files--the-folders-of-a-conversation) is on, and not otherwise. On Teams they are not commands yet: `/files` typed there is a message. They answer ephemerally: what `/get` sends is seen by the person who asked alone.
+
+- **Where.** In a thread: its channel, asked of Discord after the first answer, chooses the crew. Elsewhere, or when the channel cannot be known, the command is refused, and the default crew never stands in.
+- **What is open.** `/outbox` is always listed and sent. `/inbox` is listed and not sent back: the person has what was sent, and a file taken back from the channel must not come out again by the bot. The rest is what the crew's [`files:`](#files--the-folders-a-crew-opens) declares, read at each command. Hidden files, links, and other mounts under an opened folder are left out. A listing reads at most 1,000 files per folder.
+- **Paths.** A path is typed whole, from `/`, with one reading: `..`, `.`, an empty segment, a backslash or a control character is refused. It is held to the declaration and to the virtual file system; a path that is forbidden is answered as one that is not there. The client completes with at most 25 paths of 100 characters; a longer one is typed by hand. Nothing is completed for a person off the allow list.
+- **Sizes.** Discord's own limit of the moment, and 24 MiB at most in one request, ten files a message; a larger file is named and not sent. In a thread, the bot needs the **Attach Files** permission.
+- **During a run.** The three commands work. The run does not hold the conversation's files, so a command waits only for another one, or for a file being received. `/get` sends a copy read at once, after judging the path again; a file that grows meanwhile is refused, and one rewritten under the same size may come as it stood halfway.
+- **`/put`** starts no run. The file is kept under the limits of any received file, never over another, and not twice in one folder for one Discord file; it has two minutes to arrive. An agent sees it when it looks in that folder.
+- **Who sees.** A declared folder such as `/output` belongs to the crew: what one thread leaves there, the crew's other threads read.
 
 ---
 
@@ -466,7 +482,7 @@ process holds, a port under 1024 without the privilege — names the prefix and
 
 ## 7. What ships, and what does not
 
-**Ships**: the host and its lifetime, the crew registry with per-run isolation and a concurrency ceiling, the gateway ports, the allow-list authorizer, thread-is-run routing, the throttled responder, the Discord channel with registered `/status` and `/stop` slash commands and the stop button — one authorized path for all three —, the Microsoft Teams channel, and the opt-in A2A server, one skill per exposed crew.
+**Ships**: the host and its lifetime, the crew registry with per-run isolation and a concurrency ceiling, the gateway ports, the allow-list authorizer, thread-is-run routing, the throttled responder, the Discord channel with registered `/status`, `/stop`, `/files`, `/get` and `/put` slash commands and the stop button — one authorized path for all three —, the Microsoft Teams channel, and the opt-in A2A server, one skill per exposed crew.
 
 **Does not ship**, and is not implied anywhere: a scheduler, hot configuration reload, adding or removing hosted crews while the daemon runs, every chat channel other than Discord and Teams, and any HTTP surface beyond the Teams endpoint, the A2A server and the [host API](../reference/host-api.md) (off by default: health probes, the run routes and `POST /runs/{id}/input`) — no A2A task records (`GET /a2a/tasks/{id}` answers `501`). One runner feature stays out of the daemon too: the `semantic_search` tool is not registered (the MCP servers of the `MCP` section are connected at startup, like a run's — see [MCP integration](mcp.md)). The gateway ports are shaped so the run event bus's JSONL protocol is a legitimate implementation of the same contract — the model is not closed around chat — but that channel is not written.
 

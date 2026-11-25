@@ -10,6 +10,7 @@ internal class StubDiscord : DispatchProxy
 {
     private readonly Dictionary<string, object?> _properties = new(StringComparer.Ordinal);
     private readonly List<(string Method, object?[] Arguments)> _calls = [];
+    private Action<string, object?[]>? _onCall;
 
     public static T Of<T>(params (string Name, object? Value)[] properties)
         where T : class
@@ -20,6 +21,9 @@ internal class StubDiscord : DispatchProxy
         return stub;
     }
 
+    /// <summary>What to do at each recorded call, while it lasts.</summary>
+    public static void OnCall(object stub, Action<string, object?[]> act) => ((StubDiscord)stub)._onCall = act;
+
     public static IReadOnlyList<(string Method, object?[] Arguments)> CallsOf(object stub) => ((StubDiscord)stub)._calls;
 
     protected override object? Invoke(MethodInfo? targetMethod, object?[]? args)
@@ -29,6 +33,9 @@ internal class StubDiscord : DispatchProxy
             return value;
 
         _calls.Add((targetMethod.Name, args ?? []));
+        _onCall?.Invoke(targetMethod.Name, args ?? []);
+        if (targetMethod.ReturnType == typeof(Task))
+            return Task.CompletedTask;
         return targetMethod.ReturnType == typeof(Task<Discord.IUserMessage>) ? Task.FromResult<Discord.IUserMessage>(null!) : null;
     }
 }

@@ -65,6 +65,16 @@ internal interface IChatResponder
 
     /// <summary>How many characters one answer holds; a longer one is cut.</summary>
     int MaxTextLength { get; }
+
+    /// <summary>Whether people take files here with the commands of <see cref="ChatCommands"/>: an answer names them then.</summary>
+    bool TakesFileCommands { get; }
+}
+
+/// <summary>A channel that completes what a person types in a command.</summary>
+internal interface ISuggestingChannel
+{
+    /// <summary>Raised for each request; the answer is what may be typed, to the person who types.</summary>
+    event Func<CommandInvocation, Task<IReadOnlyList<string>>>? SuggestionsAsked;
 }
 
 /// <summary>
@@ -98,6 +108,15 @@ internal static class ChatCommands
 
     /// <summary>What the conversation is running, and since when.</summary>
     public const string Status = "status";
+
+    /// <summary>The files of the conversation, and the folders its crew opens.</summary>
+    public const string Files = "files";
+
+    /// <summary>Takes a file.</summary>
+    public const string Get = "get";
+
+    /// <summary>Leaves a file in a folder the crew opens.</summary>
+    public const string Put = "put";
 }
 
 /// <summary>
@@ -130,6 +149,15 @@ internal sealed record CommandInvocation(string CommandName, string Conversation
     /// resolve it, which is not a room of its own: a command that needs the conversation's crew refuses then.
     /// </summary>
     public string? RoomId { get; init; }
+
+    /// <summary>
+    /// Finds <see cref="RoomId"/> when it is not known yet: a call to the platform, made only once the sender is known to be
+    /// allowed. Null when the conversation has none.
+    /// </summary>
+    public Func<CancellationToken, Task<string?>>? ResolveRoomAsync { get; init; }
+
+    /// <summary>The option being typed, when suggestions are asked for rather than the command.</summary>
+    public string? Focused { get; init; }
 
     /// <summary>The command's options, by name.</summary>
     public IReadOnlyDictionary<string, string> Arguments { get; init; } =

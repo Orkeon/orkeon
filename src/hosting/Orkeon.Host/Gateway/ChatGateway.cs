@@ -86,6 +86,7 @@ internal sealed partial class ChatGateway
         var crewName = _router.ResolveCrew(message);
         var origin = $"{message.Channel}:{message.ConversationId}";
         HostedRunResult result;
+        string answer;
         try
         {
             result = await _runner.RunAsync(
@@ -114,13 +115,17 @@ internal sealed partial class ChatGateway
                         ? Task.FromResult(new PreparedRun(text))
                         : ChatReception.PrepareAsync(_files, message, source, text, token),
                 }).ConfigureAwait(false);
+
+            // Before the conversation is free: the next message's run must not find the answer half kept.
+            answer = _files is null || result.RunId is not { } ended
+                ? result.Message
+                : await AnswerAsync(_files, message, responder, result, ended).ConfigureAwait(false);
         }
         finally
         {
             _router.Detach(message.ConversationId);
         }
 
-        var answer = result.Message;
         if (result.RefusedFiles.Count > 0)
         {
             // In one message when it holds both: a long answer is cut, and must not be cut shorter by this.
@@ -133,6 +138,50 @@ internal sealed partial class ChatGateway
         }
 
         await responder.CompleteAsync(message, answer, ct).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// The answer, then the files there are to take: named, never sent. Their place is kept first, so a long answer is cut
+    /// and not them; cut, it is kept whole in <c>/outbox</c>.
+    /// </summary>
+    private async Task<string> AnswerAsync(
+        Files.ConversationFiles files, InboundMessage message, IChatResponder responder, HostedRunResult result, string runId)
+    {
+        var body = string.IsNullOrWhiteSpace(result.Message) ? "(no output)" : result.Message;
+        var tail = string.Empty;
+        if (result.OutboxFiles.Count > 0)
+        {
+            var take = responder.TakesFileCommands ? "/get sends one." : "This channel does not send them.";
+            var names = FileNotices.Bounded(
+                [.. result.OutboxFiles.Select(f => FileNotices.PathAndSize(f.Path, f.Size))], ", ", responder.MaxTextLength / 3);
+            tail = $"\n\nFiles: {names}. {take}";
+        }
+
+        if (body.Length + tail.Length <= responder.MaxTextLength)
+            return body + tail;
+
+        tail = $"\n\n{await KeepAsync(files, message, body, runId).ConfigureAwait(false)}{tail}";
+        return DiscordResponder.Truncate(body, responder.MaxTextLength - tail.Length) + tail;
+    }
+
+    private async Task<string> KeepAsync(Files.ConversationFiles files, InboundMessage message, string body, string runId)
+    {
+        try
+        {
+            var kept = await files
+                .StoreReplyAsync(new ConversationRef(message.Channel, message.ConversationId), runId, body, CancellationToken.None)
+                .ConfigureAwait(false);
+            return kept.Refused is { } refused
+                ? $"The whole answer could not be kept: {refused.Reason}."
+                : $"The whole answer is kept as {FileNotices.Path(kept.Path!)}.";
+        }
+#pragma warning disable CA1031 // The run has its answer: what cannot be kept of it must not replace it.
+        catch (Exception ex)
+#pragma warning restore CA1031
+        {
+            LogReplyNotKept(ex, message.Channel);
+            return "The whole answer could not be kept.";
+        }
     }
 
     /// <summary>
@@ -180,6 +229,9 @@ internal sealed partial class ChatGateway
         // line must not fail the run that was going fine.
         _ = responder.ProgressAsync(message, text, ct);
     }
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "The whole answer of a run from {Channel} could not be kept")]
+    private partial void LogReplyNotKept(Exception ex, string channel);
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Refused a message from {Channel} sender {SenderId}: not on the allow list")]
     private partial void LogRefused(string channel, string senderId);

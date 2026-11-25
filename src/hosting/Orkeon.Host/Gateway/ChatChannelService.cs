@@ -20,11 +20,13 @@ internal sealed partial class ChatChannelService : BackgroundService
     private readonly ICrewRunner _runner;
     private readonly CrewHostRegistry _registry;
     private readonly Files.ConversationFiles? _files;
+    private readonly Files.CrewFileFolders? _folders;
     private readonly ILoggerFactory _loggers;
     private readonly ILogger<ChatChannelService> _logger;
     private readonly IHostApplicationLifetime _lifetime;
     private readonly List<Func<ConfiguredChannel>> _channels = [];
     private TeamsChannel? _teamsChannel;
+    private static readonly TimeSpan s_suggestionLimit = TimeSpan.FromSeconds(2);
 
     /// <summary>What builds the Discord channel, a double in the tests.</summary>
     internal Func<IChatChannel> CreateDiscord { get; set; }
@@ -41,7 +43,8 @@ internal sealed partial class ChatChannelService : BackgroundService
         ILoggerFactory loggers,
         ILogger<ChatChannelService> logger,
         IHostApplicationLifetime lifetime,
-        Files.ConversationFiles? files = null)
+        Files.ConversationFiles? files = null,
+        Files.CrewFileFolders? folders = null)
     {
         ArgumentNullException.ThrowIfNull(discord);
         _discord = discord.Value;
@@ -52,8 +55,9 @@ internal sealed partial class ChatChannelService : BackgroundService
         _loggers = loggers ?? throw new ArgumentNullException(nameof(loggers));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _files = files;
+        _folders = folders;
         _lifetime = lifetime ?? throw new ArgumentNullException(nameof(lifetime));
-        CreateDiscord = () => new DiscordChannel(Options.Create(_discord), _loggers.CreateLogger<DiscordChannel>());
+        CreateDiscord = () => new DiscordChannel(Options.Create(_discord), _loggers.CreateLogger<DiscordChannel>(), fileCommands: _files is not null && _folders is not null);
         CreateTeams = () => new TeamsChannel(Options.Create(_teams), _loggers.CreateLogger<TeamsChannel>());
     }
 
@@ -170,11 +174,17 @@ internal sealed partial class ChatChannelService : BackgroundService
         var gateway = new ChatGateway(
             _runner, new ThreadIsRunRouter(configured.Routes), authorizer, _registry, _loggers.CreateLogger<ChatGateway>(), _files);
 
+        var commands = _files is null || _folders is null
+            ? null
+            : new ChatFileCommands(channel.Name, configured.Routes, _registry.Crews, _files, _folders);
+
         // The stop button and the /stop command arrive as ONE invocation shape, and the
         // allow list gates both: the first version checked it on the typed command only,
         // and anyone who could see the thread could kill the run with a click.
         channel.CommandInvoked += invocation =>
-            HandleCommandAsync(gateway, authorizer, invocation, stoppingToken);
+            HandleCommandAsync(gateway, authorizer, invocation, stoppingToken, commands);
+        if (channel is ISuggestingChannel suggesting)
+            suggesting.SuggestionsAsked += invocation => SuggestAsync(authorizer, invocation, commands, stoppingToken);
 
         try
         {
@@ -215,22 +225,56 @@ internal sealed partial class ChatChannelService : BackgroundService
     /// One registered command, end to end: authorize, then act, then word the answer. The
     /// reply goes back ephemerally to the invoker alone.
     /// </summary>
-    internal static Task<CommandReply> HandleCommandAsync(
-        ChatGateway gateway, IChatAuthorizer authorizer, CommandInvocation invocation, CancellationToken ct)
+    internal static async Task<CommandReply> HandleCommandAsync(
+        ChatGateway gateway, IChatAuthorizer authorizer, CommandInvocation invocation, CancellationToken ct, ChatFileCommands? files = null)
     {
         ArgumentNullException.ThrowIfNull(gateway);
         ArgumentNullException.ThrowIfNull(authorizer);
         ArgumentNullException.ThrowIfNull(invocation);
 
         if (!authorizer.IsAuthorized(invocation.SenderId))
-            return Task.FromResult(new CommandReply("You are not authorized to use this bot."));
+            return new CommandReply("You are not authorized to use this bot.");
 
-        return Task.FromResult(new CommandReply(invocation.CommandName switch
+        // Their names are registered only when files are on; a client that still has them is told.
+        if (invocation.CommandName is ChatCommands.Files or ChatCommands.Get or ChatCommands.Put)
+        {
+            return files is null
+                ? new CommandReply("The file commands are off on this host.")
+                : await files.AnswerAsync(invocation, ct).ConfigureAwait(false);
+        }
+
+        return new CommandReply(invocation.CommandName switch
         {
             ChatCommands.Stop => gateway.Stop(invocation.ConversationId),
             ChatCommands.Status => gateway.Status(invocation.ConversationId),
             _ => "Unknown command.",
-        }));
+        });
+    }
+
+    /// <summary>
+    /// What may be typed in a command: nothing for who is not allowed, before anything is looked up, and nothing when it
+    /// cannot be found in the time a platform waits.
+    /// </summary>
+    internal static async Task<IReadOnlyList<string>> SuggestAsync(
+        IChatAuthorizer authorizer, CommandInvocation invocation, ChatFileCommands? files, CancellationToken ct)
+    {
+        ArgumentNullException.ThrowIfNull(authorizer);
+        ArgumentNullException.ThrowIfNull(invocation);
+        if (files is null || !authorizer.IsAuthorized(invocation.SenderId))
+            return [];
+
+        using var bounded = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        bounded.CancelAfter(s_suggestionLimit);
+        try
+        {
+            return await files.SuggestAsync(invocation, bounded.Token).ConfigureAwait(false);
+        }
+#pragma warning disable CA1031 // A suggestion that cannot be made is none: the command itself says what is wrong.
+        catch (Exception)
+#pragma warning restore CA1031
+        {
+            return [];
+        }
     }
 
     [LoggerMessage(Level = LogLevel.Error, Message = "The {Channel} channel is enabled but its allow list is empty; it would answer nobody, so it will not start. Add {Channel}:AllowedUserIds.")]
