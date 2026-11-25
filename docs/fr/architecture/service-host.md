@@ -174,6 +174,8 @@ aucun canal n'envoie encore ce que contient `/outbox`.
   (`Orkeon:CodeSandbox:AllowHostExecution`), n'est pas tenu par les mounts et lit toutes les conversations : l'hôte le dit
   au démarrage, et [le confinement](security.md#confinement-du-shell) est la réponse. Les serveurs MCP stdio et le processus
   du fournisseur `agent-cli` tournent aussi sous le compte du service : voir [les limites](../reference/limitations.md).
+  Le bac à sable du code, `/sandbox`, est une seule racine pour tous les runs : aucun agent ne l'atteint par un chemin, et
+  seuls ces processus, ou un shell qui reçoit un mount contenant le dossier du bac à sable, passent par là d'un run à l'autre.
 - **Hors de l'hôte.** Les deux racines sont réservées dans `orkeon-host` avec `Files` allumé, et nulle part ailleurs. Une
   crew qui s'en sert tourne dans un terminal avec `--mount ./in:/inbox:ro --mount ./out:/outbox:rw`.
 

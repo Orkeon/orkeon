@@ -169,6 +169,8 @@ the end of a run, the files of `/outbox` it added or changed are listed, hidden 
   (`Orkeon:CodeSandbox:AllowHostExecution`), is not bound by the mounts and reads every conversation: the host says so at
   start, and [the confinement](security.md#shell-confinement) is the answer. MCP stdio servers and the process of the
   `agent-cli` provider run as the account of the service too: see [the limits](../reference/limitations.md).
+  The code sandbox, `/sandbox`, is one root for every run: no agent reaches it by a path, and only those processes, or a
+  shell given a mount that holds the sandbox's folder, cross from one run to another through it.
 - **Outside the host.** The two roots are reserved in `orkeon-host` with `Files` on, and nowhere else. A crew that uses
   them runs in a terminal with `--mount ./in:/inbox:ro --mount ./out:/outbox:rw`.
 

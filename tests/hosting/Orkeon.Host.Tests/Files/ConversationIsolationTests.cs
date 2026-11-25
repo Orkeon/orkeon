@@ -269,4 +269,37 @@ public sealed class ConversationIsolationTests : IDisposable
         Assert.Empty(seen);
         Directory.Delete(folder);
     }
+
+    // ----- the code sandbox, one root for every run -----
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ShouldHideAnotherRunsSandboxFromAnAgent_WhenItAsksByEitherSpace(bool physical)
+    {
+        const string content = "code of another conversation";
+        var read = string.Empty;
+        var asked = string.Empty;
+        var (host, _) = Build(async (built, ct) =>
+        {
+            read = await CallAsync(built, "file_read", new() { ["path"] = asked }, ct);
+            return "done";
+        });
+        var sandbox = host.Services.GetRequiredService<FileSystemRegistry>().GetMounts().Single(m => m.VirtualPath == "/sandbox");
+        var folder = Directory.CreateDirectory(Path.Combine(sandbox.BasePath, $"run-{Guid.NewGuid():N}"));
+        var file = Path.Combine(folder.FullName, "Program.cs");
+        await File.WriteAllTextAsync(file, content, Ct);
+        asked = physical ? file : $"/sandbox/{folder.Name}/Program.cs";
+        try
+        {
+            await RunAsync(host);
+        }
+        finally
+        {
+            folder.Delete(recursive: true);
+        }
+
+        Assert.StartsWith("False|", read, StringComparison.Ordinal);
+        Assert.DoesNotContain(content, read, StringComparison.Ordinal);
+    }
 }
