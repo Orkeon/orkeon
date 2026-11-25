@@ -163,6 +163,45 @@ public sealed class SandboxSessionTests : IDisposable
     }
 
     /// <summary>
+    /// One process may hold several hosts, built in the same millisecond: each has its own directory, so disposing one
+    /// takes no other's runs with it.
+    /// </summary>
+    [Fact]
+    public void DisposingASession_LeavesEveryOtherOneOfTheProcess()
+    {
+        var sessions = new SandboxSession[64];
+        Parallel.For(0, sessions.Length, i => sessions[i] = BuildSession());
+        try
+        {
+            Assert.Equal(sessions.Length, sessions.Select(s => s.Root).Distinct(StringComparer.Ordinal).Count());
+
+            sessions[0].Dispose();
+
+            Assert.All(sessions[1..], s => Assert.True(Directory.Exists(s.Root)));
+        }
+        finally
+        {
+            foreach (var session in sessions)
+                session.Dispose();
+        }
+    }
+
+    /// <summary>The janitor knows the directories this class mints now, not only those it once minted.</summary>
+    [Fact]
+    public void CleansAnOrphanNamedAsASessionIsNow()
+    {
+        using var session = BuildSession();
+        var name = Path.GetFileName(session.Root);
+        var orphan = Path.Combine(_ephemeralRoot, $"99999{name[name.IndexOf('-', StringComparison.Ordinal)..]}");
+        Directory.CreateDirectory(orphan);
+        Directory.SetLastWriteTimeUtc(orphan, DateTime.UtcNow.AddHours(-25));
+
+        using var next = BuildSession(cleanupOlderThan: TimeSpan.FromHours(24));
+
+        Assert.False(Directory.Exists(orphan));
+    }
+
+    /// <summary>
     /// The promise, asked at the level it is made: a container wired by
     /// <see cref="FileSystemServiceRegistration.AddOrkeonFileSystem"/> resolves <c>/sandbox</c>
     /// — no hosted service started, exactly as the runners build it.

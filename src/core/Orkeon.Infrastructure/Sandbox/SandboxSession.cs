@@ -5,7 +5,7 @@ using Orkeon.Domain.FileSystem;
 namespace Orkeon.Infrastructure.Sandbox;
 
 /// <summary>
-/// The per-process sandbox directory and the <c>/sandbox</c> mount that reaches it —
+/// The sandbox directory of one host and the <c>/sandbox</c> mount that reaches it —
 /// <see cref="MountVisibility.Internal"/>, so the VFS resolves it and no agent is ever told
 /// it exists.
 /// <para>
@@ -29,9 +29,10 @@ internal sealed partial class SandboxSession : IDisposable
 {
     private readonly SandboxFileSystemOptions _opts;
     private readonly ILogger<SandboxSession> _log;
+    private static int s_built;
     private bool _disposed;
 
-    /// <summary>Physical path of this process's sandbox directory.</summary>
+    /// <summary>Physical path of this host's sandbox directory.</summary>
     public string Root { get; }
 
     /// <summary>The mount that exposes <see cref="Root"/> to the VFS, hidden from agents.</summary>
@@ -46,7 +47,12 @@ internal sealed partial class SandboxSession : IDisposable
         _log = log;
 
         var root = _opts.EphemeralRoot ?? Path.Combine(Path.GetTempPath(), "orkeon-sandbox");
-        Root = Path.Combine(root, $"{Environment.ProcessId}-{DateTime.UtcNow:yyyyMMddHHmmssfff}");
+        // The time alone names two hosts of one process built in the same millisecond alike, and the first one disposed
+        // would delete the other's. Digits only: the janitor knows its directories by them.
+        var part = System.Security.Cryptography.RandomNumberGenerator.GetInt32(1_000_000_000);
+        Root = Path.Combine(root, string.Create(
+            System.Globalization.CultureInfo.InvariantCulture,
+            $"{Environment.ProcessId}-{DateTime.UtcNow:yyyyMMddHHmmssfff}{Interlocked.Increment(ref s_built):D6}{part:D9}"));
 
         Directory.CreateDirectory(Root);
         CleanupOrphans(root, _opts.CleanupOrphansOlderThan);
@@ -159,7 +165,7 @@ internal sealed partial class SandboxSession : IDisposable
         }
     }
 
-    /// <summary>Deletes this process's sandbox directory. Never throws.</summary>
+    /// <summary>Deletes this host's sandbox directory. Never throws.</summary>
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "Best-effort teardown: a failure deleting the session sandbox directory is logged and swallowed so it never blocks host disposal.")]
     public void Dispose()
     {
