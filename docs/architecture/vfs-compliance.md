@@ -290,7 +290,7 @@ code sandboxes stage what they run), `/state` (the checkpoint store), `/runs` (t
 `/llm-mock` and `/llm-cassette` (`--llm-mock`, `--llm-record`/`--llm-replay`), `/credentials` (the OAuth tokens of the e-mail, drive and chat accounts —
 mounted only when an OAuth account of one of these families is declared) and `/credential-files` (the folder of each
 certificate or federated token file of a chat application account, mounted **read-only**, one subfolder per folder,
-`/credential-files/<16 hex of the SHA-256 of the directory path>`, only when such an account is declared; the REPL mounts it too). The registry refuses an internal mount to every
+`/credential-files/<16 hex of the SHA-256 of the directory path>`, only when such an account is declared); the REPL mounts these last two as a runner does. The registry refuses an internal mount to every
 ordinary caller and reports it like a path that does not exist, so no agent-facing tool can reach
 or even name one ([ADR-008](../adr/ADR-008-virtual-paths-are-the-only-currency.md)). The few
 components that must write there ask DI for `PrivilegedFileSystemAccess` by name: the exchange

@@ -609,7 +609,7 @@ public static partial class RunnerHost
 
         public MountSelectionPlan Plan { get; set; } = MountSelectionPlan.Empty;
 
-        /// <summary>Why OAuth accounts of the settings (e-mail, drive) have no token store in this run, one sentence per cause.</summary>
+        /// <summary>Why OAuth accounts of the settings (e-mail, drive, chat) have no token store in this run, one sentence per cause.</summary>
         public List<string> TokensUnavailable { get; } = [];
 
         /// <summary>Settings the host reads but cannot honour as written (an ignored checkpoint store), one sentence each.</summary>
@@ -620,13 +620,39 @@ public static partial class RunnerHost
     }
 
     /// <summary>
-    /// An OAuth e-mail or drive account is declared, but the runner could not provide its token
+    /// The token stores of the three account families, over the subdirectory each keeps of the internal
+    /// <c>/credentials</c> root, when the configuration step mounted it: reached through the privileged view of
+    /// the VFS that no agent-facing tool resolves (ADR-008). Shared by the runners and the REPL (#482).
+    /// </summary>
+    /// <param name="context">The host's context, its configuration composed.</param>
+    /// <param name="services">The service collection.</param>
+    internal static void RegisterTokenStores(HostBuilderContext context, IServiceCollection services)
+    {
+        ArgumentNullException.ThrowIfNull(context);
+        ArgumentNullException.ThrowIfNull(services);
+
+        var mounted = context.Configuration.GetSection(ConfigurationKeys.FileSystemInternalMounts).GetChildren()
+            .Any(entry => entry.Value is { Length: > 0 } mount
+                && string.Equals(MountSelection.TryGetVirtualRoot(mount), RunnerVirtualRoots.Credentials, StringComparison.Ordinal));
+        if (!mounted)
+            return;
+
+        services.AddOrkeonEmailTokenStore(Privileged, $"{RunnerVirtualRoots.Credentials}/{EmailCredentialsLocation.TokenSubdirectory}");
+        services.AddOrkeonDriveTokenStore(Privileged, $"{RunnerVirtualRoots.Credentials}/{DriveCredentialsLocation.TokenSubdirectory}");
+        services.AddOrkeonChatTokenStore(Privileged, $"{RunnerVirtualRoots.Credentials}/{ChatCredentialsLocation.TokenSubdirectory}");
+
+        static Orkeon.Domain.FileSystem.IFileSystemService Privileged(IServiceProvider sp) =>
+            sp.GetRequiredService<PrivilegedFileSystemAccess>().FileSystem;
+    }
+
+    /// <summary>
+    /// An OAuth e-mail, drive or chat account is declared, but the host could not provide its token
     /// store as asked: said once, on the log and on the operator channel (stderr), because the run goes on — a crew that
     /// sends no mail and opens no drive must not fail for it — and each call of such an account
     /// will then refuse.
     /// </summary>
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Globalization", "CA1303", Justification = "Framework is not localized; literals are CLI diagnostic/console messages.")]
-    private static void WarnIfTokensUnavailable(IHost host, MountDecisions decisions)
+    internal static void WarnIfTokensUnavailable(IHost host, MountDecisions decisions)
     {
         if (decisions.TokensUnavailable.Count == 0 && decisions.StartupWarnings.Count == 0)
             return;
@@ -1020,8 +1046,9 @@ public static partial class RunnerHost
     /// </para>
     /// <para>
     /// That mounts half is <see cref="PlaceMounts"/>, which <c>orkeon-repl</c> applies to its own
-    /// layers through <see cref="ConfigureMounts"/> (GAP-49, decision 3). The runner adds what only a
-    /// runner host mounts: the <c>/credentials</c> token store of the OAuth e-mail, drive and chat accounts.
+    /// layers through <see cref="ConfigureMounts"/> (GAP-49, decision 3), with the <c>/credentials</c> token
+    /// store of the OAuth e-mail, drive and chat accounts (<see cref="PlaceCredentials"/>). The runner adds
+    /// what only a runner host mounts: the checkpoint store's folder and the run history.
     /// </para>
     /// </summary>
     /// <param name="builder">The host's configuration builder.</param>
@@ -1049,19 +1076,10 @@ public static partial class RunnerHost
 
         var placement = PlaceMounts(overrides, declared, mounts, settingsPath, decisions);
 
-        // The runner's own Internal mount, after the others: the token store of the OAuth e-mail
-        // and drive accounts (ADR-012, ADR-013). Planning it refuses any mount claiming
-        // /credentials, whatever its layer.
-        var credentialsDirectory = PlanCredentials(
-            declared, placement.DeclaredMounts, placement.DeclaredInternal, mounts.CliMounts, settingsPath, decisions);
+        // The host's own Internal mount, after the others: the token store of the OAuth accounts.
+        placement = PlaceCredentials(overrides, declared, placement, mounts.CliMounts, _ => settingsPath, decisions);
         var nextInternalIndex = placement.NextInternalIndex;
         var nextWhitelistIndex = placement.NextWhitelistIndex;
-        if (credentialsDirectory is not null)
-        {
-            overrides[$"{ConfigurationKeys.FileSystemInternalMounts}:{nextInternalIndex++}"] =
-                $"{FileSystemMount.Quote(credentialsDirectory)}:{RunnerVirtualRoots.Credentials}:rw";
-            overrides[$"{PathSecurityWhitelistSection}:{nextWhitelistIndex++}"] = credentialsDirectory;
-        }
 
         // The durable checkpoint store's folder (FWK-01), for a json or sqlite store the settings
         // enable: mounted at /state, whichever command builds the host.
@@ -1113,27 +1131,33 @@ public static partial class RunnerHost
     /// withdrawn — or is appended after the last; the declared entries still in force are
     /// whitelisted for <c>PathValidator</c>, the <c>--mount</c> folders under
     /// <see cref="RunnerMountPlan.AllowExternalMounts"/> only. Exactly what a runner host does
-    /// (<see cref="ConfigureAppConfiguration"/>), <c>/credentials</c> aside: only a runner host keeps
-    /// a token store, and the REPL's guard refuses the root.
+    /// (<see cref="ConfigureAppConfiguration"/>), the token store of the OAuth accounts at
+    /// <c>/credentials</c> included (#482).
     /// </summary>
     /// <param name="builder">The configuration builder, its layers laid; an in-memory source is added last.</param>
     /// <param name="mounts">The mounts the host adds and the selection inputs.</param>
     /// <param name="settingsLabel">What a refusal names the declarations by: the file, or the files separated by a comma; null for the configuration alone.</param>
-    /// <param name="decisions">Receives what was decided, for <see cref="LogMountDecisions"/> once the host exists.</param>
+    /// <param name="settingsFileOf">The settings file a relative path under a configuration key is read from; null for the current directory.</param>
+    /// <param name="decisions">Receives what was decided, for <see cref="LogMountDecisions"/> and <see cref="WarnIfTokensUnavailable"/> once the host exists.</param>
     /// <exception cref="RunnerSettingsException">A settings file cannot be read, or the selection cannot be resolved.</exception>
     internal static void ConfigureMounts(
         IConfigurationBuilder builder,
         RunnerMountPlan mounts,
         string? settingsLabel,
+        Func<string, string?> settingsFileOf,
         MountDecisions decisions)
     {
         ArgumentNullException.ThrowIfNull(builder);
         ArgumentNullException.ThrowIfNull(mounts);
+        ArgumentNullException.ThrowIfNull(settingsFileOf);
         ArgumentNullException.ThrowIfNull(decisions);
 
         var overrides = new Dictionary<string, string?>();
         using (var declared = DeclaredConfiguration.Snapshot(builder))
-            PlaceMounts(overrides, declared, mounts, settingsLabel, decisions);
+        {
+            var placement = PlaceMounts(overrides, declared, mounts, settingsLabel, decisions);
+            PlaceCredentials(overrides, declared, placement, mounts.CliMounts, settingsFileOf, decisions);
+        }
 
         if (overrides.Count > 0)
             builder.AddInMemoryCollection(overrides);
@@ -1229,6 +1253,32 @@ public static partial class RunnerHost
         }
 
         return new MountPlacement(declaredMounts, declaredInternal, nextInternalIndex, nextWhitelistIndex);
+    }
+
+    /// <summary>
+    /// The Internal mount of the OAuth token stores at <see cref="RunnerVirtualRoots.Credentials"/> (ADR-012,
+    /// ADR-013, ADR-021), for a runner and the REPL alike, when a declared account needs one. Planning it
+    /// refuses any mount claiming the root, whatever its layer.
+    /// </summary>
+    private static MountPlacement PlaceCredentials(
+        Dictionary<string, string?> overrides,
+        DeclaredConfiguration declared,
+        MountPlacement placement,
+        IReadOnlyList<string> cliMounts,
+        Func<string, string?> settingsFileOf,
+        MountDecisions decisions)
+    {
+        if (PlanCredentials(declared, placement.DeclaredMounts, placement.DeclaredInternal, cliMounts, settingsFileOf, decisions) is not { } directory)
+            return placement;
+
+        overrides[$"{ConfigurationKeys.FileSystemInternalMounts}:{placement.NextInternalIndex}"] =
+            $"{FileSystemMount.Quote(directory)}:{RunnerVirtualRoots.Credentials}:rw";
+        overrides[$"{PathSecurityWhitelistSection}:{placement.NextWhitelistIndex}"] = directory;
+        return placement with
+        {
+            NextInternalIndex = placement.NextInternalIndex + 1,
+            NextWhitelistIndex = placement.NextWhitelistIndex + 1,
+        };
     }
 
     /// <summary>
@@ -1481,7 +1531,7 @@ public static partial class RunnerHost
         List<(int Index, string? Value)> declaredMounts,
         List<(int Index, string? Value)> declaredInternal,
         IReadOnlyList<string> cliMounts,
-        string? settingsPath,
+        Func<string, string?> settingsFileOf,
         MountDecisions decisions)
     {
         EnsureCredentialsRootIsFree(declaredMounts, declaredInternal, cliMounts);
@@ -1504,6 +1554,8 @@ public static partial class RunnerHost
             return null;
         }
 
+        // The default directory is absolute already: only a named one is read from a settings file.
+        var settingsPath = named is null ? null : settingsFileOf($"{named.SectionKey}:CredentialsDirectory");
         var anchored = AnchorCredentialsDirectory(directory, settingsPath, names, decisions);
         if (anchored is null)
             return null;
@@ -1847,34 +1899,17 @@ public static partial class RunnerHost
         // configuration step mounted for them, reached through the privileged view of the VFS
         // that no agent-facing tool resolves (ADR-008, ADR-012).
         services.AddOrkeonEmailTools(context.Configuration);
-        if (HasInternalRoot(RunnerVirtualRoots.Credentials))
-        {
-            services.AddOrkeonEmailTokenStore(
-                sp => sp.GetRequiredService<PrivilegedFileSystemAccess>().FileSystem,
-                $"{RunnerVirtualRoots.Credentials}/{EmailCredentialsLocation.TokenSubdirectory}");
-        }
 
         // Drive (DRIVE): the eleven drive_* tools (Google Drive, OneDrive), inert until an
         // account is declared under Orkeon:Tools:Drive. Their tokens share the internal
         // /credentials root with the e-mail family's, in a subdirectory of their own (ADR-013).
         services.AddOrkeonDriveTools(context.Configuration);
-        if (HasInternalRoot(RunnerVirtualRoots.Credentials))
-        {
-            services.AddOrkeonDriveTokenStore(
-                sp => sp.GetRequiredService<PrivilegedFileSystemAccess>().FileSystem,
-                $"{RunnerVirtualRoots.Credentials}/{DriveCredentialsLocation.TokenSubdirectory}");
-        }
 
         // Chat (#446): the chat_* tools (Microsoft Teams), inert until an account is declared
         // under Orkeon:Tools:Chat. Their tokens share the internal /credentials root, in a
         // subdirectory of their own (ADR-021).
         services.AddOrkeonChatTools(context.Configuration);
-        if (HasInternalRoot(RunnerVirtualRoots.Credentials))
-        {
-            services.AddOrkeonChatTokenStore(
-                sp => sp.GetRequiredService<PrivilegedFileSystemAccess>().FileSystem,
-                $"{RunnerVirtualRoots.Credentials}/{ChatCredentialsLocation.TokenSubdirectory}");
-        }
+        RegisterTokenStores(context, services);
 
         // The certificate or federated token file of an application account, read through the
         // internal /credential-files root the configuration step mounted its folder under.
@@ -1915,11 +1950,6 @@ public static partial class RunnerHost
                 .Any(entry => entry.Value is { Length: > 0 } mount
                     && MountSelection.TryGetVirtualRoot(mount) is { } mounted
                     && mounted.StartsWith(root + "/", StringComparison.Ordinal));
-
-        bool HasInternalRoot(string root) =>
-            context.Configuration.GetSection(ConfigurationKeys.FileSystemInternalMounts).GetChildren()
-                .Any(entry => entry.Value is { Length: > 0 } mount
-                    && string.Equals(MountSelection.TryGetVirtualRoot(mount), root, StringComparison.Ordinal));
 
         // RaggableTree — available by default (crew-driven). Enables the semantic-graph
         // tools (codebase_map, symbol_detail, flow_trace, …) backed by a singleton

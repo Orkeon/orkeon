@@ -457,9 +457,11 @@ who they were signed in as.
 In the `chat` subdirectory of the runner's internal `/credentials` root, which no agent-facing tool
 resolves, beside the `email` and `drive` ones. A run keeps one credentials directory for the three
 families: when they name different ones, e-mail's wins, then drive's. As for those, the tokens are shielded from the VFS
-tools, **not** from a `shell_command` running as the same operating-system user. `orkeon-repl` keeps
-no token store: a chat account that signs in as a user (`OAuth2`) says so there. An application account
-works in the REPL, with a certificate, a federated token or a client secret.
+tools, **not** from a `shell_command` running as the same operating-system user. `orkeon-repl` mounts
+the same root and uses the same tokens: an account signed in with `orkeon chat login` reads and posts
+there as its user. The REPL opens no sign-in. When the directory cannot be prepared, the REPL says so
+at start and goes on; that account alone refuses its calls. In a container, mount the folder and
+name it with `CredentialsDirectory`.
 
 ## Errors
 

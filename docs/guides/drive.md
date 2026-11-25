@@ -249,8 +249,8 @@ configuration problems or the credential diagnosis.
 The runner keeps them under its internal `/credentials` root, which no agent-facing tool resolves,
 in a `drive` subdirectory created owner-only on Unix — beside the e-mail family's `email` one, in
 the same credentials directory. As for e-mail, the tokens are shielded from the VFS tools, **not**
-from a `shell_command` running as the same operating-system user. `orkeon-repl` keeps no token
-store: a drive tool called from the REPL says so.
+from a `shell_command` running as the same operating-system user. `orkeon-repl` mounts
+the same root and uses the same tokens; the sign-in stays `orkeon drive login`.
 
 ## Out of scope for now
 

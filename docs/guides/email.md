@@ -612,18 +612,18 @@ Be clear about what this protects: the token files are plain JSON, shielded from
 tools — **not** from a shell or code tool running as the same operating-system user. Keep
 `shell_command` and the code interpreter away from crews that hold an OAuth account. The
 shield also holds only while the runner mounts `/credentials`: never give a crew a mount that
-covers the per-user settings directory or a `CredentialsDirectory`, since a run whose
-settings declare no OAuth account, or `orkeon-repl`, would show the token files through it.
+covers the per-user settings directory or a `CredentialsDirectory`, since a host whose
+settings declare no OAuth account — a run or `orkeon-repl` — would show the token files through it.
 
 The file name carries a digest of the address, the client, the tenant's endpoint and the
 scopes: change one of them and the account asks for a new login instead of sending a token
 somewhere it was not issued for. Run `orkeon email logout` before such a change, or delete
-the old file. `orkeon-repl` registers the tools but keeps no token store: there, password
-accounts work and OAuth accounts are refused with a message that says so — an account signed
-in with `orkeon email login` serves the `orkeon` runs, not the REPL. A user mount that
+the old file. `orkeon-repl` reads and refreshes the same tokens, under the same
+rules: an account signed in with `orkeon email login` serves the REPL too, once it starts on the
+same settings; the REPL itself opens no sign-in. With several `--settings` files, a relative
+`CredentialsDirectory` is read from the directory of the last one that declares it. A user mount that
 claims `/credentials` is refused whatever the accounts — by every `orkeon` command, by
-`orkeon-host` and by `orkeon-repl` before they start (the REPL mounts no `/credentials`, and
-refuses the root all the same, as every command does).
+`orkeon-host` and by `orkeon-repl` before they start.
 
 ## In a host of your own
 
@@ -705,8 +705,8 @@ maps to its exit codes.
   `archive` is All Mail.
 - **"The TLS handshake … failed"** — the port and `Security` do not match: `SslOnConnect` for
   993, 995 and 465, `StartTls` for 143, 110 and 587.
-- **"This host keeps no OAuth tokens"** — the host has no token store: `orkeon-repl`, a host
-  of your own that registered none, or a container where no per-user directory exists (set
+- **"This host keeps no OAuth tokens"** — the host has no token store: a host of your own
+  that registered none, a directory that cannot be prepared (said at start), or a container where no per-user directory exists (set
   `CredentialsDirectory`).
 - **`orkeon email` does not run the crew folder named `email`** — the verb is matched first;
   run the folder with `orkeon run email`.

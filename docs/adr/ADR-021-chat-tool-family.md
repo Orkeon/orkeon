@@ -89,3 +89,7 @@ Each was a question left open by the issue; the recommendation was retained, and
 - Ten tools, a provider per account, and the sign-in, webhook, application-account and inbound-channel parts described above.
 - Pages amended with the tools: CONTRIBUTING ("The scope is frozen"), the limitations page, the tool inventory (including the line that says there is no Teams tool), the tool counts, the typings, a `chat` guide and the configuration reference.
 - No Microsoft 365 tenant is available to the maintainers here: the tools are validated on replayed Graph answers, and the trials on a real tenant (D4, D5, transcripts, the webhook) are the owner's.
+
+## Amendment (2026-11-24)
+
+- `orkeon-repl` keeps the token stores of the three account families (#482): it mounts the same internal `/credentials` root as a runner, under the same rules, and the tokens stay out of reach of the VFS tools. The sign-in stays `orkeon chat login`.

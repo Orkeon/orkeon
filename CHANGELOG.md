@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — the REPL keeps the OAuth tokens of e-mail, drive and chat accounts (#482)
+
+- `orkeon-repl` mounts the internal `/credentials` root when a declared account signs in with OAuth, as the runners do:
+  an account signed in with `orkeon chat|email|drive login` works in the REPL, which refreshes its tokens and opens no
+  sign-in. No agent-facing tool resolves the root. A directory that cannot be prepared is a warning at start.
+- A credential file of a chat application account the REPL cannot mount is now said at start, as the runners say it.
+
 ### Added — Safari engine (#444)
 
 - `Orkeon:Tools:Browser:Engine` takes `safari`, on macOS: the same actions, over the classic WebDriver of

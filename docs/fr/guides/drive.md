@@ -259,8 +259,8 @@ Le runner les garde sous sa racine interne `/credentials`, qu'aucun outil destin
 résout, dans un sous-répertoire `drive` créé réservé au propriétaire sous Unix — à côté du
 sous-répertoire `email` de la famille e-mail, dans le même répertoire d'identifiants. Comme pour
 l'e-mail, les jetons sont à l'abri des outils du VFS, **pas** d'un `shell_command` qui tourne sous
-le même utilisateur du système. `orkeon-repl` ne tient aucun magasin de jetons : un outil drive
-appelé depuis la REPL le dit.
+le même utilisateur du système. `orkeon-repl` monte la même racine et utilise les
+mêmes jetons ; la connexion reste `orkeon drive login`.
 
 ## Hors périmètre pour l'instant
 

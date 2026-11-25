@@ -362,9 +362,9 @@ d'`orkeon run --list-tools` et sert ses outils à un client MCP, `human_input` �
 | Suite / tool | `orkeon run` (CLI) | `orkeon-repl` (ConsoleApp) |
 |---|---|---|
 | FileSystem (8), Data (22), Web cœur (6), `shell_command`, `list_mounts`, session (6) | ✅ | ✅ |
-| E-mail (13) — les tools de boîte aux lettres refusent tout appel tant qu'aucun compte n'est déclaré sous `Orkeon:Tools:Email` | ✅ (jetons OAuth sous la racine interne `/credentials`) | ✅ comptes à mot de passe seulement — le REPL ne tient aucun magasin de jetons, un compte OAuth y est refusé |
-| Drive (11) — chaque tool sauf `drive_accounts` refuse tout appel tant qu'un compte n'est pas déclaré sous `Orkeon:Tools:Drive` et connecté | ✅ (jetons OAuth sous la racine interne `/credentials`) | enregistrés, mais chaque compte y est refusé : tous se connectent en OAuth, et le REPL ne tient aucun magasin de jetons |
-| Chat (10) — chaque tool sauf `chat_accounts` refuse tout appel tant qu'un compte n'est pas déclaré sous `Orkeon:Tools:Chat` et connecté (un webhook ou une application ne se connecte pas) | ✅ (jetons OAuth sous la racine interne `/credentials`) | enregistrés, mais un compte qui se connecte y est refusé : le REPL ne tient aucun magasin de jetons ; un compte webhook ou d'application marche (son fichier de certificat ou de jeton est lu par `/credential-files`, monté là aussi) |
+| E-mail (13) — les tools de boîte aux lettres refusent tout appel tant qu'aucun compte n'est déclaré sous `Orkeon:Tools:Email` | ✅ (jetons OAuth sous la racine interne `/credentials`) | ✅ (jetons OAuth sous la racine interne `/credentials`) |
+| Drive (11) — chaque tool sauf `drive_accounts` refuse tout appel tant qu'un compte n'est pas déclaré sous `Orkeon:Tools:Drive` et connecté | ✅ (jetons OAuth sous la racine interne `/credentials`) | ✅ (jetons OAuth sous la racine interne `/credentials`) |
+| Chat (10) — chaque tool sauf `chat_accounts` refuse tout appel tant qu'un compte n'est pas déclaré sous `Orkeon:Tools:Chat` et connecté (un webhook ou une application ne se connecte pas) | ✅ (jetons OAuth sous la racine interne `/credentials`) | ✅ (jetons OAuth sous la racine interne `/credentials`) (le fichier de certificat ou de jeton d'une application est lu par `/credential-files`, monté là aussi) |
 | EventHub (7) | ✅ | ❌ |
 | Analysis (29) | ✅ (sauf `RaggableTree:Enabled` = `false`) | ✅ |
 | `local_embed_text` | ✅ tant que RaggableTree est actif avec son provider d'embeddings local par défaut | ✅ |
