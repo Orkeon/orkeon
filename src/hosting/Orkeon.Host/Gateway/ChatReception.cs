@@ -42,12 +42,25 @@ internal static partial class ChatReception
             }
 
             var incoming = new IncomingFile(attachment.Name, token => source.OpenAsync(attachment, token)) { Id = attachment.Id, Size = attachment.Size };
-            var stored = await files.StoreAsync(conversation, crew: null, incoming, index, ct: ct).ConfigureAwait(false);
+            StoredFile stored;
+            try
+            {
+                stored = await files.StoreAsync(conversation, crew: null, incoming, index, ct: ct).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            {
+                break;
+            }
+
             if (stored.Refused is { } refusal)
                 refused.Add(refusal);
             else if (stored.Path is { } path)
                 kept.Add((path, stored.Size, attachment.ContentType));
         }
+
+        // Stopped: the run ends here, and what was refused before is told all the same.
+        if (ct.IsCancellationRequested)
+            throw new PreparationStoppedException { RefusedFiles = refused };
 
         if (kept.Count == 0 && text.Length == 0)
         {

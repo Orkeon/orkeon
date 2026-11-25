@@ -56,6 +56,30 @@ internal sealed record RefusedFile(string Name, string Reason);
 /// <param name="Size">Its size in bytes.</param>
 internal sealed record OutboxFile(string Path, long Size);
 
+/// <summary>A preparation that was stopped: the files it had refused by then are told all the same.</summary>
+internal sealed class PreparationStoppedException : OperationCanceledException
+{
+    /// <summary>Builds the stop.</summary>
+    public PreparationStoppedException()
+    {
+    }
+
+    /// <summary>Builds the stop from a message.</summary>
+    public PreparationStoppedException(string message)
+        : base(message)
+    {
+    }
+
+    /// <summary>Builds the stop from a message and what it comes from.</summary>
+    public PreparationStoppedException(string message, Exception innerException)
+        : base(message, innerException)
+    {
+    }
+
+    /// <summary>The files refused before the stop.</summary>
+    public IReadOnlyList<RefusedFile> RefusedFiles { get; init; } = [];
+}
+
 /// <summary>A preparation that failed for a reason the person is told: the message is shown as it is.</summary>
 internal sealed class ConversationPreparationException : Exception
 {

@@ -345,6 +345,25 @@ public sealed class ChatReceptionTests : IDisposable
     }
 
     [Fact]
+    public async Task ShouldNameWhatWasRefusedBefore_WhenTheRunIsStoppedDuringTheDownload()
+    {
+        var bench = Build(s => s["AllowedExtensions"] = s_text);
+        var source = new FakeAttachmentSource();
+        source.Files["2"] = async ct =>
+        {
+            Assert.Equal("Stopping.", bench.Gateway.Stop(Alice.ConversationId));
+            await Task.Delay(Timeout.Infinite, ct);
+            throw new InvalidOperationException("unreachable");
+        };
+
+        await bench.SayAsync(Message("", source, File("1", "run.exe"), File("2", "a.txt")));
+
+        Assert.Equal(0, bench.Worked);
+        Assert.Contains("stopped", bench.Answer, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("`run.exe`", bench.Answer, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task ShouldRunNoAgent_WhenTheDeadlinePassesDuringTheDownload()
     {
         var bench = Build(timeout: TimeSpan.FromMilliseconds(300));

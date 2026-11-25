@@ -144,15 +144,27 @@ internal sealed partial class ConversationFiles : IDisposable
     /// Runs <paramref name="work"/> in the host's mount set of a conversation, under its lock: <c>/inbox</c> and
     /// <c>/outbox</c> read-write, and what <paramref name="crew"/> is granted. The work calls nothing else of this class.
     /// </summary>
+    /// <param name="conversation">The conversation.</param>
+    /// <param name="crew">The crew.</param>
+    /// <param name="work">What is done.</param>
+    /// <param name="ct">Stops it.</param>
+    /// <param name="create">Whether the folders are made when there are none; a look at them need not.</param>
     public async Task<T> UseAsync<T>(
-        ConversationRef conversation, HostedCrewOptions? crew, Func<IFileSystemService, CancellationToken, Task<T>> work, CancellationToken ct)
+        ConversationRef conversation,
+        HostedCrewOptions? crew,
+        Func<IFileSystemService, CancellationToken, Task<T>> work,
+        CancellationToken ct,
+#pragma warning disable CA1068 // One caller in twenty names it.
+        bool create = true)
+#pragma warning restore CA1068
     {
         ArgumentNullException.ThrowIfNull(work);
         using var held = Acquire(conversation.Key);
         await held.Gate.Lock.WaitAsync(ct).ConfigureAwait(false);
         try
         {
-            _store.CreateFolders(conversation.Key);
+            if (create)
+                _store.CreateFolders(conversation.Key);
             return await InHostNamespaceAsync(conversation.Key, crew, work, ct).ConfigureAwait(false);
         }
         finally

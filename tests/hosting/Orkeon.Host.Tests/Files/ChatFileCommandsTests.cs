@@ -302,6 +302,48 @@ public sealed class ChatFileCommandsTests : IDisposable
     }
 
     [Fact]
+    public async Task ShouldJudgeAFileByTheClosestFolder_WhenOneIsOpenInsideAnother()
+    {
+        var kept = Directory.CreateDirectory(Path.Combine(_harness.Root, "kept")).FullName;
+        var nested = Directory.CreateDirectory(Path.Combine(_harness.Root, "nested")).FullName;
+        Write(kept, ".pub/p.txt", "p");
+        Write(nested, "n.txt", "n");
+        var (commands, _) = Build(
+            "\nfiles:\n  - path: /kept\n    download: true\n  - path: /kept/.pub\n    download: true\n  - path: /kept/nested\n    download: true\n",
+            files: null,
+            $"{kept}:/kept:rw",
+            $"{nested}:/kept/nested:ro");
+
+        Assert.Equal("p", await TextAsync(Assert.Single((await commands.AnswerAsync(Get("/kept/.pub/p.txt"), Ct)).Files)));
+        Assert.Equal("n", await TextAsync(Assert.Single((await commands.AnswerAsync(Get("/kept/nested/n.txt"), Ct)).Files)));
+        var listed = (await commands.AnswerAsync(Invocation(ChatCommands.Files, ("folder", "/kept/.pub")), Ct)).Text;
+        Assert.Contains("p.txt", listed, StringComparison.Ordinal);
+        Assert.DoesNotContain("empty", listed, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task ShouldNotReachWhatLiesUnderAnotherMount_InAnyCase()
+    {
+        var kept = Directory.CreateDirectory(Path.Combine(_harness.Root, "kept")).FullName;
+        var nested = Directory.CreateDirectory(Path.Combine(_harness.Root, "nested")).FullName;
+        Write(kept, "Nested/under.txt", "u");
+        var (commands, _) = Build("\nfiles:\n  - path: /kept\n    download: true\n", files: null, $"{kept}:/kept:rw", $"{nested}:/kept/nested:ro");
+
+        Assert.Empty((await commands.AnswerAsync(Get("/kept/Nested/under.txt"), Ct)).Files);
+    }
+
+    [Theory]
+    [InlineData("SECRET~1", true)]
+    [InlineData("SECRET~1.TXT", true)]
+    [InlineData("a~12.x", true)]
+    [InlineData("~1.txt", false)]
+    [InlineData("a~b.txt", false)]
+    [InlineData("a~.txt", false)]
+    [InlineData("quarterly~1.txt", false)]
+    [InlineData("a.txt", false)]
+    public void ShouldKnowAShortName(string name, bool isOne) => Assert.Equal(isOne, DownloadableFiles.IsShortName(name));
+
+    [Fact]
     public async Task ShouldKeepAFileOnce_UnderAFreeName_WhenItIsLeft()
     {
         var (commands, _) = Build();
@@ -529,6 +571,23 @@ public sealed class ChatFileCommandsTests : IDisposable
         Assert.Equal(["/output/drop"], uploads);
         // The long one is given to who types it.
         Assert.Single((await commands.AnswerAsync(Get("/outbox/" + new string('l', 95) + ".txt"), Ct)).Files);
+    }
+
+    [Fact]
+    public async Task ShouldMakeNoFolder_AndReadSoMuch_WhenItSuggests()
+    {
+        var (commands, _) = Build();
+        for (var i = 0; i < 3; i++)
+            Write(Output, $"open/{i}.csv", "x");
+        for (var i = 0; i < 1000; i++)
+            Write(Outbox, $"{i}.txt", "x");
+
+        var elsewhere = await commands.SuggestAsync(Get("csv") with { Focused = "path", ConversationId = "1003" }, Ct);
+        var bounded = await commands.SuggestAsync(Get("csv") with { Focused = "path" }, Ct);
+
+        Assert.Equal(3, elsewhere.Count);
+        Assert.False(Directory.Exists(Path.Combine(Root, new ConversationRef("discord", "1003").Key)));
+        Assert.Empty(bounded);
     }
 
     [Fact]

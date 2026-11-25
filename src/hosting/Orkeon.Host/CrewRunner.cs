@@ -452,7 +452,7 @@ internal sealed partial class CrewRunner : ICrewRunner
         {
             // Stopped or out of time: whatever the preparation threw then is the stop's doing.
             if (run.Cancellation.IsCancellationRequested)
-                return (null, Cancelled(run, crewName));
+                return (null, Cancelled(run, crewName) with { RefusedFiles = (ex as PreparationStoppedException)?.RefusedFiles ?? [] });
 
             LogPreparationFailed(ex, run.Id, crewName);
             return (null, new HostedRunResult(

@@ -131,7 +131,10 @@ internal sealed class ChatFileCommands
                 return new CommandReply(NoFolder);
         }
 
+        // The closest to what is asked, of one opened inside another: the one its files are taken through.
         var roots = Roots(declared).Where(r => asked is null || r == asked || DownloadableFiles.IsUnder(asked, r)).ToList();
+        if (asked is not null)
+            roots = [roots.MaxBy(r => r.Length)!];
         var listed = await _files.UseAsync(
             Conversation(invocation),
             crew,
@@ -140,7 +143,7 @@ internal sealed class ChatFileCommands
                 var sections = new List<(string Root, List<VirtualFileEntry> Files, bool Cut)>();
                 foreach (var root in roots)
                 {
-                    var (files, cut) = await ScanAsync(fs, root, token).ConfigureAwait(false);
+                    var (files, cut, _) = await ScanAsync(fs, root, MaxScanned, token).ConfigureAwait(false);
                     sections.Add((root, [.. files.Where(f => asked is null || asked == root || DownloadableFiles.IsUnder(f.VirtualPath, asked))], cut));
                 }
 
@@ -205,11 +208,18 @@ internal sealed class ChatFileCommands
             async (fs, token) =>
             {
                 var paths = new List<string>();
+                var left = MaxScanned;
                 foreach (var root in DownloadableFiles.Roots(declared))
-                    paths.AddRange((await ScanAsync(fs, root, token).ConfigureAwait(false)).Files.Select(f => f.VirtualPath));
+                {
+                    var (files, _, seen) = await ScanAsync(fs, root, left, token).ConfigureAwait(false);
+                    left -= seen;
+                    paths.AddRange(files.Select(f => f.VirtualPath));
+                }
+
                 return paths;
             },
-            ct).ConfigureAwait(false);
+            ct,
+            create: false).ConfigureAwait(false);
 
     // ----- /put -----
 
@@ -264,18 +274,18 @@ internal sealed class ChatFileCommands
         [RunnerVirtualRoots.Outbox, RunnerVirtualRoots.Inbox, .. declared.Open.Where(f => f.Download).Select(f => f.Path)];
 
     /// <summary>The files open under a folder: the latest first in the conversation's own, by path elsewhere.</summary>
-    private static async Task<(List<VirtualFileEntry> Files, bool Cut)> ScanAsync(IFileSystemService fs, string root, CancellationToken ct)
+    private static async Task<(List<VirtualFileEntry> Files, bool Cut, int Seen)> ScanAsync(IFileSystemService fs, string root, int most, CancellationToken ct)
     {
         var files = new List<VirtualFileEntry>();
         var cut = false;
+        var seen = 0;
         try
         {
             if (await DownloadableFiles.IsDirectAsync(fs, root, ct).ConfigureAwait(false))
             {
-                var seen = 0;
                 await foreach (var entry in fs.EnumerateFilesAsync(root, new VirtualEnumerationOptions(), ct).ConfigureAwait(false))
                 {
-                    if (++seen > MaxScanned)
+                    if (seen++ >= most)
                     {
                         cut = true;
                         break;
@@ -295,6 +305,6 @@ internal sealed class ChatFileCommands
         var ordered = root is RunnerVirtualRoots.Outbox or RunnerVirtualRoots.Inbox
             ? files.OrderByDescending(f => f.LastModified).ThenBy(f => f.VirtualPath, StringComparer.Ordinal)
             : files.OrderBy(f => f.VirtualPath, StringComparer.Ordinal);
-        return ([.. ordered], cut);
+        return ([.. ordered], cut, Math.Min(seen, most));
     }
 }

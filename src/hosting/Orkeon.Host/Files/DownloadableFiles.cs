@@ -78,7 +78,7 @@ internal sealed class DownloadableFiles
     private async Task<VirtualFileEntry?> EntryAsync(ConversationRef conversation, HostedCrewOptions crew, string path, CancellationToken ct)
     {
         var declared = await DeclaredAsync(crew, ct).ConfigureAwait(false);
-        var root = Roots(declared).FirstOrDefault(r => IsUnder(path, r));
+        var root = RootOf(declared, path);
         return root is null
             ? null
             : await _files.UseAsync(conversation, crew, (fs, token) => EntryAsync(fs, root, path, token), ct).ConfigureAwait(false);
@@ -91,7 +91,7 @@ internal sealed class DownloadableFiles
     private async Task<Stream> OpenAsync(ConversationRef conversation, HostedCrewOptions crew, string path, long announced, CancellationToken ct)
     {
         var declared = await DeclaredAsync(crew, ct).ConfigureAwait(false);
-        var root = Roots(declared).FirstOrDefault(r => IsUnder(path, r));
+        var root = RootOf(declared, path);
         return await _files.UseAsync<Stream>(
             conversation,
             crew,
@@ -130,6 +130,10 @@ internal sealed class DownloadableFiles
     internal static IEnumerable<string> Roots(OpenedFolders declared) =>
         [RunnerVirtualRoots.Outbox, .. declared.Open.Where(f => f.Download).Select(f => f.Path)];
 
+    /// <summary>The folder a file is opened through: the closest to it, of one opened inside another.</summary>
+    private static string? RootOf(OpenedFolders declared, string path) =>
+        Roots(declared).Where(r => IsUnder(path, r)).MaxBy(r => r.Length);
+
     internal static bool IsUnder(string path, string root) => path.StartsWith(root + "/", StringComparison.Ordinal);
 
     /// <summary>The path as typed when it has one reading; null otherwise. Nothing is resolved here: what would need it is refused.</summary>
@@ -144,7 +148,16 @@ internal sealed class DownloadableFiles
         static bool IsName(string segment) =>
             segment.Length > 0
             && segment is not ("." or "..")
-            && (!OperatingSystem.IsWindows() || !(segment.Contains(':', StringComparison.Ordinal) || segment.EndsWith('.') || segment.EndsWith(' ')));
+            && (!OperatingSystem.IsWindows()
+                || !(segment.Contains(':', StringComparison.Ordinal) || segment.EndsWith('.') || segment.EndsWith(' ') || IsShortName(segment)));
+    }
+
+    /// <summary>Whether the name may be the short one Windows gives a file beside its own: SECRET~1 is a second reading of .secret.</summary>
+    internal static bool IsShortName(string segment)
+    {
+        var stem = segment.Split('.')[0];
+        return stem.Length <= 8 && segment.Length <= 12 && stem.IndexOf('~', StringComparison.Ordinal) is var at and > 0
+            && at + 1 < stem.Length && stem[(at + 1)..].All(char.IsAsciiDigit);
     }
 
     /// <summary>The file, when it may be read through the folder opened: nothing hidden, no link, no other mount, and the rights of the mount.</summary>
@@ -162,7 +175,9 @@ internal sealed class DownloadableFiles
             return false;
 
         var mounts = fs.GetAvailableMounts();
-        if (mounts.Any(m => IsUnder(m.VirtualPath, root) && (path == m.VirtualPath || IsUnder(path, m.VirtualPath))))
+        // In any case: where the file system folds it, what lies under the mount is another reading of one folder.
+        if (mounts.Any(m => IsUnder(m.VirtualPath, root)
+            && (path.Equals(m.VirtualPath, StringComparison.OrdinalIgnoreCase) || path.StartsWith(m.VirtualPath + "/", StringComparison.OrdinalIgnoreCase))))
             return false;
 
         return fs.ResolveAndValidate(path, FileAccessRights.Read).IsAllowed;
