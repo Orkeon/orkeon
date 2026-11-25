@@ -114,6 +114,7 @@ internal sealed partial class CrewRunner : ICrewRunner
 
     private readonly TimeProvider _time;
     private readonly Orkeon.Application.Interfaces.Checkpointing.IPendingInputBroker? _broker;
+    private readonly Files.ConversationFiles? _files;
 
     /// <summary>Builds the runner over the host's services and its registry.</summary>
     public CrewRunner(
@@ -123,11 +124,13 @@ internal sealed partial class CrewRunner : ICrewRunner
         IOptions<OrkeonHostOptions> options,
         ILogger<CrewRunner> logger,
         HostCrewMountPlan? mountPlan = null,
-        Orkeon.Application.Interfaces.Checkpointing.IPendingInputBroker? broker = null)
+        Orkeon.Application.Interfaces.Checkpointing.IPendingInputBroker? broker = null,
+        Files.ConversationFiles? files = null)
     {
         ArgumentNullException.ThrowIfNull(host);
         _time = host.Services.GetService<TimeProvider>() ?? TimeProvider.System;
         _broker = broker;
+        _files = files;
         _scopes = scopes ?? throw new ArgumentNullException(nameof(scopes));
         _registry = registry ?? throw new ArgumentNullException(nameof(registry));
         _host = host;
@@ -200,8 +203,9 @@ internal sealed partial class CrewRunner : ICrewRunner
 
         LogRunStarted(run.Id, hosted.Name, origin);
 
-        Orkeon.Domain.Common.CrewId? crewId = null;
+        Files.ConversationRun? folders = null;
         IReadOnlyList<RefusedFile> refusedFiles = [];
+        HostedRunResult? result = null;
         try
         {
             // The deadline is armed BEFORE the acknowledgement: the ack is a network round
@@ -216,6 +220,15 @@ internal sealed partial class CrewRunner : ICrewRunner
             if (onStarted is not null)
                 await onStarted(run.Id).ConfigureAwait(false);
 
+            if (_files is not null)
+            {
+                // Before the preparation, which keeps files in them, and to the end of the run: retention leaves them.
+                var (opened, refused) = await OpenFoldersAsync(_files, conversation, run, hosted.Name).ConfigureAwait(false);
+                if (opened is null)
+                    return refused!;
+                folders = opened;
+            }
+
             if (conversation is not null)
             {
                 var (prepared, ended) = await PrepareAsync(conversation, run, hosted.Name).ConfigureAwait(false);
@@ -225,14 +238,96 @@ internal sealed partial class CrewRunner : ICrewRunner
                 refusedFiles = prepared.RefusedFiles;
             }
 
-            // The run's own mount namespace, when the host grants this crew folders of its
-            // own. Ambient rather than DI-scoped on purpose: IFileSystemService is a singleton
-            // that many singletons inject, so it consults the ambient override per operation
-            // instead of being resolved per scope. Two hosted crews may therefore both address
-            // /output over two different physical folders — which the one flat boot registry,
-            // where a virtual path must be globally unique, cannot express.
-            using var mounts = EnterMountNamespace(hosted);
+            result = await RunMountedAsync(hosted, run, folders, prompt, onProgress, variables, idempotency).ConfigureAwait(false)
+                with { RefusedFiles = refusedFiles };
+            return result;
+        }
+        catch (OperationCanceledException)
+        {
+            return Cancelled(run, hosted.Name) with { RefusedFiles = refusedFiles };
+        }
+#pragma warning disable CA1031 // A hosted run must not take the daemon down with it.
+        catch (Exception ex)
+#pragma warning restore CA1031
+        {
+            LogRunFailed(ex, run.Id, hosted.Name);
+            return new HostedRunResult(HostedRunOutcome.Failed, run.Id, FailureMessage(run.Id)) { RefusedFiles = refusedFiles };
+        }
+        finally
+        {
+            // Inside the slot: a drain waits for it, and the crew's next run finds the folders settled.
+            if (folders is not null)
+                await folders.CloseAsync(result?.Outcome == HostedRunOutcome.WaitingForInput ? run.Id : null).ConfigureAwait(false);
+            _registry.Finish(run.Id);
+        }
+    }
 
+    /// <summary>The run's folders, or the result their refusal is: one the person reads, never the detail.</summary>
+    private async Task<(Files.ConversationRun? Opened, HostedRunResult? Ended)> OpenFoldersAsync(
+        Files.ConversationFiles files, HostedConversation? conversation, HostedRun run, string crewName)
+    {
+        try
+        {
+            return (await files.OpenRunAsync(conversation, run.Id, run.Cancellation.Token).ConfigureAwait(false), null);
+        }
+        catch (ConversationPreparationException ex)
+        {
+            LogPreparationFailed(ex, run.Id, crewName);
+            return (null, new HostedRunResult(HostedRunOutcome.Failed, run.Id, ex.Message));
+        }
+    }
+
+    /// <summary>
+    /// The run in its own mount namespace, entered here and left when this returns, and what it changed in
+    /// <c>/outbox</c>, read before the namespace is left, whatever the outcome.
+    /// </summary>
+    private async Task<HostedRunResult> RunMountedAsync(
+        HostedCrewOptions hosted,
+        HostedRun run,
+        Files.ConversationRun? folders,
+        string prompt,
+        Action<string>? onProgress,
+        IReadOnlyDictionary<string, string>? variables,
+        RunIdempotency? idempotency)
+    {
+        // The run's own mount namespace, when the host grants this crew folders of its
+        // own, or keeps its conversations' files. Ambient rather than DI-scoped on purpose: IFileSystemService is a singleton
+        // that many singletons inject, so it consults the ambient override per operation
+        // instead of being resolved per scope. Two hosted crews may therefore both address
+        // /output over two different physical folders — which the one flat boot registry,
+        // where a virtual path must be globally unique, cannot express.
+        using var mounts = EnterMountNamespace(hosted, folders);
+
+        var before = folders is null ? null : await folders.ListOutboxAsync().ConfigureAwait(false);
+        var result = await RunCrewAsync(hosted, run, prompt, onProgress, variables, idempotency).ConfigureAwait(false);
+        if (folders is null)
+            return result;
+
+        var after = await folders.ListOutboxAsync().ConfigureAwait(false);
+        return result with
+        {
+            OutboxFiles =
+            [
+                .. after
+                    .Where(f => !before!.TryGetValue(f.Key, out var was) || was != f.Value)
+                    .OrderBy(f => f.Key, StringComparer.Ordinal)
+                    .Select(f => new OutboxFile(f.Key, f.Value.Size)),
+            ],
+        };
+    }
+
+    /// <summary>Loads the crew and runs it. Whatever it throws is a result.</summary>
+    private async Task<HostedRunResult> RunCrewAsync(
+        HostedCrewOptions hosted,
+        HostedRun run,
+        string prompt,
+        Action<string>? onProgress,
+        IReadOnlyDictionary<string, string>? variables,
+        RunIdempotency? idempotency)
+    {
+        Orkeon.Domain.Common.CrewId? crewId = null;
+        try
+        {
             // One scope per run. Anything registered scoped belongs to this run and dies with
             // it — the crew repository above all, which is what keeps one conversation's crew
             // out of another's resolution. Per-crew memory is released in the finally: a
@@ -279,11 +374,11 @@ internal sealed partial class CrewRunner : ICrewRunner
                 recording.DecisionUnavailable = output.ErrorCode == Orkeon.Constants.Protocol.RunEventErrorCodes.DecisionUnavailable;
             }
 
-            return ResultOf(output, run, hosted.Name) with { RefusedFiles = refusedFiles };
+            return ResultOf(output, run, hosted.Name);
         }
         catch (OperationCanceledException)
         {
-            return Cancelled(run, hosted.Name) with { RefusedFiles = refusedFiles };
+            return Cancelled(run, hosted.Name);
         }
 #pragma warning disable CA1031 // A hosted run must not take the daemon down with it.
         catch (Exception ex)
@@ -293,11 +388,10 @@ internal sealed partial class CrewRunner : ICrewRunner
             // server paths and a provider failure carries endpoints, and the thread's
             // membership is not the operator set.
             LogRunFailed(ex, run.Id, hosted.Name);
-            return new HostedRunResult(HostedRunOutcome.Failed, run.Id, FailureMessage(run.Id)) { RefusedFiles = refusedFiles };
+            return new HostedRunResult(HostedRunOutcome.Failed, run.Id, FailureMessage(run.Id));
         }
         finally
         {
-            _registry.Finish(run.Id);
             ReleasePerRunState(crewId);
         }
     }
@@ -436,7 +530,8 @@ internal sealed partial class CrewRunner : ICrewRunner
     private partial void LogRunFailedWithOutput(string runId, string crewName, string output);
 
     /// <summary>
-    /// Enters the mount namespace this crew was granted, or nothing when it was granted none.
+    /// Enters the mount namespace of a run: the folders this crew was granted and the conversation's, or nothing when it
+    /// has neither.
     /// </summary>
     /// <remarks>
     /// The composed registry carries the boot Internal mounts forward — entering a scope
@@ -445,9 +540,9 @@ internal sealed partial class CrewRunner : ICrewRunner
     /// length of the run, and with them the check that stops either gaining a second,
     /// agent-reachable address through one of the crew's own mounts.
     /// </remarks>
-    private MountNamespaceLease? EnterMountNamespace(HostedCrewOptions hosted)
+    private MountNamespaceLease? EnterMountNamespace(HostedCrewOptions hosted, Files.ConversationRun? folders)
     {
-        if (hosted.Mounts.Count == 0)
+        if (folders is null && hosted.Mounts.Count == 0)
             return null;
 
         var ambient = _host.Services.GetService<IFileSystemScope>();
@@ -455,16 +550,17 @@ internal sealed partial class CrewRunner : ICrewRunner
         if (ambient is null || boot is null)
             return null;
 
-        var granted = hosted.Mounts
-            .Where(m => !string.IsNullOrWhiteSpace(m))
-            .Select(FileSystemMount.Parse)
-            .ToList();
-        if (granted.Count == 0)
+        var granted = GrantedMounts(hosted);
+        if (folders is null && granted.Count == 0)
             return null;
 
-        var registry = ScopedMountComposition.ForExecution(boot, granted);
+        var registry = folders?.Registry(hosted) ?? ScopedMountComposition.ForExecution(boot, granted);
         return new MountNamespaceLease(registry, ambient.Enter(registry));
     }
+
+    /// <summary>The folders the host grants a crew.</summary>
+    internal static List<FileSystemMount> GrantedMounts(HostedCrewOptions crew) =>
+        [.. crew.Mounts.Where(m => !string.IsNullOrWhiteSpace(m)).Select(FileSystemMount.Parse)];
 
     /// <summary>Releases the ambient override first, then the registry it pointed at.</summary>
     private sealed class MountNamespaceLease(FileSystemRegistry registry, IDisposable token) : IDisposable

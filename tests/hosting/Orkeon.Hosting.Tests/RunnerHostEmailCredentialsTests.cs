@@ -191,6 +191,21 @@ public sealed class RunnerHostEmailCredentialsTests : IDisposable
         Assert.Contains("reserved here: /crew, /credentials", stderr.ToString(), StringComparison.Ordinal);
     }
 
+    [Theory]
+    [InlineData("/inbox", true)]
+    [InlineData("/inbox/sub", true)]
+    [InlineData("/outbox/", true)]
+    [InlineData("/inboxes", false)]
+    public void ShouldReserveTheConversationRootsAndWhatIsBelow_WhenTheCallerReservesThem(string virtualPath, bool refused)
+    {
+        var mount = $"{FileSystemMount.Quote(_root)}:{virtualPath}:rw";
+        using var stderr = new StringWriter();
+
+        Assert.True(RunnerExecution.EnsureReservedRootsAreFree([mount], settingsPath: null, stderr, RunnerVirtualRoots.Crew));
+        Assert.Equal(!refused, RunnerExecution.EnsureReservedRootsAreFree(
+            [mount], settingsPath: null, stderr, RunnerVirtualRoots.Inbox, RunnerVirtualRoots.Outbox));
+    }
+
     [Fact]
     public void An_e_mail_section_the_binder_cannot_convert_leaves_the_host_and_every_tool_standing()
     {

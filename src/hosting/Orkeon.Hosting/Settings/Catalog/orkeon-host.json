@@ -304,6 +304,62 @@
       "description": "How many runs of this crew may be in flight at once. Bounded on purpose: a daemon that accepts unlimited concurrent runs is a daemon that dies under its first burst."
     },
     {
+      "path": "Orkeon:Host:Files:AllowedExtensions",
+      "section": "Orkeon:Host",
+      "type": "list of string",
+      "default": [],
+      "description": "The extensions taken (`pdf` or `.pdf`, case ignored). Empty, every extension is."
+    },
+    {
+      "path": "Orkeon:Host:Files:Enabled",
+      "section": "Orkeon:Host",
+      "type": "boolean",
+      "default": false,
+      "description": "Gives each conversation two folders, mounted for its runs: `/inbox`, read-only, and `/outbox`. Off, no folder is made and neither path is mounted."
+    },
+    {
+      "path": "Orkeon:Host:Files:MaxConversationBytes",
+      "section": "Orkeon:Host",
+      "type": "integer",
+      "default": 104857600,
+      "description": "What one conversation may hold, in bytes, both folders counted. A run writes freely while it runs: a conversation found over this afterwards starts no other run."
+    },
+    {
+      "path": "Orkeon:Host:Files:MaxFileBytes",
+      "section": "Orkeon:Host",
+      "type": "integer",
+      "default": 10485760,
+      "description": "The largest file taken, in bytes."
+    },
+    {
+      "path": "Orkeon:Host:Files:MaxFilesPerMessage",
+      "section": "Orkeon:Host",
+      "type": "integer",
+      "default": 10,
+      "description": "How many files of one message are taken."
+    },
+    {
+      "path": "Orkeon:Host:Files:MaxTotalBytes",
+      "section": "Orkeon:Host",
+      "type": "integer",
+      "default": 2147483648,
+      "description": "What the conversations may hold together, in bytes. Found over this, no conversation starts a run until the retention or the operator makes room."
+    },
+    {
+      "path": "Orkeon:Host:Files:Retention",
+      "section": "Orkeon:Host",
+      "type": "duration",
+      "default": "7.00:00:00",
+      "description": "How long a conversation is kept after its last activity. One with a run in progress, or suspended on a question, is kept."
+    },
+    {
+      "path": "Orkeon:Host:Files:Root",
+      "section": "Orkeon:Host",
+      "type": "string",
+      "default": "conversations",
+      "description": "The folder the conversations are kept in, relative to the service's working directory. No mount and no crew folder may hold it, be it or be under it, links followed: the start is refused."
+    },
+    {
       "path": "Orkeon:Host:LlmProfiles",
       "section": "Orkeon:Host",
       "type": "list of string",

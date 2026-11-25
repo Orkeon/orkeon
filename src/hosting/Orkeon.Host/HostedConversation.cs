@@ -13,10 +13,7 @@ internal sealed record HostedConversation
     public required string ConversationId { get; init; }
 
     /// <summary>What names the conversation where a name is restricted: a hash of its channel and identifier.</summary>
-    public string Key => Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes($"{Channel}\n{ConversationId}")));
-
-    /// <summary>The conversation's folders, null when it has none.</summary>
-    public ConversationFolders? Folders { get; init; }
+    public string Key => new ConversationRef(Channel, ConversationId).Key;
 
     /// <summary>
     /// Prepares the run, once it is admitted and acknowledged, under the run's own token and deadline. What it returns
@@ -25,10 +22,14 @@ internal sealed record HostedConversation
     public required Func<CancellationToken, Task<PreparedRun>> PrepareAsync { get; init; }
 }
 
-/// <summary>The physical folders of a conversation.</summary>
-/// <param name="Inbox">What the conversation was given.</param>
-/// <param name="Outbox">What its runs hand back.</param>
-internal sealed record ConversationFolders(string Inbox, string Outbox);
+/// <summary>A conversation, named by its channel and the channel's identifier of it.</summary>
+/// <param name="Channel">The channel it is on.</param>
+/// <param name="ConversationId">The channel's identifier of it.</param>
+internal readonly record struct ConversationRef(string Channel, string ConversationId)
+{
+    /// <summary>What names the conversation where a name is restricted.</summary>
+    public string Key => Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes($"{Channel}\n{ConversationId}")));
+}
 
 /// <summary>What a run starts on, once its conversation is prepared.</summary>
 /// <param name="Prompt">The prompt.</param>

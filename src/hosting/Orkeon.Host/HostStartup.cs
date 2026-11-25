@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Orkeon.Constants.FileSystem;
 using Orkeon.Domain.FileSystem;
@@ -76,7 +77,8 @@ internal static class HostStartup
           --version             Show the version and exit.
 
     Configuration lives under Orkeon:Host (crews, RunTimeout, ShutdownGracePeriod),
-    Orkeon:Host:Discord, Orkeon:Host:Teams and Orkeon:Host:A2A. Secrets are named by environment variable,
+    Orkeon:Host:Discord, Orkeon:Host:Teams and Orkeon:Host:A2A. Orkeon:Host:Files gives each
+    conversation its files folders, /inbox and /outbox. Secrets are named by environment variable,
     never written in files.
     Documentation: docs/architecture/service-host.md
     """;
@@ -146,17 +148,21 @@ internal static class HostStartup
         // directory needs --allow-external-mounts (or ORKEON_ALLOW_EXTERNAL_MOUNTS=1).
         HostCrewMountPlan crewPlan;
         List<string> inputs;
+        OrkeonHostOptions hostOptions;
         try
         {
             var bootConfiguration = StartupProbes.BuildBootConfiguration(settingsPath);
-            var crews = ReadSection<OrkeonHostOptions>(bootConfiguration, OrkeonHostOptions.SectionName).Crews;
+            hostOptions = ReadSection<OrkeonHostOptions>(bootConfiguration, OrkeonHostOptions.SectionName);
+            var crews = hostOptions.Crews;
             crewPlan = HostCrewMounts.For(crews);
             inputs = [.. crewPlan.Mounts.Concat(crews.SelectMany(crew => crew.Mounts))
                 .Where(mount => !string.IsNullOrWhiteSpace(mount))
                 .Select(FileSystemMount.TryGetBasePath)
                 .OfType<string>()];
-            if (GrantedFolderRefusal(crews) is { } grantError)
+            if (GrantedFolderRefusal(crews, hostOptions.Files.Enabled) is { } grantError)
                 return Refused(report, grantError);
+            if (hostOptions.Files.Enabled && hostOptions.Files.Problem() is { } filesProblem)
+                return Refused(report, $"orkeon-host: {filesProblem}");
         }
         catch (HostConfigurationException ex)
         {
@@ -176,7 +182,7 @@ internal static class HostStartup
         // repo and was the one the guard could not see, so a /crews claimed in appsettings.json met the
         // host's own crew mount and came back as "Duplicate virtual paths" out of a DI factory.
         var reservedRoots = CheckReservedRoots(
-            command.Mounts, settingsPath, [.. crewPlan.Roots, RunnerVirtualRoots.Sandbox]);
+            command.Mounts, settingsPath, [.. crewPlan.Roots, RunnerVirtualRoots.Sandbox, .. hostOptions.Files.Enabled ? Files.HostFilesStartup.Roots : []]);
         if (reservedRoots.Error is { } reservedRootsError)
             return Refused(report, reservedRootsError);
 
@@ -205,6 +211,12 @@ internal static class HostStartup
                 // test builds the very host this binary runs — its sections read there, once.
                 configureServices: (context, services) => services.AddHostServices(context.Configuration, crewPlan),
                 configureBuilder: configureBuilder);
+            if (hostOptions.Files.Enabled && FilesRefusal(host, hostOptions) is { } filesRefusal)
+            {
+                host.Dispose();
+                return Refused(report, $"orkeon-host: {filesRefusal}");
+            }
+
             return new HostLaunch(host, 0);
         }
         catch (RunnerSettingsException ex)
@@ -215,6 +227,20 @@ internal static class HostStartup
         {
             return Refused(report, $"orkeon-host: {ex.Message}");
         }
+    }
+
+    /// <summary>
+    /// Why the conversations' files cannot be kept where the settings say, judged on the mounts the host was built with;
+    /// the operator is warned of a shell no confinement keeps out of them.
+    /// </summary>
+    private static string? FilesRefusal(IHost host, OrkeonHostOptions options)
+    {
+        if (Files.HostFilesStartup.Refusal(options, host.Services.GetRequiredService<FileSystemRegistry>()) is { } refusal)
+            return refusal;
+
+        if (Files.HostFilesStartup.ShellWarning(host.Services.GetRequiredService<IConfiguration>(), Files.HostFilesStartup.InContainer()) is { } warning)
+            HostConsole.Error.WriteLine(warning);
+        return null;
     }
 
     /// <summary>
@@ -300,10 +326,11 @@ internal static class HostStartup
     }
 
     /// <summary>
-    /// CH-10: the first folder granted to a crew that is malformed or missing, the line naming the crew.
+    /// CH-10: the first folder granted to a crew that is malformed or missing, the line naming the crew; with the
+    /// conversations' files on, the first that claims a path of theirs.
     /// </summary>
     [Orkeon.Compliance.Vfs.SuppressVfsCompliance("EXCEPTION-BOOTSTRAP: probes operator-granted folders on the physical disk at start, before the VFS exists.")]
-    private static string? GrantedFolderRefusal(IEnumerable<HostedCrewOptions> crews)
+    private static string? GrantedFolderRefusal(IEnumerable<HostedCrewOptions> crews, bool filesEnabled)
     {
         foreach (var crew in crews)
         {
@@ -314,6 +341,8 @@ internal static class HostStartup
                     var mount = FileSystemMount.Parse(grant);
                     if (!Directory.Exists(mount.BasePath))
                         return $"orkeon-host: crew '{crew.Name}' is granted a folder that does not exist: '{grant}'.";
+                    if (filesEnabled && Files.HostFilesStartup.Claimed(mount.VirtualPath) is { } claimed)
+                        return $"orkeon-host: crew '{crew.Name}' is granted '{grant}': '{claimed}' is the conversation's own folder. Give this mount another virtual name.";
                 }
                 catch (Exception ex) when (ex is FormatException or ArgumentException)
                 {

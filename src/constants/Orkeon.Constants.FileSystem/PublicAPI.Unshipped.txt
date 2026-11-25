@@ -1,2 +1,4 @@
 #nullable enable
 const Orkeon.Constants.FileSystem.RunnerVirtualRoots.CredentialFiles = "/credential-files" -> string!
+const Orkeon.Constants.FileSystem.RunnerVirtualRoots.Inbox = "/inbox" -> string!
+const Orkeon.Constants.FileSystem.RunnerVirtualRoots.Outbox = "/outbox" -> string!

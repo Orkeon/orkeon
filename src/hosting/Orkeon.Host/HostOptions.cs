@@ -114,6 +114,11 @@ internal sealed record OrkeonHostOptions
     /// The run API and the health probes (<c>Orkeon:Host:Api</c>, FWK-14). Off by default.
     /// </summary>
     public Api.HostApiOptions Api { get; init; } = new();
+
+    /// <summary>
+    /// The files of the chat conversations (<c>Orkeon:Host:Files</c>). Off by default.
+    /// </summary>
+    public Files.HostFilesOptions Files { get; init; } = new();
 }
 
 /// <summary>

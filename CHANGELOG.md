@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — orkeon-host gives a conversation its folders
+
+- `Orkeon:Host:Files` (off by default) mounts two folders for the runs of a conversation: `/inbox`, read-only, and
+  `/outbox`, kept from one message to the next and apart from every other conversation's. No channel fills or sends them
+  yet. Limits per file, per conversation and in all; a conversation is deleted after `Retention`.
+- With it on, the start is refused (78) when a mount reaches the conversations' root, links followed, or claims `/inbox`,
+  `/outbox` or a path under them. `RunnerVirtualRoots.Inbox` and `Outbox` name the two roots.
+
 ### Changed — orkeon-host says what it does not take from a chat message
 
 - A Discord or Teams message with attachments runs on its text, and the acknowledgement names the files left out. A

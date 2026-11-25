@@ -121,6 +121,45 @@ outside the working directory, without the flag, is refused with `78` and the ru
 
 `Path` accepts what `orkeon run` accepts: a YAML file, a multi-file crew directory, or an `.ork.ts` script. The host loads it through the same code path, so a hosted crew is exactly the crew a terminal launches. Each crew's directory is **mounted read-only into the VFS automatically**, under a name — `/crews`, then `/crews-1`, `/crews-2`, … for each further directory — and the crew is loaded by that virtual spelling (`/crews/support.yaml` for a file, `/crews-1` for a directory). The loader reads through the virtual file system like everything else in the framework, and a path that only existed on the physical disk would pass the startup probe and then fail on every message. The mount is deliberately *not* identity-mapped: an agent that calls `list_mounts`, or reads any access-denied message, must never be handed the operator's disk layout ([ADR-008](../adr/ADR-008-virtual-paths-are-the-only-currency.md)). A `--mount` of your own claiming `/crews*` is refused at start with exit code 78. One caveat travels with the script form: transpiling `.ork.ts` needs esbuild on the machine, and neither the container image nor a bare service install carries it — a daemon-hosted crew is a YAML crew unless you install esbuild yourself.
 
+### `Files` — the folders of a conversation
+
+Off by default. With `Orkeon:Host:Files:Enabled`, every run of a hosted crew finds two folders: `/inbox`, read-only, what
+the conversation was given, and `/outbox`, read-write, what its runs hand back. Both last as long as the conversation: the
+next message finds them as the previous run left them. Two conversations never see each other's, even on one crew at once.
+A run asked over A2A or the host API has no conversation: it gets two empty folders of its own, deleted when it ends. At
+the end of a run, the files of `/outbox` it added or changed are listed, hidden files and links left out. No channel fills
+`/inbox` or sends what `/outbox` holds yet.
+
+```json
+"Files": {
+  "Enabled": true,
+  "Root": "conversations",
+  "MaxFileBytes": 10485760,
+  "MaxFilesPerMessage": 10,
+  "MaxConversationBytes": 104857600,
+  "MaxTotalBytes": 2147483648,
+  "Retention": "7.00:00:00",
+  "AllowedExtensions": [ "pdf", "csv" ]
+}
+```
+
+- **Where.** `Root` (relative to the working directory of the service) holds one folder per conversation, named by a hash
+  of its channel and identifier, open to the account of the service alone on Unix. The setting allows the host itself that
+  folder wherever it lies; no agent reaches it but by its own two mounts.
+- **Refused at start (`78`).** A `Root` that is, holds or is under any folder the host mounts — a `--mount`, a mount of
+  the settings, a crew's folder, a crew's `Mounts` —, links followed on both sides; a mount on `/inbox` or `/outbox`, or
+  on a path under them, wherever it is declared; a limit that is not positive; an empty extension.
+- **Limits.** A file over a limit, or of an extension `AllowedExtensions` leaves out, is refused alone. A run writes freely
+  while it runs: the limits are checked when a file arrives and when a run starts, and a conversation over
+  `MaxConversationBytes`, or a host over `MaxTotalBytes`, starts no run until the retention or the operator makes room.
+- **Retention.** A conversation is deleted `Retention` after its last activity; the check runs at start, then every hour.
+  One with a run in progress, or suspended on a question, is kept. A suspended run is resumed outside the host
+  (`orkeon run --resume`), with no conversation.
+- **The shell.** An unconfined `shell_command` is not bound by the mounts and reads every conversation: the host says so at
+  start when the shell runs unconfined, and [the confinement](security.md#shell-confinement) is the answer.
+- **Outside the host.** The two roots are reserved in `orkeon-host` with `Files` on, and nowhere else. A crew that uses
+  them runs in a terminal with `--mount ./in:/inbox:ro --mount ./out:/outbox:rw`.
+
 The configuration is **validated at start**: no crew under `Orkeon:Host:Crews`, a crew without a `Name` or a `Path`, two crews with one name (compared case-insensitively), a crew path that does not exist, a `MaxConcurrentRuns` below 1, a `RunTimeout` that is zero, negative or beyond about 24.8 days, a negative `ShutdownGracePeriod`, an `LlmProfiles` entry naming a profile `Llm:Profiles` does not define, and — for an enabled channel — an empty allow list, an unset token variable, a `ProgressInterval` that is zero or negative, a `GuildIds` entry or `Routes` key that is not a number, or a `Routes` entry or `DefaultCrew` naming a crew the host does not declare; for an enabled A2A server, no exposed crew, an exposed crew the host does not declare, a malformed `Host` or `Port`, or a listener beyond the loopback interface with no authentication, and — whatever the A2A switch — an `A2A:EnableServer`, `A2A:Host` or `A2A:Port` key, which the daemon does not read (see [Other agents (A2A)](#5-other-agents-a2a)), and a listener the system refuses — a URL HTTP.sys reserved for no one, a port another process holds (see [Windows](#windows)); and, before any of them, a setting the runner host refuses — a value the configuration binder cannot convert (`"RunTimeout": "abc"`, `"Orkeon:Guardian:Enabled": "oui"`) or that a rule of its section refuses, a key no section carries (`Orkeon:Host:RunTimeoutt`, or one that is no setting any more, `RaggableTree:Exclude`), a section or a component's name it does not know (`Orkeon:Guardain`, a memory provider, a RAG reranker), a log level that is none, an LLM profile it cannot build, a settings file it cannot read, an address that is no address (`RaggableTree:Embedding:BaseUrl`, `Telemetry:OtlpEndpoint`), all refuse the start with exit code 78 — before the service ever reports ready — rather than being discovered one failed run at a time. Every setting the daemon reads is judged then, whether a run uses it or not; the e-mail accounts are the one exception — an account that cannot be read is set aside and reported when a run names it ([when a setting is refused](../reference/configuration.md#when-a-setting-is-refused)).
 
 The start also refuses a `${NAME}` or `%NAME%` reference in a setting the host passes as written, naming the path and never the value, with exit 78 and before any MCP server connects: Orkeon never expands a variable ([the list](../reference/configuration.md#a-variable-reference-is-never-expanded)).

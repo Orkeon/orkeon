@@ -1,3 +1,4 @@
+using Orkeon.Infrastructure.Configuration;
 using System.Globalization;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -117,6 +118,19 @@ internal static class HostServiceRegistration
             HostStartup.ReadSection<Gateway.DiscordChannelOptions>(configuration, Gateway.DiscordChannelOptions.SectionName)));
         services.AddSingleton(Options.Create(
             HostStartup.ReadSection<Gateway.TeamsChannelOptions>(configuration, Gateway.TeamsChannelOptions.SectionName)));
+
+        // The conversations' files, when the operator turns them on: nothing of them is registered otherwise. Their
+        // retention touches no run, and starts before anything can start one.
+        if (hostSection.Files.Enabled)
+        {
+            services.TryAddSingleton<HostApiOptionalServices>();
+            services.AddSingleton<Files.ConversationFiles>();
+            // The path validator keeps to the working directory: a root elsewhere is allowed as the sandbox session's is.
+            // No mount but the conversations' own reaches it, or the start was refused.
+            services.Configure<PathSecurityOptions>(options =>
+                options.AdditionalAllowedDirectories.Add(new Files.ConversationStore(hostSection.Files.Root).Root));
+            services.AddHostedService<Files.ConversationRetentionService>();
+        }
 
         // The MCP connection, the A2A server, the chat channel, the crew host — in that order,
         // which is both start order and stop order reversed.

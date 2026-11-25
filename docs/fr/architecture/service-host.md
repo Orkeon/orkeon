@@ -122,6 +122,48 @@ hors du dossier de travail, sans le drapeau, est refusé avec `78` et la ligne d
 
 `Path` accepte ce qu'accepte `orkeon run` : un fichier YAML, un dossier de crew multi-fichiers, ou un script `.ork.ts`. Le host le charge par le même chemin de code, donc **une crew hébergée est exactement la crew qu'un terminal lance**. Le dossier de chaque crew est **monté automatiquement dans le VFS, en lecture seule, sous un nom** — `/crews`, puis `/crews-1`, `/crews-2`, … pour chaque dossier supplémentaire — et la crew est chargée par cette orthographe virtuelle (`/crews/support.yaml` pour un fichier, `/crews-1` pour un dossier). Le loader lit par le système de fichiers virtuel comme tout le reste du framework, et un chemin qui n'existerait que sur le disque physique passerait la sonde de démarrage puis échouerait à chaque message. Le montage n'est délibérément **pas** identité : un agent qui appelle `list_mounts`, ou qui lit un message de refus d'accès, ne doit jamais recevoir l'organisation disque de l'opérateur ([ADR-008](../adr/ADR-008-virtual-paths-are-the-only-currency.md)). Un `--mount` à vous qui revendique `/crews*` est refusé au démarrage avec le code de sortie 78. Une réserve accompagne la forme script : transpiler du `.ork.ts` demande esbuild sur la machine, et ni l'image de conteneur ni une installation service nue ne l'embarquent — une crew hébergée en daemon est une crew YAML, sauf à installer esbuild soi-même.
 
+### `Files` — les dossiers d'une conversation
+
+Éteint par défaut. Avec `Orkeon:Host:Files:Enabled`, chaque run d'une crew hébergée trouve deux dossiers : `/inbox`, en
+lecture seule, ce que la conversation a reçu, et `/outbox`, en lecture-écriture, ce que ses runs rendent. Les deux durent
+autant que la conversation : le message suivant les retrouve tels que le run précédent les a laissés. Deux conversations ne
+voient jamais les dossiers l'une de l'autre, même sur une crew à la fois. Un run demandé par A2A ou par l'API de l'hôte n'a
+pas de conversation : il reçoit deux dossiers vides à lui, supprimés à sa fin. À la fin d'un run, les fichiers de `/outbox`
+qu'il a ajoutés ou modifiés sont listés, fichiers cachés et liens exclus. Aucun canal ne remplit encore `/inbox` ni
+n'envoie ce que contient `/outbox`.
+
+```json
+"Files": {
+  "Enabled": true,
+  "Root": "conversations",
+  "MaxFileBytes": 10485760,
+  "MaxFilesPerMessage": 10,
+  "MaxConversationBytes": 104857600,
+  "MaxTotalBytes": 2147483648,
+  "Retention": "7.00:00:00",
+  "AllowedExtensions": [ "pdf", "csv" ]
+}
+```
+
+- **Où.** `Root` (relatif au dossier de travail du service) tient un dossier par conversation, nommé par un hachage de son
+  canal et de son identifiant, ouvert au seul compte du service sous Unix. Le réglage autorise ce dossier à l'hôte lui-même
+  où qu'il soit ; aucun agent ne l'atteint autrement que par ses deux mounts.
+- **Refusé au démarrage (`78`).** Un `Root` qui est un dossier que monte l'hôte, qui en contient un ou qui se trouve
+  dessous — un `--mount`, un mount des settings, le dossier d'une crew, les `Mounts` d'une crew —, liens suivis des deux
+  côtés ; un mount sur `/inbox` ou `/outbox`, ou sur un chemin dessous, où qu'il soit déclaré ; une limite qui n'est pas
+  positive ; une extension vide.
+- **Limites.** Un fichier au-delà d'une limite, ou d'une extension qu'`AllowedExtensions` ne prend pas, est refusé seul. Un
+  run écrit librement tant qu'il tourne : les limites sont contrôlées à l'arrivée d'un fichier et au démarrage d'un run, et
+  une conversation au-delà de `MaxConversationBytes`, ou un hôte au-delà de `MaxTotalBytes`, ne démarre aucun run avant que
+  la rétention ou l'opérateur ne fasse de la place.
+- **Rétention.** Une conversation est supprimée `Retention` après sa dernière activité ; le contrôle passe au démarrage,
+  puis toutes les heures. Celle dont un run est en cours, ou suspendu sur une question, est gardée. Un run suspendu se
+  reprend hors de l'hôte (`orkeon run --resume`), sans conversation.
+- **Le shell.** Un `shell_command` non confiné n'est pas tenu par les mounts et lit toutes les conversations : l'hôte le dit
+  au démarrage quand le shell tourne sans confinement, et [le confinement](security.md#confinement-du-shell) est la réponse.
+- **Hors de l'hôte.** Les deux racines sont réservées dans `orkeon-host` avec `Files` allumé, et nulle part ailleurs. Une
+  crew qui s'en sert tourne dans un terminal avec `--mount ./in:/inbox:ro --mount ./out:/outbox:rw`.
+
 La configuration est **validée au démarrage** : aucune crew sous `Orkeon:Host:Crews`, une crew sans `Name` ou sans `Path`, deux crews de même nom (sans tenir compte de la casse), un chemin de crew qui n'existe pas, un `MaxConcurrentRuns` inférieur à 1, un `RunTimeout` nul, négatif ou au-delà d'environ 24,8 jours, un `ShutdownGracePeriod` négatif, une entrée de `LlmProfiles` qui nomme un profil que `Llm:Profiles` ne définit pas, et — pour un canal activé — une liste d'autorisation vide, une variable de jeton absente, un `ProgressInterval` nul ou négatif, une entrée de `GuildIds` ou une clé de `Routes` qui n'est pas un nombre, ou une entrée de `Routes` ou un `DefaultCrew` qui nomme une crew que l'hôte ne déclare pas ; pour un serveur A2A activé, aucune crew exposée, une crew exposée que l'hôte ne déclare pas, un `Host` ou un `Port` mal formé, ou une écoute au-delà de la boucle locale sans authentification, et — quel que soit l'interrupteur A2A — une clé `A2A:EnableServer`, `A2A:Host` ou `A2A:Port`, que le démon ne lit pas (voir [Autres agents (A2A)](#5-autres-agents-a2a)), et une écoute que le système refuse — une URL que HTTP.sys n'a réservée pour personne, un port qu'un autre processus tient (voir [Windows](#windows)) ; et, avant tous ceux-là, un réglage que refuse l'hôte des runners — une valeur que le lieur de configuration ne convertit pas (`"RunTimeout": "abc"`, `"Orkeon:Guardian:Enabled": "oui"`) ou qu'une règle de sa section refuse, une clé qu'aucune section ne porte (`Orkeon:Host:RunTimeoutt`, ou une clé qui n'est plus un réglage, `RaggableTree:Exclude`), un nom de section ou de composant qu'il ne connaît pas (`Orkeon:Guardain`, un fournisseur de mémoire, un reranker RAG), un niveau de journal qui n'en est pas un, un profil LLM qu'il ne sait pas construire, un fichier de réglages qu'il ne peut pas lire, une adresse qui n'en est pas une (`RaggableTree:Embedding:BaseUrl`, `Telemetry:OtlpEndpoint`), refusent tous le démarrage avec le code de sortie 78 — avant que le service ne se déclare prêt — plutôt que d'être découverts un run raté à la fois. Tout réglage que lit le démon est jugé à ce moment, qu'un run s'en serve ou non ; les comptes e-mail sont la seule exception — un compte illisible est mis de côté et signalé quand un run le nomme ([quand un réglage est refusé](../reference/configuration.md#quand-un-réglage-est-refusé)).
 
 Le démarrage refuse aussi une référence `${NOM}` ou `%NOM%` dans un réglage que l'hôte transmet tel qu'il est écrit, en nommant le chemin et jamais la valeur, avec le code 78 et avant la connexion d'un serveur MCP : Orkeon ne développe jamais une variable ([la liste](../reference/configuration.md#une-référence-de-variable-nest-jamais-développée)).

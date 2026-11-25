@@ -89,7 +89,7 @@ These accesses cannot go through the VFS by nature and are **permanently** allow
 | Host probing | `DockerSandbox`, `HostProcessRunner`, `ProcessGitDiffProvider` | `OUT-OF-SCOPE` | Discover `docker`/`dotnet`/`git` on PATH, never a mount |
 | Toolchain | `Scripting/Toolchain/EsbuildTranspiler.cs` | `OUT-OF-SCOPE` | Locates the `esbuild` binary + transpile temp files; host toolchain |
 | Toolchain (type check) | `Scripting/Toolchain/TscTypeChecker.cs` | `OUT-OF-SCOPE` (locating `tsc`), `EXCEPTION-BOOTSTRAP` (the scratch folder) | `tsc` is an external process that reads and prints physical paths, so the checker writes a scratch folder (typings roll-up, tsconfig, copies of the script and of its imported modules with the `orkeon-script` pragma blanked) under the temp directory, outside the VFS and unmounted: nothing in the framework reads it back. Every path of the compiler's output and of a failure message is mapped to its virtual path before display; the folder is deleted at the end, also on cancellation |
-| Host applications (pre-DI) | `orkeon-host` (`CrewHostService`, `HostCrewMounts`, `HostStartup`), `Hosting/CrewDirectoryLayout`, the `orkeon` entrypoint (`Orkeon.Scripting.Cli`, assembly-wide), the REPL's `Program` | `EXCEPTION-BOOTSTRAP` | Validate or classify operator-supplied crew, script and settings paths before any mount exists |
+| Host applications (pre-DI) | `orkeon-host` (`CrewHostService`, `HostCrewMounts`, `HostStartup`, `Files/HostFilesStartup`, `Files/ConversationStore`), `Hosting/CrewDirectoryLayout`, the `orkeon` entrypoint (`Orkeon.Scripting.Cli`, assembly-wide), the REPL's `Program` | `EXCEPTION-BOOTSTRAP` | Validate or classify operator-supplied crew, script and settings paths before any mount exists; make and list the conversations' folders, which `/inbox` and `/outbox` are then mounted on |
 | Security primitive | `Security/PathValidator.cs` | (allowlist) | symlink/realpath resolution is its job |
 | Watcher bridge | `Analysis/.../FileSystemWatcherCodebaseWatcher.cs` | `EXCEPTION-WATCHER-BRIDGE` | Adapts `System.IO.FileSystemWatcher` to `ICodebaseWatcher` |
 | RaggableTree probe | `Analysis/Core/FileSystemDiscoverer.cs` (diagnostic probe only) | `OUT-OF-SCOPE` | The *batch discovery itself* runs on `EnumerateFilesAsync`; the probe deliberately counts physical entries to distinguish "VFS yielded nothing" from "disk empty" |
@@ -304,6 +304,7 @@ an already-ratified `EXCEPTION-BOOTSTRAP` scope, not a new category. `orkeon run
 mount claiming one of these roots (`EnsureReservedRootsAreFree`, `/state` and `/runs` included);
 every other entry point refuses the roots it reserves for itself (`/crew` and `/sandbox` for
 `--list-tools` and `mcp serve`), and all of them refuse `/credentials` and `/credential-files` (or any path under them), whatever the accounts.
+`orkeon-host` with `Orkeon:Host:Files` on reserves `/inbox` and `/outbox` too (and any path under them), which are agent-facing, one pair per conversation; every other runner takes a mount there.
 
 An internal mount closes its physical folder to the agents, whatever other mount holds it. So the folder
 of a credential file must be a folder of its own: when it is the working directory, a folder mounted for
