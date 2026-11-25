@@ -849,6 +849,9 @@ internal sealed class ConversationRun
     /// <summary>Whether the folders are a conversation's: a run without one gets none of a person's files.</summary>
     public bool OfConversation => _conversation is not null;
 
+    /// <summary>The images of the message the run answers, set once it is prepared.</summary>
+    public IReadOnlyList<Application.Interfaces.Services.CrewInputImage> Images { get; set; } = [];
+
     /// <summary>The outbox as the run's mount set, entered, shows it.</summary>
     public Task<IReadOnlyDictionary<string, (long Size, DateTimeOffset Written)>> ListOutboxAsync() => _files.ListOutboxAsync();
 

@@ -47,7 +47,7 @@ public sealed class ChatReceptionTests : IDisposable
         public Task SayAsync(InboundMessage message) => Gateway.HandleAsync(message, Responder, Ct);
     }
 
-    private Bench Build(Action<Dictionary<string, object?>>? files = null, TimeSpan? timeout = null)
+    private Bench Build(Action<Dictionary<string, object?>>? files = null, TimeSpan? timeout = null, bool executes = true)
     {
         Bench? bench = null;
         var host = _harness.Build(
@@ -63,11 +63,17 @@ public sealed class ChatReceptionTests : IDisposable
                 if (timeout is { } bound)
                     settings["RunTimeout"] = bound.ToString();
             },
-            services: s => s.AddScoped<IAgentExecutionService>(_ => new ScriptedAgentExecutionService(_ =>
+            services: s =>
             {
-                bench!.Worked++;
-                return Task.FromResult("done");
-            })),
+                if (executes)
+                {
+                    s.AddScoped<IAgentExecutionService>(_ => new ScriptedAgentExecutionService(_ =>
+                    {
+                        bench!.Worked++;
+                        return Task.FromResult("done");
+                    }));
+                }
+            },
             logs: _logs);
         _hosts.Add(host);
         var registry = host.Services.GetRequiredService<CrewHostRegistry>();
@@ -112,6 +118,37 @@ public sealed class ChatReceptionTests : IDisposable
         Assert.Equal(["notes.txt"], Kept());
         Assert.Equal(1, bench.Worked);
         Assert.DoesNotContain("not taken", bench.Responder.Sent[0].Text, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task ShouldReferToTheImagesOfThisMessageAlone()
+    {
+        var bench = Build();
+        await bench.SayAsync(Message("Look.", new FakeAttachmentSource().With("1", "old"), File("1", "old.png", 3, "image/png")));
+
+        await bench.SayAsync(Message(
+            "Look again.",
+            new FakeAttachmentSource().With("2", "a").With("3", "b").With("4", "c").With("5", "d"),
+            File("2", "one.bin", 1, "image/webp; q=1"),
+            File("3", "two.JPG", 1),
+            File("4", "notes.txt", 1, "text/plain"),
+            File("5", "sound.mp3", 1, "audio/mpeg")));
+
+        Assert.Equal(["/inbox/old.png"], bench.Runner.Prepared[0].Images.Select(i => i.Path));
+        Assert.Equal(["/inbox/one.bin", "/inbox/two.JPG"], bench.Runner.Prepared[1].Images.Select(i => i.Path));
+        Assert.Equal(["image/webp", null], bench.Runner.Prepared[1].Images.Select(i => i.MediaType));
+    }
+
+    [Fact]
+    public async Task ShouldTellThePersonWhichImagesWereNotSeen_WhenTheLoopCarriesNone()
+    {
+        // A kickoff with the host's own echo provider: what it says of the images must come back to the person.
+        var bench = Build(executes: false);
+
+        await bench.SayAsync(Message("Look.", new FakeAttachmentSource().With("1", "x"), File("1", "a.png", 1, "image/png")));
+
+        Assert.Contains("`/inbox/a.png`", bench.Answer, StringComparison.Ordinal);
+        Assert.Contains("not shown", bench.Answer, StringComparison.Ordinal);
     }
 
     [Fact]

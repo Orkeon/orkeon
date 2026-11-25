@@ -35,4 +35,17 @@ public sealed class DecisionDispatchTests
         // Assert
         Assert.Equal((false, "the model broke", DecisionSources.Model), (result.Success, result.Error, result.DecisionSource));
     }
+
+    [Fact]
+    public async System.Threading.Tasks.Task ShouldSayThatADecisionIsShownNoImage()
+    {
+        var dispatch = new DecisionDispatch(new DecisionTaskRunner(_model, DecisionCircuit.On, NullLogger<DecisionTaskRunner>.Instance));
+        var task = DecisionTask();
+        using var run = RunImages.Begin([new Orkeon.Application.Interfaces.Services.CrewInputImage { Path = "/inbox/photo.png" }]);
+
+        await dispatch.RunAsync(task, [task], [], [], TestContext.Current.CancellationToken);
+
+        var unseen = Assert.Single(RunImages.Unseen);
+        Assert.Equal(("/inbox/photo.png", "the decision 'triage'", "a decision reads text alone"), (unseen.Path, unseen.Reader, unseen.Reason));
+    }
 }

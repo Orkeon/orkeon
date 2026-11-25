@@ -105,8 +105,15 @@ internal sealed class NativeToolCallingAgentLoop
 
             // The call's turn in the agent's and the crew's windows (GAP-38) — nothing held past it.
             await _llmGate.WaitTurnAsync(agent, cancellationToken).ConfigureAwait(false);
-            var response = await _fullProvider.ChatAsync(
-                messages.ToArray(), config, cancellationToken).ConfigureAwait(false);
+            Domain.SharedKernel.ValueObjects.LlmResponse response;
+            using (var images = RunImages.OpenTurn(agent.Role.Value))
+            {
+                response = await _fullProvider.ChatAsync(
+                    messages.ToArray(), config, cancellationToken).ConfigureAwait(false);
+                if (response.Error is null)
+                    images?.Answered();
+            }
+
             compactor?.Observe(response.PromptTokens, view!);
 
             sw.Stop();

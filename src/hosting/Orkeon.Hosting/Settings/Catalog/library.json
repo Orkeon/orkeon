@@ -2967,6 +2967,13 @@
       "description": "Maximum allowed audio duration in seconds (default: 300 seconds / 5 minutes)."
     },
     {
+      "path": "Orkeon:MultiModal:MaxImages",
+      "section": "Orkeon:MultiModal",
+      "type": "integer",
+      "default": 10,
+      "description": "Maximum number of images of a crew's input one model call carries (default: 10)."
+    },
+    {
       "path": "Orkeon:MultiModal:MaxImageSizeBytes",
       "section": "Orkeon:MultiModal",
       "type": "integer",

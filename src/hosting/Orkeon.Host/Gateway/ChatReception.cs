@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Text;
 using System.Text.RegularExpressions;
+using Orkeon.Application.Interfaces.Services;
 using Orkeon.Constants.FileSystem;
 using Orkeon.Host.Files;
 using Orkeon.Tools.Email.Mime;
@@ -14,6 +15,8 @@ namespace Orkeon.Host.Gateway;
 internal static partial class ChatReception
 {
     private const string DefaultText = "Process the files attached to this message.";
+    private static readonly string[] s_imageExtensions = [".png", ".jpg", ".jpeg", ".webp", ".gif"];
+
     private const int MaxListed = 20;
     private const int MaxPathLength = 200;
 
@@ -53,8 +56,26 @@ internal static partial class ChatReception
 
         var earlier = await files.ListInboxAsync(conversation, ct).ConfigureAwait(false);
         var here = kept.Select(k => k.Path).ToHashSet(StringComparer.Ordinal);
-        return new PreparedRun(Prompt(text, kept, [.. earlier.Where(f => !here.Contains(f.Path))], refused)) { RefusedFiles = refused };
+        return new PreparedRun(Prompt(text, kept, [.. earlier.Where(f => !here.Contains(f.Path))], refused))
+        {
+            RefusedFiles = refused,
+            Images =
+            [
+                .. kept
+                    .Select(k => new CrewInputImage { Path = k.Path, MediaType = ImageType(k.Type) })
+                    .Where(i => i.MediaType is not null || HasImageExtension(i.Path)),
+            ],
+        };
     }
+
+    /// <summary>The announced type, when it says an image. A claim: the bytes decide what a model is shown.</summary>
+    private static string? ImageType(string? announced) =>
+        announced?.Split(';')[0].Trim() is { } media && media.StartsWith("image/", StringComparison.OrdinalIgnoreCase) && MediaType().IsMatch(media)
+            ? media
+            : null;
+
+    private static bool HasImageExtension(string path) =>
+        s_imageExtensions.Any(e => path.EndsWith(e, StringComparison.OrdinalIgnoreCase));
 
     private static string Prompt(
         string text,

@@ -41,6 +41,9 @@ internal sealed record PreparedRun(string Prompt, IReadOnlyDictionary<string, st
 {
     /// <summary>The files that were not taken.</summary>
     public IReadOnlyList<RefusedFile> RefusedFiles { get; init; } = [];
+
+    /// <summary>The images that came with the message, by reference: the run's tasks see them.</summary>
+    public IReadOnlyList<Application.Interfaces.Services.CrewInputImage> Images { get; init; } = [];
 }
 
 /// <summary>A file that was not taken.</summary>

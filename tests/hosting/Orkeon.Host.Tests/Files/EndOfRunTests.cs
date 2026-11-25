@@ -1,6 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging.Abstractions;
+using Orkeon.Application.Interfaces.Services;
 using Orkeon.Host.Files;
 using Orkeon.Host.Gateway;
 using Orkeon.Host.Tests.Api;
@@ -97,6 +98,48 @@ public sealed class EndOfRunTests : IDisposable
         Assert.Contains("`/outbox/reply-run-1.md`", answer, StringComparison.Ordinal);
         Assert.Equal(text, await File.ReadAllTextAsync(Path.Combine(Outbox, "reply-run-1.md"), Ct));
         Assert.Empty(_responder.Files);
+    }
+
+    [Theory]
+    [MemberData(nameof(Outcomes))]
+    public async Task ShouldNameTheImagesNotShown_HoweverTheRunEnds(int outcome)
+    {
+        var (gateway, _) = Build();
+        _runner.Result = new HostedRunResult((HostedRunOutcome)outcome, "run-1", "the answer")
+        {
+            UnseenImages =
+            [
+                new UnseenImage { Path = "/inbox/a`@everyone.png", Reader = "Look**er", Reason = "its model is not known to read images" },
+                new UnseenImage { Path = "/inbox/b.png", Reader = "Writer", Reason = "its model is not known to read images" },
+            ],
+        };
+
+        await SayAsync(gateway);
+
+        var answer = Assert.Single(Completed);
+        Assert.StartsWith("the answer", answer, StringComparison.Ordinal);
+        Assert.Contains("`/inbox/b.png` to `Writer` (its model is not known to read images)", answer, StringComparison.Ordinal);
+        Assert.Contains("`/inbox/a'@everyone.png` to `Look**er`", answer, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task ShouldBoundTheImagesNotShown()
+    {
+        var (gateway, _) = Build();
+        var unseen = Enumerable.Range(0, 100).Select(i => new UnseenImage { Path = $"/inbox/{i}.png", Reader = new string('r', 300), Reason = "why" });
+        _runner.Result = new HostedRunResult(HostedRunOutcome.Completed, "run-1", new string('t', 5000))
+        {
+            UnseenImages = [.. unseen],
+            OutboxFiles = [.. Enumerable.Range(0, 100).Select(i => new OutboxFile($"/outbox/{i}.csv", 5))],
+        };
+
+        await SayAsync(gateway);
+
+        var answer = Assert.Single(Completed);
+        Assert.InRange(answer.Length, 1000, 2000);
+        Assert.Contains("`/inbox/0.png`", answer, StringComparison.Ordinal);
+        Assert.Contains("`/outbox/0.csv`", answer, StringComparison.Ordinal);
+        Assert.StartsWith("ttt", answer, StringComparison.Ordinal);
     }
 
     [Fact]

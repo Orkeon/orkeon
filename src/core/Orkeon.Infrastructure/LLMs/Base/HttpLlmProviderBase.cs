@@ -108,7 +108,10 @@ public abstract partial class HttpLlmProviderBase : ILlmProvider, IStreamingLlmP
     /// </summary>
     /// <param name="config">The call's effective configuration; null for the provider's own.</param>
     /// <returns>A model identifier, never empty.</returns>
-    protected string ResolveModel(LlmConfig? config)
+    protected string ResolveModel(LlmConfig? config) => EffectiveModel(config);
+
+    /// <summary><see cref="ResolveModel"/>, for the layers the factory puts around a provider.</summary>
+    internal string EffectiveModel(LlmConfig? config)
     {
         if (!string.IsNullOrWhiteSpace(config?.Model))
             return config.Model;

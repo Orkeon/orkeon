@@ -92,6 +92,25 @@ public sealed class CheckpointingAgentExecutionServiceTests : IDisposable
         Assert.Equal(CheckpointStatus.Failed, state.TaskCheckpoints["second#1"].Status);
     }
 
+    [Theory]
+    [InlineData("/inbox/photo.png", 1)]
+    [InlineData("/inbox/other.png", 2)]
+    public async System.Threading.Tasks.Task ShouldWorkAgain_WhenTheResumedRunIsGivenOtherImages(string resumed, int calls)
+    {
+        var id = ExecutionId.New();
+        await StartSessionAsync(id);
+        using (Enter(id))
+        using (Orkeon.Application.Crew.Execution.RunImages.Begin([new CrewInputImage { Path = "/inbox/photo.png" }]))
+            await Decorate().ExecuteTaskAsync(_agent, Task("first"), Context(), TestContext.Current.CancellationToken);
+        var plan = await PlanOfAsync(id);
+
+        using (Enter(id, plan))
+        using (Orkeon.Application.Crew.Execution.RunImages.Begin([new CrewInputImage { Path = resumed }]))
+            await Decorate().ExecuteTaskAsync(_agent, Task("first"), Context(), TestContext.Current.CancellationToken);
+
+        Assert.Equal(calls, _inner.Calls);
+    }
+
     [Fact]
     [Trait("BR", "FWK-07")]
     public async System.Threading.Tasks.Task ShouldCheckpointTheTypedOverloadToo_AndAnswerItFromTheCheckpointWhenResumed()

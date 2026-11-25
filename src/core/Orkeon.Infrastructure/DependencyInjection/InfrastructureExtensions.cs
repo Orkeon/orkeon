@@ -169,6 +169,21 @@ public static class InfrastructureExtensions
         }
     }
 
+    /// <summary>The run's own view of the file system, never the privileged one the mock provider reads through.</summary>
+    private static LLMs.RunImageSource? RunImagesOf(IServiceProvider sp)
+    {
+        try
+        {
+            return sp.GetService<IFileSystemService>() is { } files
+                ? new LLMs.RunImageSource(files, sp.GetService<Microsoft.Extensions.Options.IOptions<Orkeon.Application.Validation.MultiModalOptions>>()?.Value ?? new())
+                : null;
+        }
+        catch (InvalidOperationException)
+        {
+            return null;
+        }
+    }
+
     private static IServiceCollection AddOrkeonCorePlumbing(this IServiceCollection services)
     {
         // Add path security options (configurable via appsettings.json "PathSecurity" section)
@@ -229,6 +244,7 @@ public static class InfrastructureExtensions
                 // A provider shipped outside Infrastructure (src/interop) registers its module; a
                 // section naming its key by Provider is built by it.
                 Modules = [.. sp.GetServices<ILlmProviderModule>()],
+                Images = RunImagesOf(sp),
             }));
 
         // The host's named LLM profiles (GAP-17): the default provider plus every profile

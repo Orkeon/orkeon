@@ -186,6 +186,7 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
         using var streamScope = CrewStreamScope.Begin(events);
         using var callModeScope = LlmCallModeScope.Open();
         using var ending = CrewRunEnding.Begin(out var end);
+        using var images = Orkeon.Application.Crew.Execution.RunImages.Begin(ImagesOf(input));
         var stopwatch = Stopwatch.StartNew();
         var startedAt = DateTimeOffset.UtcNow;
 
@@ -274,7 +275,7 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
                 if (run.Suspension is { } waiting)
                 {
                     stopwatch.Stop();
-                    return SuspendedOutput(waiting, stopwatch.Elapsed, runId);
+                    return SuspendedOutput(waiting, stopwatch.Elapsed, runId) with { UnseenImages = Orkeon.Application.Crew.Execution.RunImages.Unseen };
                 }
 
                 // The tasks were checkpointed as they completed (CheckpointingAgentExecutionService): the
@@ -294,7 +295,7 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
             {
                 // The run was stopped on a question (the exception, or the failure it left behind): not a failure.
                 stopwatch.Stop();
-                return SuspendedOutput(run.Suspension, stopwatch.Elapsed, runId);
+                return SuspendedOutput(run.Suspension, stopwatch.Elapsed, runId) with { UnseenImages = Orkeon.Application.Crew.Execution.RunImages.Unseen };
             }
             catch (Exception ex)
             {
@@ -323,7 +324,7 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
             if (!output.Succeeded && output.PendingInput is null)
                 await ReportRunFailureAsync(crewId, startedAt, output, cause, end, runSpan is not null).ConfigureAwait(false);
 
-            return output with { ExecutionId = runId };
+            return output with { ExecutionId = runId, UnseenImages = Orkeon.Application.Crew.Execution.RunImages.Unseen };
         }
         finally
         {
@@ -796,6 +797,8 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
 
         return new ResumePlan(resumed.SessionId, resumed.CompletedOutputs);
     }
+
+    private static IReadOnlyList<CrewInputImage> ImagesOf(CrewInput? input) => input?.Images ?? [];
 
     private static CrewOutput SuspendedOutput(PendingInputRequest waiting, TimeSpan elapsed, string? runId) =>
         new(

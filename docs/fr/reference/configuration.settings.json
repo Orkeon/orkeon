@@ -353,6 +353,7 @@
     "MCP:Server:Version": "Version du serveur annoncée dans le handshake et dans le `_meta` de l'ère moderne. Vide ou blanche (par défaut) : la version de la release Orkeon en cours d'exécution.",
     "Orkeon:MultiModal:Enabled": "Si les contenus multimodaux sont activés.",
     "Orkeon:MultiModal:MaxAudioDurationSeconds": "Durée audio maximale autorisée, en secondes (défaut : 300 secondes, soit 5 minutes).",
+    "Orkeon:MultiModal:MaxImages": "Nombre maximal d'images de l'entrée d'un crew qu'un appel au modèle porte (défaut : 10).",
     "Orkeon:MultiModal:MaxImageSizeBytes": "Taille d'image maximale autorisée, en octets (défaut : 20 Mo).",
     "Orkeon:MultiModal:SupportedAudioFormats": "Liste des types MIME audio pris en charge.",
     "Orkeon:MultiModal:SupportedImageFormats": "Liste des types MIME d'image pris en charge.",

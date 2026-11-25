@@ -1,1 +1,48 @@
 #nullable enable
+Orkeon.Application.Interfaces.Services.CrewInputImage
+Orkeon.Application.Interfaces.Services.CrewInputImage.CrewInputImage() -> void
+Orkeon.Application.Interfaces.Services.CrewInputImage.<Clone>$() -> Orkeon.Application.Interfaces.Services.CrewInputImage!
+Orkeon.Application.Interfaces.Services.CrewInputImage.Equals(Orkeon.Application.Interfaces.Services.CrewInputImage? other) -> bool
+override Orkeon.Application.Interfaces.Services.CrewInputImage.Equals(object? obj) -> bool
+override Orkeon.Application.Interfaces.Services.CrewInputImage.GetHashCode() -> int
+override Orkeon.Application.Interfaces.Services.CrewInputImage.ToString() -> string!
+static Orkeon.Application.Interfaces.Services.CrewInputImage.operator ==(Orkeon.Application.Interfaces.Services.CrewInputImage? left, Orkeon.Application.Interfaces.Services.CrewInputImage? right) -> bool
+static Orkeon.Application.Interfaces.Services.CrewInputImage.operator !=(Orkeon.Application.Interfaces.Services.CrewInputImage? left, Orkeon.Application.Interfaces.Services.CrewInputImage? right) -> bool
+Orkeon.Application.Interfaces.Services.CrewInputImage.Path.get -> string!
+Orkeon.Application.Interfaces.Services.CrewInputImage.Path.init -> void
+Orkeon.Application.Interfaces.Services.CrewInputImage.MediaType.get -> string?
+Orkeon.Application.Interfaces.Services.CrewInputImage.MediaType.init -> void
+Orkeon.Application.Interfaces.Services.UnseenImage
+Orkeon.Application.Interfaces.Services.UnseenImage.UnseenImage() -> void
+Orkeon.Application.Interfaces.Services.UnseenImage.<Clone>$() -> Orkeon.Application.Interfaces.Services.UnseenImage!
+Orkeon.Application.Interfaces.Services.UnseenImage.Equals(Orkeon.Application.Interfaces.Services.UnseenImage? other) -> bool
+override Orkeon.Application.Interfaces.Services.UnseenImage.Equals(object? obj) -> bool
+override Orkeon.Application.Interfaces.Services.UnseenImage.GetHashCode() -> int
+override Orkeon.Application.Interfaces.Services.UnseenImage.ToString() -> string!
+static Orkeon.Application.Interfaces.Services.UnseenImage.operator ==(Orkeon.Application.Interfaces.Services.UnseenImage? left, Orkeon.Application.Interfaces.Services.UnseenImage? right) -> bool
+static Orkeon.Application.Interfaces.Services.UnseenImage.operator !=(Orkeon.Application.Interfaces.Services.UnseenImage? left, Orkeon.Application.Interfaces.Services.UnseenImage? right) -> bool
+Orkeon.Application.Interfaces.Services.UnseenImage.Path.get -> string!
+Orkeon.Application.Interfaces.Services.UnseenImage.Path.init -> void
+Orkeon.Application.Interfaces.Services.UnseenImage.Reader.get -> string!
+Orkeon.Application.Interfaces.Services.UnseenImage.Reader.init -> void
+Orkeon.Application.Interfaces.Services.UnseenImage.Reason.get -> string!
+Orkeon.Application.Interfaces.Services.UnseenImage.Reason.init -> void
+Orkeon.Application.Interfaces.Services.CrewInput.Images.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Application.Interfaces.Services.CrewInputImage!>!
+Orkeon.Application.Interfaces.Services.CrewInput.Images.init -> void
+Orkeon.Application.Interfaces.Services.CrewOutput.UnseenImages.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Application.Interfaces.Services.UnseenImage!>!
+Orkeon.Application.Interfaces.Services.CrewOutput.UnseenImages.init -> void
+Orkeon.Application.Validation.MultiModalOptions.MaxImages.get -> int
+Orkeon.Application.Validation.MultiModalOptions.MaxImages.set -> void
+Orkeon.Application.Crew.Execution.RunImages
+Orkeon.Application.Crew.Execution.RunImageTurn
+Orkeon.Application.Crew.Execution.RunImageTurn.Answered() -> void
+Orkeon.Application.Crew.Execution.RunImageTurn.Dispose() -> void
+Orkeon.Application.Crew.Execution.RunImageTurn.Images.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Application.Interfaces.Services.CrewInputImage!>!
+Orkeon.Application.Crew.Execution.RunImageTurn.NoteUnseen(string! path, string! reason) -> void
+Orkeon.Application.Crew.Execution.RunImageTurn.Take() -> System.IDisposable!
+static Orkeon.Application.Crew.Execution.RunImageTurn.Current.get -> Orkeon.Application.Crew.Execution.RunImageTurn?
+static Orkeon.Application.Crew.Execution.RunImages.Begin(System.Collections.Generic.IReadOnlyList<Orkeon.Application.Interfaces.Services.CrewInputImage!>! images) -> System.IDisposable!
+static Orkeon.Application.Crew.Execution.RunImages.Current.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Application.Interfaces.Services.CrewInputImage!>!
+static Orkeon.Application.Crew.Execution.RunImages.Unseen.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Application.Interfaces.Services.UnseenImage!>!
+static Orkeon.Application.Crew.Execution.RunImages.NoteAllUnseen(string! reader, string! reason) -> void
+static Orkeon.Application.Crew.Execution.RunImages.OpenTurn(string! reader) -> Orkeon.Application.Crew.Execution.RunImageTurn?

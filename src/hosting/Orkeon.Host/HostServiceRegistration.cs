@@ -121,6 +121,9 @@ internal static class HostServiceRegistration
         services.AddSingleton(Options.Create(
             HostStartup.ReadSection<Gateway.TeamsChannelOptions>(configuration, Gateway.TeamsChannelOptions.SectionName)));
 
+        // The bounds of the images a run's tasks are shown (Orkeon:MultiModal).
+        Orkeon.Infrastructure.MultiModal.MultiModalServiceExtensions.AddOrkeonMultiModal(services, configuration);
+
         // The conversations' files, when the operator turns them on: nothing of them is registered otherwise. Their
         // retention touches no run, and starts before anything can start one.
         if (hostSection.Files.Enabled)

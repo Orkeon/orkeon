@@ -80,6 +80,9 @@ internal sealed class LegacyTextAgentLoop
             var turnLogger = ExecutionLog.TurnLogger(_logger, _verboseLogger, agent);
             ExecutionLog.LogLlmResponse(turnLogger, agent.Role, sw.ElapsedMilliseconds, response);
 
+            // This loop sends one text: it has no message an image could join.
+            RunImages.NoteAllUnseen(agent.Role.Value, "its model is called with text alone");
+
             // Check for structured [TOOL_CALL] blocks
             var parsedCalls = ToolCallTextParser.ParseToolCallBlocks(response);
             if (parsedCalls.Count == 0)

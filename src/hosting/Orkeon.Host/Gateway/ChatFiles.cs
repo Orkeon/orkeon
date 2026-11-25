@@ -97,6 +97,7 @@ internal static class FileNotices
 {
     private const int MaxNames = 10;
     private const int MaxShown = 64;
+    private const int MaxReason = 120;
 
     /// <summary>One sentence naming the files of a message, none of which was taken.</summary>
     public static string NotTaken(IReadOnlyList<InboundAttachment> attachments)
@@ -129,6 +130,13 @@ internal static class FileNotices
     /// <summary>A virtual path and the size of the file.</summary>
     public static string PathAndSize(string path, long size) =>
         string.Create(System.Globalization.CultureInfo.InvariantCulture, $"{Path(path)} ({size} bytes)");
+
+    /// <summary>An image an agent was not shown, and why.</summary>
+    public static string NotShown(Orkeon.Application.Interfaces.Services.UnseenImage image)
+    {
+        ArgumentNullException.ThrowIfNull(image);
+        return $"{Path(image.Path)} to `{Inline(image.Reader, MaxShown)}` ({Inline(image.Reason, MaxReason)})";
+    }
 
     /// <summary>One line of plain text, cut at <paramref name="limit"/>.</summary>
     public static string Inline(string text, int limit)

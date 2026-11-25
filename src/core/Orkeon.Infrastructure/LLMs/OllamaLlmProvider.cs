@@ -1222,11 +1222,14 @@ public partial class OllamaLlmProvider : HttpLlmProviderBase
                 Content = string.Empty,
                 TokensUsed = 0,
                 Model = model,
-                Metadata = LlmResponseMetadata.CreateBuilder()
+                Metadata = new Dictionary<string, object>(LlmResponseMetadata.CreateBuilder()
                     .AddProvider(Name)
                     .AddError(errorMessage)
                     .Build()
-                    .ToDictionary()
+                    .ToDictionary())
+                {
+                    [Profiles.LlmFailureClassifier.HttpStatusKey] = (int)httpResponse.StatusCode,
+                },
             };
         }
     }

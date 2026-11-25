@@ -105,7 +105,7 @@ public sealed class RunnerHostSettingsNoticeTests : IDisposable
     [Fact]
     public void A_section_is_said_once_for_the_process_whatever_the_number_of_hosts()
     {
-        var settings = Settings(("Orkeon:MultiModal:Enabled", "true"));
+        var settings = Settings(("Orkeon:VectorSearch:DefaultTopK", "5"));
 
         var stderr = CaptureStderr(() =>
         {
@@ -113,7 +113,7 @@ public sealed class RunnerHostSettingsNoticeTests : IDisposable
             using var second = RunnerHost.Build(settings, new RunnerMountPlan());
         });
 
-        Assert.Single(stderr.Split('\n'), text => text.Contains("Orkeon:MultiModal " + NoComponent, StringComparison.Ordinal));
+        Assert.Single(stderr.Split('\n'), text => text.Contains("Orkeon:VectorSearch " + NoComponent, StringComparison.Ordinal));
     }
 
     /// <summary>
