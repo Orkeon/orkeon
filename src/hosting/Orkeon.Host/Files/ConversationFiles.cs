@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Globalization;
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
@@ -64,7 +65,7 @@ internal sealed partial class ConversationFiles : IDisposable
     private readonly Lock _gatesLock = new();
     private readonly Dictionary<string, Gate> _gates = new(StringComparer.Ordinal);
     private readonly SemaphoreSlim _budget = new(1, 1);
-    private readonly Dictionary<string, long> _reserved = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, Held> _reserved = new(StringComparer.Ordinal);
 
     public ConversationFiles(
         IOptions<OrkeonHostOptions> options,
@@ -126,7 +127,7 @@ internal sealed partial class ConversationFiles : IDisposable
                 crew: null,
                 async (_, token) =>
                 {
-                    await ClearPartsAsync(token).ConfigureAwait(false);
+                    await ClearPartsAsync(held.Gate, token).ConfigureAwait(false);
                     return await TouchAsync(reference, meta => meta with { SuspendedRuns = [.. meta.SuspendedRuns.Where(r => r != runId), runId] }, token).ConfigureAwait(false);
                 },
                 ct).ConfigureAwait(false);
@@ -169,6 +170,9 @@ internal sealed partial class ConversationFiles : IDisposable
     /// <param name="file">The file.</param>
     /// <param name="index">Its place among those received with it, from zero: what names it when its own name cannot.</param>
     /// <param name="folder">The virtual folder; <c>/inbox</c> by default.</param>
+    /// <param name="admitAsync">
+    /// Asked again once the file has come, in the mount set that places it: why it is no longer taken there, or null.
+    /// </param>
     /// <param name="ct">Stops the reception; it throws.</param>
     public Task<StoredFile> StoreAsync(
         ConversationRef conversation,
@@ -176,10 +180,11 @@ internal sealed partial class ConversationFiles : IDisposable
         IncomingFile file,
         int index,
         string folder = RunnerVirtualRoots.Inbox,
+        Func<IFileSystemService, CancellationToken, Task<string?>>? admitAsync = null,
         CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(file);
-        return UseAsync(conversation, crew, (_, token) => StoreLockedAsync(conversation, file, index, crew, folder, token), ct);
+        return ReceiveFileAsync(new Reception(conversation, crew, file, SafeFileNames.Sanitize(file.Name, index), folder.TrimEnd('/')) { AdmitAsync = admitAsync }, ct);
     }
 
     /// <summary>
@@ -190,8 +195,7 @@ internal sealed partial class ConversationFiles : IDisposable
         ArgumentNullException.ThrowIfNull(text);
         var bytes = System.Text.Encoding.UTF8.GetBytes(text);
         var file = new IncomingFile($"reply-{runId}.md", _ => Task.FromResult<Stream>(new MemoryStream(bytes, writable: false))) { Size = bytes.Length };
-        return UseAsync(
-            conversation, crew: null, (_, token) => StoreLockedAsync(conversation, file, index: 0, crew: null, RunnerVirtualRoots.Outbox, token, anyType: true), ct);
+        return ReceiveFileAsync(new Reception(conversation, Crew: null, file, SafeFileNames.Sanitize(file.Name, 0), RunnerVirtualRoots.Outbox) { AnyType = true }, ct);
     }
 
     /// <summary>
@@ -309,10 +313,10 @@ internal sealed partial class ConversationFiles : IDisposable
                     crew: null,
                     (_, token) => TouchAsync(reference, meta => suspended ? meta : meta with { SuspendedRuns = [.. meta.SuspendedRuns.Where(r => r != runId)] }, token),
                     CancellationToken.None).ConfigureAwait(false);
-                if (_store.SizeOf(reference.Key) is not { } size)
+                if (_store.HeldBy(reference.Key) is not { } total)
                     LogUnmeasured(reference.Channel);
-                else if (size > _options.MaxConversationBytes)
-                    LogOverLimit(reference.Channel, size, _options.MaxConversationBytes);
+                else if (total.Bytes > _options.MaxConversationBytes)
+                    LogOverLimit(reference.Channel, total.Bytes, _options.MaxConversationBytes);
             }
             else
             {
@@ -331,63 +335,81 @@ internal sealed partial class ConversationFiles : IDisposable
         }
     }
 
-    private async Task<StoredFile> StoreLockedAsync(ConversationRef conversation, IncomingFile file, int index, HostedCrewOptions? crew, string folder, CancellationToken ct, bool anyType = false)
+    /// <summary>A file on its way to <c>Folder</c>, under a name already made safe.</summary>
+    private sealed record Reception(ConversationRef Conversation, HostedCrewOptions? Crew, IncomingFile File, string Name, string Folder)
     {
-        var name = SafeFileNames.Sanitize(file.Name, index);
-        StoredFile Refuse(string reason) => new(null, 0, new RefusedFile(name, reason));
+        public Func<IFileSystemService, CancellationToken, Task<string?>>? AdmitAsync { get; init; }
 
-        // The conversation's own folders are one for every crew; a granted one is each crew's own.
-        var owner = folder.TrimEnd('/') is RunnerVirtualRoots.Inbox or RunnerVirtualRoots.Outbox ? null : crew?.Name;
-        bool IsSame(StoredAttachment a) => a.Id == file.Id && a.Crew == owner && FolderIs(a.Path, folder);
+        public bool AnyType { get; init; }
 
-        if (file.Id is not null)
-        {
-            try
-            {
-                var meta = await ReadMetaAsync(conversation, ct).ConfigureAwait(false);
-                if (meta.Attachments.FirstOrDefault(IsSame) is { } known
-                    && await _fs.TryGetEntryAsync(known.Path, ct).ConfigureAwait(false) is { Kind: VirtualEntryKind.File } kept)
-                {
-                    return new StoredFile(known.Path, kept.SizeBytes, null);
-                }
-            }
-            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or FileAccessDeniedException)
-            {
-                LogRefused(ex, conversation.Channel);
-                return Refuse("it could not be read");
-            }
-        }
+        /// <summary>Whether it goes to one of the conversation's own folders; a granted one is each crew's own.</summary>
+        public bool ToOwn => Folder is RunnerVirtualRoots.Inbox or RunnerVirtualRoots.Outbox;
 
-        if (!anyType && !_options.Takes(name))
-            return Refuse("files of this type are not taken");
-        if (file.Size > _options.MaxFileBytes)
-            return Refuse(TooLarge());
-        // Judged by its name before a byte of it is downloaded.
-        if (!_fs.ResolveAndValidate($"{folder.TrimEnd('/')}/{name}", FileAccessRights.Write | FileAccessRights.Create).IsAllowed)
-            return Refuse("the host does not keep a file of this name");
+        private string? Owner => ToOwn ? null : Crew?.Name;
 
+        public bool IsSame(StoredAttachment a) => a.Id == File.Id && a.Crew == Owner && FolderIs(a.Path, Folder);
+
+        public StoredAttachment Kept(string id, string path) => new(id, path, Owner);
+
+        public StoredFile Refuse(string reason) => new(null, 0, new RefusedFile(Name, reason));
+    }
+
+    /// <summary>
+    /// Judges the file under the conversation's lock, reads it without: others use the conversation while it comes, its
+    /// bytes reserved. Then judges it again, under the lock, and places it.
+    /// </summary>
+    private async Task<StoredFile> ReceiveFileAsync(Reception reception, CancellationToken ct)
+    {
+        var conversation = reception.Conversation;
+        // Held to the end: retention leaves the conversation alone meanwhile.
+        using var held = Acquire(conversation.Key);
         using var reservation = new Reservation(this, conversation.Key);
-        if (await reservation.GrowToAsync(Math.Max(file.Size ?? 0, 1), ct).ConfigureAwait(false) is { } full)
-            return Refuse(full);
+        var admitted = await UseAsync(conversation, reception.Crew, (_, token) => GuardAsync(reception, () => JudgeAsync(reception, reservation, token), token), ct).ConfigureAwait(false);
+        if (admitted is not null)
+            return admitted;
 
         var part = string.Create(CultureInfo.InvariantCulture, $"{Parts}/{Guid.NewGuid():N}.part");
+        held.Gate.Arriving[part] = true;
         try
         {
-            var (size, refusal) = await ReceiveAsync(file, part, reservation, ct).ConfigureAwait(false);
-            if (refusal is not null)
-                return Refuse(refusal);
-
-            var path = await PlaceAsync(part, folder, name, reservation, ct).ConfigureAwait(false);
-            await TouchAsync(
+            long size = 0;
+            var refused = await InHostNamespaceAsync(
+                conversation.Key,
+                crew: null,
+                (_, token) => GuardAsync(
+                    reception,
+                    async () =>
+                    {
+                        (size, var refusal) = await ReceiveAsync(reception.File, part, reservation, token).ConfigureAwait(false);
+                        return refusal is null ? null : reception.Refuse(refusal);
+                    },
+                    token),
+                ct).ConfigureAwait(false);
+            return refused ?? await UseAsync(
                 conversation,
-                m => file.Id is null ? m : m with { Attachments = [.. m.Attachments.Where(a => !IsSame(a)), new StoredAttachment(file.Id, path, owner)] },
-                CancellationToken.None).ConfigureAwait(false);
-            return new StoredFile(path, size, null);
+                reception.Crew,
+                (_, token) => GuardAsync(reception, () => SettleAsync(reception, part, size, reservation, token), token),
+                ct).ConfigureAwait(false)
+                ?? reception.Refuse("it could not be read");
+        }
+        finally
+        {
+            await InHostNamespaceAsync(conversation.Key, crew: null, (_, _) => DeletePartAsync(part), CancellationToken.None).ConfigureAwait(false);
+            held.Gate.Arriving.TryRemove(part, out _);
+        }
+    }
+
+    /// <summary>A file that cannot be read or kept is refused, never the message it came with.</summary>
+    private async Task<StoredFile?> GuardAsync(Reception reception, Func<Task<StoredFile?>> work, CancellationToken ct)
+    {
+        try
+        {
+            return await work().ConfigureAwait(false);
         }
         catch (FileAccessDeniedException ex)
         {
-            LogRefused(ex, conversation.Channel);
-            return Refuse("the host does not keep a file of this name");
+            LogRefused(ex, reception.Conversation.Channel);
+            return reception.Refuse("the host does not keep a file of this name");
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {
@@ -396,19 +418,63 @@ internal sealed partial class ConversationFiles : IDisposable
         catch (Gateway.AttachmentRefusedException ex)
         {
             // The channel's own words, written for a person.
-            return Refuse(ex.Message);
+            return reception.Refuse(ex.Message);
         }
-#pragma warning disable CA1031 // A file that cannot be read or kept is refused, never the message it came with.
+#pragma warning disable CA1031 // As above.
         catch (Exception ex)
 #pragma warning restore CA1031
         {
-            LogRefused(ex, conversation.Channel);
-            return Refuse("it could not be read");
+            LogRefused(ex, reception.Conversation.Channel);
+            return reception.Refuse("it could not be read");
         }
-        finally
-        {
-            await DeletePartAsync(part).ConfigureAwait(false);
-        }
+    }
+
+    /// <summary>The file as it is already kept, when it is.</summary>
+    private async Task<StoredFile?> KnownAsync(Reception reception, CancellationToken ct)
+    {
+        if (reception.File.Id is null)
+            return null;
+        var meta = await ReadMetaAsync(reception.Conversation, ct).ConfigureAwait(false);
+        return meta.Attachments.FirstOrDefault(reception.IsSame) is { } known
+            && await _fs.TryGetEntryAsync(known.Path, ct).ConfigureAwait(false) is { Kind: VirtualEntryKind.File } kept
+            ? new StoredFile(known.Path, kept.SizeBytes, null)
+            : null;
+    }
+
+    /// <summary>Before a byte of it is downloaded: kept already, refused, or null once it has its place among the limits.</summary>
+    private async Task<StoredFile?> JudgeAsync(Reception reception, Reservation reservation, CancellationToken ct)
+    {
+        if (await KnownAsync(reception, ct).ConfigureAwait(false) is { } known)
+            return known;
+        if (!reception.AnyType && !_options.Takes(reception.Name))
+            return reception.Refuse("files of this type are not taken");
+        if (reception.File.Size > _options.MaxFileBytes)
+            return reception.Refuse(TooLarge());
+        if (!TakesName(reception))
+            return reception.Refuse("the host does not keep a file of this name");
+
+        return await reservation.GrowToAsync(Math.Max(reception.File.Size ?? 0, 1), ct).ConfigureAwait(false) is { } full
+            ? reception.Refuse(full)
+            : null;
+    }
+
+    private bool TakesName(Reception reception) =>
+        _fs.ResolveAndValidate($"{reception.Folder}/{reception.Name}", FileAccessRights.Write | FileAccessRights.Create).IsAllowed;
+
+    /// <summary>Places the file that came: what was judged before it came may have changed meanwhile.</summary>
+    private async Task<StoredFile?> SettleAsync(Reception reception, string part, long size, Reservation reservation, CancellationToken ct)
+    {
+        if (await KnownAsync(reception, ct).ConfigureAwait(false) is { } known)
+            return known;
+        if (reception.AdmitAsync is { } admit && await admit(_fs, ct).ConfigureAwait(false) is { } refusal)
+            return reception.Refuse(refusal);
+
+        var path = await PlaceAsync(reception, part, size, reservation, ct).ConfigureAwait(false);
+        await TouchAsync(
+            reception.Conversation,
+            m => reception.File.Id is { } id ? m with { Attachments = [.. m.Attachments.Where(a => !reception.IsSame(a)), reception.Kept(id, path)] } : m,
+            CancellationToken.None).ConfigureAwait(false);
+        return new StoredFile(path, size, null);
     }
 
     /// <summary>Reads the file into the partial folder: the bytes counted as they come, each one reserved before it is written.</summary>
@@ -444,18 +510,22 @@ internal sealed partial class ConversationFiles : IDisposable
     /// Copies the received file under a free name. The copy creates or fails, so a name taken meanwhile (the agents write
     /// in <c>/outbox</c>) refuses the file. The bytes stop being reserved as they become visible, under one lock.
     /// </summary>
-    private async Task<string> PlaceAsync(string part, string folder, string name, Reservation reservation, CancellationToken ct)
+    private async Task<string> PlaceAsync(Reception reception, string part, long size, Reservation reservation, CancellationToken ct)
     {
-        var root = folder.TrimEnd('/');
+        var root = reception.Folder;
         var taken = await NamesInAsync(root, ct).ConfigureAwait(false);
         await _budget.WaitAsync(ct).ConfigureAwait(false);
         try
         {
             string path;
             do
-                path = $"{root}/{SafeFileNames.Unique(name, taken)}";
+                path = $"{root}/{SafeFileNames.Unique(reception.Name, taken)}";
             while (await _fs.ExistsAsync(path, ct).ConfigureAwait(false));
 
+            // Written before the copy: a host that is killed between the two counts too much, never too little; so does a copy that
+            // fails, which may have left the half of the file.
+            if (!reception.ToOwn)
+                await CountLeftAsync(reception.Conversation, size, ct).ConfigureAwait(false);
             try
             {
                 await _fs.CopyAsync(part, path, overwrite: false, CancellationToken.None).ConfigureAwait(false);
@@ -477,6 +547,13 @@ internal sealed partial class ConversationFiles : IDisposable
         }
     }
 
+    /// <summary>
+    /// Counts a file left in a folder of a crew, for as long as the conversation exists, be it still there or not: the
+    /// folder is the crew's to empty, and no measure of it says what came from whom.
+    /// </summary>
+    private Task<bool> CountLeftAsync(ConversationRef conversation, long bytes, CancellationToken ct) => TouchAsync(
+        conversation, m => m with { LeftFiles = m.LeftFiles + 1, LeftBytes = m.LeftBytes + bytes }, ct);
+
     private async Task<HashSet<string>> NamesInAsync(string root, CancellationToken ct)
     {
         // Case ignored: on a file system that ignores it, two spellings are one file.
@@ -486,7 +563,7 @@ internal sealed partial class ConversationFiles : IDisposable
         return names;
     }
 
-    private async Task DeletePartAsync(string part)
+    private async Task<bool> DeletePartAsync(string part)
     {
         try
         {
@@ -496,13 +573,15 @@ internal sealed partial class ConversationFiles : IDisposable
         {
             LogPartLeft(ex);
         }
+
+        return true;
     }
 
     private string TooLarge() =>
         string.Create(CultureInfo.InvariantCulture, $"it is larger than {_options.MaxFileBytes} bytes");
 
     private static bool FolderIs(string path, string folder) =>
-        string.Equals(path[..path.LastIndexOf('/')], folder.TrimEnd('/'), StringComparison.Ordinal);
+        string.Equals(path[..path.LastIndexOf('/')], folder, StringComparison.Ordinal);
 
     private static bool IsHidden(string path) => path.Split('/').Any(s => s.StartsWith('.'));
 
@@ -511,7 +590,7 @@ internal sealed partial class ConversationFiles : IDisposable
         await _budget.WaitAsync(ct).ConfigureAwait(false);
         try
         {
-            if (_store.SizeOf(key) is not { } size || size > _options.MaxConversationBytes)
+            if (_store.HeldBy(key) is not { } held || held.Bytes > _options.MaxConversationBytes)
                 throw new ConversationPreparationException("The files of this conversation exceed their limit. Open a new thread.");
             if (_store.TotalSize(_options.MaxConversationBytes) > _options.MaxTotalBytes)
                 throw new ConversationPreparationException("The files of the conversations exceed the limit of this host. Its operator must make room.");
@@ -549,6 +628,11 @@ internal sealed partial class ConversationFiles : IDisposable
         public IReadOnlyList<StoredAttachment> Attachments { get; init; } = [];
 
         public IReadOnlyList<string> SuspendedRuns { get; init; } = [];
+
+        /// <summary>The files left in folders of crews, and their bytes. <see cref="ConversationStore"/> reads both.</summary>
+        public int LeftFiles { get; init; }
+
+        public long LeftBytes { get; init; }
     }
 
     private sealed record StoredAttachment(string Id, string Path, string? Crew = null);
@@ -591,7 +675,7 @@ internal sealed partial class ConversationFiles : IDisposable
 
     // ----- retention -----
 
-    private async Task SweepOneAsync(string name, Func<string, CancellationToken, Task<bool>> keptAsync, CancellationToken ct)
+    private async Task SweepOneAsync(string name, Func<Gate, CancellationToken, Task<bool>> keptAsync, CancellationToken ct)
     {
         // Held, so it counts as one use: any other, a run in progress included, leaves the folder alone.
         using var held = Acquire(name);
@@ -604,7 +688,7 @@ internal sealed partial class ConversationFiles : IDisposable
 
             await InHostNamespaceAsync(name, crew: null, async (fs, token) =>
             {
-                if (await keptAsync(name, token).ConfigureAwait(false))
+                if (await keptAsync(held.Gate, token).ConfigureAwait(false))
                     return false;
                 return await DeleteAllAsync(name, fs, token).ConfigureAwait(false);
             }, ct).ConfigureAwait(false);
@@ -638,15 +722,15 @@ internal sealed partial class ConversationFiles : IDisposable
         return true;
     }
 
-    /// <summary>Deletes what a reception cut short left behind. Under the conversation's lock no reception is in progress.</summary>
-    private async Task ClearPartsAsync(CancellationToken ct)
+    /// <summary>Deletes what a reception cut short left behind, and nothing that is arriving.</summary>
+    private async Task ClearPartsAsync(Gate gate, CancellationToken ct)
     {
         try
         {
             var left = new List<string>();
             await foreach (var entry in _fs.EnumerateFilesAsync(Parts, new VirtualEnumerationOptions(Recursive: false), ct).ConfigureAwait(false))
                 left.Add(entry.VirtualPath);
-            foreach (var part in left)
+            foreach (var part in left.Where(p => !gate.Arriving.ContainsKey(p)))
                 await _fs.DeleteAsync(part, recursive: false, ct).ConfigureAwait(false);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or FileAccessDeniedException)
@@ -656,17 +740,17 @@ internal sealed partial class ConversationFiles : IDisposable
     }
 
     /// <summary>Whether a conversation is kept: it was active, or a run of it waits for an answer.</summary>
-    private async Task<bool> KeptAsync(string name, CancellationToken ct)
+    private async Task<bool> KeptAsync(Gate gate, CancellationToken ct)
     {
         if (await TryReadMetaAsync(ct).ConfigureAwait(false) is not { } meta)
         {
             // Nothing says when it was last active: its time starts now, and what it holds is kept until it ends.
-            await ClearPartsAsync(ct).ConfigureAwait(false);
+            await ClearPartsAsync(gate, ct).ConfigureAwait(false);
             await WriteMetaAsync(new ConversationMeta(), ct).ConfigureAwait(false);
             return true;
         }
 
-        await ClearPartsAsync(ct).ConfigureAwait(false);
+        await ClearPartsAsync(gate, ct).ConfigureAwait(false);
         if (_optional.Time.GetUtcNow() - meta.LastActivity < _options.Retention)
             return true;
 
@@ -687,6 +771,9 @@ internal sealed partial class ConversationFiles : IDisposable
         public SemaphoreSlim Lock { get; } = new(1, 1);
 
         public int Uses { get; set; }
+
+        /// <summary>The partial files being received.</summary>
+        public ConcurrentDictionary<string, bool> Arriving { get; } = new(StringComparer.Ordinal);
     }
 
     /// <summary>One use of a folder: its lock exists, and retention leaves it alone, until it is disposed.</summary>
@@ -738,10 +825,11 @@ internal sealed partial class ConversationFiles : IDisposable
 
     // ----- limits -----
 
-    /// <summary>Bytes promised to a file being received: no other reception may count on them.</summary>
+    /// <summary>The place promised to a file being received: no other reception may count on it.</summary>
     private sealed class Reservation(ConversationFiles files, string key) : IDisposable
     {
         private bool _released;
+        private bool _counted;
 
         public long Bytes { get; private set; }
 
@@ -754,21 +842,26 @@ internal sealed partial class ConversationFiles : IDisposable
             try
             {
                 var more = bytes - Bytes;
-                long ofConversation, inAll;
+                Held ofConversation;
+                long inAll;
                 lock (files._reserved)
                 {
                     ofConversation = files._reserved.GetValueOrDefault(key);
-                    inAll = files._reserved.Values.Sum();
+                    inAll = files._reserved.Values.Sum(r => r.Bytes);
                 }
 
-                if (files._store.SizeOf(key) is not { } size || more > files._options.MaxConversationBytes - size - ofConversation)
+                var options = files._options;
+                if (files._store.HeldBy(key) is not { } held || more > options.MaxConversationBytes - held.Bytes - ofConversation.Bytes)
                     return "the files of this conversation have reached their limit";
-                if (more > files._options.MaxTotalBytes - files._store.TotalSize(files._options.MaxConversationBytes) - inAll)
+                if (!_counted && held.Files + ofConversation.Files >= options.MaxConversationFiles)
+                    return string.Create(CultureInfo.InvariantCulture, $"a conversation holds at most {options.MaxConversationFiles} files");
+                if (more > options.MaxTotalBytes - files._store.TotalSize(options.MaxConversationBytes) - inAll)
                     return "the files of the conversations have reached the limit of this host";
 
                 lock (files._reserved)
-                    files._reserved[key] = files._reserved.GetValueOrDefault(key) + more;
+                    files._reserved[key] = files._reserved.GetValueOrDefault(key) + new Held(more, _counted ? 0 : 1);
                 Bytes = bytes;
+                _counted = true;
                 return null;
             }
             finally
@@ -777,16 +870,16 @@ internal sealed partial class ConversationFiles : IDisposable
             }
         }
 
-        /// <summary>Gives the bytes back: they are on the disk, or will not be.</summary>
+        /// <summary>Gives the place back: the file is on the disk, or will not be.</summary>
         public void ReleaseLocked()
         {
-            if (_released)
+            if (_released || !_counted)
                 return;
             _released = true;
             lock (files._reserved)
             {
-                var left = files._reserved.GetValueOrDefault(key) - Bytes;
-                if (left > 0)
+                var left = files._reserved.GetValueOrDefault(key) + new Held(-Bytes, -1);
+                if (left.Files > 0)
                     files._reserved[key] = left;
                 else
                     files._reserved.Remove(key);

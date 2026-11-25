@@ -1,13 +1,20 @@
+using System.Text.Json;
 using Orkeon.Domain.FileSystem;
 
 namespace Orkeon.Host.Files;
+
+/// <summary>So many bytes, in so many files.</summary>
+internal readonly record struct Held(long Bytes, long Files)
+{
+    public static Held operator +(Held a, Held b) => new(a.Bytes + b.Bytes, a.Files + b.Files);
+}
 
 /// <summary>
 /// The physical side of the conversations' folders: what must exist before a mount can point at it, and the listing of
 /// the root, which no mount covers (an Internal one would hide every conversation from its own runs). Every read and
 /// write of a file goes through the VFS, in <see cref="ConversationFiles"/>.
 /// </summary>
-[Orkeon.Compliance.Vfs.SuppressVfsCompliance("EXCEPTION-BOOTSTRAP: provisions the folders the conversations' mounts point at, and lists, measures and gives rights back on their root, which no mount covers.")]
+[Orkeon.Compliance.Vfs.SuppressVfsCompliance("EXCEPTION-BOOTSTRAP: provisions the folders the conversations' mounts point at, and lists, measures (with the counts of each record) and gives rights back on their root, which no mount covers.")]
 internal sealed class ConversationStore
 {
     private const string RunPrefix = "run-";
@@ -63,14 +70,14 @@ internal sealed class ConversationStore
             .Select(n => (n, (DateTimeOffset)Directory.GetLastWriteTimeUtc(FolderOf(n))))];
 
     /// <summary>
-    /// The bytes one conversation holds, what is being received left out; null when a folder of it cannot be listed, which
-    /// counts as over any limit.
+    /// What one conversation holds, and what was left from it in folders of crews, what is being received left out; null when
+    /// a folder of it cannot be listed, or its record cannot be read, which counts as over any limit.
     /// </summary>
-    public long? SizeOf(string name) => Measure(InboxOf(name)) + Measure(OutboxOf(name));
+    public Held? HeldBy(string name) => Measure(InboxOf(name)) + Measure(OutboxOf(name)) + LeftBy(name);
 
-    /// <summary>The bytes everything under the root holds, what is being received left out.</summary>
+    /// <summary>The bytes everything under the root holds, or left, what is being received left out.</summary>
     /// <param name="unmeasured">What a conversation that cannot be measured counts for: it must not stop the others.</param>
-    public long TotalSize(long unmeasured) => Names().Sum(name => Math.Min(SizeOf(name) ?? unmeasured, long.MaxValue >> 20));
+    public long TotalSize(long unmeasured) => Names().Sum(name => Math.Min(HeldBy(name)?.Bytes ?? unmeasured, long.MaxValue >> 20));
 
     /// <summary>Gives the service's account its rights back on the folders of <paramref name="name"/>, links left alone.</summary>
     public void MakeAccessible(string name)
@@ -106,10 +113,31 @@ internal sealed class ConversationStore
 
     private static bool IsKey(string name) => name.Length == 64 && name.All(char.IsAsciiHexDigitLower);
 
-    // Null when a folder cannot be listed: what it holds could be anything.
-    private static long? Measure(string folder)
+    // As ConversationFiles writes it. A record that does not read as one counts for nothing, as it does there.
+    private Held? LeftBy(string name)
     {
-        long total = 0;
+        try
+        {
+            using var file = new FileStream(
+                Path.Combine(FolderOf(name), "meta.json"), FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+            return JsonSerializer.Deserialize<Left>(file) is { LeftBytes: >= 0, LeftFiles: >= 0 } left ? new Held(left.LeftBytes, left.LeftFiles) : new Held();
+        }
+        catch (Exception ex) when (ex is FileNotFoundException or DirectoryNotFoundException or JsonException)
+        {
+            return new Held();
+        }
+        catch (Exception ex) when (ex is UnauthorizedAccessException or IOException)
+        {
+            return null;
+        }
+    }
+
+    private sealed record Left(int LeftFiles, long LeftBytes);
+
+    // Null when a folder cannot be listed: what it holds could be anything.
+    private static Held? Measure(string folder)
+    {
+        var total = new Held();
         var left = new Stack<DirectoryInfo>([new DirectoryInfo(folder)]);
         while (left.TryPop(out var directory))
         {
@@ -120,7 +148,7 @@ internal sealed class ConversationStore
                     if (entry is DirectoryInfo child)
                         left.Push(child);
                     else if (entry is FileInfo file)
-                        total += LengthOf(file);
+                        total += new Held(LengthOf(file), 1);
                 }
             }
             catch (DirectoryNotFoundException)

@@ -356,6 +356,126 @@ public sealed class ChatFileCommandsTests : IDisposable
         Assert.Empty(Directory.GetFiles(Path.Combine(Output, "closed")));
     }
 
+    /// <summary>A file that arrives when it is told to: its content comes after <c>Arrive</c>.</summary>
+    private static (FakeAttachmentSource Source, Task Asked, TaskCompletionSource Arrive) Late(string id = "1", string content = "x")
+    {
+        var source = new FakeAttachmentSource().With(id, content);
+        var asked = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var arrive = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var open = source.Files[id];
+        source.Files[id] = async ct =>
+        {
+            asked.TrySetResult();
+            await arrive.Task.WaitAsync(ct);
+            return await open(ct);
+        };
+        return (source, asked.Task, arrive);
+    }
+
+    private async Task SwitchAsync(string from, string to) =>
+        await File.WriteAllTextAsync(_harness.CrewPath, (await File.ReadAllTextAsync(_harness.CrewPath, Ct)).Replace(from, to, StringComparison.Ordinal), Ct);
+
+    private string Meta => Path.Combine(Root, Alice.Key, "meta.json");
+
+    [Theory]
+    [InlineData("MaxConversationBytes")]
+    [InlineData("MaxTotalBytes")]
+    public async Task ShouldCountWhatIsLeftInACrewsFolder_ThenAndAfterARestart(string limit)
+    {
+        var (commands, _) = Build(files: s => s[limit] = 100);
+        async Task<string> LeaveAsync(ChatFileCommands to, string id, string thread = "1001") => (await to.AnswerAsync(
+            Put("/output/drop", new FakeAttachmentSource().With(id, new string('x', 80)), id: id) with { ConversationId = thread }, Ct)).Text;
+
+        Assert.Contains("Kept", await LeaveAsync(commands, "1"), StringComparison.Ordinal);
+        Assert.Contains("reached", await LeaveAsync(commands, "2"), StringComparison.Ordinal);
+        // The crew took it away: what was left is what counts, not what it became.
+        File.Delete(Path.Combine(Output, "drop", "a.txt"));
+        Assert.Contains("reached", await LeaveAsync(commands, "1"), StringComparison.Ordinal);
+        _hosts[0].Dispose();
+        _hosts.Clear();
+        await SwitchAsync(Declared, string.Empty);
+        var (restarted, _) = Build(files: s => s[limit] = 100);
+
+        Assert.Contains("reached", await LeaveAsync(restarted, "3"), StringComparison.Ordinal);
+        var elsewhere = await LeaveAsync(restarted, "4", thread: "1002");
+        Assert.Contains(limit == "MaxTotalBytes" ? "reached" : "Kept", elsewhere, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task ShouldLeaveSoManyFiles_AndNoMore_HoweverSmall()
+    {
+        var (commands, files) = Build(files: s => s["MaxConversationFiles"] = 3);
+        var source = new FakeAttachmentSource();
+        var replies = new List<string>();
+        for (var i = 0; i < 6; i++)
+        {
+            source.With($"{i}", string.Empty);
+            replies.Add((await commands.AnswerAsync(Put("/output/drop", source, id: $"{i}"), Ct)).Text);
+            File.Delete(Path.Combine(Output, "drop", "a.txt"));
+        }
+
+        Assert.Equal(3, replies.Count(r => r.Contains("Kept", StringComparison.Ordinal)));
+        Assert.Equal(3, source.Opened.Count);
+        Assert.Contains("3 files", replies[^1], StringComparison.Ordinal);
+        Assert.NotNull((await files.StoreAsync(Alice, null, new IncomingFile("b.txt", _ => Task.FromResult(Stream.Null)), 0, ct: Ct)).Refused);
+        Assert.Equal(3, System.Text.Json.Nodes.JsonNode.Parse(await File.ReadAllTextAsync(Meta, Ct))!["Attachments"]!.AsArray().Count);
+    }
+
+    [Fact]
+    public async Task ShouldNotKeepTheFile_WhenTheDeclarationClosesTheFolderWhileItArrives()
+    {
+        var (commands, _) = Build();
+        var (source, asked, arrive) = Late();
+
+        var put = commands.AnswerAsync(Put("/output/drop", source), Ct);
+        await asked.WaitAsync(Ct);
+        await SwitchAsync("upload: true", "download: true");
+        arrive.SetResult();
+
+        Assert.DoesNotContain("Kept", (await put).Text, StringComparison.Ordinal);
+        Assert.Empty(Directory.GetFiles(Path.Combine(Output, "drop")));
+    }
+
+    [Fact]
+    public async Task ShouldNotKeepTheFile_WhenTheFolderBecomesALinkWhileItArrives()
+    {
+        Assert.SkipWhen(OperatingSystem.IsWindows(), "Links need a privilege on Windows.");
+        var (commands, _) = Build();
+        var (source, asked, arrive) = Late();
+
+        var put = commands.AnswerAsync(Put("/output/drop", source), Ct);
+        await asked.WaitAsync(Ct);
+        Directory.Delete(Path.Combine(Output, "drop"));
+        Directory.CreateSymbolicLink(Path.Combine(Output, "drop"), Path.Combine(Output, "closed"));
+        arrive.SetResult();
+
+        Assert.DoesNotContain("Kept", (await put).Text, StringComparison.Ordinal);
+        Assert.Empty(Directory.GetFiles(Path.Combine(Output, "closed")));
+    }
+
+    [Fact]
+    public async Task ShouldServeTheOtherCommands_WhileAFileArrives()
+    {
+        var (commands, _) = Build();
+        Write(Outbox, "a.txt", "a");
+        var (source, asked, arrive) = Late();
+        var put = commands.AnswerAsync(Put("/output/drop", source), Ct);
+        await asked.WaitAsync(Ct);
+        try
+        {
+            using var bound = CancellationTokenSource.CreateLinkedTokenSource(Ct);
+            bound.CancelAfter(TimeSpan.FromSeconds(30));
+            Assert.Contains("a.txt", (await commands.AnswerAsync(Invocation(ChatCommands.Files), bound.Token)).Text, StringComparison.Ordinal);
+            Assert.Single((await commands.AnswerAsync(Get("/outbox/a.txt"), bound.Token)).Files);
+        }
+        finally
+        {
+            arrive.SetResult();
+        }
+
+        Assert.Contains("Kept", (await put).Text, StringComparison.Ordinal);
+    }
+
     [Fact]
     public async Task ShouldServeEveryCommand_WhileARunIsGoing()
     {

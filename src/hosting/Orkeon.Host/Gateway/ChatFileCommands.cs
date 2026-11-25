@@ -219,8 +219,8 @@ internal sealed class ChatFileCommands
             return new CommandReply("There is no file to keep.");
 
         var folder = DownloadableFiles.Canonical(Argument(invocation, "folder").Trim().TrimEnd('/'));
-        var declared = await _folders.ReadAsync(crew.Name, ct).ConfigureAwait(false);
         var conversation = Conversation(invocation);
+        var declared = await _folders.ReadAsync(crew.Name, ct).ConfigureAwait(false);
         if (folder is null
             || !declared.Open.Any(f => f.Upload && f.Path == folder)
             || !await _files.UseAsync(conversation, crew, (fs, token) => DownloadableFiles.IsDirectAsync(fs, folder, token), ct).ConfigureAwait(false))
@@ -228,7 +228,7 @@ internal sealed class ChatFileCommands
             return new CommandReply(NoUpload);
         }
 
-        // The conversation's lock is held while it is read: a file that stops coming must not hold it.
+        // What it may take is reserved while it is read: a file that stops coming must not keep it.
         using var bounded = CancellationTokenSource.CreateLinkedTokenSource(ct);
         bounded.CancelAfter(s_receiveLimit);
         try
@@ -239,6 +239,8 @@ internal sealed class ChatFileCommands
                 new IncomingFile(attachment.Name, token => source.OpenAsync(attachment, token)) { Id = attachment.Id, Size = attachment.Size },
                 index: 0,
                 folder,
+                // The crew may have closed the folder, or put a link in its place, while the file came.
+                async (fs, token) => await IsOpenAsync(fs, crew, folder, token).ConfigureAwait(false) ? null : "its folder takes no file any more",
                 bounded.Token).ConfigureAwait(false);
             return new CommandReply(stored.Refused is { } refused
                 ? FileNotices.Refused([refused])
@@ -248,6 +250,12 @@ internal sealed class ChatFileCommands
         {
             return new CommandReply("The file was not kept: it took too long to arrive.");
         }
+    }
+
+    private async Task<bool> IsOpenAsync(IFileSystemService fs, HostedCrewOptions crew, string folder, CancellationToken ct)
+    {
+        var declared = await _downloads.DeclaredAsync(crew, ct).ConfigureAwait(false);
+        return declared.Open.Any(f => f.Upload && f.Path == folder) && await DownloadableFiles.IsDirectAsync(fs, folder, ct).ConfigureAwait(false);
     }
 
     // ----- what a path may name -----

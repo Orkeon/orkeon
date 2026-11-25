@@ -627,6 +627,7 @@ public sealed class HostStartupSequenceTests : IDisposable
     [InlineData(", \"MaxFileBytes\": 0", "MaxFileBytes")]
     [InlineData(", \"MaxFilesPerMessage\": -1", "MaxFilesPerMessage")]
     [InlineData(", \"MaxConversationBytes\": 0", "MaxConversationBytes")]
+    [InlineData(", \"MaxConversationFiles\": 0", "MaxConversationFiles")]
     [InlineData(", \"MaxTotalBytes\": 0", "MaxTotalBytes")]
     [InlineData(", \"Retention\": \"00:00:00\"", "Retention")]
     [InlineData(", \"AllowedExtensions\": [ \"pdf\", \".\" ]", "AllowedExtensions")]

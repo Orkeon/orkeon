@@ -344,7 +344,14 @@
       "section": "Orkeon:Host",
       "type": "integer",
       "default": 104857600,
-      "description": "What one conversation may hold, in bytes, both folders counted. A run writes freely while it runs: a conversation found over this afterwards starts no other run."
+      "description": "What one conversation may hold, in bytes: both folders, and what was left in the folders of a crew, be it still there or not. A run writes freely while it runs: a conversation found over this afterwards starts no other run."
+    },
+    {
+      "path": "Orkeon:Host:Files:MaxConversationFiles",
+      "section": "Orkeon:Host",
+      "type": "integer",
+      "default": 1000,
+      "description": "How many files one conversation may hold: those of both folders, and those left in the folders of a crew. At the limit, no other file is taken."
     },
     {
       "path": "Orkeon:Host:Files:MaxFileBytes",

@@ -28,10 +28,16 @@ internal sealed record HostFilesOptions
     public int MaxFilesPerMessage { get; init; } = 10;
 
     /// <summary>
-    /// What one conversation may hold, in bytes, both folders counted. A run writes freely while it runs: a conversation
-    /// found over this afterwards starts no other run.
+    /// What one conversation may hold, in bytes: both folders, and what was left in the folders of a crew, be it still there
+    /// or not. A run writes freely while it runs: a conversation found over this afterwards starts no other run.
     /// </summary>
     public long MaxConversationBytes { get; init; } = 100L * 1024 * 1024;
+
+    /// <summary>
+    /// How many files one conversation may hold: those of both folders, and those left in the folders of a crew. At the
+    /// limit, no other file is taken.
+    /// </summary>
+    public int MaxConversationFiles { get; init; } = 1000;
 
     /// <summary>
     /// What the conversations may hold together, in bytes. Found over this, no conversation starts a run until the
@@ -68,6 +74,8 @@ internal sealed record HostFilesOptions
             return $"{SectionName}:MaxFilesPerMessage must be positive.";
         if (MaxConversationBytes <= 0)
             return $"{SectionName}:MaxConversationBytes must be positive.";
+        if (MaxConversationFiles <= 0)
+            return $"{SectionName}:MaxConversationFiles must be positive.";
         if (MaxTotalBytes <= 0)
             return $"{SectionName}:MaxTotalBytes must be positive.";
         if (Retention <= TimeSpan.Zero)

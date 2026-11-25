@@ -49,7 +49,7 @@ internal sealed class DownloadableFiles
     /// What the crew declares, read as the host: an agent's scope narrows the files it sends, not what the crew opens, and
     /// the crew's definition is in no scope of its agents.
     /// </summary>
-    private async Task<OpenedFolders> DeclaredAsync(HostedCrewOptions crew, CancellationToken ct)
+    internal async Task<OpenedFolders> DeclaredAsync(HostedCrewOptions crew, CancellationToken ct)
     {
         Task<OpenedFolders> reading;
         if (ExecutionContext.IsFlowSuppressed())

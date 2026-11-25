@@ -329,8 +329,8 @@ public sealed class ConversationFilesTests : IDisposable
 
             return "done";
         });
-        await files.StoreAsync(Alice, null, Incoming("same.txt", "x"), 0, "/outbox", Ct);
-        await files.StoreAsync(Alice, null, Incoming("changed.txt", "x"), 0, "/outbox", Ct);
+        await files.StoreAsync(Alice, null, Incoming("same.txt", "x"), 0, "/outbox", ct: Ct);
+        await files.StoreAsync(Alice, null, Incoming("changed.txt", "x"), 0, "/outbox", ct: Ct);
 
         var result = await RunAsync(host, In(Alice));
 
@@ -415,11 +415,12 @@ public sealed class ConversationFilesTests : IDisposable
     }
 
     [Theory]
-    [InlineData("MaxConversationBytes")]
-    [InlineData("MaxTotalBytes")]
-    public async Task ShouldKeepWithinTheLimit_WhenFilesArriveAtOnceWithoutASize(string limit)
+    [InlineData("MaxConversationBytes", 100)]
+    [InlineData("MaxTotalBytes", 100)]
+    [InlineData("MaxConversationFiles", 3)]
+    public async Task ShouldKeepWithinTheLimit_WhenFilesArriveAtOnceWithoutASize(string limit, int most)
     {
-        var (_, files) = Build(files: s => s[limit] = 100);
+        var (_, files) = Build(files: s => s[limit] = most);
         using var arrived = new SemaphoreSlim(0);
         var open = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         IncomingFile Slow(int i) => new($"{i}.txt", async ct =>
@@ -440,6 +441,8 @@ public sealed class ConversationFilesTests : IDisposable
         Assert.Equal(3, stored.Count(s => s.Path is not null));
         Assert.Equal(90, Directory.GetFiles(Root, "*.txt", SearchOption.AllDirectories).Sum(f => new FileInfo(f).Length));
         // What was reserved for the refused ones is given back.
+        if (limit == "MaxConversationFiles")
+            File.Delete(Directory.GetFiles(Inbox(Alice))[0]);
         Assert.Null((await files.StoreAsync(Alice, null, Incoming("last.txt", "0123456789"), 0, ct: Ct)).Refused);
     }
 
@@ -462,6 +465,55 @@ public sealed class ConversationFilesTests : IDisposable
 
         Assert.NotNull(second.Refused);
         Assert.Null((await first).Refused);
+    }
+
+    [Fact]
+    public async Task ShouldKeepOneOfTwo_WhenOneAttachmentArrivesTwiceAtOnce()
+    {
+        var (_, files) = Build();
+        using var both = new SemaphoreSlim(0);
+        var open = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        IncomingFile Same() => new("a.txt", async ct =>
+        {
+            both.Release();
+            await open.Task.WaitAsync(ct);
+            return Content("a");
+        }) { Id = "77" };
+
+        var first = files.StoreAsync(Alice, null, Same(), 0, ct: Ct);
+        var second = files.StoreAsync(Alice, null, Same(), 0, ct: Ct);
+        await both.WaitAsync(Ct);
+        await both.WaitAsync(Ct);
+        open.SetResult();
+
+        Assert.Equal("/inbox/a.txt", (await first).Path);
+        Assert.Equal("/inbox/a.txt", (await second).Path);
+        Assert.Single(Directory.GetFiles(Inbox(Alice)));
+        Assert.Empty(Directory.GetFiles(Path.Combine(Root, Alice.Key, "part")));
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task ShouldKeepWhatArrives_WhenARunOpensOrASweepPassesMeanwhile(bool run)
+    {
+        var (host, files) = Build((_, _) => Task.FromResult("done"));
+        await files.StoreAsync(Alice, null, Incoming("old.txt", "old"), 0, ct: Ct);
+        Age(Alice, TimeSpan.FromDays(30));
+        var started = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var open = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var arriving = files.StoreAsync(Alice, null, new IncomingFile("a.txt", _ => Task.FromResult<Stream>(new LateStream("ab", started, open.Task))), 0, ct: Ct);
+        await started.Task.WaitAsync(Ct);
+
+        if (run)
+            await RunAsync(host, In(Alice));
+        else
+            await files.SweepAsync(Ct);
+        open.SetResult();
+
+        Assert.Null((await arriving).Refused);
+        Assert.Equal("ab", Read(Path.Combine(Inbox(Alice), "a.txt")));
+        Assert.Equal("old", Read(Path.Combine(Inbox(Alice), "old.txt")));
     }
 
     [Fact]
@@ -756,7 +808,7 @@ public sealed class ConversationFilesTests : IDisposable
         var (_, files) = Build();
 
         var first = await files.StoreAsync(Alice, null, Incoming("a.txt", "a", id: "7"), 0, ct: Ct);
-        var second = await files.StoreAsync(Alice, null, Incoming("a.txt", "a", id: "7"), 0, "/outbox", Ct);
+        var second = await files.StoreAsync(Alice, null, Incoming("a.txt", "a", id: "7"), 0, "/outbox", ct: Ct);
         var third = await files.StoreAsync(Alice, null, Incoming("a.txt", "a", id: "7"), 0, ct: Ct);
 
         Assert.Equal(["/inbox/a.txt", "/outbox/a.txt", "/inbox/a.txt"], new[] { first.Path, second.Path, third.Path });
@@ -772,11 +824,11 @@ public sealed class ConversationFilesTests : IDisposable
             return new HostedCrewOptions { Name = name, Path = _harness.CrewPath, Mounts = [$"{folder}:/data:rw"] };
         }
 
-        await files.StoreAsync(Alice, Crew("one"), Incoming("a.txt", "a", id: "7"), 0, "/data", Ct);
+        await files.StoreAsync(Alice, Crew("one"), Incoming("a.txt", "a", id: "7"), 0, "/data", ct: Ct);
         var two = Crew("two");
         Write(Path.Combine(_harness.Root, "two", "a.txt"), "another file");
-        var second = await files.StoreAsync(Alice, two, Incoming("a.txt", "a", id: "7"), 0, "/data", Ct);
-        var without = await files.StoreAsync(Alice, null, Incoming("a.txt", "a", id: "7"), 0, "/data", Ct);
+        var second = await files.StoreAsync(Alice, two, Incoming("a.txt", "a", id: "7"), 0, "/data", ct: Ct);
+        var without = await files.StoreAsync(Alice, null, Incoming("a.txt", "a", id: "7"), 0, "/data", ct: Ct);
 
         Assert.Equal("/data/a (1).txt", second.Path);
         Assert.NotNull(without.Refused);

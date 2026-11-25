@@ -141,6 +141,7 @@ sauf ce qu'un agent envoie par [`chat_attach`](#les-fichiers-quenvoie-un-agent).
   "MaxFileBytes": 10485760,
   "MaxFilesPerMessage": 10,
   "MaxConversationBytes": 104857600,
+  "MaxConversationFiles": 1000,
   "MaxTotalBytes": 2147483648,
   "MaxAttachedFilesPerRun": 10,
   "MaxAttachedMessagesPerRun": 5,
@@ -169,7 +170,9 @@ sauf ce qu'un agent envoie par [`chat_attach`](#les-fichiers-quenvoie-un-agent).
 - **Limites.** Un fichier au-delà d'une limite, ou d'une extension qu'`AllowedExtensions` ne prend pas, est refusé seul. Un
   run écrit librement tant qu'il tourne : les limites sont contrôlées à l'arrivée d'un fichier et au démarrage d'un run, et
   une conversation au-delà de `MaxConversationBytes`, ou un hôte au-delà de `MaxTotalBytes`, ne démarre aucun run avant que
-  la rétention ou l'opérateur ne fasse de la place. Une conversation dont un dossier ne peut être listé compte comme au-delà
+  la rétention ou l'opérateur ne fasse de la place. Un fichier déposé dans un dossier d'une crew (`/put`) compte dans sa
+  conversation, en octets et pour `MaxConversationFiles`, jusqu'à ce que la rétention la supprime, même une fois que la crew
+  l'a déplacé ou supprimé ; le fichier, lui, est à la crew, et reste. Une conversation dont un dossier ne peut être listé compte comme au-delà
   de sa propre limite, et n'en arrête aucune autre.
 - **Rétention.** Une conversation est supprimée `Retention` après sa dernière activité ; le contrôle passe au démarrage,
   puis toutes les heures. Celle dont un run est en cours, ou suspendu sur une question, est gardée. Un run suspendu se
@@ -363,8 +366,8 @@ Enregistrées sur Discord quand [`Files`](#files--les-dossiers-dune-conversation
 - **Ce qui est ouvert.** `/outbox` est toujours listé et envoyé. `/inbox` est listé et n'est pas renvoyé : la personne a ce qui a été envoyé, et un fichier retiré du canal ne doit pas en ressortir par le bot. Le reste est ce que déclare le [`files:`](#files--les-dossiers-quune-crew-ouvre) de la crew, lu à chaque commande. Les fichiers cachés, les liens et les autres mounts sous un dossier ouvert sont laissés de côté. Une liste lit au plus 1 000 fichiers par dossier.
 - **Chemins.** Un chemin se tape entier, depuis `/`, et n'a qu'une lecture : `..`, `.`, un segment vide, une barre oblique inverse ou un caractère de contrôle est refusé. Il est tenu à la déclaration et au système de fichiers virtuel ; un chemin interdit reçoit la même réponse qu'un chemin absent. Le client complète avec au plus 25 chemins de 100 caractères ; un chemin plus long se tape à la main. Rien n'est complété pour une personne hors liste.
 - **Tailles.** La limite de Discord du moment, et 24 Mio au plus par requête, dix fichiers par message ; un fichier plus gros est nommé et n'est pas envoyé. Dans un fil, le bot a besoin de la permission **Attach Files**.
-- **Pendant un run.** Les trois commandes marchent. Le run ne retient pas les fichiers de la conversation : une commande n'attend qu'une autre commande, ou un fichier en cours de réception. `/get` envoie une copie lue d'un trait, après avoir jugé de nouveau le chemin ; un fichier qui grossit entre-temps est refusé, et un fichier réécrit à taille égale peut partir tel qu'il était à mi-chemin.
-- **`/put`** ne démarre aucun run. Le fichier est rangé sous les limites de tout fichier reçu, jamais par-dessus un autre, et pas deux fois dans un dossier pour un même fichier Discord ; il a deux minutes pour arriver. Un agent le voit quand il regarde dans ce dossier.
+- **Pendant un run.** Les trois commandes marchent. Le run ne retient pas les fichiers de la conversation : une commande n'attend qu'une autre commande, jamais un fichier en train d'arriver. `/get` envoie une copie lue d'un trait, après avoir jugé de nouveau le chemin ; un fichier qui grossit entre-temps est refusé, et un fichier réécrit à taille égale peut partir tel qu'il était à mi-chemin.
+- **`/put`** ne démarre aucun run. Le fichier est rangé sous les limites de tout fichier reçu, jamais par-dessus un autre, et pas deux fois dans un dossier pour un même fichier Discord ; il a deux minutes pour arriver, et le dossier est jugé de nouveau une fois qu'il est là : celui que la crew a fermé entre-temps, ou remplacé par un lien, ne prend rien. Un agent le voit quand il regarde dans ce dossier.
 - **Qui voit.** Un dossier déclaré comme `/output` appartient à la crew : ce qu'un fil y laisse, les autres fils de la crew le lisent.
 
 #### Les fichiers qu'envoie un agent

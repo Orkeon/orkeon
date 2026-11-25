@@ -139,6 +139,7 @@ and send what `/outbox` holds. Nothing is sent on its own, but what an agent sen
   "MaxFileBytes": 10485760,
   "MaxFilesPerMessage": 10,
   "MaxConversationBytes": 104857600,
+  "MaxConversationFiles": 1000,
   "MaxTotalBytes": 2147483648,
   "MaxAttachedFilesPerRun": 10,
   "MaxAttachedMessagesPerRun": 5,
@@ -165,7 +166,9 @@ and send what `/outbox` holds. Nothing is sent on its own, but what an agent sen
 - **Limits.** A file over a limit, or of an extension `AllowedExtensions` leaves out, is refused alone. A run writes freely
   while it runs: the limits are checked when a file arrives and when a run starts, and a conversation over
   `MaxConversationBytes`, or a host over `MaxTotalBytes`, starts no run until the retention or the operator makes room. A
-  conversation with a folder that cannot be listed counts as over its own limit, and stops no other.
+  file left in a folder of a crew (`/put`) counts in its conversation, in bytes and against `MaxConversationFiles`, until the
+  retention deletes that conversation, even once the crew has moved or deleted it; the file itself is the crew's, and
+  stays. A conversation with a folder that cannot be listed counts as over its own limit, and stops no other.
 - **Retention.** A conversation is deleted `Retention` after its last activity; the check runs at start, then every hour.
   One with a run in progress, or suspended on a question, is kept. A suspended run is resumed outside the host
   (`orkeon run --resume`), with no conversation.
@@ -357,8 +360,8 @@ Registered on Discord when [`Files`](#files--the-folders-of-a-conversation) is o
 - **What is open.** `/outbox` is always listed and sent. `/inbox` is listed and not sent back: the person has what was sent, and a file taken back from the channel must not come out again by the bot. The rest is what the crew's [`files:`](#files--the-folders-a-crew-opens) declares, read at each command. Hidden files, links, and other mounts under an opened folder are left out. A listing reads at most 1,000 files per folder.
 - **Paths.** A path is typed whole, from `/`, with one reading: `..`, `.`, an empty segment, a backslash or a control character is refused. It is held to the declaration and to the virtual file system; a path that is forbidden is answered as one that is not there. The client completes with at most 25 paths of 100 characters; a longer one is typed by hand. Nothing is completed for a person off the allow list.
 - **Sizes.** Discord's own limit of the moment, and 24 MiB at most in one request, ten files a message; a larger file is named and not sent. In a thread, the bot needs the **Attach Files** permission.
-- **During a run.** The three commands work. The run does not hold the conversation's files, so a command waits only for another one, or for a file being received. `/get` sends a copy read at once, after judging the path again; a file that grows meanwhile is refused, and one rewritten under the same size may come as it stood halfway.
-- **`/put`** starts no run. The file is kept under the limits of any received file, never over another, and not twice in one folder for one Discord file; it has two minutes to arrive. An agent sees it when it looks in that folder.
+- **During a run.** The three commands work. The run does not hold the conversation's files, so a command waits only for another one, never for a file that is arriving. `/get` sends a copy read at once, after judging the path again; a file that grows meanwhile is refused, and one rewritten under the same size may come as it stood halfway.
+- **`/put`** starts no run. The file is kept under the limits of any received file, never over another, and not twice in one folder for one Discord file; it has two minutes to arrive, and the folder is judged again once it has: one the crew closed meanwhile, or replaced by a link, takes nothing. An agent sees it when it looks in that folder.
 - **Who sees.** A declared folder such as `/output` belongs to the crew: what one thread leaves there, the crew's other threads read.
 
 #### Files an agent sends
