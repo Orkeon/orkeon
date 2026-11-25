@@ -36,14 +36,21 @@ internal sealed partial class TeamsResponder : IChatResponder
     private readonly TeamsBotToken _token;
     private readonly TimeProvider _time;
     private readonly ILogger _logger;
+    private readonly TeamsFileExchange? _files;
 
     /// <summary>Builds the responder over the transport that reaches the Bot Connector.</summary>
-    public TeamsResponder(HttpClient http, TeamsBotToken token, TimeProvider time, ILogger logger)
+    /// <param name="http">The transport.</param>
+    /// <param name="token">The bot's token.</param>
+    /// <param name="time">The clock.</param>
+    /// <param name="logger">Where the responder logs.</param>
+    /// <param name="files">What sends files, null when the host keeps none.</param>
+    public TeamsResponder(HttpClient http, TeamsBotToken token, TimeProvider time, ILogger logger, TeamsFileExchange? files = null)
     {
         _http = http ?? throw new ArgumentNullException(nameof(http));
         _token = token ?? throw new ArgumentNullException(nameof(token));
         _time = time ?? throw new ArgumentNullException(nameof(time));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _files = files;
     }
 
     /// <inheritdoc />
@@ -55,16 +62,15 @@ internal sealed partial class TeamsResponder : IChatResponder
     /// <inheritdoc />
     public Task CompleteAsync(InboundMessage message, string text, CancellationToken ct) => SendAsync(message, text, Attempts, ct);
 
-    // Sending files in Teams goes through a consent card this channel does not have.
     /// <inheritdoc />
     public Task<IReadOnlyList<FileSendResult>> SendFilesAsync(InboundMessage message, IReadOnlyList<OutboundFile> files, CancellationToken ct) =>
-        FileSendResult.NoneSent(files);
+        _files is not null && message is TeamsInboundMessage teams ? _files.OfferAsync(this, teams, files, ct) : FileSendResult.NoneSent(files);
 
     /// <inheritdoc />
     int IChatResponder.MaxTextLength => MaxTextLength;
 
     /// <inheritdoc />
-    public bool TakesFileCommands => false;
+    public bool TakesFileCommands => _files is not null;
 
     private async Task SendAsync(InboundMessage message, string text, int attempts, CancellationToken ct)
     {
@@ -75,9 +81,25 @@ internal sealed partial class TeamsResponder : IChatResponder
             return;
         }
 
+        await PostAsync(target, BodyOf(target, text), attempts, ct).ConfigureAwait(false);
+    }
+
+    /// <summary>Posts a text where no message is at hand.</summary>
+    internal Task PostTextAsync(TeamsReplyTarget target, string text, CancellationToken ct) => PostAsync(target, BodyOf(target, text), Attempts, ct);
+
+    /// <summary>Posts a card; false when Teams refused it or it could not be sent.</summary>
+    internal Task<bool> PostCardAsync(TeamsReplyTarget target, Dictionary<string, object?> card, CancellationToken ct)
+    {
+        var body = AddressedTo(target);
+        body["attachments"] = new object[] { card };
+        return PostAsync(target, body, Attempts, ct);
+    }
+
+    private async Task<bool> PostAsync(TeamsReplyTarget target, Dictionary<string, object> body, int attempts, CancellationToken ct)
+    {
         try
         {
-            await PostAsync(target, text, attempts, ct).ConfigureAwait(false);
+            return await DeliverAsync(target, body, attempts, ct).ConfigureAwait(false);
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {
@@ -89,11 +111,12 @@ internal sealed partial class TeamsResponder : IChatResponder
         {
             LogSendFailed(ex, target.ConversationId);
         }
+
+        return false;
     }
 
-    private async Task PostAsync(TeamsReplyTarget target, string text, int attempts, CancellationToken ct)
+    private async Task<bool> DeliverAsync(TeamsReplyTarget target, Dictionary<string, object> body, int attempts, CancellationToken ct)
     {
-        var body = BodyOf(target, text);
         var renewed = false;
         for (var attempt = 1; ;)
         {
@@ -113,7 +136,7 @@ internal sealed partial class TeamsResponder : IChatResponder
 
             using var response = answer;
             if (response.IsSuccessStatusCode)
-                return;
+                return true;
 
             if (response.StatusCode == HttpStatusCode.Unauthorized && !renewed)
             {
@@ -125,7 +148,7 @@ internal sealed partial class TeamsResponder : IChatResponder
             if (attempt >= attempts || !IsTransient(response.StatusCode))
             {
                 LogSendRefused(target.ConversationId, (int)response.StatusCode);
-                return;
+                return false;
             }
 
             await Task.Delay(DelayOf(response, attempt), _time, ct).ConfigureAwait(false);
@@ -145,15 +168,21 @@ internal sealed partial class TeamsResponder : IChatResponder
         new($"{target.ServiceUrl.AbsoluteUri.TrimEnd('/')}/v3/conversations/{Uri.EscapeDataString(target.ConversationId)}"
             + $"/activities/{Uri.EscapeDataString(target.ActivityId)}");
 
-    private static Dictionary<string, object> BodyOf(TeamsReplyTarget target, string text) => new()
+    private static Dictionary<string, object> BodyOf(TeamsReplyTarget target, string text)
+    {
+        var body = AddressedTo(target);
+        body["textFormat"] = "markdown";
+        body["text"] = TeamsMarkdown.Harmless(DiscordResponder.Truncate(text, MaxTextLength));
+        return body;
+    }
+
+    private static Dictionary<string, object> AddressedTo(TeamsReplyTarget target) => new()
     {
         ["type"] = "message",
         ["from"] = new { id = target.BotId },
         ["recipient"] = new { id = target.UserId },
         ["conversation"] = new { id = target.ConversationId },
         ["replyToId"] = target.ActivityId,
-        ["textFormat"] = "markdown",
-        ["text"] = TeamsMarkdown.Harmless(DiscordResponder.Truncate(text, MaxTextLength)),
     };
 
     private static bool IsTransient(HttpStatusCode status) =>

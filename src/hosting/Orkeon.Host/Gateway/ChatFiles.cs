@@ -19,6 +19,25 @@ internal sealed record InboundAttachment
     public long? Size { get; init; }
 }
 
+/// <summary>A file was not read, for a reason a person may be told: the message holds no address and nothing a server answered.</summary>
+internal sealed class AttachmentRefusedException : IOException
+{
+    public AttachmentRefusedException()
+    {
+    }
+
+    /// <param name="reason">The reason, as the end of a sentence.</param>
+    public AttachmentRefusedException(string reason)
+        : base(reason)
+    {
+    }
+
+    public AttachmentRefusedException(string reason, Exception innerException)
+        : base(reason, innerException)
+    {
+    }
+}
+
 /// <summary>Reads the files of one message or command, on the channel they came from. It holds their addresses.</summary>
 internal interface IAttachmentSource
 {

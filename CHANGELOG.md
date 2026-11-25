@@ -37,10 +37,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added — an agent sends files to its conversation (`chat_attach`)
 
 - `chat_attach` sends files of `/outbox`, or of a folder the crew opens to download, to the Discord conversation the run
-  answers, by the checks of `/get` and under the agent's `filesystem:` scope. Without a conversation the call fails. Teams
-  sends none yet. The sixth motivated exception to the scope freeze (ADR-023): 135 built-in tools.
+  answers, by the checks of `/get` and under the agent's `filesystem:` scope. Without a conversation the call fails.
+  The sixth motivated exception to the scope freeze (ADR-023): 135 built-in tools.
 - `Orkeon:Host:Files:MaxAttachedFilesPerRun` (10), `MaxAttachedMessagesPerRun` (5) and `MaxAttachedBytesPerRun` (50 MiB)
   bound a run; `/stop`, the deadline and the end of the run stop the sending.
+
+### Added — orkeon-host's files on Teams, in the personal chat
+
+- With `Orkeon:Host:Files` on, the Teams channel keeps the files and pictures of a personal chat under the bounds of
+  Discord's, takes `/files`, `/get` and `/put` typed as messages, and sends files (`/get`, `chat_attach`) by a consent card:
+  an offer is for one person in one chat, once, for an hour, and is lost at a restart. A channel or a group chat is answered
+  that files pass in the personal chat only.
+- `Orkeon:Host:Teams:SharePointNames` names the tenant's SharePoint, the only place files are read from or sent to; empty,
+  no file passes. `Orkeon:Host:Teams:CertificatePathEnvironmentVariable` names the certificate its token is obtained with,
+  read from a folder no agent sees. Without one, Microsoft's temporary addresses serve until 2027-03-01, then no file passes.
 
 ### Added — a crew declares the folders it opens
 

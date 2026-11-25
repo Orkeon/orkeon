@@ -305,14 +305,14 @@ d'échanges de `--llm-log`), `/sandbox` (où les sandboxes de code déposent ce 
 `/llm-cassette` (`--llm-mock`, `--llm-record`/`--llm-replay`), `/credentials` (les jetons OAuth des comptes e-mail, drive et chat — montée seulement quand un compte OAuth
 de l'une de ces familles est déclaré) et `/credential-files` (le dossier de chaque fichier de certificat ou de jeton fédéré
 d'un compte chat d'application, monté en **lecture seule**, un sous-dossier par dossier,
-`/credential-files/<16 hex du SHA-256 du chemin du dossier>`, seulement quand un tel compte est déclaré) ; le REPL monte ces deux derniers comme le fait un runner. Le registre refuse un montage interne à tout appelant ordinaire et le signale comme
+`/credential-files/<16 hex du SHA-256 du chemin du dossier>`, seulement quand un tel compte est déclaré ou, dans `orkeon-host` avec `Orkeon:Host:Files` allumé, quand le canal Teams nomme un certificat) ; le REPL monte ces deux derniers comme le fait un runner. Le registre refuse un montage interne à tout appelant ordinaire et le signale comme
 un chemin inexistant : aucun outil destiné aux agents ne peut l'atteindre ni même le nommer
 ([ADR-008](../adr/ADR-008-virtual-paths-are-the-only-currency.md)). Les quelques composants qui
 doivent y écrire demandent `PrivilegedFileSystemAccess` à la DI, par son nom : l'enregistreur des
 échanges, les sandboxes de code et les magasins de jetons (`FileSystemEmailTokenStore`,
 `FileSystemDriveTokenStore` et `FileSystemChatTokenStore`, que l'hôte des runners enregistre sur
 `/credentials/email`, `/credentials/drive` et `/credentials/chat`) et `ChatCredentialFile`, qui lit le fichier
-de certificat ou de jeton fédéré d'un compte chat d'application sous `/credential-files`, de nouveau pour chaque jeton. Ils passent toujours par le VFS. Le seul
+de certificat ou de jeton fédéré d'un compte chat d'application, ou le certificat du canal Teams de l'hôte, sous `/credential-files`, de nouveau pour chaque jeton. Ils passent toujours par le VFS. Le seul
 `System.IO` brut sur ce chemin est la création, par le runner, du répertoire physique
 `credentials` et de ses sous-répertoires `email`, `drive` et `chat` (réservés au propriétaire sous Unix), et la vérification que le dossier d'un fichier d'identifiant existe, avant
 qu'aucun montage n'existe — du bootstrap `Hosting/Runner*`, une portée `EXCEPTION-BOOTSTRAP` déjà
@@ -325,7 +325,7 @@ point d'entrée refuse les racines qu'il se réserve (`/crew` et `/sandbox` pour
 Un montage interne ferme son dossier physique aux agents, quel que soit l'autre montage qui le tient. Le
 dossier d'un fichier d'identifiant doit donc être un dossier à lui : s'il est le répertoire de travail, un
 dossier monté pour les agents ou un dossier qui en contient un, l'hôte ne le monte pas, avertit au démarrage
-(« Keep it in a folder of its own. ») et ce compte ne peut pas se connecter. Le dossier entier est monté, en
+(« Keep it in a folder of its own. ») et ce compte, ou le canal Teams pour ses fichiers, ne peut pas se connecter. Le dossier entier est monté, en
 lecture seule, et seuls les composants privilégiés atteignent ses autres fichiers. Les liens sont suivis à
 l'intérieur (la disposition des jetons projetés de Kubernetes `token -> ..data/token` marche) ; un lien qui
 sort du dossier est refusé.

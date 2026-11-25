@@ -295,6 +295,45 @@ Messages **inside a thread**, from people: a message posted in a plain channel i
 
 **A thread is a run** here too: in a team's channel, the thread; in a personal or group chat, the whole chat. In a channel Teams delivers only the messages that **mention the bot** (unless the app was granted more), and the mention is removed. A message without an Entra object id, from another bot, or empty is ignored, while a file sent alone is answered as on Discord — except in a team's channel, where Teams gives a file only as a link in the HTML copy of the message, which is not read; an activity delivered twice runs once. The request is answered at once, and the run goes on. Answers are cut to 20,000 characters. HTML in an answer is escaped outside code, so `List<string>` shows literally and no image tag is rendered; a Markdown image becomes a plain link. A final reply is retried when the connection fails, when the bot's sign-in fails for a transient reason, and on HTTP 412, 429, 502, 503 and 504.
 
+#### Files in Teams
+
+With [`Files`](#files--the-folders-of-a-conversation) on, files pass **in the personal chat with the bot only**: Teams gives a bot no file elsewhere. In a channel or a group chat, `/files`, `/get` and `/put` are answered with that sentence, and so is a message whose files Teams announces; an agent's `chat_attach` is refused there with it. With `Files` off, the commands answer that they are off on this host, and a message's files are named as left out.
+
+```json
+"Files": { "Enabled": true },
+"Teams": {
+  "SharePointNames": [ "contoso" ],
+  "CertificatePathEnvironmentVariable": "ORKEON_TEAMS_CERTIFICATE_PATH"
+}
+```
+
+**The manifest of the Teams app** (the entries for files, beside yours):
+
+```json
+{
+  "bots": [ { "botId": "11111111-2222-3333-4444-555555555555", "scopes": [ "personal" ], "supportsFiles": true } ],
+  "authorization": {
+    "permissions": {
+      "resourceSpecific": [ { "name": "File.ReadWriteSelected.User", "type": "Application" } ]
+    }
+  }
+}
+```
+
+`supportsFiles` lets people send files to the bot. The resource-specific permission is what Microsoft announces for the application token: manifests accept it from **2027-01-15** (Teams refuses the manifest before), and the app must be published with it by **2027-03-01**. `File.ReadSelected.User` downloads only; `File.ReadWriteSelected.User` uploads and covers downloads. It gives no access by itself: only to a file a person sent the bot or accepted.
+
+**The certificate.** SharePoint takes the application's own token, obtained with a certificate; Microsoft refuses a client secret there (the bot keeps its secret for its replies). `CertificatePathEnvironmentVariable` names the environment variable that holds the absolute path of a PEM file: the certificate and its unencrypted RSA private key, its public half registered on the application `AppId`. Keep it in a folder of its own: the host mounts that folder read-only where no agent sees it ([credential files](vfs-compliance.md#internal-roots-and-privileged-access)), and says at start when it cannot. It is read again for each token. A variable that holds no absolute path refuses the start.
+
+**Without a certificate.** Until 2027-03-01 (UTC), the addresses Teams gives that carry a `tempauth` parameter work without a token, and the host uses them so; the start warns. After that date every file is refused with the reason, and the text of the messages still runs. The same addresses serve when the certificate cannot sign in.
+
+**Where files come from and go.** Microsoft's pages do not list the hosts, so the host names them: `SharePointNames` `contoso` is `contoso.sharepoint.com` and `contoso-my.sharepoint.com`, and no other. Empty, no file is exchanged and the start warns. A picture pasted in a message comes from the Bot Connector's hosts (those of the replies), with the bot's token. Always HTTPS on the default port, no redirection, the address exactly as Teams wrote it, a token asked for that host alone and sent to it alone, a file of `TenantId` alone, the bytes counted as they come; no address and no token is logged. Teams announces no size: a file too large is refused as it comes.
+
+**Commands.** Typed as messages: `/files [folder]`, `/get <path>`, and `/put <folder>` on a message that carries one file. The answer is a message of the chat.
+
+**Sending.** Every file, whether of `/get` or of `chat_attach`, is **offered by a consent card** first; `chat_attach` gets `awaiting_consent` and the run does not wait. Accepted, the file is read as it then is, put in the person's OneDrive at the address Teams gives (checked like any other), and shown by a file card. An offer is open for an hour, to the person it was made to, in the chat it was made in, once: an answer that is replayed, forged, late, or from someone else is refused and said. At most 10 offers wait in a chat and 256 on the host. They are kept in memory: **a restart loses them**, and the card says so. At most 25 MiB a file, the host's own bound; no empty file. The content is held in memory during the upload, two at a time.
+
+**What the Microsoft pages leave unknown**: the full list of the hosts, the largest file, how long an address lives. A national cloud's SharePoint is not supported. The host neither calls Graph nor reads the files of channels ([ADR-021](../adr/ADR-021-chat-tool-family.md)).
+
 ### Commands
 
 `/status` and `/stop` are, on Discord, **registered slash commands** — Discord's client autocompletes them, and the reply is **ephemeral**: a status poke or a refusal is the invoker's business, not one more line in everyone's thread. They are registered at connect time: globally when `GuildIds` is empty (no configuration, but Discord caches global commands for up to an hour), or per named guild (immediately available — the dev loop). On Discord the gateway does not parse message text for them: a literal `/stop` typed as plain text is a prompt like any other. On Teams, a message that is `/status` or `/stop` and nothing else (the mention aside) is the command, answered in the thread; there is no stop button.
@@ -303,15 +342,15 @@ Messages **inside a thread**, from people: a message posted in a plain channel i
 |---|---|
 | `/status` | What this conversation is running, and since when. |
 | `/stop` | Stops this conversation's run. The **Stop button** is the same invocation with a different finger — same allow-list check, same wording back. |
-| `/files [folder]` | Discord, `Files` on: the files of the conversation's folders and of those the crew opens. |
-| `/get <path>` | Discord, `Files` on: sends one file. |
-| `/put <file> <folder>` | Discord, `Files` on: keeps a file in a folder the crew opens to uploads. |
+| `/files [folder]` | `Files` on: the files of the conversation's folders and of those the crew opens. |
+| `/get <path>` | `Files` on: sends one file (on Teams, offers it). |
+| `/put <file> <folder>` | `Files` on: keeps a file in a folder the crew opens to uploads. |
 
 Every path is gated by the `AllowedUserIds` of its channel. That includes the button: a click from someone off the list is refused ephemerally instead of stopping the run.
 
 #### The file commands
 
-Registered on Discord when [`Files`](#files--the-folders-of-a-conversation) is on, and not otherwise. On Teams they are not commands yet: `/files` typed there is a message. They answer ephemerally: what `/get` sends is seen by the person who asked alone.
+Registered on Discord when [`Files`](#files--the-folders-of-a-conversation) is on, and not otherwise. On Teams they are typed as messages, in the personal chat ([Files in Teams](#files-in-teams)). On Discord they answer ephemerally: what `/get` sends is seen by the person who asked alone.
 
 - **Where.** In a thread: its channel, asked of Discord after the first answer, chooses the crew. Elsewhere, or when the channel cannot be known, the command is refused, and the default crew never stands in.
 - **What is open.** `/outbox` is always listed and sent. `/inbox` is listed and not sent back: the person has what was sent, and a file taken back from the channel must not come out again by the bot. The rest is what the crew's [`files:`](#files--the-folders-a-crew-opens) declares, read at each command. Hidden files, links, and other mounts under an opened folder are left out. A listing reads at most 1,000 files per folder.
@@ -328,7 +367,7 @@ With `Files` on, an agent that lists `chat_attach` sends files to the thread its
 - **What.** Exactly what `/get` would send, by the same checks: `/outbox` and the folders the crew declares `download`. Never `/inbox`. A forbidden file is answered as one that is not there. An agent whose `filesystem:` scope leaves a folder out sends nothing from it.
 - **Where.** The conversation of the run and no other: the tool takes no address. Agents the run starts (sub-agents, spawned agents, background work) share it and its counts, until the run ends. Without a conversation, or after the run, the call fails and the run goes on.
 - **How much.** `MaxAttachedFilesPerRun`, `MaxAttachedMessagesPerRun` and `MaxAttachedBytesPerRun` bound one run, all its agents together; the channel's own limits apply besides. What passes a cap is refused and named with its setting.
-- **What comes back.** Per file: `sent`, `too_large`, `refused` or `awaiting_consent`, with the reason. Teams refuses each one: it sends no file yet.
+- **What comes back.** Per file: `sent`, `too_large`, `refused` or `awaiting_consent`, with the reason. On Teams a file of the personal chat is `awaiting_consent` ([Files in Teams](#files-in-teams)).
 - **When it stops.** `/stop` and the run's deadline end the sending: the rest is not sent. What was posted stays posted.
 
 ---
@@ -495,7 +534,7 @@ process holds, a port under 1024 without the privilege — names the prefix and
 
 ## 7. What ships, and what does not
 
-**Ships**: the host and its lifetime, the crew registry with per-run isolation and a concurrency ceiling, the gateway ports, the allow-list authorizer, thread-is-run routing, the throttled responder, the Discord channel with registered `/status`, `/stop`, `/files`, `/get` and `/put` slash commands and the stop button — one authorized path for all three —, the Microsoft Teams channel, and the opt-in A2A server, one skill per exposed crew.
+**Ships**: the host and its lifetime, the crew registry with per-run isolation and a concurrency ceiling, the gateway ports, the allow-list authorizer, thread-is-run routing, the throttled responder, the Discord channel with registered `/status`, `/stop`, `/files`, `/get` and `/put` slash commands and the stop button — one authorized path for all three —, the Microsoft Teams channel, with files in the personal chat, and the opt-in A2A server, one skill per exposed crew.
 
 **Does not ship**, and is not implied anywhere: a scheduler, hot configuration reload, adding or removing hosted crews while the daemon runs, every chat channel other than Discord and Teams, and any HTTP surface beyond the Teams endpoint, the A2A server and the [host API](../reference/host-api.md) (off by default: health probes, the run routes and `POST /runs/{id}/input`) — no A2A task records (`GET /a2a/tasks/{id}` answers `501`). One runner feature stays out of the daemon too: the `semantic_search` tool is not registered (the MCP servers of the `MCP` section are connected at startup, like a run's — see [MCP integration](mcp.md)). The gateway ports are shaped so the run event bus's JSONL protocol is a legitimate implementation of the same contract — the model is not closed around chat — but that channel is not written.
 

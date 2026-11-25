@@ -393,6 +393,11 @@ internal sealed partial class ConversationFiles : IDisposable
         {
             throw;
         }
+        catch (Gateway.AttachmentRefusedException ex)
+        {
+            // The channel's own words, written for a person.
+            return Refuse(ex.Message);
+        }
 #pragma warning disable CA1031 // A file that cannot be read or kept is refused, never the message it came with.
         catch (Exception ex)
 #pragma warning restore CA1031

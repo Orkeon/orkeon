@@ -463,6 +463,12 @@
       "description": "The bot's application (client) id: the audience every incoming token must carry."
     },
     {
+      "path": "Orkeon:Host:Teams:CertificatePathEnvironmentVariable",
+      "section": "Orkeon:Host:Teams",
+      "type": "string",
+      "description": "Name of the environment variable holding the absolute path of the application's certificate: a PEM file with its unencrypted RSA private key, in a folder of its own. SharePoint refuses a client secret: without a certificate, files go through the temporary addresses Microsoft ends on 1 March 2027, then not at all."
+    },
+    {
       "path": "Orkeon:Host:Teams:DefaultCrew",
       "section": "Orkeon:Host:Teams",
       "type": "string",
@@ -516,6 +522,13 @@
       "type": "list of string",
       "default": [],
       "description": "Hosts of the Bot Connector service replies may go to, beside the ones Microsoft publishes for Teams (`smba.trafficmanager.net`, `smba.infra.gcc.teams.microsoft.com`). An activity naming another host is refused, whatever its token says."
+    },
+    {
+      "path": "Orkeon:Host:Teams:SharePointNames",
+      "section": "Orkeon:Host:Teams",
+      "type": "list of string",
+      "default": [],
+      "description": "The names of the tenant's SharePoint: `contoso` for `contoso.sharepoint.com` and `contoso-my.sharepoint.com`. Files of a personal chat are read from and sent to those hosts and no other; empty, none is. Used when `Orkeon:Host:Files` is on."
     },
     {
       "path": "Orkeon:Host:Teams:TenantId",

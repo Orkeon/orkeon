@@ -26,10 +26,19 @@ internal sealed record TeamsActivity
     public string Text { get; private init; } = string.Empty;
 
     /// <summary>
-    /// The files of the message, by name only. A channel's message shows its files as links in the HTML copy of its text:
-    /// those are not read, nor is any address a file could be downloaded from.
+    /// The files of the message, by name. A channel's message shows its files as links in the HTML copy of its text:
+    /// those are not read.
     /// </summary>
     public IReadOnlyList<InboundAttachment> Attachments { get; private init; } = [];
+
+    /// <summary>Where each file of <see cref="Attachments"/> says it is, unchecked, in their order.</summary>
+    public IReadOnlyList<TeamsFileAddress> Addresses { get; private init; } = [];
+
+    /// <summary>The answer to a consent card an invoke carries, null for anything else.</summary>
+    public TeamsConsentAnswer? Consent { get; private init; }
+
+    /// <summary>Whether it comes from the bot's chat with one person.</summary>
+    public bool IsPersonal => ConversationType == "personal";
 
     /// <summary>Reads a body, null when it is not a JSON object.</summary>
     public static TeamsActivity? Parse(ReadOnlyMemory<byte> body)
@@ -52,6 +61,7 @@ internal sealed record TeamsActivity
         var conversation = Child(root, "conversation");
         var recipientId = TextOf(Child(root, "recipient"), "id");
         string?[] tenants = [TextOf(conversation, "tenantId"), TextOf(Child(Child(root, "channelData"), "tenant"), "id")];
+        var files = FilesOf(root);
         return new TeamsActivity
         {
             Type = TextOf(root, "type"),
@@ -66,7 +76,9 @@ internal sealed record TeamsActivity
             ConversationType = TextOf(conversation, "conversationType"),
             Tenants = [.. tenants.OfType<string>().Where(t => t.Length > 0)],
             Text = WithoutMention(TextOf(root, "text") ?? string.Empty, root, recipientId),
-            Attachments = FilesOf(root),
+            Attachments = [.. files.Select(f => f.File)],
+            Addresses = [.. files.Select(f => f.Address)],
+            Consent = ConsentOf(root),
         };
     }
 
@@ -107,12 +119,14 @@ internal sealed record TeamsActivity
         Child(parent, name) is { ValueKind: JsonValueKind.String } value ? value.GetString() : null;
 
     /// <summary>The attachments that are files or pictures: the HTML copy of the text, a card and a quote are none.</summary>
-    private static List<InboundAttachment> FilesOf(JsonElement root)
+    private static List<(InboundAttachment File, TeamsFileAddress Address)> FilesOf(JsonElement root)
     {
         if (Child(root, "attachments") is not { ValueKind: JsonValueKind.Array } attachments)
             return [];
 
-        var files = new List<InboundAttachment>();
+        // In a personal chat two messages may carry the same file again: each names its own.
+        var message = TextOf(Child(root, "conversation"), "conversationType") == "personal" ? TextOf(root, "id") : null;
+        var files = new List<(InboundAttachment File, TeamsFileAddress Address)>();
         foreach (var attachment in attachments.EnumerateArray())
         {
             var type = TextOf(attachment, "contentType");
@@ -120,15 +134,37 @@ internal sealed record TeamsActivity
             if (!picture && !string.Equals(type, FileAttachmentType, StringComparison.OrdinalIgnoreCase))
                 continue;
 
-            files.Add(new InboundAttachment
-            {
-                Id = TextOf(Child(attachment, "content"), "uniqueId") ?? files.Count.ToString(CultureInfo.InvariantCulture),
-                Name = TextOf(attachment, "name") ?? (picture ? "image" : string.Empty),
-                ContentType = picture ? type : null,
-            });
+            var content = Child(attachment, "content");
+            var index = files.Count.ToString(CultureInfo.InvariantCulture);
+            files.Add((
+                new InboundAttachment
+                {
+                    Id = message is null ? TextOf(content, "uniqueId") ?? index : $"{message}/{index}",
+                    Name = TextOf(attachment, "name") ?? (picture ? "image" : string.Empty),
+                    ContentType = picture ? type : null,
+                },
+                new TeamsFileAddress(picture ? TextOf(attachment, "contentUrl") : TextOf(content, "downloadUrl"), TextOf(content, "tenantId"), picture)));
         }
 
         return files;
+    }
+
+    private static TeamsConsentAnswer? ConsentOf(JsonElement root)
+    {
+        if (TextOf(root, "type") != "invoke" || TextOf(root, "name") != "fileConsent/invoke")
+            return null;
+
+        var value = Child(root, "value");
+        var upload = Child(value, "uploadInfo");
+        return new TeamsConsentAnswer
+        {
+            Action = TextOf(value, "action"),
+            FileId = TextOf(Child(value, "context"), "fileId"),
+            Upload = new TeamsFileAddress(TextOf(upload, "uploadUrl"), TextOf(upload, "tenantId"), picture: false),
+            ContentUrl = TextOf(upload, "contentUrl"),
+            UniqueId = TextOf(upload, "uniqueId"),
+            FileType = TextOf(upload, "fileType"),
+        };
     }
 
     /// <summary>The message without the mention of the bot Teams puts in it; other people's mentions stay.</summary>
@@ -149,4 +185,28 @@ internal sealed record TeamsActivity
 
         return text.Replace("&nbsp;", " ", StringComparison.Ordinal).Trim();
     }
+}
+
+/// <summary>Where Teams says a file is, unchecked. Not a record: nothing that prints it prints the address.</summary>
+internal sealed class TeamsFileAddress(string? written, string? tenantId, bool picture)
+{
+    /// <summary>The address, exactly as received.</summary>
+    public string? Written { get; } = written;
+
+    /// <summary>The tenant the file is of, when it is said.</summary>
+    public string? TenantId { get; } = tenantId;
+
+    /// <summary>Whether it is a picture of the message, kept by the Bot Connector.</summary>
+    public bool Picture { get; } = picture;
+}
+
+/// <summary>What a person answered to a consent card, unchecked. Not a record: nothing that prints it prints an address.</summary>
+internal sealed class TeamsConsentAnswer
+{
+    public string? Action { get; init; }
+    public string? FileId { get; init; }
+    public required TeamsFileAddress Upload { get; init; }
+    public string? ContentUrl { get; init; }
+    public string? UniqueId { get; init; }
+    public string? FileType { get; init; }
 }

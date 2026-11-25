@@ -301,6 +301,45 @@ Les messages **à l'intérieur d'un fil**, écrits par des personnes : un messag
 
 **Un fil est un run** ici aussi : dans un canal d'équipe, le fil ; dans une conversation personnelle ou de groupe, la conversation entière. Dans un canal, Teams ne livre que les messages qui **mentionnent le bot** (sauf si l'application a reçu davantage), et la mention est retirée. Un message sans identifiant d'objet Entra, d'un autre bot, ou vide est ignoré, tandis qu'un fichier envoyé seul reçoit une réponse comme sur Discord — sauf dans un canal d'équipe, où Teams ne donne un fichier que sous forme de lien dans la copie HTML du message, qui n'est pas lue ; une activité livrée deux fois tourne une fois. La requête reçoit sa réponse aussitôt, et le run continue. Les réponses sont coupées à 20 000 caractères. Le HTML d'une réponse est échappé hors du code : `List<string>` s'affiche tel quel et aucune balise d'image n'est rendue ; une image Markdown devient un simple lien. Une réponse finale est retentée quand la connexion échoue, quand la connexion du bot à son service d'identité échoue pour une raison passagère, et sur HTTP 412, 429, 502, 503 et 504.
 
+#### Les fichiers dans Teams
+
+[`Files`](#files--les-dossiers-dune-conversation) allumé, les fichiers passent **dans la conversation personnelle avec le bot seulement** : Teams n'en donne à un bot nulle part ailleurs. Dans un canal ou une conversation de groupe, `/files`, `/get` et `/put` reçoivent cette phrase, de même qu'un message dont Teams annonce les fichiers ; le `chat_attach` d'un agent y est refusé avec elle. `Files` éteint, les commandes répondent qu'elles sont éteintes sur cet hôte, et ceux d'un message sont nommés comme laissés de côté.
+
+```json
+"Files": { "Enabled": true },
+"Teams": {
+  "SharePointNames": [ "contoso" ],
+  "CertificatePathEnvironmentVariable": "ORKEON_TEAMS_CERTIFICATE_PATH"
+}
+```
+
+**Le manifeste de l'application Teams** (les entrées pour les fichiers, à côté des vôtres) :
+
+```json
+{
+  "bots": [ { "botId": "11111111-2222-3333-4444-555555555555", "scopes": [ "personal" ], "supportsFiles": true } ],
+  "authorization": {
+    "permissions": {
+      "resourceSpecific": [ { "name": "File.ReadWriteSelected.User", "type": "Application" } ]
+    }
+  }
+}
+```
+
+`supportsFiles` permet d'envoyer des fichiers au bot. La permission propre à la ressource est celle que Microsoft annonce pour le jeton d'application : les manifestes l'acceptent à partir du **2027-01-15** (avant, Teams refuse le manifeste), et l'application doit être publiée avec elle au plus tard le **2027-03-01**. `File.ReadSelected.User` ne fait que recevoir ; `File.ReadWriteSelected.User` envoie et couvre la réception. Elle ne donne aucun accès à elle seule : uniquement à un fichier qu'une personne a envoyé au bot ou accepté.
+
+**Le certificat.** SharePoint prend le jeton propre de l'application, obtenu par un certificat ; Microsoft y refuse un secret client (le bot garde le sien pour ses réponses). `CertificatePathEnvironmentVariable` nomme la variable d'environnement qui contient le chemin absolu d'un fichier PEM : le certificat et sa clé privée RSA non chiffrée, la moitié publique étant inscrite sur l'application `AppId`. Gardez-le dans un dossier à lui : l'hôte monte ce dossier en lecture seule là où aucun agent ne le voit ([fichiers d'identifiant](vfs-compliance.md#racines-internes-et-accès-privilégié)), et dit au démarrage quand il ne le peut pas. Il est relu pour chaque jeton. Une variable qui ne contient pas de chemin absolu refuse le démarrage.
+
+**Sans certificat.** Jusqu'au 2027-03-01 (UTC), les adresses données par Teams qui portent un paramètre `tempauth` marchent sans jeton, et l'hôte s'en sert ainsi ; le démarrage avertit. Après cette date, chaque fichier est refusé avec la raison, et le texte des messages tourne encore. Les mêmes adresses servent quand le certificat n'arrive pas à se connecter.
+
+**D'où viennent et où vont les fichiers.** Les pages de Microsoft ne donnent pas la liste des hôtes : c'est donc la configuration qui les nomme. `SharePointNames` `contoso` vaut `contoso.sharepoint.com` et `contoso-my.sharepoint.com`, et aucun autre. Vide, aucun fichier n'est échangé et le démarrage avertit. Une image collée dans un message vient des hôtes du Bot Connector (ceux des réponses), avec le jeton du bot. Toujours HTTPS sur le port par défaut, sans redirection, l'adresse exactement comme Teams l'a écrite, un jeton demandé pour ce seul hôte et envoyé à lui seul, un fichier du seul `TenantId`, les octets comptés à mesure ; ni adresse ni jeton ne sont journalisés. Teams n'annonce pas de taille : un fichier trop gros est refusé pendant qu'il arrive.
+
+**Commandes.** Tapées comme des messages : `/files [folder]`, `/get <path>`, et `/put <folder>` sur un message qui porte un fichier. La réponse est un message de la conversation.
+
+**Envoi.** Tout fichier, de `/get` comme de `chat_attach`, est d'abord **proposé par une carte de consentement** ; `chat_attach` reçoit `awaiting_consent` et le run n'attend pas. Accepté, le fichier est lu tel qu'il est alors, déposé dans le OneDrive de la personne à l'adresse que donne Teams (contrôlée comme les autres), puis montré par une carte de fichier. Une offre vaut une heure, pour la personne à qui elle est faite, dans la conversation où elle est faite, une fois : une réponse rejouée, forgée, tardive ou venue de quelqu'un d'autre est refusée et c'est dit. Au plus 10 offres attendent dans une conversation et 256 sur l'hôte. Elles sont gardées en mémoire : **un redémarrage les perd**, et la carte le dit. Au plus 25 Mio par fichier, borne propre à l'hôte ; aucun fichier vide. Le contenu tient en mémoire pendant l'envoi, deux à la fois.
+
+**Ce que les pages de Microsoft laissent inconnu** : la liste complète des hôtes, la plus grande taille de fichier, la durée de vie d'une adresse. Le SharePoint d'un cloud national n'est pas pris en charge. L'hôte n'appelle pas Graph et ne lit pas les fichiers des canaux ([ADR-021](../adr/ADR-021-chat-tool-family.md)).
+
 ### Commandes
 
 `/status` et `/stop` sont, sur Discord, des **slash-commands enregistrées** — le client Discord les autocomplète, et la réponse est **éphémère** : un coup d'œil au statut ou un refus regarde celui qui invoque, pas une ligne de plus dans le thread de tout le monde. Elles sont enregistrées à la connexion : globalement quand `GuildIds` est vide (aucune configuration, mais Discord met les commandes globales en cache jusqu'à une heure), ou par serveur nommé (disponibles immédiatement — la boucle de dev). Sur Discord, la passerelle ne parse pas le texte des messages pour elles : un `/stop` littéral tapé comme texte est un prompt comme un autre. Sur Teams, un message qui est `/status` ou `/stop` et rien d'autre (la mention à part) est la commande, avec la réponse dans le fil ; il n'y a pas de bouton Stop.
@@ -309,15 +348,15 @@ Les messages **à l'intérieur d'un fil**, écrits par des personnes : un messag
 |---|---|
 | `/status` | Ce que cette conversation exécute, et depuis quand. |
 | `/stop` | Arrête le run de cette conversation. Le **bouton Stop** est la même invocation avec un autre doigt — même contrôle d'allow-list, même réponse. |
-| `/files [folder]` | Discord, `Files` allumé : les fichiers des dossiers de la conversation et de ceux que la crew ouvre. |
-| `/get <path>` | Discord, `Files` allumé : envoie un fichier. |
-| `/put <file> <folder>` | Discord, `Files` allumé : range un fichier dans un dossier que la crew ouvre au dépôt. |
+| `/files [folder]` | `Files` allumé : les fichiers des dossiers de la conversation et de ceux que la crew ouvre. |
+| `/get <path>` | `Files` allumé : envoie un fichier (sur Teams, le propose). |
+| `/put <file> <folder>` | `Files` allumé : range un fichier dans un dossier que la crew ouvre au dépôt. |
 
 Chaque chemin est gardé par le `AllowedUserIds` de son canal. Bouton compris : un clic de quelqu'un hors liste est refusé en éphémère au lieu d'arrêter le run.
 
 #### Les commandes de fichiers
 
-Enregistrées sur Discord quand [`Files`](#files--les-dossiers-dune-conversation) est allumé, et pas autrement. Sur Teams ce ne sont pas encore des commandes : `/files` tapé là est un message. Elles répondent en éphémère : ce que `/get` envoie n'est vu que de la personne qui le demande.
+Enregistrées sur Discord quand [`Files`](#files--les-dossiers-dune-conversation) est allumé, et pas autrement. Sur Teams elles se tapent comme des messages, dans la conversation personnelle ([Les fichiers dans Teams](#les-fichiers-dans-teams)). Sur Discord elles répondent en éphémère : ce que `/get` envoie n'est vu que de la personne qui le demande.
 
 - **Où.** Dans un fil : son canal, demandé à Discord après la première réponse, choisit la crew. Ailleurs, ou quand le canal ne peut pas être connu, la commande est refusée, et la crew par défaut n'en tient jamais lieu.
 - **Ce qui est ouvert.** `/outbox` est toujours listé et envoyé. `/inbox` est listé et n'est pas renvoyé : la personne a ce qui a été envoyé, et un fichier retiré du canal ne doit pas en ressortir par le bot. Le reste est ce que déclare le [`files:`](#files--les-dossiers-quune-crew-ouvre) de la crew, lu à chaque commande. Les fichiers cachés, les liens et les autres mounts sous un dossier ouvert sont laissés de côté. Une liste lit au plus 1 000 fichiers par dossier.
@@ -334,7 +373,7 @@ Enregistrées sur Discord quand [`Files`](#files--les-dossiers-dune-conversation
 - **Quoi.** Exactement ce que `/get` enverrait, par les mêmes contrôles : `/outbox` et les dossiers que la crew déclare en `download`. Jamais `/inbox`. Un fichier interdit reçoit la même réponse qu'un fichier absent. Un agent dont la portée `filesystem:` exclut un dossier n'en envoie rien.
 - **Où.** La conversation du run et aucune autre : l'outil ne prend pas d'adresse. Les agents que le run démarre (sous-agents, agents créés, travail en arrière-plan) la partagent, avec ses comptes, jusqu'à la fin du run. Sans conversation, ou après le run, l'appel échoue et le run continue.
 - **Combien.** `MaxAttachedFilesPerRun`, `MaxAttachedMessagesPerRun` et `MaxAttachedBytesPerRun` bornent un run, tous ses agents ensemble ; les limites du canal s'y ajoutent. Ce qui dépasse un plafond est refusé et nommé avec son réglage.
-- **Ce qui revient.** Par fichier : `sent`, `too_large`, `refused` ou `awaiting_consent`, avec la raison. Teams refuse chacun : il n'envoie pas encore de fichier.
+- **Ce qui revient.** Par fichier : `sent`, `too_large`, `refused` ou `awaiting_consent`, avec la raison. Sur Teams, un fichier de la conversation personnelle est `awaiting_consent` ([Les fichiers dans Teams](#les-fichiers-dans-teams)).
 - **Quand cela s'arrête.** `/stop` et l'échéance du run mettent fin à l'envoi : le reste n'est pas envoyé. Ce qui a été posté le reste.
 
 ---
@@ -504,7 +543,7 @@ préfixe et `Orkeon:Host:A2A:Port`.
 
 ## 7. Ce qui est livré, et ce qui ne l'est pas
 
-**Livré** : le host et son cycle de vie, le registre de crews avec isolation par run et plafond de concurrence, les ports de la passerelle, l'autorisation par liste, le routage thread-est-run, le répondeur throttlé, le canal Discord avec les slash-commands enregistrées `/status`, `/stop`, `/files`, `/get` et `/put` et le bouton d'arrêt — un seul chemin autorisé pour les trois —, le canal Microsoft Teams, et le serveur A2A opt-in, une compétence par crew exposée.
+**Livré** : le host et son cycle de vie, le registre de crews avec isolation par run et plafond de concurrence, les ports de la passerelle, l'autorisation par liste, le routage thread-est-run, le répondeur throttlé, le canal Discord avec les slash-commands enregistrées `/status`, `/stop`, `/files`, `/get` et `/put` et le bouton d'arrêt — un seul chemin autorisé pour les trois —, le canal Microsoft Teams, avec les fichiers en conversation personnelle, et le serveur A2A opt-in, une compétence par crew exposée.
 
 **Non livré**, et sous-entendu nulle part : un ordonnanceur, le rechargement à chaud de la configuration, l'ajout ou le retrait de crews hébergées pendant que le démon tourne, tout canal de chat autre que Discord et Teams, et toute surface HTTP au-delà du point d'entrée Teams, du serveur A2A et de l'[API du host](../reference/host-api.md) (désactivée par défaut : sondes de santé, routes de run et `POST /runs/{id}/input`) — ni enregistrement de tâche A2A (`GET /a2a/tasks/{id}` répond `501`). Une fonction des runners reste aussi hors du daemon : l'outil `semantic_search` n'est pas enregistré (les serveurs MCP de la section `MCP` sont connectés au démarrage, comme pour un run — voir [Intégration MCP](mcp.md)). Les ports sont écrits de sorte que le protocole JSONL du bus d'événements en soit une implémentation légitime — le modèle ne se referme pas sur le chat — mais ce canal-là n'est pas écrit.
 

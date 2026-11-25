@@ -65,6 +65,8 @@ internal sealed partial class ChatGateway
         // a broken bot. Where no file is taken, files alone are nothing to run on either.
         var source = _files is null ? null : message.AttachmentSource;
         var notTaken = source is null && message.Attachments.Count > 0 ? FileNotices.NotTaken(message.Attachments) : null;
+        if (notTaken is not null && message.NoFilesHere is { } noFiles)
+            notTaken = $"{notTaken} {noFiles}";
         if (text.Length == 0 && (source is null || message.Attachments.Count == 0))
         {
             const string nothing = "There is nothing to work on: the message has no text.";
@@ -152,7 +154,7 @@ internal sealed partial class ChatGateway
         var tail = string.Empty;
         if (result.OutboxFiles.Count > 0)
         {
-            var take = responder.TakesFileCommands ? "/get sends one." : "This channel does not send them.";
+            var take = message.NoFilesHere ?? (responder.TakesFileCommands ? "/get sends one." : "This channel does not send them.");
             var names = FileNotices.Bounded(
                 [.. result.OutboxFiles.Select(f => FileNotices.PathAndSize(f.Path, f.Size))], ", ", responder.MaxTextLength / 3);
             tail = $"\n\nFiles: {names}. {take}";

@@ -79,6 +79,28 @@ internal sealed record TeamsChannelOptions
     /// </summary>
     public IReadOnlyList<string> ServiceHosts { get; init; } = [];
 
+    /// <summary>
+    /// The names of the tenant's SharePoint: <c>contoso</c> for <c>contoso.sharepoint.com</c> and
+    /// <c>contoso-my.sharepoint.com</c>. Files of a personal chat are read from and sent to those hosts and no other; empty,
+    /// none is. Used when <c>Orkeon:Host:Files</c> is on.
+    /// </summary>
+    public IReadOnlyList<string> SharePointNames { get; init; } = [];
+
+    /// <summary>
+    /// Name of the environment variable holding the absolute path of the application's certificate: a PEM file with its
+    /// unencrypted RSA private key, in a folder of its own. SharePoint refuses a client secret: without a certificate, files
+    /// go through the temporary addresses Microsoft ends on 1 March 2027, then not at all.
+    /// </summary>
+    public string? CertificatePathEnvironmentVariable { get; init; }
+
+    /// <summary>The certificate's path, read from the environment, or null when none is configured or the variable is unset.</summary>
+    public string? ReadCertificatePath() =>
+        !string.IsNullOrWhiteSpace(CertificatePathEnvironmentVariable)
+        && Environment.GetEnvironmentVariable(CertificatePathEnvironmentVariable)?.Trim() is { Length: > 0 } path ? path : null;
+
+    /// <summary>The hosts of the tenant's files.</summary>
+    internal IReadOnlyList<string> SharePointHosts => [.. SharePointNames.SelectMany(name => new[] { $"{name}.sharepoint.com", $"{name}-my.sharepoint.com" })];
+
     /// <summary>Reads the secret from the environment, or null when the variable is unset.</summary>
     public string? ReadSecret() =>
         Environment.GetEnvironmentVariable(SecretEnvironmentVariable) is { Length: > 0 } secret ? secret : null;
@@ -111,8 +133,25 @@ internal sealed record TeamsChannelOptions
         foreach (var host in ServiceHosts.Where(host => Uri.CheckHostName(host) != UriHostNameType.Dns))
             throw new HostConfigurationException($"Teams:ServiceHosts contains '{host}', which is not a host name.");
 
+        foreach (var name in SharePointNames.Where(name => !IsSharePointName(name)))
+            throw new HostConfigurationException(
+                $"Teams:SharePointNames contains '{name}': write the tenant's SharePoint name alone, such as 'contoso' for "
+                + "contoso.sharepoint.com and contoso-my.sharepoint.com.");
+
+        // The variable's value is a path of the machine: never said.
+        if (!string.IsNullOrWhiteSpace(CertificatePathEnvironmentVariable) && !Path.IsPathFullyQualified(ReadCertificatePath() ?? string.Empty))
+            throw new HostConfigurationException(
+                $"Teams:CertificatePathEnvironmentVariable names the environment variable '{CertificatePathEnvironmentVariable}', "
+                + "which holds no absolute path of a file.");
+
         ValidatePrefix();
     }
+
+    private static bool IsSharePointName(string name) =>
+        name.Length is > 0 and <= 60
+        && name.All(c => char.IsAsciiLetterOrDigit(c) || c == '-')
+        && name[0] != '-' && name[^1] != '-'
+        && !name.EndsWith("-my", StringComparison.OrdinalIgnoreCase);
 
     private void ValidatePrefix()
     {

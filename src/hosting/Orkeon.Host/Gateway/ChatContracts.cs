@@ -33,6 +33,9 @@ internal record InboundMessage
 
     /// <summary>What reads <see cref="Attachments"/>; null on a channel that takes no file.</summary>
     public IAttachmentSource? AttachmentSource { get; init; }
+
+    /// <summary>Why this place of the channel takes and sends no file, in a sentence; null where the channel decides.</summary>
+    public string? NoFilesHere { get; init; }
 }
 
 /// <summary>

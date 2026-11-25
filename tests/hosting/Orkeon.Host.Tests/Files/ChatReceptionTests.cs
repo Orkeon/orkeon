@@ -158,6 +158,31 @@ public sealed class ChatReceptionTests : IDisposable
     }
 
     [Fact]
+    public async Task ShouldSayWhy_WhenTheChannelRefusesAFileInWords()
+    {
+        var bench = Build();
+        var source = new FakeAttachmentSource();
+        source.Files["1"] = _ => throw new AttachmentRefusedException("the host names no SharePoint");
+
+        await bench.SayAsync(Message("go", source, File("1", "a.txt")));
+
+        Assert.Contains("`a.txt` (the host names no SharePoint)", bench.Answer, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task ShouldSayWhereFilesAreTaken_WhenTheyAreNotHere()
+    {
+        var bench = Build();
+
+        await bench.SayAsync(Message("go", source: null, File("1", "a.txt")) with { NoFilesHere = "Over there." });
+        await bench.SayAsync(Message("", source: null, File("1", "a.txt")) with { NoFilesHere = "Over there." });
+
+        Assert.Contains("Over there.", bench.Responder.Sent[0].Text, StringComparison.Ordinal);
+        Assert.Contains("Over there.", bench.Answer, StringComparison.Ordinal);
+        Assert.Empty(Kept());
+    }
+
+    [Fact]
     public async Task ShouldRunNoAgent_WhenNothingArrivedAndThereIsNoText()
     {
         var bench = Build(s => s["AllowedExtensions"] = s_text);

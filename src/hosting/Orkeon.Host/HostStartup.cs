@@ -78,8 +78,9 @@ internal static class HostStartup
 
     Configuration lives under Orkeon:Host (crews, RunTimeout, ShutdownGracePeriod),
     Orkeon:Host:Discord, Orkeon:Host:Teams and Orkeon:Host:A2A. Orkeon:Host:Files gives each
-    conversation its files folders, /inbox and /outbox. Secrets are named by environment variable,
-    never written in files.
+    conversation its files folders, /inbox and /outbox; on Teams, in the personal chat, with
+    Orkeon:Host:Teams:SharePointNames and :CertificatePathEnvironmentVariable. Secrets are named
+    by environment variable, never written in files.
     Documentation: docs/architecture/service-host.md
     """;
 
@@ -149,6 +150,7 @@ internal static class HostStartup
         HostCrewMountPlan crewPlan;
         List<string> inputs;
         OrkeonHostOptions hostOptions;
+        string? teamsCertificate;
         try
         {
             var bootConfiguration = StartupProbes.BuildBootConfiguration(settingsPath);
@@ -163,6 +165,10 @@ internal static class HostStartup
                 return Refused(report, grantError);
             if (hostOptions.Files.Enabled && hostOptions.Files.Problem() is { } filesProblem)
                 return Refused(report, $"orkeon-host: {filesProblem}");
+
+            // Read by the channel alone, from a folder no agent sees: what an unset or relative path means is the channel's to refuse.
+            var teams = ReadSection<Gateway.TeamsChannelOptions>(bootConfiguration, Gateway.TeamsChannelOptions.SectionName);
+            teamsCertificate = teams.Enabled && hostOptions.Files.Enabled ? teams.ReadCertificatePath() : null;
         }
         catch (HostConfigurationException ex)
         {
@@ -205,6 +211,7 @@ internal static class HostStartup
                     AllowExternalMounts = command.AllowExternalMounts || RunnerEnvironment.AllowExternalMounts,
                     // The daemon keeps the history of its runs unless Orkeon:RunHistory:Enabled says false (FWK-08).
                     RunHistoryByDefault = true,
+                    CredentialFiles = teamsCertificate is null ? [] : [(teamsCertificate, Gateway.TeamsChannelOptions.SectionName)],
                 },
                 configureLogging: null,
                 // Everything the daemon adds to the runner host lives in HostServiceRegistration, so a

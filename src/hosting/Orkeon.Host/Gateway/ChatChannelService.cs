@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Orkeon.Tools.Chat.Auth;
 using IHostApplicationLifetime = Microsoft.Extensions.Hosting.IHostApplicationLifetime;
 
 namespace Orkeon.Host.Gateway;
@@ -34,6 +35,9 @@ internal sealed partial class ChatChannelService : BackgroundService
     /// <summary>What builds the Teams channel; the tests give it a transport.</summary>
     internal Func<TeamsChannel> CreateTeams { get; set; }
 
+    /// <summary>Reads the certificate of the Teams application, null when none is configured.</summary>
+    internal Func<CancellationToken, Task<string>>? TeamsCertificate { get; }
+
     /// <summary>Builds the service over the channel configuration and the runner.</summary>
     public ChatChannelService(
         IOptions<DiscordChannelOptions> discord,
@@ -44,7 +48,8 @@ internal sealed partial class ChatChannelService : BackgroundService
         ILogger<ChatChannelService> logger,
         IHostApplicationLifetime lifetime,
         Files.ConversationFiles? files = null,
-        Files.CrewFileFolders? folders = null)
+        Files.CrewFileFolders? folders = null,
+        ChatCredentialFileSource? credentials = null)
     {
         ArgumentNullException.ThrowIfNull(discord);
         _discord = discord.Value;
@@ -58,7 +63,14 @@ internal sealed partial class ChatChannelService : BackgroundService
         _folders = folders;
         _lifetime = lifetime ?? throw new ArgumentNullException(nameof(lifetime));
         CreateDiscord = () => new DiscordChannel(Options.Create(_discord), _loggers.CreateLogger<DiscordChannel>(), fileCommands: _files is not null && _folders is not null);
-        CreateTeams = () => new TeamsChannel(Options.Create(_teams), _loggers.CreateLogger<TeamsChannel>());
+        if (_teams.ReadCertificatePath() is { } path && _teams.CertificatePathEnvironmentVariable is { } variable)
+        {
+            TeamsCertificate = ct => credentials?.Reader is { } reader
+                ? reader.ReadAsync(path, variable, ct)
+                : throw ChatCredentialFile.Unmounted(variable);
+        }
+
+        CreateTeams = () => new TeamsChannel(Options.Create(_teams), _loggers.CreateLogger<TeamsChannel>(), files: _files is not null && _folders is not null, certificate: TeamsCertificate);
     }
 
     /// <inheritdoc />

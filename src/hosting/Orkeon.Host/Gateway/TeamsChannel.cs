@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Collections.Frozen;
 using System.Diagnostics.CodeAnalysis;
 using System.Net;
 using System.Net.Http.Headers;
@@ -43,6 +44,11 @@ internal sealed partial class TeamsChannel : IChatChannel, IAsyncDisposable, IDi
     private readonly ILogger<TeamsChannel> _logger;
     private readonly TimeProvider _time;
     private readonly HttpClient _http;
+    private readonly HttpClient? _transfers;
+    private readonly FrozenSet<string> _connectors;
+    private readonly TeamsFileAccess? _access;
+    private readonly TeamsFileExchange? _files;
+    private readonly TeamsResponder _replies;
     private readonly BotConnectorKeys _keys;
     private readonly TeamsBotToken _token;
     private readonly TeamsTokenValidator _validator;
@@ -52,6 +58,7 @@ internal sealed partial class TeamsChannel : IChatChannel, IAsyncDisposable, IDi
     [SuppressMessage("Usage", "CA2213", Justification = "Aborted: Close() after Stop() binds the port again for an instant.")]
     private HttpListener? _listener;
     private readonly ConcurrentDictionary<string, byte> _refusing = new(StringComparer.OrdinalIgnoreCase);
+    private readonly bool _hasCertificate;
     private long _sequence;
     private long _refusalLoggedAt;
 
@@ -64,12 +71,16 @@ internal sealed partial class TeamsChannel : IChatChannel, IAsyncDisposable, IDi
     /// <param name="logger">Where the channel logs.</param>
     /// <param name="timeProvider">The clock.</param>
     /// <param name="handler">The outbound transport, a double in the tests; the channel's own follows no redirect.</param>
+    /// <param name="files">Whether the host keeps the conversations' files.</param>
+    /// <param name="certificate">Reads the application's certificate, PEM with its key; null when none is configured.</param>
     [SuppressMessage("Reliability", "CA2000", Justification = "The HttpClient owns its handler and disposes it.")]
     public TeamsChannel(
         IOptions<TeamsChannelOptions> options,
         ILogger<TeamsChannel> logger,
         TimeProvider? timeProvider = null,
-        HttpMessageHandler? handler = null)
+        HttpMessageHandler? handler = null,
+        bool files = false,
+        Func<CancellationToken, Task<string>>? certificate = null)
     {
         ArgumentNullException.ThrowIfNull(options);
         _options = options.Value;
@@ -86,7 +97,18 @@ internal sealed partial class TeamsChannel : IChatChannel, IAsyncDisposable, IDi
         _token = new TeamsBotToken(_options, _http, _time);
         _validator = new TeamsTokenValidator(_options, _keys, _time);
         _recent = new RecentActivities(_time);
-        Responder = new ThrottledResponder(new TeamsResponder(_http, _token, _time, logger), _options.ProgressInterval, _time);
+        _connectors = TeamsChannelOptions.KnownServiceHosts.Concat(_options.ServiceHosts).ToFrozenSet(StringComparer.OrdinalIgnoreCase);
+        _hasCertificate = certificate is not null;
+        if (files)
+        {
+            // Files have a transport of their own: nothing of a conversation, no trace of an address, and the time a file takes.
+            _transfers = new HttpClient(handler ?? DiscordAttachmentSource.NewHandler(), disposeHandler: handler is null) { Timeout = TimeSpan.FromMinutes(10) };
+            _access = new TeamsFileAccess(_options, _http, certificate, _time, logger);
+            _files = new TeamsFileExchange(new TeamsConsents(_time), _access, _transfers, logger);
+        }
+
+        _replies = new TeamsResponder(_http, _token, _time, logger, _files);
+        Responder = new ThrottledResponder(_replies, _options.ProgressInterval, _time);
     }
 
     /// <inheritdoc />
@@ -132,6 +154,10 @@ internal sealed partial class TeamsChannel : IChatChannel, IAsyncDisposable, IDi
         LogListening(_options.Prefix);
         if (_options.ListensInClearBeyondLoopback)
             LogClearListener(_options.Prefix);
+        if (_files is not null && _options.SharePointNames.Count == 0)
+            LogNoSharePoint();
+        else if (_files is not null && !_hasCertificate)
+            LogNoCertificate();
 
         try
         {
@@ -258,8 +284,9 @@ internal sealed partial class TeamsChannel : IChatChannel, IAsyncDisposable, IDi
     private HttpStatusCode Accept(
         TeamsActivity activity, Uri serviceUrl, Func<InboundMessage, CancellationToken, Task> onMessage, CancellationToken ct)
     {
-        // A join, a reaction, an edit, a card's invoke, another bot: acknowledged, and nothing more.
-        if (activity.Type != "message" || activity.IsFromBot)
+        // A join, a reaction, an edit, another card's invoke, another bot: acknowledged, and nothing more.
+        var consent = _files is null ? null : activity.Consent;
+        if ((activity.Type != "message" && consent is null) || activity.IsFromBot)
             return HttpStatusCode.OK;
         if (!activity.HasUsableIds
             || activity is not { Id: { } id, RecipientId: { } bot, FromId: { } user })
@@ -272,7 +299,7 @@ internal sealed partial class TeamsChannel : IChatChannel, IAsyncDisposable, IDi
         }
 
         // A lone mention has nothing to run on. A lone file goes on: the gateway says it was not taken.
-        if (activity.Text.Length == 0 && activity.Attachments.Count == 0)
+        if (consent is null && activity.Text.Length == 0 && activity.Attachments.Count == 0)
             return HttpStatusCode.OK;
 
         // A delivery already seen was already acted on. Someone off the list is told so once at a time, and fills no memory.
@@ -288,6 +315,8 @@ internal sealed partial class TeamsChannel : IChatChannel, IAsyncDisposable, IDi
             SenderId = sender,
             Text = activity.Text,
             Attachments = activity.Attachments,
+            AttachmentSource = SourceOf(activity),
+            NoFilesHere = _files is null || activity.IsPersonal ? null : TeamsFileExchange.PersonalOnly,
             ReceivedAt = _time.GetUtcNow(),
             ReplyTo = new TeamsReplyTarget(serviceUrl, activity.ThreadId, id, bot, user),
         };
@@ -297,7 +326,7 @@ internal sealed partial class TeamsChannel : IChatChannel, IAsyncDisposable, IDi
         {
             try
             {
-                await (CommandOf(message.Text) is { } command ? RunCommandAsync(command, message, ct) : onMessage(message, ct)).ConfigureAwait(false);
+                await (consent is null ? DispatchAsync(message, listed, onMessage, ct) : AnswerConsentAsync(consent, message, listed, ct)).ConfigureAwait(false);
             }
             finally
             {
@@ -306,6 +335,38 @@ internal sealed partial class TeamsChannel : IChatChannel, IAsyncDisposable, IDi
             }
         });
         return HttpStatusCode.OK;
+    }
+
+    private TeamsAttachmentSource? SourceOf(TeamsActivity activity) =>
+        _access is null || _transfers is null || !activity.IsPersonal || activity.Attachments.Count == 0
+            ? null
+            : new TeamsAttachmentSource(
+                _transfers,
+                _access,
+                _token,
+                _connectors,
+                activity.Attachments.Zip(activity.Addresses).ToDictionary(p => p.First.Id, p => p.Second, StringComparer.Ordinal));
+
+    private Task DispatchAsync(TeamsInboundMessage message, bool listed, Func<InboundMessage, CancellationToken, Task> onMessage, CancellationToken ct)
+    {
+        if (CommandOf(message.Text) is { } command)
+            return RunCommandAsync(new CommandInvocation(command, message.ConversationId, message.SenderId) { RoomId = message.RoomId }, message, ct);
+        if (FileCommandOf(message) is not { } files)
+            return onMessage(message, ct);
+
+        // Someone off the list is told so, and nothing else.
+        return listed && message.NoFilesHere is { } elsewhere
+            ? Responder.CompleteAsync(message, elsewhere, ct)
+            : RunCommandAsync(files, message, ct);
+    }
+
+    private Task AnswerConsentAsync(TeamsConsentAnswer consent, TeamsInboundMessage message, bool listed, CancellationToken ct)
+    {
+        if (!listed)
+            return Responder.CompleteAsync(message, "You are not authorized to use this bot.", ct);
+        return message.NoFilesHere is { } elsewhere
+            ? Responder.CompleteAsync(message, elsewhere, ct)
+            : _files!.AnswerAsync(_replies, consent, message.SenderId, message.ReplyTo, ct);
     }
 
     private bool MayLogRefusal()
@@ -323,13 +384,45 @@ internal sealed partial class TeamsChannel : IChatChannel, IAsyncDisposable, IDi
         _ => null,
     };
 
-    private async Task RunCommandAsync(string command, TeamsInboundMessage message, CancellationToken ct)
+    /// <summary>The file command a message opens with, its argument the rest of the line as it was typed; null when it opens with none.</summary>
+    private static CommandInvocation? FileCommandOf(TeamsInboundMessage message)
     {
-        var answering = CommandInvoked?.Invoke(
-            new CommandInvocation(command, message.ConversationId, message.SenderId) { RoomId = message.RoomId });
+        var end = message.Text.IndexOfAny([' ', '\t', '\r', '\n', '\u00a0']);
+        var (word, rest) = end < 0 ? (message.Text, string.Empty) : (message.Text[..end], message.Text[end..].Trim());
+        (string Command, string Argument)? typed = word.ToUpperInvariant() switch
+        {
+            "/FILES" => (ChatCommands.Files, "folder"),
+            "/GET" => (ChatCommands.Get, "path"),
+            "/PUT" => (ChatCommands.Put, "folder"),
+            _ => null,
+        };
+        return typed is not { } known
+            ? null
+            : new CommandInvocation(known.Command, message.ConversationId, message.SenderId)
+            {
+                RoomId = message.RoomId,
+                Arguments = rest.Length == 0 ? new Dictionary<string, string>() : new Dictionary<string, string> { [known.Argument] = rest },
+                Attachments = message.Attachments,
+                AttachmentSource = message.AttachmentSource,
+            };
+    }
+
+    private async Task RunCommandAsync(CommandInvocation invocation, TeamsInboundMessage message, CancellationToken ct)
+    {
+        var answering = CommandInvoked?.Invoke(invocation);
         var reply = answering is null ? new CommandReply("The host is not listening to commands.") : await answering.ConfigureAwait(false);
 
-        var text = reply.Files.Count == 0 ? reply.Text : $"{reply.Text}\nThis channel does not send files.";
+        var text = reply.Text;
+        if (reply.Files.Count > 0)
+        {
+            var results = await Responder.SendFilesAsync(message, reply.Files, ct).ConfigureAwait(false);
+            if (results.Any(r => r.Outcome == FileSendOutcome.AwaitingConsent))
+                text += "\nAccept it in its card: the offer is open for an hour, and is lost if the host restarts.";
+            var refused = results.Where(r => r.Outcome is not (FileSendOutcome.AwaitingConsent or FileSendOutcome.Sent)).ToList();
+            if (refused.Count > 0)
+                text += "\n" + FileNotices.NotSent(refused);
+        }
+
         await Responder.CompleteAsync(message, text, ct).ConfigureAwait(false);
     }
 
@@ -411,6 +504,9 @@ internal sealed partial class TeamsChannel : IChatChannel, IAsyncDisposable, IDi
     public void Dispose()
     {
         _listener?.Abort();
+        _files?.Dispose();
+        _access?.Dispose();
+        _transfers?.Dispose();
         _http.Dispose();
         _keys.Dispose();
         _token.Dispose();
@@ -441,6 +537,12 @@ internal sealed partial class TeamsChannel : IChatChannel, IAsyncDisposable, IDi
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Ignored a Teams message without an Entra object id: its sender cannot be matched with Teams:AllowedUserIds")]
     private partial void LogNoObjectId();
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Teams:SharePointNames is empty: no file of a personal chat is read, and none is sent")]
+    private partial void LogNoSharePoint();
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Teams:CertificatePathEnvironmentVariable names no certificate: files pass by the temporary addresses Microsoft ends on 2027-03-01, and no file passes after")]
+    private partial void LogNoCertificate();
 
     [LoggerMessage(Level = LogLevel.Debug, Message = "A Teams handler was cancelled")]
     private partial void LogCancelled();

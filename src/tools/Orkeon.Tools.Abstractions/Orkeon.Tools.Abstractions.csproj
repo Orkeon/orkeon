@@ -27,6 +27,8 @@
     <InternalsVisibleTo Include="Orkeon.Tools.Drive.Tests" />
     <!-- The firefox tool is no HTTP tool, and checks the pages its browser lands on with the same fail-closed guard. -->
     <InternalsVisibleTo Include="Orkeon.Tools.Web" />
+    <!-- The Teams channel signs in to SharePoint with the same client assertion. -->
+    <InternalsVisibleTo Include="orkeon-host" />
   </ItemGroup>
 
   <ItemGroup>

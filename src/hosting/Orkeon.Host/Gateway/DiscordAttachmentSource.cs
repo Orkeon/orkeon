@@ -48,7 +48,7 @@ internal sealed class DiscordAttachmentSource(HttpClient http, IReadOnlyDictiona
                 throw new IOException(FormattableString.Invariant($"Discord's file server answered {(int)response.StatusCode}."));
 
             var content = await response.Content.ReadAsStreamAsync(ct).ConfigureAwait(false);
-            var stream = new IdleBoundedStream(response, content, _idle);
+            var stream = new IdleBoundedStream(response, content, _idle, "Discord's file server");
             response = null;
             return stream;
         }
@@ -64,66 +64,6 @@ internal sealed class DiscordAttachmentSource(HttpClient http, IReadOnlyDictiona
         finally
         {
             response?.Dispose();
-        }
-    }
-
-    /// <summary>The content of a response, which it owns, given up when nothing comes for a while.</summary>
-    private sealed class IdleBoundedStream(HttpResponseMessage response, Stream content, TimeSpan idle) : Stream
-    {
-        public override bool CanRead => true;
-
-        public override bool CanSeek => false;
-
-        public override bool CanWrite => false;
-
-        public override long Length => throw new NotSupportedException();
-
-        public override long Position
-        {
-            get => throw new NotSupportedException();
-            set => throw new NotSupportedException();
-        }
-
-        public override async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default)
-        {
-            using var bound = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-            bound.CancelAfter(idle);
-            try
-            {
-                return await content.ReadAsync(buffer, bound.Token).ConfigureAwait(false);
-            }
-            catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
-            {
-                throw new IOException("Discord's file server stopped sending the file.");
-            }
-            catch (HttpRequestException ex)
-            {
-                throw new IOException($"Discord's file server could not be read ({ex.HttpRequestError}).");
-            }
-        }
-
-        public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken) =>
-            ReadAsync(buffer.AsMemory(offset, count), cancellationToken).AsTask();
-
-        public override int Read(byte[] buffer, int offset, int count) => throw new NotSupportedException();
-
-        public override void Flush() => throw new NotSupportedException();
-
-        public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
-
-        public override void SetLength(long value) => throw new NotSupportedException();
-
-        public override void Write(byte[] buffer, int offset, int count) => throw new NotSupportedException();
-
-        protected override void Dispose(bool disposing)
-        {
-            if (disposing)
-            {
-                content.Dispose();
-                response.Dispose();
-            }
-
-            base.Dispose(disposing);
         }
     }
 }
