@@ -128,8 +128,8 @@ the conversation was given, and `/outbox`, read-write, what its runs hand back. 
 next message finds them as the previous run left them. No run is mounted on another conversation's two folders, even on one
 crew at once; what else two conversations of one host share is said under **Shared** below.
 A run asked over A2A or the host API has no conversation: it gets two empty folders of its own, deleted when it ends. At
-the end of a run, the files of `/outbox` it added or changed are listed, hidden files and links left out. No channel fills
-`/inbox` or sends what `/outbox` holds yet.
+the end of a run, the files of `/outbox` it added or changed are listed, hidden files and links left out. Discord fills
+`/inbox` ([what it takes](#what-the-discord-channel-listens-to)); no channel sends what `/outbox` holds yet.
 
 ```json
 "Files": {
@@ -251,7 +251,13 @@ A message becomes a run in a fixed order: **authorize, route, acknowledge, work.
 
 Messages **inside a thread**, from people: a message posted in a plain channel is ignored, and so is every message from a bot and every message Discord writes itself (a pin, a join, a rename). The client connects with the `Guilds`, `GuildMessages` and `MessageContent` intents — `MessageContent` is a privileged intent, to be switched on for the bot in the Discord developer portal, or every message arrives empty. `AllowedUserIds` is the only access control: `GuildIds` chooses where the slash commands are registered, it does not restrict who may talk to the bot. The bot's messages mention nobody: an `@everyone` in an answer is plain text.
 
-**Files are not taken.** A message with attachments runs on its text alone, and the acknowledgement names the files left out. A message with no text starts no run and is answered with a sentence.
+**Files.** Without [`Files`](#files-the-folders-of-a-conversation), none is taken: a message with attachments runs on its text alone, and the acknowledgement names the files left out. A message with no text and no file taken starts no agent and is answered with a sentence. With `Files` on:
+
+- **Reception.** The files are downloaded once the run is admitted and acknowledged, under its deadline, so `/stop` stops a download too. They come from `cdn.discordapp.com` alone, over HTTPS, with no redirection and without the bot token; their signed address is neither kept nor logged. The announced size refuses a file early, and the bytes are counted as they come. A file already kept, by its Discord identifier, is not kept twice.
+- **Refusals.** A file over a limit, past `MaxFilesPerMessage`, of an extension not taken, or that cannot be read is left out alone; the answer names each with its reason. The run goes on with the rest. When nothing arrived and the message has no text, no agent runs.
+- **What the crew reads.** A block follows the person's text: the path, type and size of the message's files, the latest 20 earlier ones, and `/outbox`. A message of files without text asks the crew to process them. There is no prompt variable and the content is never inserted; the names are made safe, quoted and bounded, so none forges a line of the prompt, and the block tells the model they are data. What a file holds is as trustworthy as the person who sent it: an agent that reads it may meet instructions there, so give a crew open to strangers no tool you would not give them.
+- **Scopes.** An agent whose [`filesystem:`](vfs-compliance.md#agent-file-system-scope) leaves `/inbox` out does not read the files; the log says so at each run.
+- **Left out.** Stickers and forwarded messages are ignored: a person posts the file itself.
 
 ### The Microsoft Teams channel
 

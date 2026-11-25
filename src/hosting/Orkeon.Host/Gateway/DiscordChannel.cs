@@ -28,6 +28,7 @@ internal sealed partial class DiscordChannel : IChatChannel, IAsyncDisposable
     private readonly ILogger<DiscordChannel> _logger;
     private readonly DiscordSocketClient _client;
     private readonly TimeProvider _time;
+    private readonly HttpClient _downloads = new(DiscordAttachmentSource.NewHandler());
 
     /// <summary>Builds the channel over its configuration.</summary>
     public DiscordChannel(
@@ -169,7 +170,7 @@ internal sealed partial class DiscordChannel : IChatChannel, IAsyncDisposable
         if (socketMessage.Channel is not SocketThreadChannel thread)
             return;
 
-        var message = ToInbound(socketMessage, thread, thread.ParentChannel?.Id, _time.GetUtcNow());
+        var message = ToInbound(socketMessage, thread, thread.ParentChannel?.Id, _time.GetUtcNow(), _downloads);
         await onMessage(message, ct).ConfigureAwait(false);
     }
 
@@ -188,7 +189,8 @@ internal sealed partial class DiscordChannel : IChatChannel, IAsyncDisposable
     /// <param name="thread">The thread it was posted in: the conversation, and the run.</param>
     /// <param name="roomId">The channel the thread was opened in — what a chat route names.</param>
     /// <param name="receivedAt">When the channel received it.</param>
-    internal static InboundMessage ToInbound(IMessage message, IChannel thread, ulong? roomId, DateTimeOffset receivedAt) =>
+    /// <param name="downloads">What reads its files; null, they cannot be read.</param>
+    internal static InboundMessage ToInbound(IMessage message, IChannel thread, ulong? roomId, DateTimeOffset receivedAt, HttpClient? downloads = null) =>
         new()
         {
             Channel = "discord",
@@ -207,6 +209,11 @@ internal sealed partial class DiscordChannel : IChatChannel, IAsyncDisposable
                     Size = a.Size,
                 }),
             ],
+            AttachmentSource = downloads is null ? null : new DiscordAttachmentSource(
+                downloads,
+                (message.Attachments ?? [])
+                    .DistinctBy(a => a.Id)
+                    .ToDictionary(a => a.Id.ToString(System.Globalization.CultureInfo.InvariantCulture), a => a.Url ?? string.Empty, StringComparer.Ordinal)),
         };
 
     private async Task OnButtonAsync(SocketMessageComponent component)
@@ -326,7 +333,11 @@ internal sealed partial class DiscordChannel : IChatChannel, IAsyncDisposable
             .Build();
 
     /// <inheritdoc />
-    public async ValueTask DisposeAsync() => await _client.DisposeAsync().ConfigureAwait(false);
+    public async ValueTask DisposeAsync()
+    {
+        await _client.DisposeAsync().ConfigureAwait(false);
+        _downloads.Dispose();
+    }
 
     [LoggerMessage(Level = LogLevel.Error, Message = "The Discord channel is enabled but ${TokenVariable} is not set; the channel will not start.")]
     private partial void LogNoToken(string tokenVariable);

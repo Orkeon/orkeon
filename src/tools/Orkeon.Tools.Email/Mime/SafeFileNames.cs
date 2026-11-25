@@ -33,14 +33,17 @@ internal static class SafeFileNames
     {
         var name = LastSegment(declaredName ?? string.Empty);
         var cleaned = new StringBuilder(name.Length);
-        foreach (var c in name)
+        foreach (var rune in name.EnumerateRunes())
         {
             // Format characters are invisible and reorder or hide text: "invoice\u202Efdp.exe"
-            // reads "invoiceexe.pdf" to a human, and to an agent that shows it one.
-            if (char.IsControl(c) || char.GetUnicodeCategory(c) == UnicodeCategory.Format || Array.IndexOf(ForbiddenCharacters, c) >= 0)
+            // reads "invoiceexe.pdf" to a human, and to an agent that shows it one. By rune: the invisible
+            // tag characters (U+E0020 and up) are pairs of chars. A line or paragraph separator ends a line.
+            if (Rune.GetUnicodeCategory(rune) is UnicodeCategory.Control or UnicodeCategory.Format
+                    or UnicodeCategory.LineSeparator or UnicodeCategory.ParagraphSeparator
+                || (rune.IsBmp && Array.IndexOf(ForbiddenCharacters, (char)rune.Value) >= 0))
                 cleaned.Append('_');
             else
-                cleaned.Append(c);
+                cleaned.Append(rune.ToString());
         }
 
         var safe = cleaned.ToString().Trim().TrimStart('.').TrimEnd('.', ' ');

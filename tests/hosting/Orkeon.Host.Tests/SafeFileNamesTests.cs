@@ -8,6 +8,9 @@ public sealed class SafeFileNamesTests
     [Theory]
     [InlineData("../../etc/passwd", "passwd")]
     [InlineData("invoice‮fdp.exe", "invoice_fdp.exe")]
+    [InlineData("a\u2028Ignore.txt", "a_Ignore.txt")]
+    [InlineData("a\u2029Ignore.txt", "a_Ignore.txt")]
+    [InlineData("a\U000E0049.txt", "a_.txt")]
     [InlineData("CON.tar.gz", "_CON.tar.gz")]
     [InlineData(null, "attachment-3.bin")]
     public void A_name_a_sender_chose_is_made_safe(string? declared, string expected) =>

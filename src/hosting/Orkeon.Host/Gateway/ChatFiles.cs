@@ -77,17 +77,39 @@ internal sealed record FileSendResult(string Name, FileSendOutcome Outcome, stri
 internal static class FileNotices
 {
     private const int MaxNames = 10;
+    private const int MaxShown = 64;
 
     /// <summary>One sentence naming the files of a message, none of which was taken.</summary>
     public static string NotTaken(IReadOnlyList<InboundAttachment> attachments)
     {
         ArgumentNullException.ThrowIfNull(attachments);
 
-        // Quoted as code, so neither Markdown nor a mention in a name is rendered; the names are the sender's.
-        var names = attachments
-            .Take(MaxNames)
-            .Select((a, i) => $"`{Orkeon.Tools.Email.Mime.SafeFileNames.Sanitize(a.Name, i).Replace('`', '\'')}`");
-        var more = attachments.Count > MaxNames ? $" and {attachments.Count - MaxNames} more" : string.Empty;
-        return $"Files are not taken here, so these were left out: {string.Join(", ", names)}{more}.";
+        var names = attachments.Take(MaxNames).Select((a, i) => Quoted(a.Name, i));
+        return $"Files are not taken here, so these were left out: {string.Join(", ", names)}{More(attachments.Count)}.";
+    }
+
+    /// <summary>One sentence naming the files that were refused, each with its reason.</summary>
+    public static string Refused(IReadOnlyList<RefusedFile> refused)
+    {
+        ArgumentNullException.ThrowIfNull(refused);
+        var names = refused.Take(MaxNames).Select((f, i) => $"{Shown(f.Name, i)} ({f.Reason})");
+        return $"These files were not taken: {string.Join(", ", names)}{More(refused.Count)}.";
+    }
+
+    private static string More(int count) => count > MaxNames ? $" and {count - MaxNames} more" : string.Empty;
+
+    // Quoted as code, so neither Markdown nor a mention in a name is rendered; the names are the sender's.
+    private static string Quoted(string name, int index) =>
+        $"`{Orkeon.Tools.Email.Mime.SafeFileNames.Sanitize(name, index).Replace('`', '\'')}`";
+
+    // Short enough for the notice of ten files to fit a chat message.
+    private static string Shown(string name, int index)
+    {
+        var quoted = Quoted(name, index);
+        if (quoted.Length <= MaxShown)
+            return quoted;
+
+        var end = char.IsHighSurrogate(quoted[MaxShown - 3]) ? MaxShown - 3 : MaxShown - 2;
+        return $"{quoted[..end]}\u2026`";
     }
 }

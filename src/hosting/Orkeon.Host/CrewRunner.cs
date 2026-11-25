@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Orkeon.Application.Interfaces;
 using Orkeon.Application.Interfaces.Services;
+using Orkeon.Constants.FileSystem;
 using Orkeon.Domain.FileSystem;
 using Orkeon.Infrastructure.FileSystem;
 using Orkeon.Hosting;
@@ -304,7 +305,7 @@ internal sealed partial class CrewRunner : ICrewRunner
         using var mounts = EnterMountNamespace(hosted, folders);
 
         var before = folders is null ? null : await folders.ListOutboxAsync().ConfigureAwait(false);
-        var result = await RunCrewAsync(hosted, run, prompt, onProgress, variables, idempotency).ConfigureAwait(false);
+        var result = await RunCrewAsync(hosted, run, folders, prompt, onProgress, variables, idempotency).ConfigureAwait(false);
         if (folders is null)
             return result;
 
@@ -325,6 +326,7 @@ internal sealed partial class CrewRunner : ICrewRunner
     private async Task<HostedRunResult> RunCrewAsync(
         HostedCrewOptions hosted,
         HostedRun run,
+        Files.ConversationRun? folders,
         string prompt,
         Action<string>? onProgress,
         IReadOnlyDictionary<string, string>? variables,
@@ -358,6 +360,8 @@ internal sealed partial class CrewRunner : ICrewRunner
                 .LoadCrewAsync(_host, factory, scope.ServiceProvider, mapped ?? hosted.Path, _logger, run.Cancellation.Token, isDirectory)
                 .ConfigureAwait(false);
             crewId = crew.Id;
+            if (folders is { OfConversation: true })
+                await WarnOfScopesWithoutInboxAsync(scope.ServiceProvider, crew, hosted.Name, run.Cancellation.Token).ConfigureAwait(false);
 
             onProgress?.Invoke($"Running '{hosted.Name}'…");
 
@@ -398,6 +402,17 @@ internal sealed partial class CrewRunner : ICrewRunner
         finally
         {
             ReleasePerRunState(crewId);
+        }
+    }
+
+    /// <summary>A declared file-system scope is exhaustive: an agent whose own leaves <c>/inbox</c> out reads no file people send.</summary>
+    private async Task WarnOfScopesWithoutInboxAsync(IServiceProvider services, Domain.Crew.Crew crew, string crewName, CancellationToken ct)
+    {
+        var agents = await services.GetRequiredService<Domain.Agent.IAgentRepository>().GetByIdsAsync(crew.Agents, ct).ConfigureAwait(false);
+        foreach (var agent in agents.Where(a => a.FileSystemScope.Count > 0
+            && !a.FileSystemScope.Any(e => e.Path.TrimEnd('/') is "" or RunnerVirtualRoots.Inbox)))
+        {
+            LogScopeWithoutInbox(agent.Role.Value, crewName);
         }
     }
 
@@ -509,6 +524,9 @@ internal sealed partial class CrewRunner : ICrewRunner
         _host.Services.GetService<Application.Interfaces.Services.IMemoryService>()?.ReleaseMemorySystem(crewId);
         _host.Services.GetService<Application.Memory.CrewMemoryProviderRegistry>()?.Remove(crewId);
     }
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Agent '{Agent}' of '{CrewName}' declares a filesystem: without /inbox: it does not read the files people send")]
+    private partial void LogScopeWithoutInbox(string agent, string crewName);
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Run {RunId} started: crew '{CrewName}' from {Origin}")]
     private partial void LogRunStarted(string runId, string crewName, string origin);

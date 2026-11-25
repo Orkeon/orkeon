@@ -10,14 +10,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added — orkeon-host gives a conversation its folders
 
 - `Orkeon:Host:Files` (off by default) mounts two folders for the runs of a conversation: `/inbox`, read-only, and
-  `/outbox`, kept from one message to the next and apart from every other conversation's. No channel fills or sends them
-  yet. Limits per file, per conversation and in all; a conversation is deleted after `Retention`.
+  `/outbox`, kept from one message to the next and apart from every other conversation's. Discord fills
+  `/inbox`; no channel sends what `/outbox` holds yet. Limits per file, per conversation and in all; a conversation is deleted after `Retention`.
 - With it on, the start is refused (78) when a mount reaches the conversations' root, links followed, or claims `/inbox`,
   `/outbox` or a path under them. `RunnerVirtualRoots.Inbox` and `Outbox` name the two roots. The comparison is made again
   at each run and each access: a granted folder replaced by a link opens nothing.
 - In the run of a conversation, what feeds a store the process shares (`index_codebase`, `incremental_reindex`, `rag_ingest`,
   the searches that ingest, `edit_batch`) refuses the two folders. `FileSystemMount.IsPrivate`, `MountInfo.IsPrivate` and
   `PrivateMountGuard` carry it; a host without such a mount refuses nothing more than before.
+- With it on, the files of a Discord message are kept in `/inbox` after the acknowledgement, under the run's deadline, and
+  a block after the person's text gives the crew their path, type and size, the earlier files and `/outbox`. A file over a
+  limit, over `MaxFilesPerMessage`, of an extension not taken or that cannot be read is named with its reason, and the run
+  goes on with the others. The files come from `cdn.discordapp.com` alone, over HTTPS, without redirection or bot token.
+- A line or paragraph separator, and an invisible tag character, are replaced in the name of a received file or an e-mail
+  attachment.
 - The name a received file or an e-mail attachment is saved under is bounded to 120 bytes of UTF-8, not 120 characters.
 
 ### Added — a crew declares the folders it opens

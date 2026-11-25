@@ -18,6 +18,7 @@ internal sealed partial class ChatGateway
     private readonly IChatAuthorizer _authorizer;
     private readonly CrewHostRegistry _registry;
     private readonly ILogger<ChatGateway> _logger;
+    private readonly Files.ConversationFiles? _files;
 
     /// <summary>Builds the gateway over the runner and the gateway's own decisions.</summary>
     public ChatGateway(
@@ -25,13 +26,15 @@ internal sealed partial class ChatGateway
         IConversationRouter router,
         IChatAuthorizer authorizer,
         CrewHostRegistry registry,
-        ILogger<ChatGateway> logger)
+        ILogger<ChatGateway> logger,
+        Files.ConversationFiles? files = null)
     {
         _runner = runner ?? throw new ArgumentNullException(nameof(runner));
         _router = router ?? throw new ArgumentNullException(nameof(router));
         _authorizer = authorizer ?? throw new ArgumentNullException(nameof(authorizer));
         _registry = registry ?? throw new ArgumentNullException(nameof(registry));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _files = files;
     }
 
     /// <summary>
@@ -59,9 +62,10 @@ internal sealed partial class ChatGateway
         var text = message.Text.Trim();
 
         // Nothing to run on. Said before the conversation is claimed: an empty prompt is no run, and silence looks like
-        // a broken bot. No file is taken, so files alone are nothing to run on either.
-        var notTaken = message.Attachments.Count > 0 ? FileNotices.NotTaken(message.Attachments) : null;
-        if (text.Length == 0)
+        // a broken bot. Where no file is taken, files alone are nothing to run on either.
+        var source = _files is null ? null : message.AttachmentSource;
+        var notTaken = source is null && message.Attachments.Count > 0 ? FileNotices.NotTaken(message.Attachments) : null;
+        if (text.Length == 0 && (source is null || message.Attachments.Count == 0))
         {
             const string nothing = "There is nothing to work on: the message has no text.";
             await responder.CompleteAsync(message, notTaken is null ? nothing : $"{notTaken}\n{nothing}", ct).ConfigureAwait(false);
@@ -105,7 +109,10 @@ internal sealed partial class ChatGateway
                 {
                     Channel = message.Channel,
                     ConversationId = message.ConversationId,
-                    PrepareAsync = _ => Task.FromResult(new PreparedRun(text)),
+                    // After admission and the acknowledgement, under the run's own token and deadline.
+                    PrepareAsync = token => _files is null || source is null
+                        ? Task.FromResult(new PreparedRun(text))
+                        : ChatReception.PrepareAsync(_files, message, source, text, token),
                 }).ConfigureAwait(false);
         }
         finally
@@ -113,7 +120,19 @@ internal sealed partial class ChatGateway
             _router.Detach(message.ConversationId);
         }
 
-        await responder.CompleteAsync(message, result.Message, ct).ConfigureAwait(false);
+        var answer = result.Message;
+        if (result.RefusedFiles.Count > 0)
+        {
+            // In one message when it holds both: a long answer is cut, and must not be cut shorter by this.
+            var refused = FileNotices.Refused(result.RefusedFiles);
+            var both = $"{refused}\n\n{answer}";
+            if (both.Length <= responder.MaxTextLength)
+                answer = both;
+            else
+                await responder.CompleteAsync(message, refused, ct).ConfigureAwait(false);
+        }
+
+        await responder.CompleteAsync(message, answer, ct).ConfigureAwait(false);
     }
 
     /// <summary>

@@ -238,6 +238,26 @@ public class DiscordChannelTests
     }
 
     [Fact]
+    public async Task A_message_reads_its_own_files_only()
+    {
+        using var handler = new StubHttpHandler();
+        using var http = new HttpClient(handler);
+        var attachment = StubDiscord.Of<Discord.IAttachment>(
+            ("Id", 7UL), ("Filename", "a.txt"), ("ContentType", "text/plain"), ("Size", 3), ("Url", "https://cdn.discordapp.com/a/7"));
+        var message = StubDiscord.Of<Discord.IMessage>(
+            ("Id", 1UL), ("Content", "go"), ("Author", StubDiscord.Of<Discord.IUser>(("Id", 42UL), ("IsBot", false))),
+            ("Attachments", new[] { attachment }));
+
+        var inbound = DiscordChannel.ToInbound(message, StubDiscord.Of<Discord.IChannel>(("Id", 99UL)), null, DateTimeOffset.UnixEpoch, http);
+
+        var source = Assert.IsType<DiscordAttachmentSource>(inbound.AttachmentSource);
+        await using var stream = await source.OpenAsync(inbound.Attachments[0], TestContext.Current.CancellationToken);
+        Assert.Equal("https://cdn.discordapp.com/a/7", Assert.Single(handler.Requests).Address);
+        await Assert.ThrowsAsync<IOException>(
+            () => source.OpenAsync(new InboundAttachment { Id = "8", Name = "b.txt" }, TestContext.Current.CancellationToken));
+    }
+
+    [Fact]
     public void Attachments_are_carried_without_their_signed_address()
     {
         var attachment = StubDiscord.Of<Discord.IAttachment>(

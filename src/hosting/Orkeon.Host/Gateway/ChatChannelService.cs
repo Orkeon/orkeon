@@ -19,6 +19,7 @@ internal sealed partial class ChatChannelService : BackgroundService
     private readonly TeamsChannelOptions _teams;
     private readonly ICrewRunner _runner;
     private readonly CrewHostRegistry _registry;
+    private readonly Files.ConversationFiles? _files;
     private readonly ILoggerFactory _loggers;
     private readonly ILogger<ChatChannelService> _logger;
     private readonly IHostApplicationLifetime _lifetime;
@@ -39,7 +40,8 @@ internal sealed partial class ChatChannelService : BackgroundService
         CrewHostRegistry registry,
         ILoggerFactory loggers,
         ILogger<ChatChannelService> logger,
-        IHostApplicationLifetime lifetime)
+        IHostApplicationLifetime lifetime,
+        Files.ConversationFiles? files = null)
     {
         ArgumentNullException.ThrowIfNull(discord);
         _discord = discord.Value;
@@ -49,6 +51,7 @@ internal sealed partial class ChatChannelService : BackgroundService
         _registry = registry ?? throw new ArgumentNullException(nameof(registry));
         _loggers = loggers ?? throw new ArgumentNullException(nameof(loggers));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _files = files;
         _lifetime = lifetime ?? throw new ArgumentNullException(nameof(lifetime));
         CreateDiscord = () => new DiscordChannel(Options.Create(_discord), _loggers.CreateLogger<DiscordChannel>());
         CreateTeams = () => new TeamsChannel(Options.Create(_teams), _loggers.CreateLogger<TeamsChannel>());
@@ -165,7 +168,7 @@ internal sealed partial class ChatChannelService : BackgroundService
         var authorizer = configured.Authorizer;
         await using var channelLifetime = ((IAsyncDisposable)channel).ConfigureAwait(false);
         var gateway = new ChatGateway(
-            _runner, new ThreadIsRunRouter(configured.Routes), authorizer, _registry, _loggers.CreateLogger<ChatGateway>());
+            _runner, new ThreadIsRunRouter(configured.Routes), authorizer, _registry, _loggers.CreateLogger<ChatGateway>(), _files);
 
         // The stop button and the /stop command arrive as ONE invocation shape, and the
         // allow list gates both: the first version checked it on the typed command only,

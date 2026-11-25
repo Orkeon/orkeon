@@ -261,6 +261,30 @@ internal sealed partial class ConversationFiles : IDisposable
         return files;
     }
 
+    /// <summary>The files of a conversation's <c>/inbox</c>, the latest first, nothing hidden; empty, and logged, when it cannot be read.</summary>
+    internal Task<List<(string Path, long Size)>> ListInboxAsync(ConversationRef conversation, CancellationToken ct) => UseAsync(
+        conversation,
+        crew: null,
+        async (fs, token) =>
+        {
+            var files = new List<(string Path, long Size, DateTimeOffset Written)>();
+            try
+            {
+                await foreach (var entry in fs.EnumerateFilesAsync(RunnerVirtualRoots.Inbox, new VirtualEnumerationOptions(), token).ConfigureAwait(false))
+                {
+                    if (entry.Kind == VirtualEntryKind.File && !IsHidden(entry.VirtualPath))
+                        files.Add((entry.VirtualPath, entry.SizeBytes, entry.LastModified));
+                }
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or FileAccessDeniedException)
+            {
+                LogInboxUnreadable(ex);
+            }
+
+            return files.OrderByDescending(f => f.Written).ThenBy(f => f.Path, StringComparer.Ordinal).Select(f => (f.Path, f.Size)).ToList();
+        },
+        ct);
+
     /// <summary>Ends a run: the conversation's activity, and the run it waits on when that one is suspended.</summary>
     internal async Task CloseRunAsync(ConversationRef? conversation, Hold held, string runId, bool suspended)
     {
@@ -764,6 +788,9 @@ internal sealed partial class ConversationFiles : IDisposable
     [LoggerMessage(Level = LogLevel.Warning, Message = "A partial file could not be deleted")]
     private partial void LogPartLeft(Exception ex);
 
+    [LoggerMessage(Level = LogLevel.Warning, Message = "The inbox of a conversation could not be listed")]
+    private partial void LogInboxUnreadable(Exception ex);
+
     [LoggerMessage(Level = LogLevel.Warning, Message = "The outbox of a conversation could not be listed")]
     private partial void LogOutboxUnreadable(Exception ex);
 
@@ -801,6 +828,9 @@ internal sealed class ConversationRun
 
     /// <summary>The mount set of the run's agents. The caller enters it, in the method that uses it.</summary>
     public FileSystemRegistry Registry(HostedCrewOptions crew) => _files.RunRegistry(_held.Name, crew, _conversation is not null);
+
+    /// <summary>Whether the folders are a conversation's: a run without one gets none of a person's files.</summary>
+    public bool OfConversation => _conversation is not null;
 
     /// <summary>The outbox as the run's mount set, entered, shows it.</summary>
     public Task<IReadOnlyDictionary<string, (long Size, DateTimeOffset Written)>> ListOutboxAsync() => _files.ListOutboxAsync();

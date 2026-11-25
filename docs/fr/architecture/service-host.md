@@ -130,8 +130,8 @@ autant que la conversation : le message suivant les retrouve tels que le run pr�
 sur les deux dossiers d'une autre conversation, même sur une crew à la fois ; ce que deux conversations d'un hôte partagent
 par ailleurs est dit sous **Partagé**, plus bas. Un run demandé par A2A ou par l'API de l'hôte n'a
 pas de conversation : il reçoit deux dossiers vides à lui, supprimés à sa fin. À la fin d'un run, les fichiers de `/outbox`
-qu'il a ajoutés ou modifiés sont listés, fichiers cachés et liens exclus. Aucun canal ne remplit encore `/inbox` ni
-n'envoie ce que contient `/outbox`.
+qu'il a ajoutés ou modifiés sont listés, fichiers cachés et liens exclus. Discord remplit `/inbox` ([ce qu'il prend](#ce-quécoute-le-canal-discord)) ;
+aucun canal n'envoie encore ce que contient `/outbox`.
 
 ```json
 "Files": {
@@ -257,7 +257,13 @@ Un message devient un run dans un ordre fixe : **autoriser, router, accuser réc
 
 Les messages **à l'intérieur d'un fil**, écrits par des personnes : un message posté dans un canal ordinaire est ignoré, tout comme chaque message d'un bot et chaque message que Discord écrit lui-même (un épinglage, une arrivée, un renommage). Le client se connecte avec les intents `Guilds`, `GuildMessages` et `MessageContent` — `MessageContent` est un intent privilégié, à activer pour le bot dans le portail développeur de Discord, faute de quoi chaque message arrive vide. `AllowedUserIds` est le seul contrôle d'accès : `GuildIds` choisit où les slash-commands sont enregistrées, il ne restreint pas qui peut parler au bot. Les messages du bot ne mentionnent personne : un `@everyone` dans une réponse est du texte.
 
-**Les fichiers ne sont pas pris.** Un message avec des pièces jointes tourne sur son seul texte, et l'accusé de réception nomme les fichiers laissés de côté. Un message sans texte ne démarre aucun run et reçoit une phrase en réponse.
+**Fichiers.** Sans [`Files`](#files-les-dossiers-dune-conversation), aucun n'est pris : un message avec des pièces jointes tourne sur son seul texte, et l'accusé de réception nomme les fichiers laissés de côté. Un message sans texte et sans fichier pris ne démarre aucun agent et reçoit une phrase en réponse. Avec `Files` allumé :
+
+- **Réception.** Les fichiers sont téléchargés une fois le run admis et acquitté, sous son échéance : `/stop` arrête aussi un téléchargement. Ils viennent de `cdn.discordapp.com` seul, en HTTPS, sans redirection et sans le jeton du bot ; leur adresse signée n'est ni gardée ni journalisée. La taille annoncée fait refuser tôt, et les octets sont comptés à mesure qu'ils arrivent. Un fichier déjà rangé, d'après son identifiant Discord, n'est pas rangé deux fois.
+- **Refus.** Un fichier au-delà d'une limite, au-delà de `MaxFilesPerMessage`, d'une extension non prise, ou illisible est laissé seul de côté ; la réponse nomme chacun avec sa raison. Le run continue avec le reste. Quand rien n'est arrivé et que le message n'a pas de texte, aucun agent ne tourne.
+- **Ce que lit la crew.** Un bloc suit le texte de la personne : le chemin, le type et la taille des fichiers du message, les 20 derniers fichiers antérieurs, et `/outbox`. Un message de fichiers sans texte demande à la crew de les traiter. Il n'y a aucune variable de prompt et le contenu n'est jamais inséré ; les noms sont assainis, cités et bornés, si bien qu'aucun ne forge une ligne du prompt, et le bloc dit au modèle que ce sont des données. Le contenu d'un fichier vaut ce que vaut la personne qui l'envoie : un agent qui le lit peut y trouver des instructions, ne donnez donc à une crew ouverte à des inconnus aucun outil que vous ne leur donneriez pas.
+- **Portées.** Un agent dont le [`filesystem:`](vfs-compliance.md#périmètre-de-fichiers-dun-agent) laisse `/inbox` de côté ne lit pas les fichiers ; le journal le dit à chaque run.
+- **Laissés de côté.** Les autocollants et les messages transférés sont ignorés : on poste le fichier lui-même.
 
 ### Le canal Microsoft Teams
 
