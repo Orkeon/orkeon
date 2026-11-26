@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — a safaridriver that never opens its session
+
+- The `browser` tool waited the whole `StartupTimeoutSeconds` on one driver, which sometimes never answers when Safari is
+  still closing the session before. A driver now gets 15 s, then another is started, until the limit has passed; the
+  error says how many were tried.
+
 ### Added — the documentation of conversation files
 
 - `docs/architecture/security.md` says what the files of a conversation open, what protects them and what does not, and

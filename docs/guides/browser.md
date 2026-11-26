@@ -83,6 +83,9 @@ instead. What differs:
 - **No headless mode**: `Headless: true` with `safari` is refused when the browser sessions of the host are built.
 - **One session at a time on the Mac**: a second run's first action is refused while another holds it, unless the
   runs share the browser (`SharedInstance`) or the host keeps it (`Lifetime: host`).
+- **A driver that does not answer is replaced**: `safaridriver` sometimes never answers the opening of a session,
+  when Safari is still closing the one before. Each driver is given 15 s, then another is started, until
+  `StartupTimeoutSeconds` has passed: with the default of 30 s, two drivers.
 - **No events**: tabs, boxes and navigations are looked at after each command. A box is dismissed and reported with
   its text, always as an `alert`.
 
