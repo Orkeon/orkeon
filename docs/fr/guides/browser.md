@@ -91,6 +91,9 @@ WebDriver classic à la place. Ce qui diffère :
   de l'hôte.
 - **Une session à la fois sur le Mac** : la première action d'une seconde exécution est refusée tant qu'une autre la
   tient, sauf si les exécutions partagent le navigateur (`SharedInstance`) ou si l'hôte le garde (`Lifetime: host`).
+- **Un pilote qui ne répond pas est remplacé** : `safaridriver` ne répond parfois jamais à l'ouverture d'une session,
+  quand Safari ferme encore la précédente. Chaque pilote a 15 s, puis un autre est démarré, jusqu'à ce que
+  `StartupTimeoutSeconds` soit écoulé : avec le défaut de 30 s, deux pilotes.
 - **Pas d'événements** : les onglets, les boîtes et les navigations sont regardés après chaque commande. Une boîte est
   fermée et rapportée avec son texte, toujours comme un `alert`.
 

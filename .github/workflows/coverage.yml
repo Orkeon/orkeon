@@ -25,7 +25,7 @@ concurrency:
 jobs:
   coverage:
     runs-on: ubuntu-latest
-    timeout-minutes: 120
+    timeout-minutes: 60
     steps:
       - name: Free runner disk
         run: |
@@ -44,6 +44,8 @@ jobs:
             ~/.nuget/packages
           key: nuget-${{ runner.os }}-${{ hashFiles('**/*.csproj', '**/Directory.Packages.props', '**/packages.lock.json') }}
           restore-keys: nuget-${{ runner.os }}-
+      # Before the suites: a script that no longer reads the log would stay silent the day a module hangs.
+      - run: python3 scripts/hung-tests.py --self-test
       - run: dotnet restore Orkeon.sln
       - run: dotnet build Orkeon.sln -c Release --no-restore
       - name: Install the coverage tools (pinned)
@@ -56,13 +58,23 @@ jobs:
       # The same filter as ci.yml's test step: the Integration and Slow categories need
       # Testcontainers and the ONNX runtime and run in integration.yml. The figure this
       # produces is therefore "coverage by the unit and fast suites" -- the README says so.
+      # A module hung here twice in two weeks (Orkeon.Scripting.Cli.Tests, then Orkeon.Hosting.Tests),
+      # each time until the limit of the job, two hours later, and the log named no test: the terminal
+      # prints a test once it has ended. The step is therefore bounded well above the five minutes it
+      # takes, and every module writes the diagnostic log of the platform, where a test that started
+      # and never ended can be read (scripts/hung-tests.py, the step below).
       - name: Run the unit and fast suites under dotnet-coverage
+        timeout-minutes: 30
         run: |
           .tools/dotnet-coverage collect \
             --settings dotnet-coverage.settings.xml \
             --output coverage/coverage.cobertura.xml \
             --output-format cobertura \
-            -- dotnet test Orkeon.sln -c Release --no-build --filter "Category!=Integration&Category!=Slow"
+            -- dotnet test Orkeon.sln -c Release --no-build --filter "Category!=Integration&Category!=Slow" \
+               -- --diagnostic --diagnostic-output-directory "$GITHUB_WORKSPACE/test-diagnostics"
+      - name: Name the tests left unfinished
+        if: failure() || cancelled()
+        run: python3 scripts/hung-tests.py test-diagnostics | tee -a "$GITHUB_STEP_SUMMARY"
       # A report with no data is a failure, not a 0 % measurement (the shape
       # scripts/sonar-analyze.sh guards against: an empty <packages> element).
       - name: Refuse an empty measurement
