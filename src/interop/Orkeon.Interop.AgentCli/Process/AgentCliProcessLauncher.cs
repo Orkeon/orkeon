@@ -32,7 +32,7 @@ internal sealed partial class AgentCliProcessLauncher : IAgentCliLauncher
         _relayOverride = relayPath;
     }
 
-    public IAgentCliProcess Start(IAgentCliEngine engine, string systemPrompt, string? model)
+    public IAgentCliProcess Start(IAgentCliEngine engine, string systemPrompt, string? model, string? effort)
     {
         var folder = Directory.CreateTempSubdirectory("orkeon-agent-cli-").FullName;
         LiveFolders.Track(folder);
@@ -70,7 +70,7 @@ internal sealed partial class AgentCliProcessLauncher : IAgentCliLauncher
                 },
             }.ToJsonString();
 
-            var commandLine = engine.BuildCommandLine(new AgentCliLaunch(promptPath, mcpConfig, model, workingDirectory));
+            var commandLine = engine.BuildCommandLine(new AgentCliLaunch(promptPath, mcpConfig, model, workingDirectory, effort));
             return RunningAgentCli.Start(commandLine, workingDirectory, listener, folder, _logger);
         }
         catch

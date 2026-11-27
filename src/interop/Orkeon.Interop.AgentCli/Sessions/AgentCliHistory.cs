@@ -93,11 +93,14 @@ internal static class AgentCliHistory
         }
     }
 
-    /// <summary>What tells sessions apart within a run: the model, the system prompt and the first message (plan 4.4).</summary>
-    internal static string Fingerprint(string? model, string systemPrompt, IReadOnlyList<AgentCliMessageKey> keys)
+    /// <summary>
+    /// What tells sessions apart within a run: the model, the system prompt and the first message (plan 4.4), and the
+    /// thinking effort, which the CLI takes for its whole process (#487): a call at another level gets a process of its own.
+    /// </summary>
+    internal static string Fingerprint(string? model, string systemPrompt, IReadOnlyList<AgentCliMessageKey> keys, string? effort = null)
     {
         var first = keys.Count > 0 ? keys[0] : default;
-        var text = string.Join('\u001f', model ?? "", systemPrompt, first.Role, first.Text, first.ToolIds);
+        var text = string.Join('\u001f', model ?? "", systemPrompt, first.Role, first.Text, first.ToolIds, effort ?? "");
         return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(text)));
     }
 

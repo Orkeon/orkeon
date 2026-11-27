@@ -33,8 +33,10 @@ key. Its one engine is Claude Code: `claude -p` in stream-json, signed in with `
 services.AddOrkeonAgentCli();   // the orkeon CLI, the REPL and orkeon-host already do
 ```
 
-Options other than the model (temperature, max tokens, thinking, `Llm:WorkspaceId`, a `Required` tool
-mode, ...) are not sent: each one declared is reported once per run as a warning. A call runs under
+A thinking effort (`low` to `max`) starts the CLI with `--effort`; a call at another level gets a process
+of its own. Options other than the model and the effort (temperature, max tokens, a thinking budget or
+switch, `Llm:WorkspaceId`, a `Required` tool mode, ...) are not sent: each one declared is reported once
+per run as a warning. A call runs under
 `Llm:TimeoutSeconds`, and `Llm:StreamIdleSeconds` when set: past either, the turn is interrupted, its
 process closed, and the call fails as an HTTP provider's does. On Windows, `Command` names an executable
 (`claude.exe`): a `.cmd` or `.bat` script, which would run through `cmd.exe`, is refused at start.

@@ -14,15 +14,19 @@ internal sealed class FakeAgentCliProcess : IAgentCliProcess
 {
     private readonly Channel<string> _stdout = Channel.CreateUnbounded<string>();
 
-    public FakeAgentCliProcess(string systemPrompt, string? model)
+    public FakeAgentCliProcess(string systemPrompt, string? model, string? effort = null)
     {
         SystemPrompt = systemPrompt;
         Model = model;
+        Effort = effort;
     }
 
     public string SystemPrompt { get; }
 
     public string? Model { get; }
+
+    /// <summary>The thinking effort the process was started at; null for the CLI's own.</summary>
+    public string? Effort { get; }
 
     public FakeBridgeConnection Connection { get; } = new();
 
@@ -75,9 +79,9 @@ internal sealed class FakeAgentCliLauncher : IAgentCliLauncher
 
     public List<FakeAgentCliProcess> Started { get; } = [];
 
-    public IAgentCliProcess Start(IAgentCliEngine engine, string systemPrompt, string? model)
+    public IAgentCliProcess Start(IAgentCliEngine engine, string systemPrompt, string? model, string? effort)
     {
-        var process = new FakeAgentCliProcess(systemPrompt, model);
+        var process = new FakeAgentCliProcess(systemPrompt, model, effort);
         lock (Started)
             Started.Add(process);
         _started.Writer.TryWrite(process);

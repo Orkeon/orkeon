@@ -74,6 +74,8 @@ périmètre du framework est gelé à ses seize fournisseurs ; un nouveau demand
   graine, des séquences d'arrêt, un format de réponse, un budget de réflexion, une grammaire, des points de cache,
   `Llm:WorkspaceId`, un mode d'outils `Required`) font chacune l'objet d'un avertissement par run et ne sont pas
   envoyées. Un mode d'outils `None` ne propose aucun outil à la CLI.
+  Un effort de réflexion part en `--effort` (#487), qui vaut pour le processus : l'effort fait partie de ce qui
+  fait partager un processus à deux appels.
 - Le flux de la CLI est le protocole d'un vendeur, qui peut changer avec ses versions ; le statut expérimental le
   couvre.
 - Laissé pour plus tard : les outils propres de la CLI derrière la barrière d'Orkeon, un fournisseur qui tient le

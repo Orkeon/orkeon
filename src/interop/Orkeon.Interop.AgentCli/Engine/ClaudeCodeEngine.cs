@@ -70,6 +70,13 @@ internal sealed class ClaudeCodeEngine : IAgentCliEngine
             arguments.Add(launch.Model);
         }
 
+        // The CLI's levels are Orkeon's five (claude --help: low, medium, high, xhigh, max), for the whole process (#487).
+        if (!string.IsNullOrWhiteSpace(launch.Effort))
+        {
+            arguments.Add("--effort");
+            arguments.Add(launch.Effort);
+        }
+
         var environment = new Dictionary<string, string>(StringComparer.Ordinal)
         {
             // The CLI's memory, CLAUDE.md files and claude.ai connectors stay out of the conversation.

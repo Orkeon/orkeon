@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — `agent-cli` sends the thinking effort (#487)
+
+- A thinking effort set on a call (`low`, `medium`, `high`, `xhigh`, `max`) now starts the Claude Code CLI with
+  `--effort` instead of being dropped with a warning. The effort holds for the CLI's process, so it is part of what
+  makes two calls share one: a call at another level gets a process of its own, seeded with the conversation. The
+  provider declares the five levels (`Capabilities`), so System One's level pick applies on an `agent-cli` profile.
+  Thinking switched off, switched on without a level, bounded by a budget, or a vendor value outside the five levels
+  has no flag and keeps the warning.
+
 ### Fixed — a safaridriver that never opens its session
 
 - The `browser` tool waited the whole `StartupTimeoutSeconds` on one driver, which sometimes never answers when Safari is

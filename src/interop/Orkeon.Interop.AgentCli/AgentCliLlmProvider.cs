@@ -22,9 +22,11 @@ internal sealed partial class AgentCliLlmProvider : ILlmProvider
     /// <summary>The metadata key of the CLI's own cost figure, what the turn would cost at API prices.</summary>
     internal const string NotionalCostKey = "agent_cli_notional_cost_usd";
 
-    private const string OptionRemedy = "The agent CLI takes the model alone; set the others in the CLI itself, or use another provider";
+    private const string OptionRemedy = "The agent CLI takes the model and a thinking effort alone; set the others in the CLI itself, or use another provider";
 
     private const string WorkspaceRemedy = "Only Anthropic scopes a key to a workspace, and the agent CLI runs on its login; remove Llm:WorkspaceId (or the profile's) for this provider";
+
+    private const string ThinkingRemedy = "The agent CLI takes a thinking effort alone (--effort low, medium, high, xhigh or max): it has no flag to switch thinking off, to switch it on without a level, or to bound it by a token budget; give an effort, or use another provider";
 
     private const string ToolChoiceRemedy = "The agent CLI has no flag to force a tool call; the tools are offered and the model chooses, or use another provider";
 
@@ -46,6 +48,16 @@ internal sealed partial class AgentCliLlmProvider : ILlmProvider
 
     public LlmConfig? BaseConfig => _config;
 
+    /// <summary>
+    /// The CLI takes a thinking effort, Orkeon's five levels (<c>--effort</c>, #487), and nothing else of the
+    /// thinking: no switch, no budget.
+    /// </summary>
+    public LlmProviderCapabilities Capabilities { get; } = LlmProviderCapabilities.Unknown with
+    {
+        Thinking = ThinkingSupport.EffortOnly,
+        EffortLevels = LlmThinkingConfig.Levels,
+    };
+
     public Task<LlmResponse> GenerateAsync(string prompt, LlmConfig? config = null, CancellationToken cancellationToken = default) =>
         ChatAsync([new LlmMessage { Role = "user", Content = prompt }], config, cancellationToken);
 
@@ -61,8 +73,9 @@ internal sealed partial class AgentCliLlmProvider : ILlmProvider
             return Failure("The agent-cli provider was called with no message beyond the system prompt.", "InvalidRequest", effective.Model);
 
         var model = string.IsNullOrWhiteSpace(effective.Model) ? null : effective.Model;
+        var effort = EffortSent(effective.Thinking);
         var keys = history.Select(AgentCliHistory.KeyOf).ToList();
-        var fingerprint = AgentCliHistory.Fingerprint(model, systemPrompt, keys);
+        var fingerprint = AgentCliHistory.Fingerprint(model, systemPrompt, keys, effort);
         // ToolMode None sends no tool: the CLI cannot call one it was not given. Required has no flag (warned).
         IReadOnlyList<ToolSchema> tools = effective.ToolMode == ToolCallMode.None ? [] : effective.Tools ?? [];
         var bounds = new AgentCliCallBounds(effective.ResolveTimeoutSeconds(), effective.StreamIdleSeconds);
@@ -73,7 +86,7 @@ internal sealed partial class AgentCliLlmProvider : ILlmProvider
         var throwaway = store is null ? new AgentCliSessionStore(_host) : null;
         try
         {
-            var session = await (store ?? throwaway!).AcquireAsync(fingerprint, keys, systemPrompt, model).ConfigureAwait(false);
+            var session = await (store ?? throwaway!).AcquireAsync(fingerprint, keys, systemPrompt, model, effort).ConfigureAwait(false);
             AgentCliTurn turn;
             try
             {
@@ -207,11 +220,35 @@ internal sealed partial class AgentCliLlmProvider : ILlmProvider
             LogOptionNotSent(option, Name, option switch
             {
                 WorkspaceOption => WorkspaceRemedy,
+                ThinkingOption => ThinkingRemedy,
                 ToolChoiceOption => ToolChoiceRemedy,
                 _ => OptionRemedy,
             });
         }
     }
+
+    /// <summary>
+    /// The effort the CLI is started at: the call's level when thinking is not written off and the level is one of
+    /// <see cref="LlmThinkingConfig.Levels"/>, which the CLI takes all of. A vendor's own value, or a level under
+    /// <c>enabled: false</c>, is not sent and is warned about (<see cref="ThinkingDropped"/>).
+    /// </summary>
+    internal static string? EffortSent(LlmThinkingConfig? thinking) =>
+        thinking is { Enabled: not false, Effort: { } effort } && LlmThinkingConfig.Levels.Contains(effort, StringComparer.Ordinal)
+            ? effort
+            : null;
+
+    /// <summary>
+    /// Whether the call declares something of the thinking the CLI cannot take: a budget, a switch (off, or on
+    /// without a level), or an effort that is not sent.
+    /// </summary>
+    private static bool ThinkingDropped(LlmConfig config) =>
+        config.Thinking is { } thinking
+        && (thinking.BudgetTokens is not null
+            || thinking.Enabled == false
+            || (thinking.Effort is null ? thinking.Enabled == true : EffortSent(thinking) is null));
+
+    /// <summary>The thinking options, under their wire name.</summary>
+    private const string ThinkingOption = "thinking";
 
     /// <summary>The name the HTTP providers warn about <c>Llm:WorkspaceId</c> under (#468).</summary>
     private const string WorkspaceOption = "WorkspaceId";
@@ -221,7 +258,7 @@ internal sealed partial class AgentCliLlmProvider : ILlmProvider
 
     /// <summary>
     /// The options a configuration can declare that the CLI's command line has no flag for. The call's bounds
-    /// (<c>Llm:TimeoutSeconds</c>, <c>Llm:StreamIdleSeconds</c>) and <c>ToolMode = None</c> are honoured.
+    /// (<c>Llm:TimeoutSeconds</c>, <c>Llm:StreamIdleSeconds</c>), a thinking effort and <c>ToolMode = None</c> are honoured.
     /// </summary>
     private static readonly (string Option, Func<LlmConfig, bool> IsDeclared)[] OptionDeclarations =
     [
@@ -234,7 +271,7 @@ internal sealed partial class AgentCliLlmProvider : ILlmProvider
         ("stop", config => config.StopSequences.Count > 0),
         ("response_format", config => config.ResponseFormat is { } format
             && !string.Equals(format.Type, "text", StringComparison.OrdinalIgnoreCase)),
-        ("thinking", config => config.Thinking is not null),
+        (ThinkingOption, ThinkingDropped),
         ("grammar", config => !string.IsNullOrWhiteSpace(config.GrammarGbnf)),
         ("cache", config => config.Cache is { RequestsAnyBreakpoint: true }),
         (WorkspaceOption, config => !string.IsNullOrWhiteSpace(config.WorkspaceId)),

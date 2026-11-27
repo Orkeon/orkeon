@@ -67,4 +67,18 @@ public sealed class AgentCliHistoryTests
         Assert.Equal(one, same);
         Assert.NotEqual(one, other);
     }
+
+    [Fact]
+    public void ShouldTellConversationsApart_WhenEffortDiffers()
+    {
+        IReadOnlyList<AgentCliMessageKey> keys = [new AgentCliMessageKey("user", "A", "")];
+
+        var low = AgentCliHistory.Fingerprint("haiku", "P", keys, "low");
+        var high = AgentCliHistory.Fingerprint("haiku", "P", keys, "high");
+        var none = AgentCliHistory.Fingerprint("haiku", "P", keys);
+
+        Assert.NotEqual(low, high);
+        Assert.NotEqual(low, none);
+        Assert.Equal(low, AgentCliHistory.Fingerprint("haiku", "P", keys, "low"));
+    }
 }
