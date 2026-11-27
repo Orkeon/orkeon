@@ -17,6 +17,12 @@ internal interface IReasoningWireProbe
     /// <summary>The reasoning fields of the last request, as a compact JSON object, or null when none was seen.</summary>
     string? LastFields { get; }
 
+    /// <summary>
+    /// Whether the provider's requests go through the capture: false for one that sends none over HTTP (the
+    /// <c>agent-cli</c> module starts a CLI, #487), whose <see cref="LastFields"/> stays null whatever it sends.
+    /// </summary>
+    bool Captures { get; }
+
     /// <summary>The Warning-or-worse messages the provider loggers produced since <see cref="Reset"/>.</summary>
     IReadOnlyList<string> Warnings { get; }
 
@@ -429,6 +435,9 @@ internal sealed class ReasoningWireProbe : IReasoningWireProbe
 
     /// <inheritdoc />
     public string? LastFields => Recorder?.LastFields;
+
+    /// <inheritdoc />
+    public bool Captures => Recorder is not null;
 
     /// <inheritdoc />
     public IReadOnlyList<string> Warnings => LoggerFactory.Messages;

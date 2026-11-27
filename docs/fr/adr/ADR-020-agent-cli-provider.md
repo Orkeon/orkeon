@@ -71,7 +71,7 @@ périmètre du framework est gelé à ses seize fournisseurs ; un nouveau demand
 - Un appel coûte le démarrage d'un processus CLI sur une nouvelle conversation, et le prompt système et les règles
   d'outils du vendeur entourent ceux d'Orkeon ; les réponses peuvent différer de celles du même modèle derrière l'API.
 - Les options que la CLI ne peut pas recevoir (température, nombre maximal de tokens, top-p, les pénalités, une
-  graine, des séquences d'arrêt, un format de réponse, un budget de réflexion, une grammaire, des points de cache,
+  graine, des séquences d'arrêt, un format de réponse, un budget ou un interrupteur de réflexion, une valeur d'effort propre à un vendeur, une grammaire, des points de cache,
   `Llm:WorkspaceId`, un mode d'outils `Required`) font chacune l'objet d'un avertissement par run et ne sont pas
   envoyées. Un mode d'outils `None` ne propose aucun outil à la CLI.
   Un effort de réflexion part en `--effort` (#487), qui vaut pour le processus : l'effort fait partie de ce qui

@@ -1061,6 +1061,47 @@ public sealed class LlmProbeRunnerTests
         Assert.Equal(["low", "medium", "high", "xhigh", "max", "none", "minimal"], result.Reasoning!.Select(s => s.Step).ToArray());
     }
 
+#pragma warning disable ORKEXP005 // The effort report is experimental.
+    [Fact]
+    public async Task ShouldReadProviderReport_WhenNoCaptureSeesItsRequests()
+    {
+        // agent-cli (#487): no HTTP request, so the provider's own report says what the CLI was started with.
+        var provider = new ScriptedProvider
+        {
+            Content = "0.05",
+            Capabilities = new LlmProviderCapabilities { Thinking = ThinkingSupport.EffortOnly },
+            EffortReport = config => config?.Thinking?.Effort is { } asked
+                ? new LlmEffortReport("haiku", asked, asked == "none" ? null : asked, asked == "none" ? LlmEffortNotice.Dropped : LlmEffortNotice.Unchecked)
+                : null,
+        };
+        var wire = new FakeReasoningWireProbe { Captures = false };
+        var runner = new LlmProbeRunner(provider) { SweepEfforts = ["low", "max", "none"], WireProbe = wire };
+
+        var result = await RunAsync(runner, LlmProbeMode.M16);
+
+        var steps = result.Reasoning!;
+        Assert.Equal(LlmReasoningOutcome.Sent, steps[0].Outcome);
+        Assert.Equal("low", steps[0].SentValue);
+        Assert.Equal(LlmReasoningOutcome.Sent, steps[1].Outcome);
+        Assert.Equal("max", steps[1].SentValue);
+        Assert.Equal(LlmReasoningOutcome.Omitted, steps[2].Outcome);
+        Assert.Equal(LlmProbeOutcome.Passed, result.Outcome);
+    }
+#pragma warning restore ORKEXP005
+
+    [Fact]
+    public async Task ShouldReadWarning_WhenNoCaptureSeesBudgetStep()
+    {
+        var provider = ThinkingProvider(ThinkingSupport.EffortOnly);
+        var wire = new FakeReasoningWireProbe { Captures = false };
+        wire.WarningLists.Enqueue(["Option 'thinking' was declared but agent-cli does not support it — it was not sent."]);
+        var runner = new LlmProbeRunner(provider) { WireProbe = wire };
+
+        var result = await RunAsync(runner, LlmProbeMode.M17);
+
+        Assert.Equal(LlmReasoningOutcome.Omitted, Assert.Single(result.Reasoning!).Outcome);
+    }
+
     [Fact]
     public async Task ShouldReadTheChatTemplateSwitch_AsTheToggle()
     {
@@ -1336,6 +1377,13 @@ public sealed class LlmProbeRunnerTests
 
         /// <summary>Every configuration handed to the provider, in call order.</summary>
         public List<LlmConfig?> Configs { get; } = [];
+
+#pragma warning disable ORKEXP005 // The effort report is experimental.
+        /// <summary>The provider's report of the effort it sends for a configuration; null reports nothing.</summary>
+        public Func<LlmConfig?, LlmEffortReport?>? EffortReport { get; init; }
+
+        public LlmEffortReport? ReportEffort(LlmConfig? config) => EffortReport?.Invoke(config);
+#pragma warning restore ORKEXP005
 
         /// <summary>
         /// Every prompt handed to <see cref="GenerateAsync"/>, in call order. Modes that use the

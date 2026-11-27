@@ -9,12 +9,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed — `agent-cli` sends the thinking effort (#487)
 
-- A thinking effort set on a call (`low`, `medium`, `high`, `xhigh`, `max`) now starts the Claude Code CLI with
-  `--effort` instead of being dropped with a warning. The effort holds for the CLI's process, so it is part of what
-  makes two calls share one: a call at another level gets a process of its own, seeded with the conversation. The
-  provider declares the five levels (`Capabilities`), so System One's level pick applies on an `agent-cli` profile.
-  Thinking switched off, switched on without a level, bounded by a budget, or a vendor value outside the five levels
-  has no flag and keeps the warning.
+- A thinking effort set on a call (`low`, `medium`, `high`, `xhigh`, `max`, in any case) now starts the Claude Code CLI
+  with `--effort` instead of being dropped with a warning, so the level System One picks for a task (`effort: auto`,
+  `ctx.llm.pick`) reaches the CLI too. The effort holds for the CLI's process, so it is part of what makes two calls
+  share one: a call at another level gets a process of its own, seeded with the conversation. Thinking switched off,
+  switched on without a level, bounded by a budget, or a vendor value outside the five levels has no flag and keeps the
+  warning.
+- The provider declares `Thinking = EffortOnly` over the five levels and answers `DescribeReasoning` and `ReportEffort`
+  (ORKEXP005), so a script reads what the CLI is started with. A profile whose fallback takes fewer levels (OpenAI,
+  Grok: no `max`) is now reported at load as a lesser fallback ("does not support reasoning effort (max)"), as on any
+  provider.
+- `orkeon llm probe --provider agent-cli` now runs M7, M16 and M17. A provider that sends no HTTP request is read from
+  its own report: M16 shows each level as sent, M17's budget as omitted.
 
 ### Fixed — a safaridriver that never opens its session
 

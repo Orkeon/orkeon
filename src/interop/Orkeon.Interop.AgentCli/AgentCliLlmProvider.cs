@@ -58,6 +58,29 @@ internal sealed partial class AgentCliLlmProvider : ILlmProvider
         EffortLevels = LlmThinkingConfig.Levels,
     };
 
+#pragma warning disable ORKEXP005 // The reasoning reports are experimental; the provider answers them as an HTTP one does.
+    /// <summary>
+    /// The five levels on any model: the CLI checks the model itself, and no capability table holds the CLI's
+    /// aliases (<c>haiku</c>, <c>opus</c>), so <see cref="LlmReasoningCapabilities.Known"/> is false.
+    /// </summary>
+    public LlmReasoningCapabilities DescribeReasoning(string? model) =>
+        new(string.IsNullOrWhiteSpace(model) ? _config.Model ?? "" : model.Trim(), Known: false, ThinkingSupport.EffortOnly, LlmThinkingConfig.Levels);
+
+    /// <summary>
+    /// The effort the CLI is started at for <paramref name="config"/> (<see cref="EffortSent"/>): sent as asked and
+    /// unchecked against the model, or dropped (thinking written off, a vendor value). Null when no effort is asked.
+    /// </summary>
+    public LlmEffortReport? ReportEffort(LlmConfig? config)
+    {
+        var effective = config?.InheritFrom(_config) ?? _config;
+        if (string.IsNullOrWhiteSpace(effective.Thinking?.Effort))
+            return null;
+
+        var sent = EffortSent(effective.Thinking);
+        return new LlmEffortReport(effective.Model ?? "", effective.Thinking.Effort, sent, sent is null ? LlmEffortNotice.Dropped : LlmEffortNotice.Unchecked);
+    }
+#pragma warning restore ORKEXP005
+
     public Task<LlmResponse> GenerateAsync(string prompt, LlmConfig? config = null, CancellationToken cancellationToken = default) =>
         ChatAsync([new LlmMessage { Role = "user", Content = prompt }], config, cancellationToken);
 
@@ -229,13 +252,11 @@ internal sealed partial class AgentCliLlmProvider : ILlmProvider
 
     /// <summary>
     /// The effort the CLI is started at: the call's level when thinking is not written off and the level is one of
-    /// <see cref="LlmThinkingConfig.Levels"/>, which the CLI takes all of. A vendor's own value, or a level under
-    /// <c>enabled: false</c>, is not sent and is warned about (<see cref="ThinkingDropped"/>).
+    /// <see cref="LlmThinkingConfig.Levels"/> whatever its case, which the CLI takes all of, in lower case. A vendor's
+    /// own value, or a level under <c>enabled: false</c>, is not sent and is warned about (<see cref="ThinkingDropped"/>).
     /// </summary>
     internal static string? EffortSent(LlmThinkingConfig? thinking) =>
-        thinking is { Enabled: not false, Effort: { } effort } && LlmThinkingConfig.Levels.Contains(effort, StringComparer.Ordinal)
-            ? effort
-            : null;
+        thinking is { Enabled: not false, Effort: { } effort } ? LlmThinkingConfig.ParseEffort(effort) : null;
 
     /// <summary>
     /// Whether the call declares something of the thinking the CLI cannot take: a budget, a switch (off, or on
