@@ -50,6 +50,49 @@ public sealed class PendingInputBrokerTests
 
     [Fact]
     [Trait("BR", "FWK-23")]
+    public async Task ShouldNotShowAQuestion_BeforeTheWatcherWasToldItIsHeld()
+    {
+        // A reader that saw the question before the watcher was told would take the run clock for stopped while it runs.
+        var broker = new PendingInputBroker();
+        var told = false;
+        var toldWhenSeen = false;
+        using var telling = new ManualResetEventSlim();
+        using var release = new ManualResetEventSlim();
+        using var watch = broker.WatchHolds("run", held =>
+        {
+            if (!held)
+                return;
+            telling.Set();
+            release.Wait(Ct);
+            Volatile.Write(ref told, true);
+        });
+
+        System.Threading.Tasks.Task<string>? waiting = null;
+        var asker = new Thread(() => waiting = broker.WaitAsync("run", "q", Ct));
+        asker.Start();
+        telling.Wait(Ct);
+
+        IReadOnlyList<string> seen = [];
+        var reader = new Thread(() =>
+        {
+            seen = broker.HeldRequestIds("run");
+            toldWhenSeen = Volatile.Read(ref told);
+        });
+        reader.Start();
+        // Either the reader went through, or it waits for the watcher to be told first.
+        SpinWait.SpinUntil(() => !reader.IsAlive || (reader.ThreadState & ThreadState.WaitSleepJoin) != 0);
+        release.Set();
+        reader.Join();
+        asker.Join();
+
+        Assert.True(toldWhenSeen || seen.Count == 0, "The question was listed before the watcher was told it is held.");
+        Assert.Equal(["q"], broker.HeldRequestIds("run"));
+        broker.TryComplete("run", "q", "a");
+        Assert.Equal("a", await waiting!);
+    }
+
+    [Fact]
+    [Trait("BR", "FWK-23")]
     public async Task ShouldTellTheWatcherInTheOrderTheHoldsChanged_WhenANewQuestionComesWhileTheLastIsReleased()
     {
         // PR review HOST-2: the "released" of the last question is still on its way to the watcher when the next question
