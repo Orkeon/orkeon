@@ -34,7 +34,8 @@ internal interface IAgentCliLauncher
 {
     /// <summary>
     /// Starts one CLI for a session: writes <paramref name="systemPrompt"/> where the CLI reads it, opens the
-    /// bridge's socket, and starts the process the engine describes.
+    /// bridge's socket, and starts the process the engine describes, on <paramref name="model"/> and at
+    /// <paramref name="effort"/> (null for the CLI's own).
     /// </summary>
-    IAgentCliProcess Start(IAgentCliEngine engine, string systemPrompt, string? model);
+    IAgentCliProcess Start(IAgentCliEngine engine, string systemPrompt, string? model, string? effort);
 }

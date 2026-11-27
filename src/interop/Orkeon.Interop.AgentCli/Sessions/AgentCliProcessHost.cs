@@ -43,7 +43,7 @@ internal sealed partial class AgentCliProcessHost : IAsyncDisposable
     }
 
     /// <summary>Starts a process for a new session, already acquired by its caller.</summary>
-    public async Task<AgentCliSession> OpenAsync(string fingerprint, string systemPrompt, string? model)
+    public async Task<AgentCliSession> OpenAsync(string fingerprint, string systemPrompt, string? model, string? effort)
     {
         AgentCliSession? evicted = null;
         var crowded = false;
@@ -67,7 +67,7 @@ internal sealed partial class AgentCliProcessHost : IAsyncDisposable
         else if (crowded)
             LogCrowded(_options.MaxProcesses);
 
-        var process = _launcher.Start(_engine, systemPrompt, model);
+        var process = _launcher.Start(_engine, systemPrompt, model, effort);
         var session = new AgentCliSession(process, _engine, _options, fingerprint, _logger, _time);
         session.TryAcquire();
         lock (_gate)
@@ -119,7 +119,7 @@ internal sealed class AgentCliSessionStore : IAsyncDisposable
     /// The session that continues <paramref name="keys"/>, acquired; else a new one. A session of the same
     /// fingerprint that can no longer be continued is closed.
     /// </summary>
-    public async Task<AgentCliSession> AcquireAsync(string fingerprint, IReadOnlyList<AgentCliMessageKey> keys, string systemPrompt, string? model)
+    public async Task<AgentCliSession> AcquireAsync(string fingerprint, IReadOnlyList<AgentCliMessageKey> keys, string systemPrompt, string? model, string? effort)
     {
         var stale = new List<AgentCliSession>();
         lock (_gate)
@@ -145,7 +145,7 @@ internal sealed class AgentCliSessionStore : IAsyncDisposable
         foreach (var session in stale)
             await session.DisposeAsync().ConfigureAwait(false);
 
-        var opened = await _host.OpenAsync(fingerprint, systemPrompt, model).ConfigureAwait(false);
+        var opened = await _host.OpenAsync(fingerprint, systemPrompt, model, effort).ConfigureAwait(false);
         lock (_gate)
             _sessions.Add(opened);
         return opened;

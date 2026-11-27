@@ -33,7 +33,8 @@ internal interface IAgentCliEngine
 /// <param name="McpConfigJson">The <c>--mcp-config</c> document that declares the bridge.</param>
 /// <param name="Model">The model to answer on; null for the CLI's own.</param>
 /// <param name="WorkingDirectory">The neutral folder the process runs in.</param>
-internal sealed record AgentCliLaunch(string SystemPromptPath, string McpConfigJson, string? Model, string WorkingDirectory);
+/// <param name="Effort">The thinking effort, one of <c>LlmThinkingConfig.Levels</c>; null for the CLI's own.</param>
+internal sealed record AgentCliLaunch(string SystemPromptPath, string McpConfigJson, string? Model, string WorkingDirectory, string? Effort = null);
 
 /// <summary>A process to start: the executable, its arguments, the variables to set and those to remove.</summary>
 internal sealed record AgentCliCommandLine(

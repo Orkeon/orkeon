@@ -59,6 +59,25 @@ public sealed class ClaudeCodeEngineTests
         Assert.DoesNotContain("--model", line.Arguments);
     }
 
+    [Theory]
+    [InlineData("low")]
+    [InlineData("xhigh")]
+    [InlineData("max")]
+    public void ShouldPassEffort_WhenLaunchCarriesOne(string effort)
+    {
+        var line = Engine.BuildCommandLine(new AgentCliLaunch("/p", "{}", "haiku", "/w", effort));
+
+        AssertFlag(line, "--effort", effort);
+    }
+
+    [Fact]
+    public void ShouldOmitEffort_WhenNoneGiven()
+    {
+        var line = Engine.BuildCommandLine(new AgentCliLaunch("/p", "{}", "haiku", "/w"));
+
+        Assert.DoesNotContain("--effort", line.Arguments);
+    }
+
     [Fact]
     public void ShouldWriteStreamJsonInput_WhenUserAndInterruptLines()
     {

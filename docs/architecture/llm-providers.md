@@ -425,7 +425,8 @@ whatever it holds ([configuration](../reference/configuration.md)).
   configuration merged with the host's (so `Llm:Thinking:Effort` counts) and answers `LlmEffortReport`: the effort
   asked, the effort sent (null when none goes out, Ollama's "off" included) and `LlmEffortNotice` `Lowered`,
   `Dropped` or `Unchecked` (a model the table does not know), null when the effort went as asked. It is null when no
-  effort is asked. Both default to null on the interface; `HttpLlmProviderBase` answers them, and every decorator
+  effort is asked. Both default to null on the interface; `HttpLlmProviderBase` answers them, so does the `agent-cli`
+  module (the five levels on any model, `Known` false, an effort sent `Unchecked`), and every decorator
   forwards them to its inner provider. A fallback chain answers for its first profile and a decision provider for
   its target: a call that fails over, or that a verdict routes to another profile, is judged by the provider that
   serves it. The scripting DSL reads them as `LlmConfig.capabilities`, `ctx.llm.capabilities(opts)`,

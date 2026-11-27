@@ -591,7 +591,10 @@ Tous les profils du fournisseur la partagent. Le fournisseur est fait pour un us
 l'abonnement de qui le lance. L'hôte refuse au démarrage une `Command` vide ou en `.cmd`/`.bat`, un
 `MaxProcesses` ou un `AutocompactTokens` inférieur à 1 et un `MaxToolResultCharacters` inférieur à 1000, en
 nommant la clé. Un appel tourne sous `Llm:TimeoutSeconds` et, quand elle est réglée, `Llm:StreamIdleSeconds`,
-comme sur tout fournisseur.
+comme sur tout fournisseur. Un effort de réflexion (`low`, `medium`, `high`, `xhigh`, `max`) démarre la CLI avec
+`--effort`, pour tout le processus : un appel à un autre niveau reçoit un processus à lui, amorcé avec la
+conversation. Une réflexion coupée, activée sans niveau ou bornée par un budget n'a pas de drapeau et donne un
+avertissement.
 
 <!-- settings:Llm:AgentCli -->
 **Lue par** : `orkeon`, `orkeon-host`, `orkeon-repl`.

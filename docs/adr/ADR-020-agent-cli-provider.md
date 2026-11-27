@@ -68,7 +68,8 @@ a new one needs a motivated exception.
 - A call costs a CLI process start on a new conversation, and the vendor's system prompt and tool rules surround
   Orkeon's; the answers may differ from the same model behind the API.
 - Options the CLI cannot receive (temperature, max tokens, top-p, the penalties, a seed, stop sequences, a response
-  format, a thinking budget, a grammar, cache breakpoints, `Llm:WorkspaceId`, a `Required` tool mode) are each warned
-  about once per run and not sent. A `None` tool mode offers the CLI no tool.
+  format, a thinking budget or switch, a vendor effort value, a grammar, cache breakpoints, `Llm:WorkspaceId`, a `Required` tool mode) are each warned
+  about once per run and not sent. A `None` tool mode offers the CLI no tool. A thinking effort is sent as
+  `--effort` (#487), which holds for the process: the effort is part of what makes two calls share one.
 - The CLI's stream is a vendor's protocol that may change with its releases; the experimental status covers it.
 - Left for later: the CLI's own tools behind Orkeon's gate, a provider that keeps the context itself, more engines.

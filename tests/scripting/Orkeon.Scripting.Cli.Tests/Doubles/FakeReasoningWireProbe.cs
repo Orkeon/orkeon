@@ -34,6 +34,9 @@ internal sealed class FakeReasoningWireProbe : IReasoningWireProbe
     public IReadOnlyList<string> Warnings { get; private set; } = [];
 
     /// <inheritdoc />
+    public bool Captures { get; set; } = true;
+
+    /// <inheritdoc />
     public VendorAnswer? LastAnswer { get; private set; }
 
     /// <inheritdoc />

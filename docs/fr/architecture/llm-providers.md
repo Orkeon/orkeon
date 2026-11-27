@@ -443,7 +443,8 @@ quoi qu'elle contienne ([configuration](../reference/configuration.md)).
   `LlmEffortReport` : l'effort demandé, l'effort envoyé (nul quand aucun ne part, le « off » d'Ollama compris) et
   `LlmEffortNotice` `Lowered`, `Dropped` ou `Unchecked` (un modèle que la table ne connaît pas), nul quand l'effort
   est parti tel que demandé. Il est nul quand aucun effort n'est demandé. Les deux valent nul par défaut sur
-  l'interface ; `HttpLlmProviderBase` y répond, et chaque décorateur les transmet à son fournisseur interne. Une
+  l'interface ; `HttpLlmProviderBase` y répond, le module `agent-cli` aussi (les cinq niveaux sur tout modèle, `Known`
+  faux, un effort envoyé `Unchecked`), et chaque décorateur les transmet à son fournisseur interne. Une
   chaîne de bascule répond pour son premier profil et un fournisseur de décision pour sa cible : un appel qui
   bascule, ou qu'un verdict route vers un autre profil, est jugé par le fournisseur qui le sert. Le DSL de script
   les lit comme `LlmConfig.capabilities`, `ctx.llm.capabilities(opts)`, `ctx.llm.reasoning(opts)` et le champ

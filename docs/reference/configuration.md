@@ -562,7 +562,10 @@ and hands it Orkeon's tools through a bridge; this section tells it how to start
 the provider shares it. The provider is meant for personal use, on the subscription of whoever runs it.
 The host refuses at start an empty `Command` or a `.cmd`/`.bat` one, a `MaxProcesses` or `AutocompactTokens`
 under 1 and a `MaxToolResultCharacters` under 1000, naming the key. A call runs under `Llm:TimeoutSeconds`
-and, when set, `Llm:StreamIdleSeconds`, as on any provider.
+and, when set, `Llm:StreamIdleSeconds`, as on any provider. A thinking effort (`low`, `medium`, `high`, `xhigh`,
+`max`) starts the CLI with `--effort`, for the whole process: a call at another level gets a process of its own,
+seeded with the conversation. Thinking switched off, switched on without a level, or bounded by a budget has no
+flag and is warned about.
 
 <!-- settings:Llm:AgentCli -->
 **Read by**: `orkeon`, `orkeon-host`, `orkeon-repl`.

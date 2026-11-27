@@ -491,6 +491,129 @@ public sealed class AgentCliLlmProviderTests : IAsyncDisposable
     }
 
     [Fact]
+    public async Task ShouldStartCliAtEffort_WhenCallCarriesThinkingEffort()
+    {
+        await using var scope = AgentRunScope.Begin("a1", "Chat");
+        var config = LlmConfig.OnProfile() with { Thinking = new LlmThinkingConfig { Effort = "xhigh" } };
+
+        var call = Provider().ChatAsync([User("Hi")], config, TestContext.Current.CancellationToken);
+        var process = await _launcher.NextAsync();
+        await process.NextInputAsync();
+        await process.EmitAsync(StreamLines.Result("ok"));
+        await call;
+
+        Assert.Equal("xhigh", process.Effort);
+        Assert.DoesNotContain(_logger.Entries, entry => entry.EventId.Id == 110);
+    }
+
+    [Fact]
+    public async Task ShouldSeedProcessOfItsOwn_WhenEffortChangesWithinConversation()
+    {
+        await using var scope = AgentRunScope.Begin("a1", "Chat");
+        var provider = Provider();
+        var low = LlmConfig.OnProfile() with { Thinking = new LlmThinkingConfig { Effort = "low" } };
+        var high = LlmConfig.OnProfile() with { Thinking = new LlmThinkingConfig { Effort = "high" } };
+        var first = provider.ChatAsync([User("Hi")], low, TestContext.Current.CancellationToken);
+        var lowProcess = await _launcher.NextAsync();
+        await lowProcess.NextInputAsync();
+        await lowProcess.EmitAsync(StreamLines.Text("m1", "Hello."));
+        await lowProcess.EmitAsync(StreamLines.Result("Hello."));
+        var hello = await first;
+
+        var second = provider.ChatAsync(
+            [User("Hi"), new LlmMessage { Role = "assistant", Content = hello.Content }, User("Bye")],
+            high, TestContext.Current.CancellationToken);
+        var highProcess = await _launcher.NextAsync();
+        var seed = await highProcess.NextInputAsync();
+        await highProcess.EmitAsync(StreamLines.Result("Goodbye."));
+        await second;
+
+        Assert.Equal("low", lowProcess.Effort);
+        Assert.Equal("high", highProcess.Effort);
+        Assert.Contains("Hello.", seed["message"]!["content"]!.GetValue<string>(), StringComparison.Ordinal);
+        Assert.False(lowProcess.Stdin.Reader.TryRead(out _));
+    }
+
+    [Theory]
+    [InlineData(true, "high", "high")]
+    [InlineData(null, "High", "high")]
+    [InlineData(null, " max ", "max")]
+    public async Task ShouldSendLevelWithoutWarning_WhenThinkingOnOrLevelWrittenInAnyCase(bool? enabled, string effort, string sent)
+    {
+        await using var scope = AgentRunScope.Begin("a1", "Chat");
+        var config = LlmConfig.OnProfile() with { Thinking = new LlmThinkingConfig { Enabled = enabled, Effort = effort } };
+
+        var call = Provider().ChatAsync([User("Hi")], config, TestContext.Current.CancellationToken);
+        var process = await _launcher.NextAsync();
+        await process.NextInputAsync();
+        await process.EmitAsync(StreamLines.Result("ok"));
+        await call;
+
+        Assert.Equal(sent, process.Effort);
+        Assert.DoesNotContain(_logger.Entries, entry => entry.EventId.Id == 110);
+    }
+
+    [Theory]
+    [InlineData(false, "high", null, null)]
+    [InlineData(true, null, null, null)]
+    [InlineData(null, "high", 2048, "high")]
+    [InlineData(null, "minimal", null, null)]
+    public async Task ShouldWarnAboutThinking_WhenCliHasNoFlagForIt(bool? enabled, string? effort, int? budget, string? sent)
+    {
+        await using var scope = AgentRunScope.Begin("a1", "Chat");
+        var config = LlmConfig.OnProfile() with { Thinking = new LlmThinkingConfig { Enabled = enabled, Effort = effort, BudgetTokens = budget } };
+
+        var call = Provider().ChatAsync([User("Hi")], config, TestContext.Current.CancellationToken);
+        var process = await _launcher.NextAsync();
+        await process.NextInputAsync();
+        await process.EmitAsync(StreamLines.Result("ok"));
+        await call;
+
+        Assert.Equal(sent, process.Effort);
+        Assert.Single(_logger.Entries, entry => entry.EventId.Id == 110 && entry.Message.Contains("'thinking'", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void ShouldDeclareEveryEffortLevel_WhenCapabilitiesRead()
+    {
+        var capabilities = Provider().Capabilities;
+
+        Assert.Equal(ThinkingSupport.EffortOnly, capabilities.Thinking);
+        Assert.Equal(LlmThinkingConfig.Levels, capabilities.EffortLevels);
+    }
+
+#pragma warning disable ORKEXP005 // The reasoning reports are experimental.
+    [Fact]
+    public void ShouldDescribeFiveLevelsUnchecked_WhenReasoningDescribed()
+    {
+        var reasoning = Provider().DescribeReasoning(null);
+
+        Assert.Equal("haiku", reasoning.Model);
+        Assert.False(reasoning.Known);
+        Assert.Equal(ThinkingSupport.EffortOnly, reasoning.Thinking);
+        Assert.Equal(LlmThinkingConfig.Levels, reasoning.Efforts);
+    }
+
+    [Theory]
+    [InlineData(null, "max", "max", LlmEffortNotice.Unchecked)]
+    [InlineData(false, "max", null, LlmEffortNotice.Dropped)]
+    [InlineData(null, "minimal", null, LlmEffortNotice.Dropped)]
+    public void ShouldReportEffortAsLaunched_WhenEffortAsked(bool? enabled, string asked, string? sent, LlmEffortNotice notice)
+    {
+        var report = Provider().ReportEffort(LlmConfig.OnProfile() with { Thinking = new LlmThinkingConfig { Enabled = enabled, Effort = asked } });
+
+        Assert.NotNull(report);
+        Assert.Equal(asked, report.Asked);
+        Assert.Equal(sent, report.Sent);
+        Assert.Equal(notice, report.Notice);
+    }
+
+    [Fact]
+    public void ShouldReportNothing_WhenNoEffortAsked() =>
+        Assert.Null(Provider().ReportEffort(LlmConfig.OnProfile()));
+#pragma warning restore ORKEXP005
+
+    [Fact]
     public void ShouldKeepStartCounts_WhenDeltaLeavesThemOut()
     {
         var start = new JsonObject { ["input_tokens"] = 3, ["output_tokens"] = 1 };

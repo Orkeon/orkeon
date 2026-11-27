@@ -112,7 +112,7 @@ internal sealed partial class LlmProbeRunner
 
         var (outcome, sentValue) = error is not null
             ? (LlmReasoningOutcome.Rejected, null)
-            : Classify(spec, wire);
+            : Classify(spec, wire, stepConfig, warnings);
 
         var metadata = response?.Metadata;
         return new LlmReasoningStep(
@@ -239,11 +239,15 @@ internal sealed partial class LlmProbeRunner
             : null;
     }
 
-    private (LlmReasoningOutcome, string?) Classify(ReasoningStepSpec spec, string? wire)
+    private (LlmReasoningOutcome, string?) Classify(ReasoningStepSpec spec, string? wire, LlmConfig stepConfig, IReadOnlyList<string> warnings)
     {
         // Without a capture the response alone is all there is: no error counts as sent.
         if (WireProbe is null)
             return (LlmReasoningOutcome.Sent, null);
+
+        // A provider that sends nothing over HTTP (agent-cli, #487) is read from its own judgement instead.
+        if (!WireProbe.Captures)
+            return ClassifyUncaptured(spec, stepConfig, warnings);
 
         if (wire is null)
             return (LlmReasoningOutcome.Omitted, null);
@@ -267,6 +271,30 @@ internal sealed partial class LlmProbeRunner
             return (LlmReasoningOutcome.Lowered, found);
 
         return (LlmReasoningOutcome.Sent, found);
+    }
+
+    /// <summary>
+    /// The outcome of a step whose request no capture saw: an effort from the provider's report of what it sent
+    /// (<see cref="ILlmProvider.ReportEffort"/>), a toggle or a budget from its warnings, since one it does not send
+    /// is warned about (option <c>'thinking'</c>).
+    /// </summary>
+    private (LlmReasoningOutcome, string?) ClassifyUncaptured(ReasoningStepSpec spec, LlmConfig stepConfig, IReadOnlyList<string> warnings)
+    {
+        if (spec.Kind == StepKind.Effort)
+        {
+#pragma warning disable ORKEXP005 // The effort report is experimental; the probe reads it for the providers it cannot capture.
+            var sent = _provider.ReportEffort(stepConfig)?.Sent;
+#pragma warning restore ORKEXP005
+            if (sent is null)
+                return (LlmReasoningOutcome.Omitted, null);
+            return string.Equals(sent, spec.Asked, StringComparison.OrdinalIgnoreCase)
+                ? (LlmReasoningOutcome.Sent, sent)
+                : (LlmReasoningOutcome.Lowered, sent);
+        }
+
+        return warnings.Any(warning => warning.Contains("'thinking'", StringComparison.Ordinal))
+            ? (LlmReasoningOutcome.Omitted, null)
+            : (LlmReasoningOutcome.Sent, null);
     }
 
     private static string? StringThink(JsonElement root) =>
