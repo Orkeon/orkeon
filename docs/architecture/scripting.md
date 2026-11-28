@@ -150,7 +150,7 @@ Six options of `ctx.llm.act(prompt, options)` shape the loop itself (the full li
   highest level both take below the one asked, and logs a warning saying so, never a silent change.
   The prompt cache is requested the same way on an agent, `agentBuilder().cache({ systemPrompt: true, tools: true,
   ttl: "1h" })` or `llm.default_.with({ cache: { systemPrompt: true } })`, mapped onto the YAML `cache:` block
-  (`LlmCacheConfig`); a `ttl` other than `5m`/`1h`, a `ttl` on nothing cached or an unknown key throws. Like
+  (`LlmCacheConfig`; `conversation` caches the messages too and, left out, follows the other two, #490); a `ttl` other than `5m`/`1h`, a `ttl` on nothing cached or an unknown key throws. Like
   `effort` on the builder, it shapes the agent's declared configuration (its turns in a crew) and the agent's
   `ctx.llm` calls, a call's own `effort` or `cache` option winning (#254).
 - **`onToolCall(call)`** runs before each tool call, before the permission gate, which judges the

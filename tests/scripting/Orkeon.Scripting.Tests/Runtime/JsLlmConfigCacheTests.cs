@@ -28,6 +28,15 @@ public sealed class JsLlmConfigCacheTests
     }
 
     [Fact]
+    [Trait("BR", "CH-490")]
+    public void ShouldMapTheConversationSwitch_WhenWithGetsIt()
+    {
+        Assert.True(With("{ systemPrompt: true }").Domain.Cache!.CacheConversation);
+        Assert.False(With("{ systemPrompt: true, conversation: false }").Domain.Cache!.CacheConversation);
+        Assert.Equal(new LlmCacheConfig { CacheConversation = true, Ttl = "1h" }, With("""{ conversation: true, ttl: "1h" }""").Domain.Cache);
+    }
+
+    [Fact]
     [Trait("BR", "CH-254")]
     public void ShouldKeepInheritedCache_WhenWithLeavesCacheOut()
     {
