@@ -210,7 +210,7 @@ closed list, and what it means.
 <!-- settings-index -->
 | Category | Sections | Keys |
 |---|---|---|
-| [Models](#models) | [`Evaluation`](#evaluation), [`Llm`](#llm), [`Llm:AgentCli`](#llmagentcli), [`LlmLogging`](#llmlogging), [`Orkeon:CostTracking`](#orkeoncosttracking), [`Orkeon:Decision`](#orkeondecision), [`Orkeon:Decision:Effort`](#orkeondecisioneffort), [`Orkeon:Decision:Route`](#orkeondecisionroute), [`Orkeon:Kev`](#orkeonkev), [`Orkeon:Liquid`](#orkeonliquid), [`Orkeon:TokenCounter`](#orkeontokencounter), [`Orkeon:TypeSafe`](#orkeontypesafe) | 115 |
+| [Models](#models) | [`Evaluation`](#evaluation), [`Llm`](#llm), [`Llm:AgentCli`](#llmagentcli), [`LlmLogging`](#llmlogging), [`Orkeon:CostTracking`](#orkeoncosttracking), [`Orkeon:Decision`](#orkeondecision), [`Orkeon:Decision:Effort`](#orkeondecisioneffort), [`Orkeon:Decision:Route`](#orkeondecisionroute), [`Orkeon:Kev`](#orkeonkev), [`Orkeon:Liquid`](#orkeonliquid), [`Orkeon:TokenCounter`](#orkeontokencounter), [`Orkeon:TypeSafe`](#orkeontypesafe) | 117 |
 | [Rate and budgets](#rate-and-budgets) | [`RateLimiting`](#ratelimiting), [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting) | 11 |
 | [Memory and vectors](#memory-and-vectors) | [`Memory`](#memory), [`Orkeon:ChromaDb`](#orkeonchromadb), [`Orkeon:CognitiveMemory`](#orkeoncognitivememory), [`Orkeon:CrewMemory`](#orkeoncrewmemory), [`Orkeon:EmbeddingCache`](#orkeonembeddingcache), [`Orkeon:Embeddings`](#orkeonembeddings), [`Orkeon:Encryption`](#orkeonencryption), [`Orkeon:LanceDb`](#orkeonlancedb), [`Orkeon:Pinecone`](#orkeonpinecone), [`Orkeon:Redis`](#orkeonredis), [`Orkeon:Sqlite`](#orkeonsqlite), [`Orkeon:VectorSearch`](#orkeonvectorsearch) | 69 |
 | [RAG](#rag) | [`Orkeon:Rag`](#orkeonrag), [`Orkeon:Rag:Ingestion`](#orkeonragingestion), [`Orkeon:Rag:QueryRouting`](#orkeonragqueryrouting), [`Orkeon:Rag:Retrieval:Hybrid`](#orkeonragretrievalhybrid), [`Orkeon:Rag:WebFallback`](#orkeonragwebfallback) | 34 |
@@ -218,11 +218,11 @@ closed list, and what it means.
 | [Security](#security) | [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:Guardian`](#orkeonguardian), [`Orkeon:Security:PermissionGate`](#orkeonsecuritypermissiongate), [`Secrets`](#secrets), [`Security:Audit`](#securityaudit), [`Security:Prompt`](#securityprompt), [`Security:ToolResults`](#securitytoolresults), [`Security:Url`](#securityurl), [`Security:Vault`](#securityvault) | 40 |
 | [Tools](#tools) | [`BRAVE_API_KEY`](#brave_api_key), [`MCP`](#mcp), [`MCP:Server`](#mcpserver), [`Orkeon:Bridge`](#orkeonbridge), [`Orkeon:MultiModal`](#orkeonmultimodal), [`Orkeon:Tools:Bridge`](#orkeontoolsbridge), [`Orkeon:Tools:Browser`](#orkeontoolsbrowser), [`Orkeon:Tools:Chat`](#orkeontoolschat), [`Orkeon:Tools:Drive`](#orkeontoolsdrive), [`Orkeon:Tools:Email`](#orkeontoolsemail), [`Orkeon:Tools:Firefox`](#orkeontoolsfirefox), [`Orkeon:Tools:GitHub`](#orkeontoolsgithub), [`Orkeon:Tools:ResultLimits`](#orkeontoolsresultlimits), [`Orkeon:Tools:Shell`](#orkeontoolsshell), [`Plugins`](#plugins), [`RaggableTree`](#raggabletree) | 163 |
 | [Orchestration and persistence](#orchestration-and-persistence) | [`Orkeon:Checkpointing`](#orkeoncheckpointing), [`Orkeon:Compaction`](#orkeoncompaction), [`Orkeon:Compaction:Prune`](#orkeoncompactionprune), [`Orkeon:Consensus`](#orkeonconsensus), [`Orkeon:CrewFactory`](#orkeoncrewfactory), [`Orkeon:ExecutionState:Persistence`](#orkeonexecutionstatepersistence), [`Orkeon:HumanInput`](#orkeonhumaninput), [`Orkeon:RunHistory`](#orkeonrunhistory), [`Orkeon:Skills`](#orkeonskills) | 39 |
-| [Scripts and console](#scripts-and-console) | [`Orkeon:Cli:ConsoleStreaming`](#orkeoncliconsolestreaming), [`Orkeon:Cli:Memory`](#orkeonclimemory), [`Orkeon:Cli:ScriptCommands`](#orkeoncliscriptcommands), [`Orkeon:Cli:ScriptHost`](#orkeoncliscripthost), [`Orkeon:Cli:Session`](#orkeonclisession), [`Orkeon:Cli:Tui`](#orkeonclitui), [`Orkeon:Scripting:AgentInstances`](#orkeonscriptingagentinstances), [`Orkeon:Scripting:AgentMemory`](#orkeonscriptingagentmemory), [`Orkeon:Scripting:Limits`](#orkeonscriptinglimits), [`Orkeon:Scripting:Toolchain`](#orkeonscriptingtoolchain) | 35 |
+| [Scripts and console](#scripts-and-console) | [`Orkeon:Cli:ConsoleStreaming`](#orkeoncliconsolestreaming), [`Orkeon:Cli:Memory`](#orkeonclimemory), [`Orkeon:Cli:Repl:ShellPrefix`](#orkeonclireplshellprefix), [`Orkeon:Cli:ScriptCommands`](#orkeoncliscriptcommands), [`Orkeon:Cli:ScriptHost`](#orkeoncliscripthost), [`Orkeon:Cli:Session`](#orkeonclisession), [`Orkeon:Cli:Tui`](#orkeonclitui), [`Orkeon:Scripting:AgentInstances`](#orkeonscriptingagentinstances), [`Orkeon:Scripting:AgentMemory`](#orkeonscriptingagentmemory), [`Orkeon:Scripting:Limits`](#orkeonscriptinglimits), [`Orkeon:Scripting:Toolchain`](#orkeonscriptingtoolchain) | 37 |
 | [Service host and A2A](#service-host-and-a2a) | [`A2A`](#a2a), [`A2A:Security`](#a2asecurity), [`A2A:Security:AzureAD`](#a2asecurityazuread), [`A2A:Security:Oidc`](#a2asecurityoidc), [`Orkeon:Host`](#orkeonhost), [`Orkeon:Host:Discord`](#orkeonhostdiscord), [`Orkeon:Host:Teams`](#orkeonhostteams) | 84 |
 | [Observability](#observability) | [`Logging`](#logging), [`Orkeon:Monitoring`](#orkeonmonitoring), [`Telemetry`](#telemetry) | 8 |
 
-91 sections, 631 keys. Read by no shipped binary, only by a host written in C# (5): [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting), [`Orkeon:VectorSearch`](#orkeonvectorsearch), [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:Monitoring`](#orkeonmonitoring).
+92 sections, 635 keys. Read by no shipped binary, only by a host written in C# (5): [`TokenBudget`](#tokenbudget), [`ToolRateLimiting`](#toolratelimiting), [`Orkeon:VectorSearch`](#orkeonvectorsearch), [`Orkeon:Dlp`](#orkeondlp), [`Orkeon:Monitoring`](#orkeonmonitoring).
 <!-- /settings-index -->
 
 How to read a table:
@@ -307,9 +307,10 @@ every other model takes `Orkeon:Cli:Session:ContextWindowTokens`.
 | `ApiKeyEnvVar` | string | — | The name of the environment variable that holds the API key, read when `ApiKey` resolves none: the process environment, then the Windows user scope. |
 | `AvailableModels` | list of string | `[]` | The models a scripted `/model` may offer: a list, or one comma-separated value. |
 | `BaseUrl` | string | — | The address of the provider's endpoint, `http://` or `https://`. Left out, the address of the provider the model's name or the key points to. |
+| `Cache:Conversation` | boolean | — | Marks the conversation cacheable, so each call of a tool loop reads what the previous one wrote; left out, it follows SystemPrompt and Tools. |
 | `Cache:SystemPrompt` | boolean | — | Marks the system prompt cacheable for every agent that sets no cache of its own, on a provider whose prompt cache is explicit (Anthropic). Left out, it is not. |
 | `Cache:Tools` | boolean | — | Marks the tool definitions cacheable for every agent that sets no cache of its own, on a provider whose prompt cache is explicit (Anthropic). Left out, they are not. |
-| `Cache:Ttl` | string | — | The cache lifetime, `5m` or `1h`; it needs `SystemPrompt` or `Tools`, and any other value refuses the load. Left out, the vendor default (5 minutes on Anthropic). |
+| `Cache:Ttl` | string | — | The cache lifetime, `5m` or `1h`; it needs `SystemPrompt`, `Tools` or `Conversation`, and any other value refuses the load. Left out, the vendor default (5 minutes on Anthropic). |
 | `CallMode` | string | `"Auto"` | How a call reaches the model: `Auto`, `Buffer` or `Stream`, case ignored. Left out, `Auto`: the call streams, and falls back on a buffered call when the provider refuses streaming. |
 | `ContextWindowTokens` | integer | — | The model's context window in tokens, above zero, which the agent loops compact a long conversation against; zero or less refuses the start. Left out, the loops read the documented window of the model, else `Orkeon:Cli:Session:ContextWindowTokens` (200000 by default), with one warning per profile naming the figure assumed: set it for a smaller model the table does not know: on the assumed figure the loops keep the 40-message trim beside compaction, but compact only once that figure fills. It holds for the model of this section alone: an agent whose `llm.model` names another model reads that model's documented window, else the assumed one. Never sent to the provider. |
 | `Grammar` | boolean | `false` | Whether the endpoint honours a GBNF grammar — a llama.cpp-compatible server, such as Docker Model Runner. Elsewhere a grammar is dropped with a warning. |
@@ -325,9 +326,10 @@ every other model takes `Orkeon:Cli:Session:ContextWindowTokens`.
 | `Profiles:<name>:ApiKey` | string, secret | — | The API key, in clear text. Prefer `ApiKeyEnvVar`: a key written here is in the settings file. |
 | `Profiles:<name>:ApiKeyEnvVar` | string | — | The name of the environment variable that holds the API key, read when `ApiKey` resolves none: the process environment, then the Windows user scope. |
 | `Profiles:<name>:BaseUrl` | string | — | The address of the provider's endpoint, `http://` or `https://`. Left out, the address of the provider the model's name or the key points to. |
+| `Profiles:<name>:Cache:Conversation` | boolean | — | Marks the conversation cacheable, so each call of a tool loop reads what the previous one wrote; left out, it follows SystemPrompt and Tools. |
 | `Profiles:<name>:Cache:SystemPrompt` | boolean | — | Marks the system prompt cacheable for every agent that sets no cache of its own, on a provider whose prompt cache is explicit (Anthropic). Left out, it is not. |
 | `Profiles:<name>:Cache:Tools` | boolean | — | Marks the tool definitions cacheable for every agent that sets no cache of its own, on a provider whose prompt cache is explicit (Anthropic). Left out, they are not. |
-| `Profiles:<name>:Cache:Ttl` | string | — | The cache lifetime, `5m` or `1h`; it needs `SystemPrompt` or `Tools`, and any other value refuses the load. Left out, the vendor default (5 minutes on Anthropic). |
+| `Profiles:<name>:Cache:Ttl` | string | — | The cache lifetime, `5m` or `1h`; it needs `SystemPrompt`, `Tools` or `Conversation`, and any other value refuses the load. Left out, the vendor default (5 minutes on Anthropic). |
 | `Profiles:<name>:CallMode` | string | `"Auto"` | How a call reaches the model: `Auto`, `Buffer` or `Stream`, case ignored. Left out, `Auto`: the call streams, and falls back on a buffered call when the provider refuses streaming. |
 | `Profiles:<name>:ContextWindowTokens` | integer | — | The model's context window in tokens, above zero, which the agent loops compact a long conversation against; zero or less refuses the start. Left out, the loops read the documented window of the model, else `Orkeon:Cli:Session:ContextWindowTokens` (200000 by default), with one warning per profile naming the figure assumed: set it for a smaller model the table does not know: on the assumed figure the loops keep the 40-message trim beside compaction, but compact only once that figure fills. It holds for the model of this section alone: an agent whose `llm.model` names another model reads that model's documented window, else the assumed one. Never sent to the provider. |
 | `Profiles:<name>:Fallback` | list of string | `[]` | The profiles a call moves to, in order, when this one fails in a way a retry cannot cure: a transport error, a 5xx, a 429 once `MaxRetries` is spent, a timeout. A list of profile names, or one comma-separated value; `default` names the host's own. Left out, a failure is the call's. |
@@ -2420,6 +2422,19 @@ The typed memory behind `memory_store` (`FileCategoryMemoryStore`): one `memory.
 |---|---|---|---|
 | `Persist` | boolean | `false` | Whether the typed memory (`memory_store`: user, project, feedback and reference entries) is kept per project under `RootDirectory` and read again at the next start; off unless a host turns it on, and the REPL turns it on when the key is absent. Off, the entries live in memory and die with the process. |
 | `RootDirectory` | string | `"/workspace/.orkeon/memory"` | Virtual directory holding one `memory.json` per project, in the project's folder of the sessions. |
+<!-- /settings -->
+
+### `Orkeon:Cli:Repl:ShellPrefix`
+
+A line typed at the REPL's prompt that starts with `!` runs a shell command of the operator's own, without a turn of the model; this section turns it off and bounds it.
+
+<!-- settings:Orkeon:Cli:Repl:ShellPrefix -->
+**Read by**: `orkeon-repl`.
+
+| Key | Type | Default | Meaning |
+|---|---|---|---|
+| `Enabled` | boolean | `true` | Whether a line typed at the prompt that starts with ! runs the rest in the operator's own shell, without a turn of the model, its output added to the session; off, the line is refused with a sentence. |
+| `TimeoutSeconds` | integer | `120` | The seconds after which a command typed after ! is stopped. |
 <!-- /settings -->
 
 ### `Orkeon:Cli:Session`

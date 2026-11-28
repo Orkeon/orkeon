@@ -7,6 +7,45 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — a shell line at the REPL prompt (#491)
+
+- A typed line that starts with `!` runs a shell command of the operator's own, without a turn of the model. Its output
+  streams to the console and joins the session as a `note` tagged as the operator's action (secrets masked, cut at
+  10 000 characters). Replayed lines are refused; `\!` sends a prompt starting with `!`.
+  `Orkeon:Cli:Repl:ShellPrefix:Enabled` and `TimeoutSeconds` turn it off and bound it.
+
+### Added — the whole output of a cut `shell_command` run (#492)
+
+- `stdout_truncated`, `stderr_truncated`, `stdout_total_chars`, `stderr_total_chars`, and `output_path` pointing to the
+  whole output when a run is cut.
+
+### Added — state on an async command's ticket (#493)
+
+- `completed(result, ctx)` of an async command receives `result.ticket` and `result.state`: the value attached with
+  `runCrewAsync(name, input, { state })` or `commands.post(agent, intent, payload, { state })`, a JSON value of at most
+  16 KiB kept with the instance, so a command can raise `maxConcurrent` above 1 without a shared note in the session.
+
+### Changed — Anthropic caches the conversation of a tool loop (#490)
+
+- `cache.conversation` (YAML), `conversation` (script `cache({...})`) and `Llm:Cache:Conversation` (also under
+  `Llm:Profiles:<name>:Cache`) mark the conversation cacheable, so each call of a tool loop reads what the previous one
+  wrote. Left out, it follows `system`/`tools`: an existing config with `system: true` now caches the conversation too.
+  `Cache:Ttl` accepts `Conversation` as the switch it needs.
+
+### Changed — a read-only `shell_command` run in default mode runs without asking (#494)
+
+- In default mode such a run is now declared Read and runs without asking. In plan mode, `shell_command` runs a read-only
+  command (`git status`, `ls`) and the refusal says what plan mode allows.
+
+### Fixed — a cut `shell_command` run says so (#492)
+
+- It keeps the head and the tail, and its marker gives the true count of characters left out.
+
+### Fixed — `contextTokens` no longer charges the conversation again (#495)
+
+- When the provider's cache serves only part of the previous prompt (the system prompt and the tools), each call is
+  charged the lesser of its uncached prompt and its growth, plus its completion.
+
 ### Fixed — a held question is listed only once the run clock is stopped
 
 - `PendingInputBroker.HeldRequestIds` and `HeldRequestId` could show a question before the run deadline was told of it:

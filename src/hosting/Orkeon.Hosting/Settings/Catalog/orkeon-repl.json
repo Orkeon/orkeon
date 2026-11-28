@@ -12,6 +12,7 @@
     "Orkeon:ChromaDb",
     "Orkeon:Cli:ConsoleStreaming",
     "Orkeon:Cli:Memory",
+    "Orkeon:Cli:Repl:ShellPrefix",
     "Orkeon:Cli:ScriptCommands",
     "Orkeon:Cli:ScriptHost",
     "Orkeon:Cli:Session",
