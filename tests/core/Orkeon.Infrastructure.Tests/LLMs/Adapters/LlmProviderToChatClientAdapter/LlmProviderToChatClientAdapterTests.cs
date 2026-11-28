@@ -115,7 +115,8 @@ public class LlmProviderToChatClientAdapterTests
         await adapter.GetResponseAsync([new ChatMessage(ChatRole.User, "test")], options, TestContext.Current.CancellationToken);
 
         var config = Assert.IsType<LlmConfig>(_llmProvider.LastChatConfig);
-        Assert.Equal(new LlmCacheConfig { CacheSystemPrompt = true, Ttl = "1h" }, config.Cache);
+        // #490: a lone call TTL is a single-shot opt-in - the system prompt only, no conversation write.
+        Assert.Equal(new LlmCacheConfig { CacheSystemPrompt = true, CacheConversation = false, Ttl = "1h" }, config.Cache);
     }
 
     [Fact]

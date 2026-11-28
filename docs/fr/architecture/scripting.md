@@ -220,7 +220,7 @@ le moindre de la part de son prompt que le cache n'a pas servie (`cacheHitTokens
 fournisseur ne rapporte aucun hit) et de ce dont son prompt a crû depuis l'appel précédent de la même
 conversation, si bien qu'un cache qui ne sert qu'une part du prompt précédent (le prompt système et les
 outils) ne fait jamais repayer la conversation : chaque
-`ctx.llm.act` est sa propre conversation, dont le premier appel compte tout son prompt, si bien que des acts
+`ctx.llm.act` est sa propre conversation, dont le premier appel compte son prompt moins son hit de cache, si bien que des acts
 à la suite ou en même temps sur un même budget paient chacun leur propre contexte (jamais moins que zéro :
 un contexte compacté n'ajoute rien). Un tour de n appels sur un contexte de c tokens dépense environ c plus
 ses complétions. Un fournisseur qui ne rapporte ni prompt ni complétion compte l'appel en entier, comme

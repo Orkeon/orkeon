@@ -903,6 +903,8 @@ public sealed class LlmProbeRunnerTests
 
         Assert.True(explicitProvider.Configs[0]?.Cache?.CacheSystemPrompt);
         Assert.Null(implicitProvider.Configs[0]?.Cache);
+        // #490: two single-turn calls share the system prompt only; a conversation write is never read.
+        Assert.False(explicitProvider.Configs[0]?.Cache?.CacheConversation);
     }
 
     // ── Fixtures ────────────────────────────────────────────────────────────

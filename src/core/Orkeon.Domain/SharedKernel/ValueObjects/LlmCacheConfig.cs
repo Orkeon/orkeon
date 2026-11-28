@@ -74,8 +74,11 @@ public sealed record LlmCacheConfig
     /// </summary>
     public static LlmCacheConfig Off { get; } = new();
 
-    /// <summary>Caches the system prompt only — the common case and the cheapest win.</summary>
-    public static LlmCacheConfig SystemPrompt() => new() { CacheSystemPrompt = true };
+    /// <summary>
+    /// Caches the system prompt only — the common case and the cheapest win. The conversation is left
+    /// out (#490): a single-shot call would pay a write no later call reads.
+    /// </summary>
+    public static LlmCacheConfig SystemPrompt() => new() { CacheSystemPrompt = true, CacheConversation = false };
 
     /// <summary>
     /// The configuration a <c>cache</c> request of a crew file or a script describes: the one mapping

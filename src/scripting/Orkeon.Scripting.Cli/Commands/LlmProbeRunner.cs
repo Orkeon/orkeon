@@ -785,7 +785,7 @@ internal sealed partial class LlmProbeRunner
     /// The prefix is padded well past the ~1 K-token minimum most vendors impose before they
     /// cache anything at all — a short prefix would produce a red that says nothing about the
     /// framework. On Anthropic nothing is cached without an explicit breakpoint (G-17), so the
-    /// probe opts in there and only there.
+    /// probe opts in there and only there, for the system prompt alone (#490).
     /// </remarks>
     private async Task<(LlmProbeOutcome, string)> ProbeContextCacheAsync(
         LlmConfig config, CancellationToken cancellationToken)
