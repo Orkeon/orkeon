@@ -3,6 +3,7 @@ using Jint;
 using Jint.Native;
 using Jint.Native.Json;
 using Jint.Native.Object;
+using Orkeon.Scripting.Internal;
 
 namespace Orkeon.Cli.Commands.Scripting.Dispatch;
 
@@ -20,7 +21,7 @@ internal static class LaunchState
     /// <summary>
     /// Serialises <c>options.state</c>, or returns <see langword="null"/> when <paramref name="options"/> carries none.
     /// A value JSON cannot hold, or one above <see cref="MaxBytes"/>, is refused as a script error naming
-    /// <paramref name="caller"/>.
+    /// <paramref name="caller"/>; an engine stop or a cancellation raised while serialising escapes unchanged.
     /// </summary>
     internal static string? Read(JsValue? options, string caller)
     {
@@ -41,7 +42,7 @@ internal static class LaunchState
     internal static JsValue Restore(Engine engine, string? json)
         => json is null ? JsValue.Undefined : new JsonParser(engine).Parse(json);
 
-    [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "Any serialisation failure of an arbitrary script value (a cycle, a BigInt, a host object) is the same refusal.")]
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "Any serialisation failure of an arbitrary script value (a cycle, a BigInt, a host object) is the same refusal; an engine stop escapes.")]
     private static string Serialize(JsValue state, string caller)
     {
         JsValue serialised;
@@ -51,8 +52,10 @@ internal static class LaunchState
                 ? new JsonSerializer(obj.Engine!).Serialize(state)
                 : new JsonSerializer(s_primitives.Value!).Serialize(state);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (!JsHostError.IsEngineStop(ex) && ex is not OperationCanceledException)
         {
+            // An engine stop (memory, statements, time, recursion, cancellation) inside a toJSON or a getter is the
+            // script being stopped, not a value JSON cannot hold: it escapes as it does everywhere else.
             throw Refuse($"{caller}: options.state must be a JSON-serialisable value ({ex.Message}).");
         }
         if (!serialised.IsString())
