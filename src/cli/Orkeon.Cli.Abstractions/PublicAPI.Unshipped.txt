@@ -1,1 +1,6 @@
 #nullable enable
+Orkeon.Cli.Abstractions.Runners.IOperatorShell
+Orkeon.Cli.Abstractions.Runners.IOperatorShell.DisabledReason.get -> string?
+Orkeon.Cli.Abstractions.Runners.IOperatorShell.RunAsync(string! command, Orkeon.Cli.Abstractions.Console.IConsoleAdapter! console, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Orkeon.Cli.Abstractions.Commands.CommandResult!>!
+Orkeon.Cli.Abstractions.Runners.IReplLineOrigin
+Orkeon.Cli.Abstractions.Runners.IReplLineOrigin.LastLineReplayed.get -> bool

@@ -41,6 +41,8 @@ public static class SettingsSections
         "Orkeon:Cli",
         "Orkeon:Cli:ConsoleStreaming",
         "Orkeon:Cli:Memory",
+        "Orkeon:Cli:Repl",
+        "Orkeon:Cli:Repl:ShellPrefix",
         "Orkeon:Cli:ScriptCommands",
         "Orkeon:Cli:ScriptHost",
         "Orkeon:Cli:Session",

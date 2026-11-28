@@ -26,6 +26,7 @@ public sealed class ReplayRunnerTests : IDisposable
     private readonly StubCommand _broken = new("broken", CommandResult.Fail("Error: the script threw"));
     private readonly StubCommand _cancelled = new("stopped", new OperationCanceledException());
     private readonly StubCommand _thrown = new("crash", new InvalidOperationException("the disk is gone"));
+    private readonly FakeOperatorShell _shell = new();
 
     public ReplayRunnerTests() => _replay = new ReplayConsoleAdapter(_inner, _gate);
 
@@ -35,6 +36,7 @@ public sealed class ReplayRunnerTests : IDisposable
     {
         var services = new ServiceCollection()
             .AddSingleton<ICommandOutcomeObserver>(_replay)
+            .AddSingleton<IOperatorShell>(_shell)
             .BuildServiceProvider();
         return new ReplayTestRunner(
             new DefaultCommandRegistry(new HelpCommand(), new ExitCommand(), new ClearCommand()),
@@ -106,6 +108,30 @@ public sealed class ReplayRunnerTests : IDisposable
         Assert.Equal(0, _ok.Calls);
         Assert.Equal(ReplayConsoleAdapter.FailedExitCode, _replay.Conclude());
         Assert.True(_inner.Contains("replay stopped at line 1: the disk is gone"));
+    }
+
+    [Fact]
+    public async Task ShouldRefuseAShellLine_AndStopThere_SayingWhy()
+    {
+        _replay.TryStart(Lines("ok", "! echo a | tr a b", "ok"), closeInputAtEnd: true);
+
+        await Build().RunAsync(TestContext.Current.CancellationToken);
+
+        Assert.Empty(_shell.Commands);
+        Assert.Equal(1, _ok.Calls);
+        Assert.Equal(ReplayConsoleAdapter.FailedExitCode, _replay.Conclude());
+        Assert.True(_inner.Contains("replay stopped at line 2: Refused: a line that starts with ! runs a shell command only when the operator types it at the prompt; a replay file never runs one."));
+    }
+
+    [Fact]
+    public async Task ShouldRunAShellLine_TypedAfterTheReplay()
+    {
+        _replay.TryStart(Lines("ok"), closeInputAtEnd: false);
+        _inner.ScriptedLines = new Queue<string?>(["! git status", null]);
+
+        await Build().RunAsync(TestContext.Current.CancellationToken);
+
+        Assert.Equal(["git status"], _shell.Commands);
     }
 
     private sealed class ReplayTestRunner(
