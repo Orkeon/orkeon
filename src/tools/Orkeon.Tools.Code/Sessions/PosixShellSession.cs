@@ -209,7 +209,10 @@ internal sealed class PosixShellSession : IShellSession
             {
                 await WriteAsync(ShellScript.Command(invocation, nonce, ShellScript.ByteCapFor(invocation.OutputLimit)), timeout.Token).ConfigureAwait(false);
                 var frame = await ReadFrameAsync(nonce, timeout.Token).ConfigureAwait(false);
-                return new ShellRunResult(frame.ExitCode, frame.Stdout, frame.Stderr);
+                return new ShellRunResult(
+                    frame.ExitCode, frame.Stdout, frame.Stderr,
+                    StdoutTail: frame.StdoutTail, StderrTail: frame.StderrTail,
+                    StdoutOmitted: frame.StdoutOmitted, StderrOmitted: frame.StderrOmitted);
             }
             catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
             {
