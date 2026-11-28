@@ -760,6 +760,21 @@ public class YamlRoundTripTests
         CrewConfigurationProjection.AssertEqual(original, reloaded);
     }
 
+    [Fact]
+    [Trait("BR", "CH-490")]
+    public async Task ShouldRoundTripTheConversationSwitch_OnlyWhereItDepartsFromItsDefault()
+    {
+        var departing = new LlmCacheConfig { CacheSystemPrompt = true, CacheConversation = false };
+        var original = OneAgentCrew(LlmConfig.OnProfile(), new LlmConfigOverride { Cache = departing });
+
+        var yaml = _exporter.ExportToString(original);
+        var reloaded = await _loader.LoadFromStringAsync(yaml, TestContext.Current.CancellationToken);
+
+        Assert.Contains("conversation: false", yaml, StringComparison.Ordinal);
+        Assert.DoesNotContain("conversation: true", yaml, StringComparison.Ordinal);
+        Assert.Equal(departing, reloaded.Tasks[0].LlmOverride!.Cache);
+    }
+
     #endregion
 
     #region Additional Edge Cases

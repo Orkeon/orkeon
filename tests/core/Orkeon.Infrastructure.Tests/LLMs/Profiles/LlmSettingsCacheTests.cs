@@ -46,6 +46,19 @@ public sealed class LlmSettingsCacheTests
         Assert.Null(profiles["b"]);
     }
 
+    [Fact]
+    [Trait("BR", "CH-490")]
+    public void ShouldReadTheConversationSwitch_WhenTheSectionSetsIt()
+    {
+        var followed = Configuration(("Llm:Model", "m"), ("Llm:Cache:SystemPrompt", "true"));
+        var off = Configuration(("Llm:Model", "m"), ("Llm:Cache:SystemPrompt", "true"), ("Llm:Cache:Conversation", "false"));
+        var alone = Configuration(("Llm:Model", "m"), ("Llm:Cache:Conversation", "true"));
+
+        Assert.True(LlmSettings.ReadDefault(followed).Cache!.CacheConversation);
+        Assert.Equal(new LlmCacheConfig { CacheSystemPrompt = true, CacheConversation = false }, LlmSettings.ReadDefault(off).Cache);
+        Assert.Equal(new LlmCacheConfig { CacheConversation = true }, LlmSettings.ReadDefault(alone).Cache);
+    }
+
     [Theory]
     [Trait("BR", "CH-254")]
     [InlineData("true", "2h", "5m or 1h")]

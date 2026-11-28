@@ -101,6 +101,7 @@ agents:
       cache:
         system: true
         tools: true
+        conversation: false
         ttl: 1h
     guardrails:
       preset: analysis
@@ -169,6 +170,7 @@ tasks:
       cache:
         system: true
         tools: false
+        conversation: false
         ttl: 5m
     guardrails:
       preset: strict

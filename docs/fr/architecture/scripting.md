@@ -154,7 +154,7 @@ Six options de `ctx.llm.act(prompt, options)` règlent la boucle elle-même (la 
   avertissement, jamais un changement silencieux.
   Le cache de prompt se demande de la même façon sur un agent, `agentBuilder().cache({ systemPrompt: true, tools: true,
   ttl: "1h" })` ou `llm.default_.with({ cache: { systemPrompt: true } })`, reporté sur le bloc YAML `cache:`
-  (`LlmCacheConfig`) ; un `ttl` autre que `5m`/`1h`, un `ttl` sur rien de mis en cache ou une clé inconnue lève une
+  (`LlmCacheConfig` ; `conversation` met aussi les messages en cache et, omis, suit les deux autres, #490) ; un `ttl` autre que `5m`/`1h`, un `ttl` sur rien de mis en cache ou une clé inconnue lève une
   erreur. Comme `effort` sur le builder, il façonne la configuration déclarée de l'agent (ses tours dans un
   équipage) et ses appels `ctx.llm`, l'option `effort` ou `cache` propre à un appel l'emportant (#254).
 - **`onToolCall(call)`** s'exécute avant chaque appel d'outil, avant la porte de permission, qui juge

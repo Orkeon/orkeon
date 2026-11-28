@@ -344,6 +344,11 @@ public class CacheYamlConfig
     public bool? System { get; set; }
     /// <summary>Gets or sets whether the tool definitions are marked cacheable.</summary>
     public bool? Tools { get; set; }
+    /// <summary>
+    /// Gets or sets whether the conversation is marked cacheable (#490). Null follows the other two:
+    /// on when <see cref="System"/> or <see cref="Tools"/> is.
+    /// </summary>
+    public bool? Conversation { get; set; }
     /// <summary>Gets or sets the cache lifetime (e.g. <c>"1h"</c>). Null = vendor default.</summary>
     public string? Ttl { get; set; }
 }

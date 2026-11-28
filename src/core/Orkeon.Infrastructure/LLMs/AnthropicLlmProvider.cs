@@ -180,7 +180,7 @@ public partial class AnthropicLlmProvider : HttpLlmProviderBase
                 systemMessage = sysMsg;
             }
 
-            messages.Add(new { role = LlmRoles.User, content = prompt });
+            messages.Add(Message(LlmRoles.User, prompt));
 
             var requestPayload = BuildRequestPayload(effectiveConfig, messages, systemMessage, out var refusal);
             if (refusal is not null)
@@ -357,7 +357,7 @@ public partial class AnthropicLlmProvider : HttpLlmProviderBase
         systemMessage = ResolveSystemMessageFallback(systemMessage, effectiveConfig);
 
         if (conversationMessages.Count == 0)
-            conversationMessages.Add(new { role = LlmRoles.User, content = "" });
+            conversationMessages.Add(Message(LlmRoles.User, ""));
 
         return (conversationMessages, systemMessage);
     }
@@ -389,7 +389,7 @@ public partial class AnthropicLlmProvider : HttpLlmProviderBase
         if (systemMessage == null)
             systemMessage = msg.Content;
         else
-            conversationMessages.Add(new { role = LlmRoles.User, content = msg.Content });
+            conversationMessages.Add(Message(LlmRoles.User, msg.Content));
     }
 
     /// <summary>
@@ -399,10 +399,35 @@ public partial class AnthropicLlmProvider : HttpLlmProviderBase
     /// <see cref="ContentConverter.ToAnthropicContentBlocks"/>; otherwise the historical
     /// plain-string content is emitted.
     /// </summary>
-    private static object BuildSimpleMessage(LlmMessage msg) =>
+    private static Dictionary<string, object?> BuildSimpleMessage(LlmMessage msg) =>
         msg.MultiModalContent is { } content && content.Parts.Count > 0 && !content.IsTextOnly
-            ? new { role = msg.Role, content = (object)ContentConverter.ToAnthropicContentBlocks(content) }
-            : new { role = msg.Role, content = msg.Content };
+            ? Message(msg.Role, ContentConverter.ToAnthropicContentBlocks(content).Select(AsBlock).ToList<object>())
+            : Message(msg.Role, msg.Content);
+
+    /// <summary>
+    /// One Messages API message as a mutable dictionary, so <see cref="MarkConversationAsCacheable"/>
+    /// can give its content a <c>cache_control</c> breakpoint (#490).
+    /// </summary>
+    private static Dictionary<string, object?> Message(string role, object? content) =>
+        new() { ["role"] = role, ["content"] = content };
+
+    /// <summary>A <c>text</c> content block, as a dictionary that can carry a breakpoint.</summary>
+    private static Dictionary<string, object?> TextBlock(string text) =>
+        new() { ["type"] = "text", ["text"] = text };
+
+    /// <summary>
+    /// A content block the converter composed, copied into a dictionary of its top-level members so
+    /// it can carry a breakpoint; its nested values are kept as they are.
+    /// </summary>
+    private static object AsBlock(object block)
+    {
+        if (block is IDictionary<string, object?> or JsonElement)
+            return block;
+        var dictionary = new Dictionary<string, object?>(StringComparer.Ordinal);
+        foreach (var property in block.GetType().GetProperties())
+            dictionary[property.Name] = property.GetValue(block);
+        return dictionary;
+    }
 
     private static void AddAssistantWithToolCalls(LlmMessage msg, List<object> conversationMessages)
     {
@@ -417,14 +442,14 @@ public partial class AnthropicLlmProvider : HttpLlmProviderBase
         }
 
         if (!string.IsNullOrEmpty(msg.Content))
-            blocks.Add(new { type = "text", text = msg.Content });
+            blocks.Add(TextBlock(msg.Content));
 
         using var toolCallsDoc = JsonDocument.Parse(msg.RawToolCalls!);
         var index = 0;
         foreach (var tc in toolCallsDoc.RootElement.EnumerateArray())
             blocks.Add(ToToolUseBlock(tc, index++));
 
-        conversationMessages.Add(new { role = LlmRoles.Assistant, content = (object)blocks });
+        conversationMessages.Add(Message(LlmRoles.Assistant, blocks));
     }
 
     /// <summary>
@@ -433,7 +458,7 @@ public partial class AnthropicLlmProvider : HttpLlmProviderBase
     /// loop, <c>ctx.llm.act</c>) or the OpenAI shape <c>{id, function: {name, arguments}}</c>
     /// (<c>LlmProviderToChatClientAdapter</c>); both are accepted.
     /// </summary>
-    private static object ToToolUseBlock(JsonElement tc, int index)
+    private static Dictionary<string, object?> ToToolUseBlock(JsonElement tc, int index)
     {
         var hasFunction = tc.TryGetProperty("function", out var function);
         var name = ReadToolCallName(hasFunction ? function : tc);
@@ -446,13 +471,19 @@ public partial class AnthropicLlmProvider : HttpLlmProviderBase
             throw MalformedToolCall(index, name, "name", "is missing or not a string");
 
         if (hasFunction)
-            return new { type = "tool_use", id, name, input = ParseFunctionArguments(function, index, name) };
+            return ToolUseBlock(id, name, ParseFunctionArguments(function, index, name));
 
         var blockInput = tc.TryGetProperty("input", out var inputProp) && inputProp.ValueKind == JsonValueKind.Object
             ? inputProp.Clone()
             : JsonSerializer.SerializeToElement(new Dictionary<string, object>());
-        return new { type = "tool_use", id, name, input = blockInput };
+        return ToolUseBlock(id, name, blockInput);
     }
+
+    private static Dictionary<string, object?> ToolUseBlock(string id, string name, object input) =>
+        new() { ["type"] = "tool_use", ["id"] = id, ["name"] = name, ["input"] = input };
+
+    private static Dictionary<string, object?> ToolResultBlock(string toolUseId, string content) =>
+        new() { ["type"] = "tool_result", ["tool_use_id"] = toolUseId, ["content"] = content };
 
     private static string ReadToolCallName(JsonElement holder)
     {
@@ -489,7 +520,7 @@ public partial class AnthropicLlmProvider : HttpLlmProviderBase
         var firstMsg = messages[i];
 
         if (knownToolUseIds.Contains(firstMsg.ToolCallId!))
-            toolResults.Add(new { type = "tool_result", tool_use_id = firstMsg.ToolCallId, content = firstMsg.Content });
+            toolResults.Add(ToolResultBlock(firstMsg.ToolCallId!, firstMsg.Content));
 
         while (i + 1 < messages.Length
                && LlmRoles.IsTool(messages[i + 1].Role)
@@ -497,11 +528,11 @@ public partial class AnthropicLlmProvider : HttpLlmProviderBase
         {
             i++;
             if (messages[i].ToolCallId is { } peekId && knownToolUseIds.Contains(peekId))
-                toolResults.Add(new { type = "tool_result", tool_use_id = peekId, content = messages[i].Content });
+                toolResults.Add(ToolResultBlock(peekId, messages[i].Content));
         }
 
         if (toolResults.Count > 0)
-            conversationMessages.Add(new { role = LlmRoles.User, content = (object)toolResults });
+            conversationMessages.Add(Message(LlmRoles.User, toolResults));
     }
 
     private static string? ResolveSystemMessageFallback(string? systemMessage, LlmConfig effectiveConfig)
@@ -641,8 +672,9 @@ public partial class AnthropicLlmProvider : HttpLlmProviderBase
     /// system prompt is re-billed at full price on every turn (audit gap G-17). Marking is
     /// opt-in — a breakpoint changes what the vendor stores and how the call is billed.
     /// The API caps a request at <see cref="LlmCacheConfig.MaxBreakpoints"/> breakpoints and
-    /// rejects the call beyond that, so the two this method can place are inherently within
-    /// budget; the guard below states the invariant rather than defending against it.
+    /// rejects the call beyond that: the system prompt and the tools take one each, the
+    /// conversation the ones they leave (#490). Every breakpoint of a request carries the same
+    /// lifetime, so the API's rule that <c>1h</c> entries come before <c>5m</c> ones always holds.
     /// </remarks>
     private void ApplyCacheBreakpoints(Dictionary<string, object> payload, LlmCacheConfig? cache)
     {
@@ -670,6 +702,9 @@ public partial class AnthropicLlmProvider : HttpLlmProviderBase
         if (cache.CacheTools && placed < LlmCacheConfig.MaxBreakpoints)
             placed += MarkLastToolAsCacheable(payload, cache) ? 1 : 0;
 
+        if (cache.CacheConversation)
+            placed += MarkConversationAsCacheable(payload, cache, LlmCacheConfig.MaxBreakpoints - placed);
+
         if (placed == 0)
             LogCacheRequestedButNothingToMark();
     }
@@ -695,6 +730,99 @@ public partial class AnthropicLlmProvider : HttpLlmProviderBase
         lastTool["cache_control"] = BuildCacheControl(cache);
         payload["tools"] = toolList;
         return true;
+    }
+
+    /// <summary>
+    /// How many content blocks the API walks back from a breakpoint to find an earlier cache entry:
+    /// a write further back than this is missed.
+    /// </summary>
+    internal const int CacheLookbackBlocks = 20;
+
+    /// <summary>
+    /// Marks the conversation (#490): a breakpoint on the last cacheable block of the last message,
+    /// so the next call of a tool loop reads what this one writes; and, when the turns added since
+    /// the previous call hold <see cref="CacheLookbackBlocks"/> blocks or more (many parallel tool
+    /// results), a second one on the block the previous call marked, the last cacheable block
+    /// before the latest assistant turn, which the lookback would otherwise miss.
+    /// </summary>
+    /// <remarks>
+    /// A thinking or redacted-thinking block never carries a breakpoint, nor does an empty text.
+    /// A plain string content is promoted to the single text block the API also accepts.
+    /// </remarks>
+    /// <returns>The number of breakpoints placed, at most <paramref name="budget"/>.</returns>
+    private static int MarkConversationAsCacheable(Dictionary<string, object> payload, LlmCacheConfig cache, int budget)
+    {
+        if (budget <= 0 || !payload.TryGetValue("messages", out var messagesObj) || messagesObj is not List<object> messages)
+            return 0;
+
+        // Every block in wire order, cacheable or not: the lookback counts them all.
+        var slots = new List<(int Message, int Block, bool Cacheable)>();
+        var latestAssistant = -1;
+        for (var m = 0; m < messages.Count; m++)
+        {
+            if (messages[m] is not Dictionary<string, object?> message)
+            {
+                slots.Add((m, -1, false));
+                continue;
+            }
+
+            if (message.TryGetValue("role", out var role) && role is string roleText && LlmRoles.IsAssistant(roleText))
+                latestAssistant = m;
+
+            switch (message.GetValueOrDefault("content"))
+            {
+                case string text:
+                    slots.Add((m, -1, !string.IsNullOrWhiteSpace(text)));
+                    break;
+                case List<object> blocks:
+                    for (var b = 0; b < blocks.Count; b++)
+                        slots.Add((m, b, IsCacheableBlock(blocks[b])));
+                    break;
+                default:
+                    slots.Add((m, -1, false));
+                    break;
+            }
+        }
+
+        var last = slots.FindLastIndex(slot => slot.Cacheable);
+        if (last < 0)
+            return 0;
+
+        MarkSlot(messages, slots[last], cache);
+        var placed = 1;
+
+        if (placed < budget && latestAssistant >= 0)
+        {
+            var previous = slots.FindLastIndex(slot => slot.Cacheable && slot.Message < latestAssistant);
+            if (previous >= 0 && last - previous >= CacheLookbackBlocks)
+            {
+                MarkSlot(messages, slots[previous], cache);
+                placed++;
+            }
+        }
+
+        return placed;
+    }
+
+    private static bool IsCacheableBlock(object block) =>
+        block is Dictionary<string, object?> dictionary
+        && dictionary.GetValueOrDefault("type") is string type
+        && type is not ("thinking" or "redacted_thinking")
+        && !(type == "text" && string.IsNullOrWhiteSpace(dictionary.GetValueOrDefault("text") as string));
+
+    private static void MarkSlot(List<object> messages, (int Message, int Block, bool Cacheable) slot, LlmCacheConfig cache)
+    {
+        var message = (Dictionary<string, object?>)messages[slot.Message];
+        if (slot.Block < 0)
+        {
+            var text = TextBlock((string)message["content"]!);
+            text["cache_control"] = BuildCacheControl(cache);
+            message["content"] = new List<object> { text };
+            return;
+        }
+
+        var block = (Dictionary<string, object?>)((List<object>)message["content"]!)[slot.Block];
+        block["cache_control"] = BuildCacheControl(cache);
     }
 
     private static Dictionary<string, object?> BuildCacheControl(LlmCacheConfig cache)
@@ -886,7 +1014,7 @@ public partial class AnthropicLlmProvider : HttpLlmProviderBase
                 : effectiveConfig.BaseUrl.ToString()).TrimEnd('/');
         var endpoint = new Uri($"{baseUrl}/v1/messages");
 
-        var messages = new List<object> { new { role = LlmRoles.User, content = prompt } };
+        var messages = new List<object> { Message(LlmRoles.User, prompt) };
         var payload = BuildRequestPayload(effectiveConfig, messages, null, out var refusal);
         if (refusal is not null)
             throw Orkeon.Infrastructure.LLMs.Profiles.LlmFailureClassifier.ToException(RefuseRequest(refusal));

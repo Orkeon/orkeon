@@ -182,6 +182,31 @@ public class CrewFactoryLlmOverrideTests
     }
 
     [Fact]
+    [Trait("BR", "CH-490")]
+    public async Task ShouldMapTheConversationSwitch_WhenTheCacheBlockSetsIt()
+    {
+        var followed = await LoadTaskOverrideAsync("""
+                    cache:
+                      system: true
+            """);
+        var off = await LoadTaskOverrideAsync("""
+                    cache:
+                      system: true
+                      conversation: false
+            """);
+        var alone = await LoadTaskOverrideAsync("""
+                    cache:
+                      conversation: true
+                      ttl: 1h
+            """);
+
+        Assert.True(followed!.Cache!.CacheConversation);
+        Assert.False(off!.Cache!.CacheConversation);
+        Assert.True(off.Cache.CacheSystemPrompt);
+        Assert.Equal(new LlmCacheConfig { CacheConversation = true, Ttl = "1h" }, alone!.Cache);
+    }
+
+    [Fact]
     [Trait("BR", "CH-07")]
     public async Task ShouldRefuseTheLoadNamingTheTaskAndKey_WhenLlmOverrideMaxTokensIsZero()
     {
