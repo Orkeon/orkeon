@@ -1,3 +1,5 @@
+using Jint.Native;
+
 namespace Orkeon.Cli.Commands.Scripting.Dispatch;
 
 #pragma warning disable IDE1006 // camelCase: this CLR type is reflected to JS as the resolved value of request()/completed(result)
@@ -43,5 +45,22 @@ public sealed class CommandResponse
 
     /// <summary>Failure reason when <see cref="success"/> is false; otherwise <see langword="null"/>.</summary>
     public string? error { get; }
+
+    /// <summary>
+    /// The ticket of the instance that ended (#493), the one its launch returned. Set on the <c>result</c> a
+    /// <c>completed</c> receives; <see langword="null"/> on the answer of a synchronous <c>request()</c>.
+    /// </summary>
+    public string? ticket { get; init; }
+
+    /// <summary>
+    /// The <c>state</c> the launch attached (<c>runCrewAsync(name, input, { state })</c>, <c>commands.post(..., { state })</c>),
+    /// parsed again for each <c>completed</c>; undefined when the launch attached none (#493). A launch chained from a
+    /// <c>completed</c> carries the state it was given, never its parent's.
+    /// </summary>
+    public JsValue? state { get; init; }
+
+    /// <summary>A copy of this answer naming the instance that ended and the state its launch attached.</summary>
+    internal CommandResponse ForCompletion(string completedTicket, JsValue launchState)
+        => new(agent, intent, success, payload, error) { streamed = streamed, ticket = completedTicket, state = launchState };
 }
 #pragma warning restore IDE1006

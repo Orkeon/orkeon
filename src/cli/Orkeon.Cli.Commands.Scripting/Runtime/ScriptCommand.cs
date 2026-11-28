@@ -377,7 +377,8 @@ public sealed partial class ScriptCommand : IInteractiveCommand
             var view = item.Instance.Snapshot();
             if (IsInterrupted(item.Instance)) return;
 
-            var response = view.result ?? new CommandResponse(view.targetAgent, view.intent, success: false, payload: string.Empty, error: view.error);
+            var response = (view.result ?? new CommandResponse(view.targetAgent, view.intent, success: false, payload: string.Empty, error: view.error))
+                .ForCompletion(item.Instance.Ticket, LaunchState.Restore(_engine, item.Instance.LaunchState));
             var resultVal = JsValue.FromObject(_engine, response);
             var launchInput = item.Instance.LaunchInput ?? _descriptor.Name;
             var ctxObj = PushContext(console, launchInput, ct);

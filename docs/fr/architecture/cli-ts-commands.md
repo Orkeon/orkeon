@@ -403,7 +403,7 @@ defineAsyncCommand({
   chaîne est bornée par `MaxChainDepth` (8 par défaut, `ScriptCommandsConfiguration.MaxChainDepth`) ;
   la profondeur compte combien de sauts `completed` séparent une instance de son
   lancement (`inspect` l'affiche). Un `commands.post` compte de la même façon (la
-  profondeur du parent plus un ; il ne prend pas d'options). Un `runCrewAsync` ou un
+  profondeur du parent plus un ; sa seule option est `{ state }`). Un `runCrewAsync` ou un
   `post` plus profond est refusé par une `ChainDepthExceededException`, levée en JS, dont
   le message nomme la profondeur, la limite et la commande :
   `chain depth 8 reached (MaxChainDepth 8, /dev-batches)`.
@@ -442,6 +442,17 @@ defineAsyncCommand({
   refusé ni compté ; un `exclusive` qui n'est ni absent ni booléen (`null` compris) est une erreur de script. Contrairement à `maxConcurrent` ci-dessous, elle
   borne le crew, pas la commande : un alias de la commande qui ne lance rien répond pendant
   l'exécution. Les deux options se combinent (`{ chain: "continue", exclusive: true }`).
+- **Un fait que le lancement garde pour sa fin : `{ state }`.** `completed(result, ctx)` reçoit `result.ticket`, le ticket
+  que le lancement a retourné, et `result.state`, la valeur que le lancement a attachée par
+  `runCrewAsync(name, input, { state })` ou `commands.post(agent, intent, payload, { state })` ; undefined quand il n'en a
+  attaché aucune. L'état est une valeur JSON quelconque d'au plus 16 Kio une fois sérialisée, gardée en mémoire avec
+  l'instance (perdue au redémarrage du REPL, comme l'instance) et relue pour chaque `completed`, si bien qu'une modification
+  faite là n'atteint personne. Un lancement chaîné depuis un `completed` porte l'état qu'on lui a donné, jamais celui de son
+  parent. Une valeur au-dessus du plafond, ou que JSON ne sait pas porter (un cycle, une fonction), est refusée avant que
+  rien ne tourne, levée en JS :
+  `script-host.runCrewAsync: options.state is 16395 bytes once serialised, above the cap of 16384 bytes (16 KiB).` Deux
+  instances d'une même commande peuvent ainsi être en vol à la fois (`maxConcurrent` au-dessus de 1), chaque `completed`
+  sachant quel lancement a pris fin, sans note partagée dans l'état de session.
 
 ### Quota d'admission — `maxConcurrent`
 

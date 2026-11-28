@@ -157,9 +157,20 @@ public sealed partial class CommandDispatchService
     /// launch: the parent's depth plus one, refused at <c>MaxChainDepth</c> with a script error carrying the
     /// <see cref="ChainDepthExceededException"/> message (<c>chain depth N reached (MaxChainDepth N, /command)</c>).
     /// </summary>
-    [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "Fire-and-forget dispatch fault barrier: a background agent failure is logged and recorded on the instance so it cannot crash the detached task; cancellation marks the instance cancelled.")]
     public string post(string agent, string intent, string payload)
+        => post(agent, intent, payload, options: null);
+
+    /// <summary>
+    /// <see cref="post(string, string, string)"/> with launch options: <c>{ state }</c> attaches a JSON value of at
+    /// most 16 KiB serialised that the instance's <c>completed</c> receives back as <c>result.state</c> (#493). A
+    /// value JSON cannot hold, or one above the cap, is refused as a script error before anything is posted.
+    /// </summary>
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "Fire-and-forget dispatch fault barrier: a background agent failure is logged and recorded on the instance so it cannot crash the detached task; cancellation marks the instance cancelled.")]
+    public string post(string agent, string intent, string payload, JsValue? options)
     {
+        if (options is not null && !options.IsUndefined() && !options.IsNull() && !options.IsObject())
+            throw new Jint.Runtime.JavaScriptException(new JsString("commands.post: options must be an object, e.g. { state: { turn: 1 } }."));
+        var launchState = LaunchState.Read(options, "commands.post");
         var scope = _ambient.Value;
         var agentId = ResolveAgent(agent);
         var command = scope?.CommandName ?? "post";
@@ -174,6 +185,7 @@ public sealed partial class CommandDispatchService
         var correlationId = Guid.NewGuid();
         var instance = _registry.Register(command, CommandInstanceKind.Async, agent, intent, correlationId);
         instance.Depth = depth;
+        instance.LaunchState = launchState;
         scope?.Capture(instance);
 
         // Detached: a fresh CTS unlinked from the REPL command token (which is disposed the
@@ -214,8 +226,8 @@ public sealed partial class CommandDispatchService
 
     /// <summary>
     /// Runs arbitrary host-side work in the background and returns a ticket immediately, reusing
-    /// the exact ticket → terminal → <c>completed</c> drain cycle as <see cref="post"/>. Unlike
-    /// <see cref="post"/> (which dispatches to a named agent over the channel), the work is an
+    /// the exact ticket → terminal → <c>completed</c> drain cycle as <see cref="post(string, string, string)"/>. Unlike
+    /// <see cref="post(string, string, string)"/> (which dispatches to a named agent over the channel), the work is an
     /// opaque <see cref="Func{T, TResult}"/> — used by <c>script-host.runCrewAsync</c> to launch a
     /// crew. The instance is captured in the ambient scope so the runner wires its
     /// completion onto the engine's drain queue. JS is never called back from the pool thread.
@@ -243,8 +255,15 @@ public sealed partial class CommandDispatchService
     /// </param>
     /// <exception cref="ChainDepthExceededException">The depth reached <c>MaxChainDepth</c> on a launch that climbs.</exception>
     /// <exception cref="ExclusiveLaunchRefusedException">An exclusive launch of <paramref name="target"/> still runs.</exception>
-    [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "Fire-and-forget host-work fault barrier: a background work failure is logged and recorded on the instance so it cannot crash the detached task; cancellation marks the instance cancelled.")]
     public string postWork(string label, string target, Func<CancellationToken, Task<CommandResponse>> work, bool continueChain = false, bool exclusive = false, bool onMain = false)
+        => PostWorkCore(label, target, work, continueChain, exclusive, onMain, launchState: null);
+
+    /// <summary>
+    /// <see cref="postWork(string, string, Func{CancellationToken, Task{CommandResponse}}, bool, bool, bool)"/> with the
+    /// serialised <c>state</c> the launch attaches (#493), handed back to its <c>completed</c> as <c>result.state</c>.
+    /// </summary>
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "Fire-and-forget host-work fault barrier: a background work failure is logged and recorded on the instance so it cannot crash the detached task; cancellation marks the instance cancelled.")]
+    internal string PostWorkCore(string label, string target, Func<CancellationToken, Task<CommandResponse>> work, bool continueChain, bool exclusive, bool onMain, string? launchState)
     {
         ArgumentNullException.ThrowIfNull(work);
         var scope = _ambient.Value;
@@ -261,6 +280,7 @@ public sealed partial class CommandDispatchService
                 : _registry.Register(command, CommandInstanceKind.Async, target ?? string.Empty, label ?? string.Empty, Guid.NewGuid(), mainThread);
         }
         instance.Depth = depth;
+        instance.LaunchState = launchState;
         scope?.Capture(instance);
         if (exclusive)
         {
