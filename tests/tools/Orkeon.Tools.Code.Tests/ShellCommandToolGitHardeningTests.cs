@@ -84,6 +84,14 @@ public sealed class ShellCommandToolGitHardeningTests : IDisposable
     private ShellCommandTool NewTool() =>
         new(new DiskBackedFileSystemService(Repo, "/workspace")) { Confinement = TestConfinement.Off() };
 
+    // A /workspace mount the working directory is in: a call is a read only when its paths lie in a mount (#497).
+    private static FakeFileSystemService Workspace()
+    {
+        var fileSystem = new FakeFileSystemService().AddMount("/workspace");
+        fileSystem.WorkingDirectory = "/workspace";
+        return fileSystem;
+    }
+
     private static Dictionary<string, object?> Run(string command) =>
         new() { ["command"] = command, ["working_directory"] = "/workspace" };
 
@@ -295,7 +303,7 @@ public sealed class ShellCommandToolGitHardeningTests : IDisposable
     [InlineData("git log --summary --no-show-signature -1")]
     public void An_unrestricted_option_stays_read(string command)
     {
-        using var tool = new ShellCommandTool(new FakeFileSystemService())
+        using var tool = new ShellCommandTool(Workspace())
         {
             Confinement = TestConfinement.Off(),
             GitVersion = () => new Version(2, 53, 0),
@@ -401,7 +409,7 @@ public sealed class ShellCommandToolGitHardeningTests : IDisposable
     [InlineData(2, 53, 0, true)]
     public void A_git_too_old_for_every_override_executes(int major, int minor, int patch, bool read)
     {
-        using var tool = new ShellCommandTool(new FakeFileSystemService())
+        using var tool = new ShellCommandTool(Workspace())
         {
             Confinement = TestConfinement.Off(),
             GitVersion = () => new Version(major, minor, patch),
@@ -414,7 +422,7 @@ public sealed class ShellCommandToolGitHardeningTests : IDisposable
     [Trait("BR", "CH-494")]
     public void A_git_whose_version_is_unknown_executes()
     {
-        using var tool = new ShellCommandTool(new FakeFileSystemService()) { Confinement = TestConfinement.Off(), GitVersion = () => null };
+        using var tool = new ShellCommandTool(Workspace()) { Confinement = TestConfinement.Off(), GitVersion = () => null };
 
         Assert.Equal(ToolAccess.Execute, tool.AccessFor(new Dictionary<string, object?> { ["command"] = "git log" }));
         Assert.Equal(ToolAccess.Read, tool.AccessFor(new Dictionary<string, object?> { ["command"] = "ls" }));

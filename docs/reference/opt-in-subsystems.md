@@ -586,7 +586,17 @@ No attribute carries an id of a crew, task or agent.
   `echo`, `dir`, `type`, `where`, and `git status`/`log`/`diff`/`show` without an option that writes,
   runs a program or leaves the working directory, the subcommand spelt exactly) that its own checks
   accept — the executable is read with the parse the execution uses, and a quoted executable holding
-  a space (`"/x/ls /y/sh" -c id`) is refused. A `git` call is `Read` only when the tool can
+  a space (`"/x/ls /y/sh" -c id`) is refused — and where the tool can state where it reads (#497):
+  the shell is confined so that nothing outside the mounts is readable (bubblewrap or Seatbelt with no
+  `Confinement:ReadOnlyPaths`; the system directories they expose read-only, `/etc` included, count as
+  the host's public part; an extra read-only path, an AppContainer or no confinement, `Auto` in a
+  container included, do not), or every path argument lies in a mount that grants Read: the working
+  directory in a mount, an absolute path in a mount once its `..` are resolved without leaving it, a
+  relative path that stays inside the working directory's mount and does not end in a nested mount,
+  the value of an `--opt=value` included. A host path, `~`, a drive, a climb out of the mount or an
+  option that holds a `/` (`-f/etc/x`) makes the call `Execute`; `echo` and `pwd` read no argument.
+  Every other word counts as a path, so a grep pattern or a git revision lands in the working
+  directory, and one spelt like an absolute path (`grep /usr`) makes the call `Execute`. A `git` call is `Read` only when the tool can
   neutralise every program the repository could configure for it: it runs with the tool's own
   `--no-pager --no-optional-locks --no-lazy-fetch`, `-c core.fsmonitor=false -c core.hooksPath=/dev/null -c core.pager=cat
   -c log.showSignature=false -c gpg.program=false -c gpg.ssh.program=false -c gpg.x509.program=false
@@ -602,10 +612,13 @@ No attribute carries an id of a crew, task or agent.
   keep git from rewriting `.git/index` to refresh a stat-dirty entry; no hook runs on it. `--no-lazy-fetch` needs git 2.44: an older
   git, or one whose version the tool cannot read, makes the call `Execute`. The residual: a `Read`
   git call still reads the repository's configuration (its aliases do not apply, its display
-  settings do), and the overrides above are what make it safe; anything they do not cover is
+  settings do; unconfined, git finds the repository by walking up from the working directory, so a
+  mount inside a larger repository lets it read that repository's history), and the overrides above are what make it safe; anything they do not cover is
   `Execute` —, `Execute` for
   `start_job` and the job actions, a command `ExtraAllowedCommands` or `AllowedCommands` adds, an
-  interpreter, any `git` once `AllowInterpreters` lifts its restriction, and a call it would refuse —
+  interpreter, a `git` call the read-only checks refuse (with `AllowInterpreters` it runs unrestricted;
+  one they accept keeps the tool's options and stays `Read` whatever `AllowInterpreters` says), an
+  argument the tool cannot place, and a call it would refuse —
   so a plan turn can run `git log`, `git diff`, `ls`, `cat` or `grep`, and nothing that writes. Their
   static `Access` stays `Execute`, the most restrictive class they can take.
   The built-in read tools (file/directory/session/memory/analysis, `web_scrape`,

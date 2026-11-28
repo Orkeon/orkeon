@@ -603,7 +603,19 @@ Aucun attribut ne porte l'identifiant d'un crew, d'une tâche ou d'un agent.
   `wc`, `echo`, `dir`, `type`, `where`, et `git status`/`log`/`diff`/`show` sans option qui écrit, lance
   un programme ou sort du répertoire de travail, la sous-commande écrite exactement) que ses propres
   contrôles acceptent — l'exécutable est lu avec l'analyse qu'emploie l'exécution, et un exécutable
-  entre guillemets contenant une espace (`"/x/ls /y/sh" -c id`) est refusé. Un appel `git` n'est
+  entre guillemets contenant une espace (`"/x/ls /y/sh" -c id`) est refusé — et si l'outil peut dire où
+  il lit (#497) : le shell est confiné de sorte que rien hors des montages ne soit lisible (bubblewrap ou
+  Seatbelt sans `Confinement:ReadOnlyPaths` ; les répertoires système qu'ils exposent en lecture seule,
+  `/etc` compris, comptent comme la part publique de l'hôte ; un chemin en lecture seule en plus, un
+  AppContainer ou l'absence de confinement, `Auto` dans un conteneur compris, non), ou chaque argument
+  de chemin est dans un montage qui accorde Read : le répertoire de travail dans un montage, un chemin
+  absolu dans un montage une fois ses `..` résolus sans le quitter, un chemin relatif qui reste dans le
+  montage du répertoire de travail et ne finit pas dans un montage imbriqué, la valeur d'un
+  `--opt=valeur` comprise. Un chemin de l'hôte, `~`, un lecteur, une remontée hors du montage ou une
+  option qui contient un `/` (`-f/etc/x`) rend l'appel `Execute` ; `echo` et `pwd` ne lisent aucun
+  argument. Tout autre mot compte comme un chemin, si bien qu'un motif de grep ou une révision git tombe
+  dans le répertoire de travail, et qu'un mot écrit comme un chemin absolu (`grep /usr`) rend l'appel
+  `Execute`. Un appel `git` n'est
   `Read` que si l'outil peut neutraliser tout programme que le dépôt pourrait configurer pour lui : il
   tourne avec les `--no-pager --no-optional-locks --no-lazy-fetch` de l'outil, `-c core.fsmonitor=false
   -c core.hooksPath=/dev/null
@@ -622,10 +634,14 @@ Aucun attribut ne porte l'identifiant d'un crew, d'une tâche ou d'un agent.
   tourne alors.
   `--no-lazy-fetch` demande git 2.44 : un git plus ancien, ou dont l'outil ne peut lire la version, rend
   l'appel `Execute`. Le résidu : un appel git `Read` lit encore la configuration du dépôt (ses alias ne
-  s'appliquent pas, ses réglages d'affichage si), et ce sont les surcharges ci-dessus qui le rendent sûr ;
+  s'appliquent pas, ses réglages d'affichage si ; sans confinement, git trouve le dépôt en remontant
+  depuis le répertoire de travail, si bien qu'un montage dans un dépôt plus grand lui en laisse lire
+  l'historique), et ce sont les surcharges ci-dessus qui le rendent sûr ;
   tout ce qu'elles ne couvrent pas est `Execute` —, `Execute` pour
   `start_job` et les actions de tâche, une commande qu'ajoute `ExtraAllowedCommands` ou
-  `AllowedCommands`, un interpréteur, tout `git` dès que `AllowInterpreters` lève sa restriction, et un
+  `AllowedCommands`, un interpréteur, un appel `git` que les contrôles de lecture seule refusent (avec
+  `AllowInterpreters` il tourne sans restriction ; celui qu'ils acceptent garde les options de l'outil et
+  reste `Read` quoi que dise `AllowInterpreters`), un argument que l'outil ne sait pas placer, et un
   appel qu'il refuserait — un tour en plan peut donc lancer `git log`, `git diff`, `ls`, `cat` ou `grep`,
   et rien qui écrive. Leur `Access` statique reste `Execute`, la classe la
   plus restrictive qu'ils puissent prendre. Les outils de lecture intégrés

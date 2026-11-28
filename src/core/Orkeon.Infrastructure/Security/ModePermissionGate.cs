@@ -62,7 +62,9 @@ public sealed class ModePermissionGate : IPermissionGate
     internal const string PlanAllows =
         "Plan mode allows only calls that read: file reads and searches, and for shell_command a 'run' of a "
         + "read-only command (ls, cat, pwd, which, grep, wc, echo, dir, type, where, git status/log/diff/show "
-        + "without an option that writes or runs a program); start_job, other commands and every write are refused.";
+        + "without an option that writes or runs a program) whose path arguments all lie in a mount that grants read, "
+        + "or that a confined shell runs; start_job, other commands, a path the tool cannot place in the mounts "
+        + "(a host path, ~, a climb out of the working directory's mount) and every write are refused.";
 
     private readonly bool _isInteractive;
     private readonly IToolApprovalChannel? _approvalChannel;

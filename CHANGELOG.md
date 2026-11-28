@@ -40,6 +40,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   conversation write; `conversation: true` marks every call.
   `Cache:Ttl` accepts `Conversation` as the switch it needs.
 
+### Fixed — a `shell_command` read stays inside the mounts (#497)
+
+- A `run` of a read-only command is declared Read only when the tool can state where it reads: the shell is confined
+  so that nothing outside the mounts is readable (bubblewrap or Seatbelt with no `Confinement:ReadOnlyPaths`), or
+  every path argument (absolute, relative, `--opt=value`) lies in a mount that grants Read once its `..` are resolved
+  inside that mount. A host path (`cat /home/<user>/.ssh/id_ed25519`), `~`, a drive or a climb out of the working
+  directory's mount (`cat ../../x/.env`) makes the call an execution again: `default` and `acceptEdits` ask, `plan`
+  and `dontAsk` refuse, and the plan refusal says so. With no mount at all, every such call executes.
+- With `AllowInterpreters`, `git status`, `log`, `diff` and `show` that the read-only checks accept now run with the
+  tool's safe options and filter-driver overrides, as without interpreters, and stay Read (plan mode reads the history
+  on a host that builds); any other git call still runs unrestricted and executes.
+
 ### Changed — a read-only `shell_command` run in default mode runs without asking (#494)
 
 - In default mode such a run is now declared Read and runs without asking. In plan mode, `shell_command` runs a read-only

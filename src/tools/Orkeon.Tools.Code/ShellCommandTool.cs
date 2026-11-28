@@ -162,11 +162,13 @@ public sealed record ShellCommandResponse : Orkeon.Domain.Tools.IBoundedToolResp
 /// <para>
 /// <b>Rights a path needs.</b> A command of the read-only default allowlist needs Read on the
 /// paths it names and on its working directory. Any other command (an interpreter, an extra or
-/// custom command, <c>git</c> once interpreters lift its restriction) needs every right
+/// custom command, a <c>git</c> call interpreters run unrestricted) needs every right
 /// (<see cref="Orkeon.Domain.FileSystem.FileAccessRights.ReadWrite"/>): the process may write,
 /// create or delete there, and the tool cannot tell which. The check covers the paths the command
 /// line names; what the process reaches by itself (a path in a script, a relative path climbing
-/// out of the working directory) is outside the VFS.
+/// out of the working directory) is outside the VFS. That is why a call counts as a read for the
+/// permission gate only when the tool can state where it reads (#497, <see cref="AccessFor"/>): the
+/// shell is confined to the mounts, or every path argument lies in a mount that grants Read.
 /// </para>
 /// <para>
 /// <b>Interpreters are RCE-equivalent.</b> The default allowlist contains
@@ -622,10 +624,14 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
     /// <c>where</c>), the tool's own checks accept it (no forbidden operator, in the allowlist, no
     /// blocked pattern) and, for <c>git</c>, the read-only subcommand and option checks pass and the git is
     /// at least <see cref="MinimumSafeGitVersion"/>, so that the tool neutralises every program the
-    /// repository configures. <see cref="ToolAccess.Execute"/> otherwise: <c>start_job</c> and the job
-    /// actions, a command added by <c>ExtraAllowedCommands</c> or a custom allowlist, an interpreter,
-    /// <c>git</c> once interpreters lift its restriction (they are allowed: <c>git</c> is then unrestricted),
-    /// an older or unknown git, and a call the tool would refuse.
+    /// repository configures (whatever <c>allowInterpreters</c> says: such a call runs with the tool's safe
+    /// options either way), and the tool can state where the command reads (#497): the shell is confined
+    /// so that nothing outside the mounts is readable (<see cref="ConfinesReadsToMounts"/>), or every path
+    /// its arguments name lies in a mount that grants Read (<see cref="PlacesEveryPath"/>).
+    /// <see cref="ToolAccess.Execute"/> otherwise: <c>start_job</c> and the job actions, a command added
+    /// by <c>ExtraAllowedCommands</c> or a custom allowlist, an interpreter, a <c>git</c> call the
+    /// read-only checks refuse, an older or unknown git, an argument the tool cannot place (a host path,
+    /// <c>~</c>, a climb out of the mount of the working directory), and a call the tool would refuse.
     /// </summary>
     /// <param name="arguments">Arguments the model supplied for the call.</param>
     /// <returns>The access class of this call.</returns>
@@ -645,16 +651,145 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
         var executable = ParseCommand(command).Executable;
         if (string.IsNullOrWhiteSpace(executable)
             || ExecutableTokenError(command) is not null
-            || RequiredPathRights(executable) != FileAccessRights.Read
+            || RequiredPathRights(executable, command) != FileAccessRights.Read
             || ValidateExecutable(command, executable) is not null)
             return ToolAccess.Execute;
 
         // A git call reads only when the tool can neutralise every program the repository could make it
         // run: the read-only checks pass, and the git is recent enough for the whole safe set.
-        return executable.Equals("git", StringComparison.OrdinalIgnoreCase)
-               && (ValidateGitSubcommand(command) is not null || !(GitVersion() >= MinimumSafeGitVersion))
-            ? ToolAccess.Execute
-            : ToolAccess.Read;
+        if (executable.Equals("git", StringComparison.OrdinalIgnoreCase)
+            && (ValidateGitSubcommand(command) is not null || !(GitVersion() >= MinimumSafeGitVersion)))
+            return ToolAccess.Execute;
+
+        // A read is one the tool can place (#497): the gate lets it through without a question.
+        var workingDirectory = arguments.TryGetValue("working_directory", out var rawDirectory) ? ActionName(rawDirectory) ?? "" : "";
+        return ConfinesReadsToMounts || PlacesEveryPath(command, executable, workingDirectory)
+            ? ToolAccess.Read
+            : ToolAccess.Execute;
+    }
+
+    /// <summary>
+    /// Whether the session is confined so that nothing outside the mounts is readable: bubblewrap (a view
+    /// built from the VFS) or Seatbelt (a profile that denies every read it does not name), with no
+    /// <see cref="ShellConfinementOptions.ReadOnlyPaths"/>. Both still expose the system directories
+    /// read-only (programs, libraries, <c>/etc</c>), which count as the host's public part. An extra
+    /// read-only path is a host directory outside the VFS, so with one the arguments are placed as when
+    /// unconfined. AppContainer is not counted: what grants <c>ALL APPLICATION PACKAGES</c> stays
+    /// readable there, and the tool cannot list it. <see cref="ShellConfinementMode.Auto"/> in a container
+    /// resolves to no confinement.
+    /// </summary>
+    private bool ConfinesReadsToMounts =>
+        ActiveSandbox is BubblewrapShellSandbox or SeatbeltShellSandbox && Confinement.ReadOnlyPaths.Count == 0;
+
+    /// <summary>Commands whose arguments are never read as paths: their arguments are not placed.</summary>
+    private static readonly HashSet<string> s_commandsReadingNoArgument = new(StringComparer.OrdinalIgnoreCase) { "echo", "pwd" };
+
+    /// <summary>
+    /// Whether every path the arguments of <paramref name="command"/> name, as the process reaches it,
+    /// lies in a mount that grants Read (#497). The working directory must resolve in a mount with Read.
+    /// An option is skipped, but the value of <c>--opt=value</c> is placed, and an option that holds a
+    /// <c>/</c> or a <c>~</c> (a backslash too for Windows; <c>-f/etc/x</c>) is not placeable. Every other argument is
+    /// taken as a path, a grep pattern or a git revision included (such a word lands in the working
+    /// directory, which is checked): an absolute one must lie in a mount once its <c>..</c> are resolved
+    /// without leaving that mount; a relative one must stay, segment by segment, inside the mount that
+    /// holds the working directory, the one the process resolves it from; a <c>~</c>, a drive, and on
+    /// Windows a backslash are not placeable. The rights are those the file system grants there, the
+    /// agent root and the file-system scope included. No mounts, nothing to place against.
+    /// </summary>
+    private bool PlacesEveryPath(string command, string executable, string requestedDirectory)
+    {
+        var mounts = _fileSystem.GetAvailableMounts();
+        if (mounts.Count == 0)
+            return false;
+        if (s_commandsReadingNoArgument.Contains(executable))
+            return true;
+
+        // The directory too is judged once its '..' are resolved inside its mount.
+        var (_, resolvedDirectory, denial) = ResolveWorkingDirectory(requestedDirectory, FileAccessRights.Read);
+        if (denial is not null || DeepestMount(resolvedDirectory, mounts) is not { } home
+            || WithinRoot(home, home, resolvedDirectory[home.Length..]) is not { } directory)
+            return false;
+
+        var windows = OperatingSystem.IsWindows() || (Wsl.IsWsl && Wsl.IsWindowsProgram(executable));
+        var options = true;
+        foreach (var token in ParseCommand(command).Arguments)
+        {
+            if (options && token == "--")
+            {
+                options = false;
+                continue;
+            }
+
+            var eq = token.IndexOf('=', StringComparison.Ordinal);
+            if (options && token.Length > 1 && token[0] == '-')
+            {
+                if (eq > 0 ? !Places(token[(eq + 1)..]) : token.IndexOfAny(windows ? ['/', '~', '\\'] : ['/', '~']) >= 0)
+                    return false;
+                continue;
+            }
+
+            if (!Places(token) || (eq > 0 && !Places(token[(eq + 1)..])))
+                return false;
+        }
+
+        return true;
+
+        bool Places(string path) => path.Length == 0 || PlacedPath(path, directory, home, mounts, windows) is { } placed
+            && AgentRootGuard.Check(_fileSystem, placed) is null
+            && _fileSystem.ResolveAndValidate(placed, FileAccessRights.Read).IsAllowed;
+    }
+
+    /// <summary>
+    /// The virtual path the process reaches through <paramref name="path"/>, or null when the tool cannot
+    /// tell: a <c>~</c>, a drive or (for Windows) a backslash; an absolute path outside every mount or whose
+    /// <c>..</c> leave its mount; a relative path whose <c>..</c> leave <paramref name="home"/>, the mount of
+    /// <paramref name="directory"/>, or that ends in another mount (the process resolves it physically from
+    /// the working directory, so it never reaches that other mount's files).
+    /// </summary>
+    private static string? PlacedPath(string path, string directory, string home, IReadOnlyList<MountInfo> mounts, bool windows)
+    {
+        if (path[0] == '~' || (path.Length >= 2 && char.IsAsciiLetter(path[0]) && path[1] == ':')
+            || (windows && path.Contains('\\', StringComparison.Ordinal)))
+            return null;
+
+        if (path[0] == '/')
+            return DeepestMount(path, mounts) is { } root ? WithinRoot(root, root, path[root.Length..]) : null;
+
+        return WithinRoot(home, directory, path) is { } joined
+               && string.Equals(DeepestMount(joined, mounts), home, StringComparison.Ordinal)
+            ? joined
+            : null;
+    }
+
+    /// <summary>The longest mount root (no trailing slash) that holds <paramref name="virtualPath"/>, or null.</summary>
+    private static string? DeepestMount(string virtualPath, IReadOnlyList<MountInfo> mounts) =>
+        mounts.Select(m => m.VirtualPath.TrimEnd('/'))
+            .Where(root => root.Length > 0 && MatchesMountPrefix(virtualPath, root))
+            .MaxBy(root => root.Length);
+
+    /// <summary>
+    /// <paramref name="relative"/> joined to <paramref name="directory"/> (inside <paramref name="root"/>),
+    /// its <c>.</c> and <c>..</c> resolved; null when a <c>..</c> climbs above <paramref name="root"/>.
+    /// </summary>
+    private static string? WithinRoot(string root, string directory, string relative)
+    {
+        var floor = root.Split('/', StringSplitOptions.RemoveEmptyEntries).Length;
+        var segments = directory.Split('/', StringSplitOptions.RemoveEmptyEntries).ToList();
+        foreach (var segment in relative.Split('/', StringSplitOptions.RemoveEmptyEntries))
+        {
+            if (segment == ".")
+                continue;
+            if (segment == "..")
+            {
+                if (segments.Count <= floor)
+                    return null;
+                segments.RemoveAt(segments.Count - 1);
+                continue;
+            }
+            segments.Add(segment);
+        }
+
+        return "/" + string.Join('/', segments);
     }
 
     /// <summary>The action as a string, whether it arrives as a CLR string or as a JSON string element.</summary>
@@ -763,7 +898,7 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
 
         // VFS inbound check: an argument naming a mount-prefixed virtual path the file
         // system refuses must fail the call (redacted reason) — never reach the process.
-        var rights = RequiredPathRights(executable);
+        var rights = RequiredPathRights(executable, request.Command);
         var (_, argumentDenial) = RewriteInboundArguments(ParseCommand(request.Command).Arguments, rights);
         if (argumentDenial is not null)
             return $"Command argument denied by file system: {argumentDenial}{WritingCommandNote(executable, rights)}";
@@ -928,10 +1063,10 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
     {
         var detached = request.Action == StartJobAction;
         var (executable, arguments) = ParseCommand(request.Command);
-        var restrictedGit = !_interpretersAllowed && executable.Equals("git", StringComparison.OrdinalIgnoreCase);
+        var restrictedGit = executable.Equals("git", StringComparison.OrdinalIgnoreCase) && RunsRestrictedGit(request.Command);
         if (restrictedGit)
             arguments = WithGitSafeOptions(arguments);
-        var rights = RequiredPathRights(executable);
+        var rights = RequiredPathRights(executable, request.Command);
         var sandbox = ActiveSandbox;
         var confined = sandbox.UsesVirtualPaths;
 
@@ -953,7 +1088,7 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
         if (!confined)
             arguments = rewrittenArguments;
 
-        var (workingDirectory, workingDirectoryDenial) = ResolveWorkingDirectory(request.WorkingDirectory, rights);
+        var (workingDirectory, _, workingDirectoryDenial) = ResolveWorkingDirectory(request.WorkingDirectory, rights);
         if (workingDirectoryDenial is not null)
             return new ShellCommandResponse
             {
@@ -1834,7 +1969,7 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
     /// with no write directory the refusal names the option.
     /// </para>
     /// </summary>
-    private (string WorkingDirectory, string? DenialReason) ResolveWorkingDirectory(
+    private (string WorkingDirectory, string VirtualDirectory, string? DenialReason) ResolveWorkingDirectory(
         string requested, FileAccessRights rights)
     {
         var named = !string.IsNullOrWhiteSpace(requested);
@@ -1846,30 +1981,30 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
         {
             var mounts = _fileSystem.GetAvailableMounts();
             if (mounts.Count == 0)
-                return ("", null);
+                return ("", "", null);
 
-            return ("", "no working directory is set: name one in working_directory, an absolute virtual path "
+            return ("", "", "no working directory is set: name one in working_directory, an absolute virtual path "
                 + $"that starts with a mount ({string.Join(", ", mounts.Select(m => m.VirtualPath))}).");
         }
 
         if (AgentRootGuard.Check(_fileSystem, virtualDirectory) is { } outsideRoot)
-            return ("", outsideRoot.DenialReason);
+            return ("", "", outsideRoot.DenialReason);
 
         var resolved = _fileSystem.ResolveAndValidate(virtualDirectory, rights);
         if (resolved.IsAllowed)
-            return (resolved.ResolvedPath!, null);
+            return (resolved.ResolvedPath!, virtualDirectory, null);
         if (named || AgentRunScope.Current?.Root is not null || !IsRightsDenial(virtualDirectory))
-            return ("", resolved.DenialReason);
+            return ("", "", resolved.DenialReason);
 
         var writeDirectory = _fileSystem.WriteDirectory;
         if (string.IsNullOrWhiteSpace(writeDirectory)
             || string.Equals(writeDirectory, virtualDirectory, StringComparison.Ordinal))
-            return ("", resolved.DenialReason + " " + NoWriteDirectoryHint);
+            return ("", "", resolved.DenialReason + " " + NoWriteDirectoryHint);
 
         var fallback = _fileSystem.ResolveAndValidate(writeDirectory, rights);
         return fallback.IsAllowed
-            ? (fallback.ResolvedPath!, null)
-            : ("", resolved.DenialReason + " " + NoWriteDirectoryHint);
+            ? (fallback.ResolvedPath!, writeDirectory, null)
+            : ("", "", resolved.DenialReason + " " + NoWriteDirectoryHint);
     }
 
     /// <summary>
@@ -1925,11 +2060,20 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
     /// give: <c>find /docs -delete</c> passed on a read-only <c>/docs</c>.
     /// </para>
     /// </summary>
-    private FileAccessRights RequiredPathRights(string executable)
+    private FileAccessRights RequiredPathRights(string executable, string command)
         => s_readOnlyCommands.Contains(executable)
-           && !(_interpretersAllowed && executable.Equals("git", StringComparison.OrdinalIgnoreCase))
+           && (!executable.Equals("git", StringComparison.OrdinalIgnoreCase) || RunsRestrictedGit(command))
             ? FileAccessRights.Read
             : FileAccessRights.ReadWrite;
+
+    /// <summary>
+    /// Whether a <c>git</c> call runs with the tool's safe options (<see cref="WithGitSafeOptions"/>, the
+    /// filter drivers emptied) and so only reads: always while interpreters are off (the read-only checks
+    /// refuse the rest); with them on, a call those checks accept on a git at least
+    /// <see cref="MinimumSafeGitVersion"/> (#497), any other git call running unrestricted as before.
+    /// </summary>
+    private bool RunsRestrictedGit(string command)
+        => !_interpretersAllowed || (ValidateGitSubcommand(command) is null && GitVersion() >= MinimumSafeGitVersion);
 
     /// <summary>
     /// What a denial adds for a command that can write: why it needed more than Read, and where

@@ -57,7 +57,10 @@ public sealed class ShellCommandToolParseTests
 
             Assert.True(result.Success, result.Error);
             Assert.Equal("ls", Assert.Single(Assert.Single(sandbox.Sessions).Invocations).Executable);
-            Assert.Equal(ToolAccess.Read, tool.AccessFor(Run("\"ls\" -la")));
+            var workspace = new FakeFileSystemService().AddMount("/workspace");
+            workspace.WorkingDirectory = "/workspace";
+            using var placed = new ShellCommandTool(workspace) { Confinement = TestConfinement.Off() };
+            Assert.Equal(ToolAccess.Read, placed.AccessFor(Run("\"ls\" -la /workspace")));
         }
     }
 
@@ -136,11 +139,34 @@ public sealed class ShellCommandToolParseTests
         {
             Sandbox = sandbox,
             Confinement = TestConfinement.Off(),
+            GitVersion = () => ShellCommandTool.MinimumSafeGitVersion,
+        };
+
+        var result = await tool.CallAsync(new ToolCallRequest("shell_command", Run("git commit -m x")), Ct);
+
+        Assert.True(result.Success, result.Error);
+        Assert.Equal(["commit", "-m", "x"], Assert.Single(Assert.Single(sandbox.Sessions).Invocations).Arguments);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-497")]
+    public async Task One_of_the_four_git_reads_keeps_the_safe_options_with_interpreters()
+    {
+        var sandbox = new FakeShellSandbox();
+        using var tool = new ShellCommandTool(new FakeFileSystemService(), allowInterpreters: true)
+        {
+            Sandbox = sandbox,
+            Confinement = TestConfinement.Off(),
+            GitVersion = () => ShellCommandTool.MinimumSafeGitVersion,
         };
 
         var result = await tool.CallAsync(new ToolCallRequest("shell_command", Run("git status")), Ct);
 
         Assert.True(result.Success, result.Error);
-        Assert.Equal(["status"], Assert.Single(Assert.Single(sandbox.Sessions).Invocations).Arguments);
+        // The filter drivers are read first, then the call runs behind the tool's own configuration.
+        var call = sandbox.Sessions.SelectMany(session => session.Invocations).Last().Arguments;
+        Assert.Contains("status", call);
+        Assert.Contains("core.fsmonitor=false", call);
+        Assert.NotEqual("status", call[0]);
     }
 }
