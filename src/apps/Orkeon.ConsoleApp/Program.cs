@@ -386,6 +386,9 @@ static class Program
         // Registered here (after the IConsoleAdapter choice below is declared later in this method,
         // resolution is lazy) so the REPL streams tokens without scripts passing onDelta.
         services.AddLlmConsoleStreaming(context.Configuration, enabledByDefault: true);
+        // `! command` at the prompt runs a shell command of the operator's own, its output added to the session
+        // (Orkeon:Cli:Repl:ShellPrefix:Enabled, on unless the key says false; TimeoutSeconds, 120 by default).
+        services.AddReplShellPrefix(context.Configuration);
 
         // RaggableTree — semantic codebase index + agent tools (codebase_map/search,
         // symbol_source, flow_trace, impact_analysis, index_codebase, …). On-device embeddings

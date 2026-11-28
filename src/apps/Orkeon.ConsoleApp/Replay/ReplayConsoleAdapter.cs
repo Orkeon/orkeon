@@ -30,7 +30,7 @@ internal enum ReplayInterrupt
 /// </list>
 /// With no replay running, every member delegates to the real console.
 /// </summary>
-internal sealed class ReplayConsoleAdapter : IConsoleAdapter, IThreadedConsole, IStreamConsole, IBlockConsole, IThemeConsole, IChoiceConsole, ICommandOutcomeObserver
+internal sealed class ReplayConsoleAdapter : IConsoleAdapter, IThreadedConsole, IStreamConsole, IBlockConsole, IThemeConsole, IChoiceConsole, ICommandOutcomeObserver, IReplLineOrigin
 {
     /// <summary>The exit code of a replay whose every line passed.</summary>
     public const int PassedExitCode = 0;
@@ -47,6 +47,7 @@ internal sealed class ReplayConsoleAdapter : IConsoleAdapter, IThreadedConsole, 
     private readonly Lock _lock = new();
     private ReplayRun? _run;
     private bool _inputClosed;
+    private volatile bool _lastLineReplayed;
 
     /// <summary>Creates the decorator.</summary>
     /// <param name="inner">The real console.</param>
@@ -139,6 +140,7 @@ internal sealed class ReplayConsoleAdapter : IConsoleAdapter, IThreadedConsole, 
     /// <inheritdoc />
     public async Task<string?> ReadLineAsync(CancellationToken cancellationToken = default)
     {
+        _lastLineReplayed = false;
         if (CurrentRun() is not { } run)
             return _inputClosed ? null : await _inner.ReadLineAsync(cancellationToken).ConfigureAwait(false);
 
@@ -176,8 +178,13 @@ internal sealed class ReplayConsoleAdapter : IConsoleAdapter, IThreadedConsole, 
             run.Current = next;
         _gate.TrackingLine = next.Number;
         Echo(next.Text);
+        _lastLineReplayed = true;
         return next.Text;
     }
+
+    /// <inheritdoc />
+    /// <remarks>True for a line of the replay file the loop read; a line typed after it, under <c>--interactive</c>, is the operator's.</remarks>
+    public bool LastLineReplayed => _lastLineReplayed;
 
     /// <summary>
     /// A read from inside a command (the approval answered by <c>runCrew</c>, a prompt of a menu command): the next

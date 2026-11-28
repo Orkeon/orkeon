@@ -4,3 +4,5 @@ Orkeon.Cli.Commands.Scripting.Dispatch.CommandResponse.state.get -> Jint.Native.
 Orkeon.Cli.Commands.Scripting.Dispatch.CommandResponse.state.init -> void
 Orkeon.Cli.Commands.Scripting.Dispatch.CommandResponse.ticket.get -> string?
 Orkeon.Cli.Commands.Scripting.Dispatch.CommandResponse.ticket.init -> void
+Orkeon.Cli.Commands.Scripting.DependencyInjection.ReplShellPrefixExtensions
+static Orkeon.Cli.Commands.Scripting.DependencyInjection.ReplShellPrefixExtensions.AddReplShellPrefix(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, Microsoft.Extensions.Configuration.IConfiguration! configuration) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
