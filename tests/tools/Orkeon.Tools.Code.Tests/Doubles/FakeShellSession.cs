@@ -19,6 +19,9 @@ internal sealed class FakeShellSession : IShellSession
     /// <summary>The answer once <see cref="Results"/> is empty.</summary>
     public ShellRunResult DefaultResult { get; set; } = new(0, "ok", "");
 
+    /// <summary>Called with each command as it starts, before <see cref="ThrowOnRun"/> is thrown (a session's side effects).</summary>
+    public Action<ShellInvocation>? OnRun { get; set; }
+
     /// <summary>Thrown by the next command instead of answering, when set.</summary>
     public Exception? ThrowOnRun { get; set; }
 
@@ -52,6 +55,7 @@ internal sealed class FakeShellSession : IShellSession
             }
 
             Started.TrySetResult();
+            OnRun?.Invoke(invocation);
             if (Gate is { } gate)
                 await gate.Task.WaitAsync(cancellationToken);
 

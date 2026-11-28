@@ -34,7 +34,7 @@ public sealed class ShellCommandToolOutputTests : IDisposable
     private string Workspace => Path.Combine(_tempDir, "ws");
 
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Reliability", "CA2000:Dispose objects before losing scope", Justification = "The registry is captured by the returned FileSystemService and lives for the test.")]
-    private ShellCommandTool NewTool(FakeShellSandbox? sandbox = null, ShellConfinementOptions? confinement = null)
+    private ShellCommandTool NewTool(FakeShellSandbox? sandbox = null, ShellConfinementOptions? confinement = null, int? captureByteCap = null, int? maxCaptureFiles = null)
     {
         var output = Path.Combine(_tempDir, "out");
         Directory.CreateDirectory(Workspace);
@@ -49,6 +49,10 @@ public sealed class ShellCommandToolOutputTests : IDisposable
         var tool = sandbox is null
             ? new ShellCommandTool(_fileSystem) { Confinement = confinement ?? TestConfinement.Off() }
             : new ShellCommandTool(_fileSystem) { Sandbox = sandbox, Confinement = TestConfinement.Off() };
+        if (captureByteCap is { } cap)
+            tool.CaptureByteCap = cap;
+        if (maxCaptureFiles is { } files)
+            tool.MaxCaptureFiles = files;
         _disposables.Add(tool);
         return tool;
     }
@@ -177,5 +181,130 @@ public sealed class ShellCommandToolOutputTests : IDisposable
         Assert.Equal((long)content.Length, Convert.ToInt64(dict["stdout_total_chars"], CultureInfo.InvariantCulture));
         var whole = await _fileSystem!.TryReadAllTextAsync(Assert.IsType<string>(dict["output_path"]), Ct);
         Assert.Equal(content, whole);
+    }
+
+    private string ShellDirectory => Path.Combine(_tempDir, "out", "shell");
+
+    private string[] ShellFiles() => Directory.Exists(ShellDirectory) ? Directory.GetFiles(ShellDirectory) : [];
+
+    private static Task<ToolCallResponse> EchoAsync(ShellCommandTool tool) =>
+        tool.CallAsync(new ToolCallRequest("shell_command", new Dictionary<string, object?> { ["command"] = "echo x" }), Ct);
+
+    [Fact]
+    [Trait("BR", "CH-492")]
+    public async Task ShouldVirtualizeThePhysicalPaths_InTheCaptureFile()
+    {
+        Assert.SkipWhen(s_isWindows, "The POSIX session copies the output itself.");
+        var tool = NewTool();
+        var physical = Path.Combine(Workspace, "big.txt");
+        var builder = new StringBuilder();
+        for (var line = 0; builder.Length < 30_000; line++)
+            builder.Append(CultureInfo.InvariantCulture, $"{physical}: line {line}\n");
+
+        var dict = await CatAsync(tool, builder.ToString());
+
+        var whole = await _fileSystem!.TryReadAllTextAsync(Assert.IsType<string>(dict["output_path"]), Ct);
+        Assert.Contains("/workspace/big.txt: line 0\n", whole, StringComparison.Ordinal);
+        Assert.DoesNotContain(_tempDir, whole, StringComparison.Ordinal);
+        Assert.DoesNotContain(ShellFiles(), f => !f.EndsWith(".log", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    [Trait("BR", "CH-492")]
+    public async Task ShouldCountCharacters_NotBytes_WhenTheOutputIsNotAscii()
+    {
+        Assert.SkipWhen(s_isWindows, "The POSIX session counts its streams in bytes.");
+        var tool = NewTool();
+        var content = new string('\u00e9', 20_000) + "\n";
+
+        var dict = await CatAsync(tool, content);
+
+        Assert.True((bool)dict["stdout_truncated"]!);
+        Assert.Equal((long)content.Length, Convert.ToInt64(dict["stdout_total_chars"], CultureInfo.InvariantCulture));
+        var stdout = Assert.IsType<string>(dict["stdout"]);
+        Assert.Contains($"[... truncated, {content.Length - ShellCommandTool.MaxOutputLength} chars omitted", stdout, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-492")]
+    public async Task ShouldCapTheCaptureFile_AndSaySo()
+    {
+        Assert.SkipWhen(s_isWindows, "The POSIX session copies the output itself.");
+        var tool = NewTool(captureByteCap: 50_000);
+        var content = Lines(200_000);
+
+        var dict = await CatAsync(tool, content);
+
+        Assert.Equal((long)content.Length, Convert.ToInt64(dict["stdout_total_chars"], CultureInfo.InvariantCulture));
+        var stdout = Assert.IsType<string>(dict["stdout"]);
+        Assert.DoesNotContain("whole output", stdout, StringComparison.Ordinal);
+        Assert.Contains("output_path holds the first 50000 bytes", stdout, StringComparison.Ordinal);
+        var whole = await _fileSystem!.TryReadAllTextAsync(Assert.IsType<string>(dict["output_path"]), Ct);
+        Assert.StartsWith(content[..49_000], whole, StringComparison.Ordinal);
+        Assert.True(whole!.Length < 51_000, whole.Length.ToString(CultureInfo.InvariantCulture));
+    }
+
+    [Fact]
+    [Trait("BR", "CH-492")]
+    public async Task ShouldNotClaimTheWholeOutput_WhenTheSessionKeptOnlyItsEnds()
+    {
+        var sandbox = new FakeShellSandbox
+        {
+            Configure = session => session.DefaultResult = new ShellRunResult(
+                0, new string('h', 20_000), "", StdoutTail: new string('t', 20_000), StdoutOmitted: 1_000_000),
+        };
+        var tool = NewTool(sandbox);
+
+        var dict = Assert.IsType<Dictionary<string, object?>>((await EchoAsync(tool)).Result);
+
+        var stdout = Assert.IsType<string>(dict["stdout"]);
+        Assert.DoesNotContain("whole output", stdout, StringComparison.Ordinal);
+        Assert.Contains("output_path holds its first and last", stdout, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-492")]
+    public async Task ShouldKeepOnlyTheMostRecentCaptureFiles()
+    {
+        var sandbox = new FakeShellSandbox
+        {
+            Configure = session => session.DefaultResult = new ShellRunResult(0, new string('h', 20_000), ""),
+        };
+        var tool = NewTool(sandbox, maxCaptureFiles: 2);
+
+        var paths = new List<string>();
+        for (var i = 0; i < 3; i++)
+        {
+            var dict = Assert.IsType<Dictionary<string, object?>>((await EchoAsync(tool)).Result);
+            paths.Add(Assert.IsType<string>(dict["output_path"]));
+        }
+
+        Assert.Equal(2, ShellFiles().Length);
+        Assert.False(await _fileSystem!.ExistsAsync(paths[0], Ct));
+        Assert.True(await _fileSystem.ExistsAsync(paths[2], Ct));
+    }
+
+    [Fact]
+    [Trait("BR", "CH-492")]
+    public async Task ShouldRemoveTheCaptureFiles_WhenTheSessionFails()
+    {
+        var sandbox = new FakeShellSandbox
+        {
+            Configure = session =>
+            {
+                session.OnRun = invocation =>
+                {
+                    Directory.CreateDirectory(Path.GetDirectoryName(invocation.CapturePath!)!);
+                    File.WriteAllText(invocation.CapturePath!, "partial");
+                    File.WriteAllText(invocation.CapturePath + ".o", "partial");
+                };
+                session.ThrowOnRun = new ShellSessionException("the shell died");
+            },
+        };
+        var tool = NewTool(sandbox);
+
+        await EchoAsync(tool);
+
+        Assert.Empty(ShellFiles());
     }
 }
