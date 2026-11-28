@@ -563,7 +563,8 @@ No attribute carries an id of a crew, task or agent.
 - **Effect**: `ModePermissionGate` is consulted by the scripted `ctx.llm.act` loop and by
   YAML crews' tool calls (`ToolInvocationPipeline`)
   before EACH tool execution. Modes: `bypassPermissions` → allow all; `plan` → deny
-  non-reads; `dontAsk` → allow reads, deny the rest without ever asking;
+  non-reads, the refusal naming what plan allows (reads, and the read-only `shell_command` runs) so the
+  model stops retrying; `dontAsk` → allow reads, deny the rest without ever asking;
   `acceptEdits` → auto-accept reads and edits (`file_write`, `spawn_agent`, the code-graph edits, any tool declaring `ToolAccess.Edit` such as `rag_ingest`), ask for everything else (`shell_command` among them);
   `default` → auto-accept reads, ask for everything else. With an approval channel, an ask
   waits for the operator, and the script's `ExecutionTimeout` and the agent's wall-time budget
@@ -580,7 +581,13 @@ No attribute carries an id of a crew, task or agent.
   `create_pr` and any unknown or missing action; `http_api` is `Read` for `GET`, `HEAD` and
   `OPTIONS` (a missing method is its default `GET`) without a body or a method-override header
   (`X-HTTP-Method-Override`, `X-HTTP-Method`, `X-Method-Override`, any case), `Execute` for any
-  other method or for a read method that carries either. Their
+  other method or for a read method that carries either; `shell_command` is `Read` for a `run` (the
+  default action) of one of its default read-only commands (`ls`, `cat`, `pwd`, `which`, `grep`, `wc`,
+  `echo`, `dir`, `type`, `where`, and `git status`/`log`/`diff`/`show` without an option that writes,
+  runs a program or leaves the working directory) that its own checks accept, `Execute` for
+  `start_job` and the job actions, a command `ExtraAllowedCommands` or `AllowedCommands` adds, an
+  interpreter, any `git` once `AllowInterpreters` lifts its restriction, and a call it would refuse —
+  so a plan turn can run `git log`, `git diff`, `ls`, `cat` or `grep`, and nothing that writes. Their
   static `Access` stays `Execute`, the most restrictive class they can take.
   The built-in read tools (file/directory/session/memory/analysis, `web_scrape`,
   `scrape_element`, `rag_search`, `web_search`), `file_write`, `rag_ingest`

@@ -55,6 +55,15 @@ public sealed class ModePermissionGate : IPermissionGate
         "edit_file",
     };
 
+    /// <summary>
+    /// What a plan-mode refusal adds, so the model stops retrying the same call: the calls plan lets
+    /// through.
+    /// </summary>
+    internal const string PlanAllows =
+        "Plan mode allows only calls that read: file reads and searches, and for shell_command a 'run' of a "
+        + "read-only command (ls, cat, pwd, which, grep, wc, echo, git status/log/diff/show without an option "
+        + "that writes); start_job, other commands and every write are refused.";
+
     private readonly bool _isInteractive;
     private readonly IToolApprovalChannel? _approvalChannel;
 
@@ -143,7 +152,7 @@ public sealed class ModePermissionGate : IPermissionGate
             "bypassPermissions" => PermissionVerdict.Allow(),
             "plan" => isRead
                 ? PermissionVerdict.Allow()
-                : PermissionVerdict.Deny($"tool '{toolName}' is not permitted in plan mode (read-only)."),
+                : PermissionVerdict.Deny($"tool '{toolName}' is not permitted in plan mode (read-only). {PlanAllows}"),
             "dontAsk" => isRead
                 ? PermissionVerdict.Allow()
                 : PermissionVerdict.Deny($"tool '{toolName}' is not permitted in mode 'dontAsk' (reads only, never asks)."),

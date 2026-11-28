@@ -513,6 +513,42 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
         return base.ValidateParameters(parameters);
     }
 
+    /// <summary>
+    /// <see cref="ToolAccess.Read"/> for a <c>run</c> (the default action) of a command that only reads:
+    /// the executable is one of the default read-only commands (<c>ls</c>, <c>cat</c>, <c>pwd</c>,
+    /// <c>which</c>, <c>grep</c>, <c>wc</c>, <c>echo</c>, <c>git</c>, <c>dir</c>, <c>type</c>,
+    /// <c>where</c>), the tool's own checks accept it (no forbidden operator, in the allowlist, no
+    /// blocked pattern) and, for <c>git</c>, the read-only subcommand and option checks pass even when
+    /// interpreters are allowed. <see cref="ToolAccess.Execute"/> otherwise: <c>start_job</c> and the job
+    /// actions, a command added by <c>ExtraAllowedCommands</c> or a custom allowlist, an interpreter,
+    /// <c>git</c> once interpreters lift its restriction, and a call the tool would refuse.
+    /// </summary>
+    /// <param name="arguments">Arguments the model supplied for the call.</param>
+    /// <returns>The access class of this call.</returns>
+    public override ToolAccess AccessFor(IReadOnlyDictionary<string, object?> arguments)
+    {
+        ArgumentNullException.ThrowIfNull(arguments);
+        var action = arguments.TryGetValue("action", out var rawAction) && rawAction is not null
+            ? ActionName(rawAction) ?? StartJobAction
+            : RunAction;
+        if (!string.Equals(string.IsNullOrWhiteSpace(action) ? RunAction : action, RunAction, StringComparison.Ordinal))
+            return ToolAccess.Execute;
+
+        if (!arguments.TryGetValue("command", out var rawCommand) || ActionName(rawCommand) is not { } command
+            || string.IsNullOrWhiteSpace(command) || FindForbiddenOperator(command) is not null)
+            return ToolAccess.Execute;
+
+        var executable = ExtractExecutable(command);
+        if (string.IsNullOrWhiteSpace(executable)
+            || RequiredPathRights(executable) != FileAccessRights.Read
+            || ValidateExecutable(command, executable) is not null)
+            return ToolAccess.Execute;
+
+        return executable.Equals("git", StringComparison.OrdinalIgnoreCase) && ValidateGitSubcommand(command) is not null
+            ? ToolAccess.Execute
+            : ToolAccess.Read;
+    }
+
     /// <summary>The action as a string, whether it arrives as a CLR string or as a JSON string element.</summary>
     private static string? ActionName(object? value) => value switch
     {

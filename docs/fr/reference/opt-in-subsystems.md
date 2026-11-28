@@ -578,7 +578,8 @@ Aucun attribut ne porte l'identifiant d'un crew, d'une tâche ou d'un agent.
 - **Effet** : `ModePermissionGate` est consulté par la boucle scriptée `ctx.llm.act`
   et par les appels d'outils des crews YAML (`ToolInvocationPipeline`)
   avant CHAQUE exécution d'outil. Modes : `bypassPermissions` → tout autoriser ;
-  `plan` → refuser tout ce qui n'est pas une lecture ; `dontAsk` → autoriser les
+  `plan` → refuser tout ce qui n'est pas une lecture, le refus nommant ce que plan admet (les lectures,
+  et les `run` en lecture seule de `shell_command`) pour que le modèle cesse de réessayer ; `dontAsk` → autoriser les
   lectures, refuser le reste sans jamais demander ; `acceptEdits` → accepter
   d'office les lectures et les éditions (`file_write`, `spawn_agent`, les éditions du graphe de code, tout outil qui déclare `ToolAccess.Edit` comme `rag_ingest`), demander pour tout le reste (dont `shell_command`) ; `default` →
   accepter les lectures, demander pour tout le reste. Avec un canal d'approbation, une demande
@@ -597,7 +598,14 @@ Aucun attribut ne porte l'identifiant d'un crew, d'une tâche ou d'un agent.
   `Read` pour `GET`, `HEAD` et `OPTIONS` (une méthode absente est son défaut `GET`) sans
   corps ni en-tête de substitution de méthode (`X-HTTP-Method-Override`, `X-HTTP-Method`,
   `X-Method-Override`, quelle que soit la casse), `Execute` pour toute autre méthode ou pour
-  une méthode de lecture qui porte l'un ou l'autre. Leur `Access` statique reste `Execute`, la classe la
+  une méthode de lecture qui porte l'un ou l'autre ; `shell_command` est `Read` pour un `run` (l'action
+  par défaut) de l'une de ses commandes en lecture seule par défaut (`ls`, `cat`, `pwd`, `which`, `grep`,
+  `wc`, `echo`, `dir`, `type`, `where`, et `git status`/`log`/`diff`/`show` sans option qui écrit, lance
+  un programme ou sort du répertoire de travail) que ses propres contrôles acceptent, `Execute` pour
+  `start_job` et les actions de tâche, une commande qu'ajoute `ExtraAllowedCommands` ou
+  `AllowedCommands`, un interpréteur, tout `git` dès que `AllowInterpreters` lève sa restriction, et un
+  appel qu'il refuserait — un tour en plan peut donc lancer `git log`, `git diff`, `ls`, `cat` ou `grep`,
+  et rien qui écrive. Leur `Access` statique reste `Execute`, la classe la
   plus restrictive qu'ils puissent prendre. Les outils de lecture intégrés
   (file/directory/session/memory/analysis, `web_scrape`, `scrape_element`, `rag_search`,
   `web_search`), `file_write`, `rag_ingest` (Edit : il écrit dans l'index de

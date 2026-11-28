@@ -75,7 +75,7 @@ public sealed class ReplAutonomousToolActTests
     {
         var run = await RunAsync("edit", WriteExecute, "plan");
 
-        Assert.Equal(
+        Assert.StartsWith(
             "DENIED: tool 'probe_tool' is not permitted in plan mode (read-only).",
             run.Provider.Turns[1][^1].Content);
         Assert.Empty(run.Channel.Asks);
@@ -101,7 +101,7 @@ public sealed class ReplAutonomousToolActTests
         var inPlan = await RunAsync(null, ReadExecute, "plan");
         var inDefault = await RunAsync(null, ReadExecute, "default");
 
-        Assert.Equal(
+        Assert.StartsWith(
             "DENIED: tool 'probe_tool' is not permitted in plan mode (read-only).",
             inPlan.Provider.Turns[1][^1].Content);
         Assert.Empty(inPlan.Channel.Asks);

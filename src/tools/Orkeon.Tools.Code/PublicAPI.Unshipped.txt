@@ -1,1 +1,2 @@
 #nullable enable
+override Orkeon.Tools.Code.ShellCommandTool.AccessFor(System.Collections.Generic.IReadOnlyDictionary<string!, object?>! arguments) -> Orkeon.Domain.Tools.ToolAccess
