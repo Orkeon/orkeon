@@ -584,7 +584,12 @@ No attribute carries an id of a crew, task or agent.
   other method or for a read method that carries either; `shell_command` is `Read` for a `run` (the
   default action) of one of its default read-only commands (`ls`, `cat`, `pwd`, `which`, `grep`, `wc`,
   `echo`, `dir`, `type`, `where`, and `git status`/`log`/`diff`/`show` without an option that writes,
-  runs a program or leaves the working directory) that its own checks accept, `Execute` for
+  runs a program or leaves the working directory, the subcommand spelt exactly) that its own checks
+  accept — the executable is read with the parse the execution uses, and a quoted executable holding
+  a space (`"/x/ls /y/sh" -c id`) is refused; such a `git` runs with the tool's own
+  `-c core.fsmonitor=false -c core.pager=cat -c log.showSignature=false`, and `diff`/`show`/`log` with
+  `--no-ext-diff --no-textconv`, so the repository's configuration does not make it run a program
+  (a filter driver of `.gitattributes` can still run on `status`/`diff`) —, `Execute` for
   `start_job` and the job actions, a command `ExtraAllowedCommands` or `AllowedCommands` adds, an
   interpreter, any `git` once `AllowInterpreters` lifts its restriction, and a call it would refuse —
   so a plan turn can run `git log`, `git diff`, `ls`, `cat` or `grep`, and nothing that writes. Their

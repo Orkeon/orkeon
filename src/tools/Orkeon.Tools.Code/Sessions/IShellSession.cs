@@ -18,6 +18,7 @@ namespace Orkeon.Tools.Code.Sessions;
 /// Where a POSIX session copies the whole output when a stream passes <paramref name="OutputLimit"/>, as the
 /// session sees it (virtual when confined, physical otherwise); null for no copy. A Windows session ignores it.
 /// </param>
+/// <param name="CaptureByteCap">The bytes of each stream a POSIX session copies for the capture file.</param>
 internal sealed record ShellInvocation(
     string Executable,
     IReadOnlyList<string> Arguments,
@@ -25,7 +26,8 @@ internal sealed record ShellInvocation(
     TimeSpan Timeout,
     bool WindowsBuiltin = false,
     int OutputLimit = ShellCommandTool.MaxOutputLength,
-    string? CapturePath = null);
+    string? CapturePath = null,
+    int CaptureByteCap = ShellScript.CaptureByteCap);
 
 /// <summary>What a command run by a shell session produced.</summary>
 /// <param name="ExitCode">The command's exit code; -1 when it timed out.</param>

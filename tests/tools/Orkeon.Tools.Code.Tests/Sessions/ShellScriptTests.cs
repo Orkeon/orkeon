@@ -250,12 +250,14 @@ public sealed class ShellScriptTests
 
     [Fact]
     [Trait("BR", "CH-492")]
-    public void Command_ShouldCopyTheWholeOutput_WhenACapturePathIsGivenAndAStreamPassesTheLimit()
+    public void Command_ShouldCopyEachStreamAndItsSize_WhenACapturePathIsGivenAndAStreamPassesTheLimit()
     {
         var fragment = ShellScript.Command(
-            new ShellInvocation("pwd", [], null, TimeSpan.FromSeconds(5), OutputLimit: 100, CapturePath: "/output/shell/it's.log"), Nonce);
+            new ShellInvocation("pwd", [], null, TimeSpan.FromSeconds(5), OutputLimit: 100, CapturePath: "/output/shell/it's.log", CaptureByteCap: 1000), Nonce);
 
-        Assert.Contains("if [ \"$_ork_so\" -gt 100 ] || [ \"$_ork_se\" -gt 100 ]; then mkdir -p '/output/shell'", fragment, StringComparison.Ordinal);
-        Assert.Contains(" >'/output/shell/it'\\''s.log'; fi", fragment, StringComparison.Ordinal);
+        Assert.Contains("if [ \"$_ork_so\" -gt 100 ] || [ \"$_ork_se\" -gt 100 ]; then { mkdir -p '/output/shell'", fragment, StringComparison.Ordinal);
+        Assert.Contains("head -c 1000 \"$_ork_o\" >'/output/shell/it'\\''s.log.o';", fragment, StringComparison.Ordinal);
+        Assert.Contains("head -c 1000 \"$_ork_e\" >'/output/shell/it'\\''s.log.e';", fragment, StringComparison.Ordinal);
+        Assert.Contains("printf '%s %s' \"$_ork_so\" \"$_ork_se\" >'/output/shell/it'\\''s.log.n'; } 2>/dev/null; fi", fragment, StringComparison.Ordinal);
     }
 }

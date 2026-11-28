@@ -84,11 +84,11 @@ public sealed record ShellCommandResponse : Orkeon.Domain.Tools.IBoundedToolResp
     public string Stderr { get; init; } = "";
 
     /// <summary>Gets whether <see cref="Stdout"/> was cut: its head and its tail kept around a marker.</summary>
-    [ReturnSchema(Description = "Whether stdout was cut (head and tail kept around a marker; the whole output is in output_path)", Example = false)]
+    [ReturnSchema(Description = "Whether stdout was cut (head and tail kept around a marker, which says how much of the output output_path holds)", Example = false)]
     public bool StdoutTruncated { get; init; }
 
     /// <summary>Gets whether <see cref="Stderr"/> was cut: its head and its tail kept around a marker.</summary>
-    [ReturnSchema(Description = "Whether stderr was cut (head and tail kept around a marker; the whole output is in output_path)", Example = false)]
+    [ReturnSchema(Description = "Whether stderr was cut (head and tail kept around a marker, which says how much of the output output_path holds)", Example = false)]
     public bool StderrTruncated { get; init; }
 
     /// <summary>Gets the length of the whole standard output, in characters, cut or not.</summary>
@@ -108,7 +108,7 @@ public sealed record ShellCommandResponse : Orkeon.Domain.Tools.IBoundedToolResp
     public string JobId { get; init; } = "";
 
     /// <summary>Gets the virtual path of the job's log, or of the whole output of a <c>run</c> whose output was cut.</summary>
-    [ReturnSchema(Description = "Virtual path of the job's log file, or of the whole output of a run whose stdout or stderr was cut (stdout, then a [stderr] line and stderr)", Example = "/output/jobs/3f9a1c0b27d4.log")]
+    [ReturnSchema(Description = "Virtual path of the job's log file, or of the output of a run whose stdout or stderr was cut (stdout, then a [stderr] line and stderr, paths virtualized; at most 8 MiB of each stream, the 32 most recent files kept)", Example = "/output/jobs/3f9a1c0b27d4.log")]
     public string OutputPath { get; init; } = "";
 
     /// <summary>Gets the job's status: <c>running</c> or <c>exited</c>.</summary>
@@ -196,7 +196,7 @@ public sealed record ShellCommandResponse : Orkeon.Domain.Tools.IBoundedToolResp
 /// </remarks>
 [ToolContract("shell_command", ActsOnWorkspace = true,
     Name = "shell_command",
-    Description = "Runs a shell command in the working directory and returns its exit code, stdout and stderr, each cut at 10 000 characters keeping its head and its tail around a marker that counts what was left out; a cut run says stdout_truncated or stderr_truncated, gives the true lengths in stdout_total_chars and stderr_total_chars, and writes the whole output to output_path, which file_read reads; a command the allowlist or blocklist refuses is not run. action run (default) waits up to timeout seconds; start_job starts it detached and returns a job_id, which job_status and job_tail read later in the same run. To read or search files, file_read, grep and glob cost less than cat and find.",
+    Description = "Runs a shell command in the working directory and returns its exit code, stdout and stderr, each cut at 10 000 characters keeping its head and its tail around a marker that counts what was left out; a cut run says stdout_truncated or stderr_truncated, gives the true lengths in stdout_total_chars and stderr_total_chars, and writes the output to output_path (at most 8 MiB of each stream, the marker saying when it is not whole), which file_read reads; a command the allowlist or blocklist refuses is not run. action run (default) waits up to timeout seconds; start_job starts it detached and returns a job_id, which job_status and job_tail read later in the same run. To read or search files, file_read, grep and glob cost less than cat and find.",
     Category = "Code Operations")]
 public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellCommandResponse>
 {
@@ -395,7 +395,7 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
     /// (e.g. those that can spawn processes via <c>-c core.sshCommand=…</c>) are
     /// rejected unless interpreters are explicitly opted in.
     /// </summary>
-    private static readonly HashSet<string> s_allowedGitSubcommands = new(StringComparer.OrdinalIgnoreCase)
+    private static readonly HashSet<string> s_allowedGitSubcommands = new(StringComparer.Ordinal)
     {
         "status", "log", "diff", "show"
     };
@@ -425,8 +425,27 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
         // Repoint the repository or the work tree away from the validated directory.
         "-C", "--git-dir", "--work-tree",
         // Diff two arbitrary host paths, ignoring the repository altogether.
-        "--no-index"
+        "--no-index",
+        // Verify signatures, which runs the gpg.program the repository configures.
+        "--show-signature"
     ];
+
+    /// <summary>
+    /// The configuration the tool sets itself, before the subcommand, on every <c>git</c> call its read-only
+    /// restriction governs: the repository's own configuration must not make a read run a program
+    /// (<c>core.fsmonitor</c>, <c>core.pager</c>, <c>log.showSignature</c> and its <c>gpg.program</c>).
+    /// The caller's own <c>-c</c> stays refused (<see cref="s_forbiddenGitOptions"/>).
+    /// </summary>
+    private static readonly string[] s_gitSafeConfiguration =
+    [
+        "-c", "core.fsmonitor=false", "-c", "core.pager=cat", "-c", "log.showSignature=false"
+    ];
+
+    /// <summary>
+    /// The options the tool adds after <c>diff</c>, <c>show</c> and <c>log</c>: no external diff driver
+    /// (<c>diff.external</c>, <c>diff.&lt;driver&gt;.command</c>) and no textconv filter run.
+    /// </summary>
+    private static readonly string[] s_gitSafeDiffOptions = ["--no-ext-diff", "--no-textconv"];
 
     /// <summary>
     /// Default set of blocked command patterns. Each one names a destructive command, so it
@@ -554,8 +573,9 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
             || string.IsNullOrWhiteSpace(command) || FindForbiddenOperator(command) is not null)
             return ToolAccess.Execute;
 
-        var executable = ExtractExecutable(command);
+        var executable = ParseCommand(command).Executable;
         if (string.IsNullOrWhiteSpace(executable)
+            || ExecutableTokenError(command) is not null
             || RequiredPathRights(executable) != FileAccessRights.Read
             || ValidateExecutable(command, executable) is not null)
             return ToolAccess.Execute;
@@ -594,9 +614,13 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
         if (forbiddenOp is not null)
             return $"Command contains forbidden shell operator: '{forbiddenOp}'";
 
-        var executable = ExtractExecutable(request.Command);
+        // The executable is read with the parse the execution uses (ParseCommand), never a cheaper one:
+        // a reading that differs lets a command be validated as one program and run as another (#494).
+        var executable = ParseCommand(request.Command).Executable;
         if (string.IsNullOrWhiteSpace(executable))
             return "Command cannot be empty";
+        if (ExecutableTokenError(request.Command) is { } tokenError)
+            return tokenError;
 
         var error = ValidateExecutable(request.Command, executable) ?? ValidatePlacement(request, executable);
         if (error is not null)
@@ -615,7 +639,7 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
     private string? ValidateExecutable(string command, string executable)
     {
         // Reject executables that contain path separators after normalization
-        // (ExtractExecutable already strips paths, so if we still see separators
+        // (ParseCommand already strips paths, so if we still see separators
         //  something is wrong)
         if (executable.Contains('/', StringComparison.Ordinal) || executable.Contains('\\', StringComparison.Ordinal))
             return $"Invalid executable name: '{executable}'";
@@ -646,8 +670,11 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
                 return subcommandError;
         }
 
+        // The pattern is sought in the command as written and as the process receives it, quotes
+        // removed: `rm "-rf" /` runs `rm -rf /` and must not slip past the "rm -rf /" entry.
+        var unquoted = string.Join(' ', TokenizeCommand(command));
         var blockedPattern = _blockedPatterns
-            .FirstOrDefault(pattern => ContainsBlockedPattern(command, pattern));
+            .FirstOrDefault(pattern => ContainsBlockedPattern(command, pattern) || ContainsBlockedPattern(unquoted, pattern));
         return blockedPattern is null ? null : $"Command contains blocked pattern: '{blockedPattern}'";
     }
 
@@ -829,6 +856,8 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
     {
         var detached = request.Action == StartJobAction;
         var (executable, arguments) = ParseCommand(request.Command);
+        if (!_interpretersAllowed && executable.Equals("git", StringComparison.OrdinalIgnoreCase))
+            arguments = WithGitSafeOptions(arguments);
         var rights = RequiredPathRights(executable);
         var sandbox = ActiveSandbox;
         var confined = sandbox.UsesVirtualPaths;
@@ -886,7 +915,7 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
         var capture = detached ? null : CaptureTarget(confined);
         var invocation = new ShellInvocation(
             executable, arguments, invocationDirectory, TimeSpan.FromSeconds(request.TimeoutSeconds), windowsBuiltin, _outputLimit,
-            capture?.SeenPath);
+            capture?.SeenPath, CaptureByteCap);
 
         // Physical→virtual table for the output and the view of the session, built per call: mounts
         // can be swapped per async flow (IFileSystemScope), so nothing here may be cached in the ctor.
@@ -904,7 +933,16 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
         ShellRunResult result;
         try
         {
-            result = await Sessions.RunAsync(sandbox, view, invocation, cancellationToken).ConfigureAwait(false);
+            try
+            {
+                result = await Sessions.RunAsync(sandbox, view, invocation, cancellationToken).ConfigureAwait(false);
+            }
+            catch (Exception) when (capture is not null)
+            {
+                // A failed run leaves no orphan copy behind it.
+                await DiscardCaptureAsync(capture).ConfigureAwait(false);
+                throw;
+            }
         }
         catch (System.ComponentModel.Win32Exception ex)
         {
@@ -931,6 +969,23 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
     /// <summary>Where the whole output of a run goes when it is cut: its virtual path, and the path its session writes.</summary>
     private sealed record CaptureFile(string VirtualPath, string SeenPath);
 
+    private const string CaptureExtension = ".log";
+
+    /// <summary>The capture files kept by default under <c>/output/shell</c>: an older one is removed when a new one is kept.</summary>
+    internal const int DefaultMaxCaptureFiles = 32;
+
+    /// <summary>The bytes of each stream a POSIX session copies for the capture file (<see cref="ShellScript.CaptureByteCap"/>).</summary>
+    internal int CaptureByteCap { get; set; } = ShellScript.CaptureByteCap;
+
+    /// <summary>The capture files kept under the capture directory (<see cref="DefaultMaxCaptureFiles"/>).</summary>
+    internal int MaxCaptureFiles { get; set; } = DefaultMaxCaptureFiles;
+
+    /// <summary>
+    /// What the tool built from a POSIX session's raw copies: the characters of each stream as the capture
+    /// file holds them (paths virtualized), plus the bytes past the cap, and whether the file holds them whole.
+    /// </summary>
+    private readonly record struct CaptureCopy(long StdoutChars, long StderrChars, bool Whole);
+
     /// <summary>
     /// A fresh capture file under <c>/output/shell</c> (or the first writable mount, as a job log is placed);
     /// null when no place takes it. The session sees it at its virtual path when confined.
@@ -939,7 +994,9 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
     {
         if (WritableDirectory("shell") is not { } directory)
             return null;
-        var virtualPath = $"{directory}/{Guid.NewGuid().ToString("N")[..12]}.log";
+        // A name that sorts by its creation, so the retention keeps the most recent (see PruneCapturesAsync).
+        var virtualPath = string.Create(
+            System.Globalization.CultureInfo.InvariantCulture, $"{directory}/{DateTime.UtcNow:yyyyMMddHHmmssfffffff}-{Guid.NewGuid().ToString("N")[..8]}{CaptureExtension}");
         var resolution = _fileSystem.ResolveAndValidate(virtualPath, FileAccessRights.Write);
         if (!resolution.IsAllowed || resolution.ResolvedPath is not { } physicalPath)
             return null;
@@ -951,18 +1008,20 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
     {
         public bool Truncated => Omitted > 0;
 
-        public string Text(bool whole) => !Truncated
+        /// <summary>The stream as the result shows it, <paramref name="note"/> (what output_path holds) in its marker.</summary>
+        public string Text(string note) => !Truncated
             ? Head + Tail
-            : $"{Head}\n\n[... truncated, {Omitted} chars omitted{(whole ? "; output_path holds the whole output" : "")}. Use more specific parameters to narrow results.]\n\n{Tail}";
+            : $"{Head}\n\n[... truncated, {Omitted} chars omitted{note}. Use more specific parameters to narrow results.]\n\n{Tail}";
     }
 
     /// <summary>
     /// Bounds one stream the session returned (its head, its tail when the session cut it, the characters
     /// between them) to the output limit, keeping its head and its tail.
     /// </summary>
-    private BoundedStream Bound(string head, string tail, long omitted)
+    private BoundedStream Bound(string head, string tail, long omitted, long? trueTotal = null)
     {
-        var total = head.Length + tail.Length + omitted;
+        // A POSIX session counts what it dropped in bytes; the capture copy, when there is one, gives characters.
+        var total = trueTotal ?? head.Length + tail.Length + omitted;
         if (total <= _outputLimit)
             return new BoundedStream(head + tail, "", 0, total);
 
@@ -984,18 +1043,22 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
         else
             LogCommandCompleted(Logger, request.Command, result.ExitCode);
 
+        var copy = capture is null ? null : await BuildCaptureFileAsync(capture, outboundReplacements, cancellationToken).ConfigureAwait(false);
         var stdout = Bound(
-            RewriteOutboundPaths(result.Stdout, outboundReplacements), RewriteOutboundPaths(result.StdoutTail, outboundReplacements), result.StdoutOmitted);
+            RewriteOutboundPaths(result.Stdout, outboundReplacements), RewriteOutboundPaths(result.StdoutTail, outboundReplacements), result.StdoutOmitted,
+            copy?.StdoutChars);
         var stderr = Bound(
-            RewriteOutboundPaths(result.Stderr, outboundReplacements), RewriteOutboundPaths(result.StderrTail, outboundReplacements), result.StderrOmitted);
-        var outputPath = capture is null ? "" : await KeepWholeOutputAsync(capture, result, outboundReplacements, stdout, stderr, cancellationToken).ConfigureAwait(false);
-        var whole = outputPath.Length > 0;
+            RewriteOutboundPaths(result.Stderr, outboundReplacements), RewriteOutboundPaths(result.StderrTail, outboundReplacements), result.StderrOmitted,
+            copy?.StderrChars);
+        var (outputPath, note) = capture is null
+            ? ("", "")
+            : await KeepWholeOutputAsync(capture, copy, result, outboundReplacements, stdout, stderr, cancellationToken).ConfigureAwait(false);
 
         return new ShellCommandResponse
         {
             ExitCode = result.TimedOut ? -1 : result.ExitCode,
-            Stdout = stdout.Text(whole),
-            Stderr = stderr.Text(whole) + (result.TimedOut ? "\n[Command timed out]" + (result.SessionReset ? SessionResetNote : "") : ""),
+            Stdout = stdout.Text(note),
+            Stderr = stderr.Text(note) + (result.TimedOut ? "\n[Command timed out]" + (result.SessionReset ? SessionResetNote : "") : ""),
             Completed = !result.TimedOut,
             StdoutTruncated = stdout.Truncated,
             StderrTruncated = stderr.Truncated,
@@ -1007,39 +1070,199 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
     }
 
     /// <summary>
-    /// The virtual path of the whole output when a stream was cut, empty otherwise. A POSIX session copies it
-    /// there itself; when it did not (a Windows session, or a session that could not write), the tool writes
-    /// what the session returned. A copy left by an output that passed the limit in bytes only is removed.
+    /// The virtual path of the output when a stream was cut, empty otherwise, and what the result says that file
+    /// holds. A POSIX session left raw copies the tool built the file from (<see cref="BuildCaptureFileAsync"/>);
+    /// when it did not (a Windows session, or a session that could not write), the tool writes what the session
+    /// returned. A file left by an output that passed the limit in bytes only is removed; a kept one makes the
+    /// oldest go past <see cref="MaxCaptureFiles"/>.
     /// </summary>
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "The whole output is a convenience: a file it cannot keep leaves output_path empty, never fails the command's result.")]
-    private async Task<string> KeepWholeOutputAsync(
-        CaptureFile capture, ShellRunResult result, IReadOnlyList<(string PhysicalBase, string VirtualPrefix)> outboundReplacements,
+    private async Task<(string Path, string Note)> KeepWholeOutputAsync(
+        CaptureFile capture, CaptureCopy? copy, ShellRunResult result, IReadOnlyList<(string PhysicalBase, string VirtualPrefix)> outboundReplacements,
         BoundedStream stdout, BoundedStream stderr, CancellationToken cancellationToken)
     {
         try
         {
             if (!stdout.Truncated && !stderr.Truncated)
             {
-                // The session copies on a byte count above the limit, which up to three bytes a character can reach.
-                if ((stdout.Total > _outputLimit / 3 || stderr.Total > _outputLimit / 3)
-                    && await _fileSystem.ExistsAsync(capture.VirtualPath, cancellationToken).ConfigureAwait(false))
+                if (copy is not null)
                     await _fileSystem.DeleteAsync(capture.VirtualPath, recursive: false, cancellationToken).ConfigureAwait(false);
-                return "";
+                return ("", "");
             }
 
-            if (!await _fileSystem.ExistsAsync(capture.VirtualPath, cancellationToken).ConfigureAwait(false))
+            string note;
+            if (copy is { } built)
+            {
+                note = built.Whole
+                    ? "; output_path holds the whole output"
+                    : $"; output_path holds the first {CaptureByteCap} bytes of each stream";
+            }
+            else
             {
                 var stderrText = WholeText(result.Stderr, result.StderrTail, result.StderrOmitted);
                 var text = WholeText(result.Stdout, result.StdoutTail, result.StdoutOmitted)
                     + (stderrText.Length > 0 ? ShellScript.CaptureStderrHeader + stderrText : "");
                 await _fileSystem.WriteAllTextAsync(capture.VirtualPath, RewriteOutboundPaths(text, outboundReplacements), cancellationToken).ConfigureAwait(false);
+                note = result.StdoutOmitted > 0 || result.StderrOmitted > 0
+                    ? "; output_path holds its first and last parts only, the middle was not captured"
+                    : "; output_path holds the whole output";
             }
 
-            return capture.VirtualPath;
+            await PruneCapturesAsync(capture, cancellationToken).ConfigureAwait(false);
+            return (capture.VirtualPath, note);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            return "";
+            await DiscardCaptureAsync(capture).ConfigureAwait(false);
+            return ("", "");
+        }
+    }
+
+    /// <summary>
+    /// Builds the capture file from the raw copies a POSIX session left next to it (<see cref="ShellScript"/>
+    /// <c>AppendCapture</c>), through the file system: each stream is streamed, its physical paths virtualized as
+    /// the result's are (ADR-008), and its characters counted. The raw copies are removed. Null when the session
+    /// left none (no stream passed the limit, a Windows session, a session that could not write).
+    /// </summary>
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "The whole output is a convenience: a copy it cannot read leaves output_path empty, never fails the command's result.")]
+    private async Task<CaptureCopy?> BuildCaptureFileAsync(
+        CaptureFile capture, IReadOnlyList<(string PhysicalBase, string VirtualPrefix)> outboundReplacements, CancellationToken cancellationToken)
+    {
+        var sizesPath = capture.VirtualPath + ShellScript.CaptureSizesSuffix;
+        try
+        {
+            if (await _fileSystem.TryReadAllTextAsync(sizesPath, cancellationToken).ConfigureAwait(false) is not { } sizesText)
+                return null;
+            var sizes = sizesText.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            if (sizes.Length != 2
+                || !long.TryParse(sizes[0], System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out var stdoutBytes)
+                || !long.TryParse(sizes[1], System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out var stderrBytes))
+                return null;
+
+            long stdoutChars, stderrChars;
+            var output = await _fileSystem.OpenWriteStreamAsync(capture.VirtualPath, cancellationToken).ConfigureAwait(false);
+            await using (output.ConfigureAwait(false))
+            {
+                var writer = new StreamWriter(output, s_captureEncoding);
+                await using (writer.ConfigureAwait(false))
+                {
+                    stdoutChars = await CopyRewrittenAsync(capture.VirtualPath + ShellScript.CaptureStdoutSuffix, writer, outboundReplacements, cancellationToken).ConfigureAwait(false);
+                    stderrChars = 0;
+                    if (stderrBytes > 0)
+                    {
+                        await writer.WriteAsync(ShellScript.CaptureStderrHeader.AsMemory(), cancellationToken).ConfigureAwait(false);
+                        stderrChars = await CopyRewrittenAsync(capture.VirtualPath + ShellScript.CaptureStderrSuffix, writer, outboundReplacements, cancellationToken).ConfigureAwait(false);
+                    }
+                }
+            }
+
+            // Past the cap the file holds nothing more: the bytes left out are counted as they are.
+            var stdoutBeyond = Math.Max(0, stdoutBytes - CaptureByteCap);
+            var stderrBeyond = Math.Max(0, stderrBytes - CaptureByteCap);
+            return new CaptureCopy(stdoutChars + stdoutBeyond, stderrChars + stderrBeyond, stdoutBeyond == 0 && stderrBeyond == 0);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            await DiscardCaptureAsync(capture).ConfigureAwait(false);
+            return null;
+        }
+        finally
+        {
+            await DeleteQuietlyAsync(capture.VirtualPath + ShellScript.CaptureStdoutSuffix).ConfigureAwait(false);
+            await DeleteQuietlyAsync(capture.VirtualPath + ShellScript.CaptureStderrSuffix).ConfigureAwait(false);
+            await DeleteQuietlyAsync(sizesPath).ConfigureAwait(false);
+        }
+    }
+
+    private static readonly System.Text.UTF8Encoding s_captureEncoding = new(encoderShouldEmitUTF8Identifier: false);
+
+    /// <summary>The characters a rewrite pass holds back at most while waiting for the end of a line.</summary>
+    private const int CaptureLineCarry = 1 << 20;
+
+    /// <summary>
+    /// Streams the raw copy at <paramref name="rawPath"/> into <paramref name="writer"/>, a line at a time so no
+    /// path is split between two rewrites, and returns the characters written. A missing copy writes nothing.
+    /// </summary>
+    private async Task<long> CopyRewrittenAsync(
+        string rawPath, StreamWriter writer, IReadOnlyList<(string PhysicalBase, string VirtualPrefix)> outboundReplacements, CancellationToken cancellationToken)
+    {
+        if (!await _fileSystem.ExistsAsync(rawPath, cancellationToken).ConfigureAwait(false))
+            return 0;
+        var input = await _fileSystem.OpenReadStreamAsync(rawPath, cancellationToken).ConfigureAwait(false);
+        await using (input.ConfigureAwait(false))
+        {
+            using var reader = new StreamReader(input, s_captureEncoding, detectEncodingFromByteOrderMarks: false);
+            var buffer = new char[64 * 1024];
+            var pending = new System.Text.StringBuilder();
+            long written = 0;
+            int read;
+            while ((read = await reader.ReadAsync(buffer.AsMemory(), cancellationToken).ConfigureAwait(false)) > 0)
+            {
+                pending.Append(buffer, 0, read);
+                var text = pending.ToString();
+                var cut = text.LastIndexOf('\n');
+                if (cut < 0 && text.Length < CaptureLineCarry)
+                    continue;
+                var ready = cut < 0 ? text : text[..(cut + 1)];
+                pending.Clear().Append(text, ready.Length, text.Length - ready.Length);
+                written += await WriteRewrittenAsync(writer, ready, outboundReplacements, cancellationToken).ConfigureAwait(false);
+            }
+
+            if (pending.Length > 0)
+                written += await WriteRewrittenAsync(writer, pending.ToString(), outboundReplacements, cancellationToken).ConfigureAwait(false);
+            return written;
+        }
+    }
+
+    private static async Task<long> WriteRewrittenAsync(
+        StreamWriter writer, string text, IReadOnlyList<(string PhysicalBase, string VirtualPrefix)> outboundReplacements, CancellationToken cancellationToken)
+    {
+        var rewritten = RewriteOutboundPaths(text, outboundReplacements);
+        await writer.WriteAsync(rewritten.AsMemory(), cancellationToken).ConfigureAwait(false);
+        return rewritten.Length;
+    }
+
+    /// <summary>
+    /// Removes the oldest capture files of the directory <paramref name="kept"/> lies in, past
+    /// <see cref="MaxCaptureFiles"/>: their names sort by creation (<see cref="CaptureTarget"/>).
+    /// </summary>
+    private async Task PruneCapturesAsync(CaptureFile kept, CancellationToken cancellationToken)
+    {
+        var slash = kept.VirtualPath.LastIndexOf('/');
+        var directory = slash > 0 ? kept.VirtualPath[..slash] : "/";
+        var captures = new List<string>();
+        await foreach (var entry in _fileSystem.EnumerateFilesAsync(directory, null, cancellationToken).ConfigureAwait(false))
+        {
+            if (entry.Kind == VirtualEntryKind.File && entry.VirtualPath.EndsWith(CaptureExtension, StringComparison.Ordinal))
+                captures.Add(entry.VirtualPath);
+        }
+
+        captures.Sort(StringComparer.Ordinal);
+        foreach (var stale in captures.Take(Math.Max(0, captures.Count - Math.Max(1, MaxCaptureFiles))))
+            await DeleteQuietlyAsync(stale).ConfigureAwait(false);
+    }
+
+    /// <summary>Removes the capture file and the raw copies next to it, best effort.</summary>
+    private async Task DiscardCaptureAsync(CaptureFile capture)
+    {
+        foreach (var suffix in s_captureSuffixes)
+            await DeleteQuietlyAsync(capture.VirtualPath + suffix).ConfigureAwait(false);
+    }
+
+    private static readonly string[] s_captureSuffixes =
+        ["", ShellScript.CaptureStdoutSuffix, ShellScript.CaptureStderrSuffix, ShellScript.CaptureSizesSuffix];
+
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "Cleanup of a convenience file: what cannot be removed stays, never fails the call.")]
+    private async Task DeleteQuietlyAsync(string virtualPath)
+    {
+        try
+        {
+            if (await _fileSystem.ExistsAsync(virtualPath, CancellationToken.None).ConfigureAwait(false))
+                await _fileSystem.DeleteAsync(virtualPath, recursive: false, CancellationToken.None).ConfigureAwait(false);
+        }
+        catch (Exception)
+        {
+            // Best effort.
         }
     }
 
@@ -1345,7 +1568,24 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
     /// </summary>
     public static string? FindForbiddenOperator(string command)
     {
-        return s_forbiddenOperators.FirstOrDefault(op => command.Contains(op, StringComparison.Ordinal));
+        ArgumentNullException.ThrowIfNull(command);
+        // Sought as written and with the quotes removed, the two readings a check could be made on.
+        var unquoted = string.Join(' ', TokenizeCommand(command));
+        return s_forbiddenOperators.FirstOrDefault(op =>
+            command.Contains(op, StringComparison.Ordinal) || unquoted.Contains(op, StringComparison.Ordinal));
+    }
+
+    /// <summary>
+    /// Null when the first token of <paramref name="command"/>, as <see cref="ParseCommand"/> reads it, is
+    /// one plain word: a quoted token holding whitespace (<c>"/x/ls /y/sh" -c id</c>) names a program
+    /// whose name no allowlist check can vouch for, so it is refused rather than reduced to a base name.
+    /// </summary>
+    private static string? ExecutableTokenError(string command)
+    {
+        var tokens = TokenizeCommand(command);
+        return tokens.Count > 0 && tokens[0].Any(char.IsWhiteSpace)
+            ? "Invalid executable name: a quoted executable cannot hold whitespace"
+            : null;
     }
 
     // ── VFS path rewriting ─────────────────────────────────────────────────
@@ -1838,6 +2078,19 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
             return $"git option '{forbiddenOption}' is not allowed; it would write, execute, or leave the working directory";
 
         return null;
+    }
+
+    /// <summary>
+    /// <paramref name="arguments"/> of a validated read-only <c>git</c> call with the tool's own safe
+    /// configuration in front and, for a subcommand that diffs, its safe diff options right after it.
+    /// </summary>
+    private static string[] WithGitSafeOptions(string[] arguments)
+    {
+        if (arguments.Length == 0)
+            return arguments;
+        var subcommand = arguments[0];
+        var diffing = subcommand is "diff" or "show" or "log";
+        return [.. s_gitSafeConfiguration, subcommand, .. diffing ? s_gitSafeDiffOptions : [], .. arguments[1..]];
     }
 
     /// <summary>
