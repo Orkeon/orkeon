@@ -2455,7 +2455,7 @@ profil de sandbox plus strict que celui des scripts.
 | `Enabled` | booléen | `true` | Interrupteur principal. False ⇒ la découverte est sautée, le registre est vide. |
 | `EsbuildTranspile` | booléen | `true` | À false, `*.cmd.js` seulement (pas de transpilation TS). Pour le test et le débogage ; la production le laisse à true. |
 | `FailFastOnInvalidScript` | booléen | `false` | À true, le premier script invalide interrompt le chargeur (à utiliser en CI). |
-| `FallbackCommandName` | chaîne | `"assistant"` | Nom de la commande scriptée qui traite le texte libre (une ligne du REPL sans préfixe `/`). Dans la surface de l'agent de code, c'est l'assistant interactif relié à la crew `main-loop`. Vide ou inconnu ⇒ le texte libre donne le message de commande inconnue au lieu d'être routé. |
+| `FallbackCommandName` | chaîne | `"assistant"` | Nom de la commande scriptée qui traite le texte libre (une ligne du REPL sans préfixe `/`, ni une ligne `!` tapée dans un terminal, qui s'exécute dans le shell de l'opérateur). Dans la surface de l'agent de code, c'est l'assistant interactif relié à la crew `main-loop`. Vide ou inconnu ⇒ le texte libre donne le message de commande inconnue au lieu d'être routé. |
 | `Limits:ExecutionTimeout` | durée | `"00:05:00"` | Délai strict d'une invocation de commande. Défaut : 5 minutes. |
 | `Limits:MemoryLimitBytes` | entier | `67108864` | Plafond de mémoire en octets. Défaut : 64 Mo (profil CLI, spec §8.1). |
 | `Limits:RecursionLimit` | entier | `100` | Plafond de profondeur de récursion. Défaut : 100 (hérité de la spec §8.1 — le même que le plafond global). |
@@ -2512,7 +2512,7 @@ Une ligne tapée à l'invite du REPL qui commence par `!` lance une commande she
 | Clé | Type | Défaut | Sens |
 |---|---|---|---|
 | `Enabled` | booléen | `true` | Si une ligne tapée à l'invite qui commence par ! lance le reste dans le shell de l'opérateur, sa sortie ajoutée à la session ; désactivé, la ligne est refusée par une phrase. |
-| `TimeoutSeconds` | entier | `120` | Les secondes au bout desquelles une commande tapée après ! est arrêtée. |
+| `TimeoutSeconds` | entier | `120` | Les secondes au bout desquelles une commande tapée après ! est arrêtée, de 1 à 86400 (un jour) ; une valeur hors de cet intervalle refuse le démarrage. |
 <!-- /settings -->
 
 ### `Orkeon:Cli:Session`

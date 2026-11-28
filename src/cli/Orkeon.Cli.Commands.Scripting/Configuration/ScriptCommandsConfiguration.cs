@@ -39,7 +39,7 @@ public sealed record ScriptCommandsConfiguration
     public bool ContinueOnConflict { get; set; } = true;
 
     /// <summary>
-    /// Name of the scripted command that handles free text (a REPL line not prefixed with <c>/</c>).
+    /// Name of the scripted command that handles free text (a REPL line not prefixed with <c>/</c>, nor a <c>!</c> line typed at a terminal, which runs in the operator's own shell).
     /// In the coding-agent surface this is the interactive assistant wired to the <c>main-loop</c> crew.
     /// Empty/unknown ⇒ free text yields the unknown-command message instead of being routed.
     /// </summary>

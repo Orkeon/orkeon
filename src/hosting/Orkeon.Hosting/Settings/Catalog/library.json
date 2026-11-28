@@ -4176,7 +4176,7 @@
       "section": "Orkeon:Cli:Repl:ShellPrefix",
       "type": "integer",
       "default": 120,
-      "description": "The seconds after which a command typed after ! is stopped."
+      "description": "The seconds after which a command typed after ! is stopped, from 1 to 86400 (one day); a value outside refuses the start."
     },
     {
       "path": "Orkeon:Cli:ScriptCommands:ContinueOnConflict",
@@ -4218,7 +4218,7 @@
       "section": "Orkeon:Cli:ScriptCommands",
       "type": "string",
       "default": "assistant",
-      "description": "Name of the scripted command that handles free text (a REPL line not prefixed with `/`). In the coding-agent surface this is the interactive assistant wired to the `main-loop` crew. Empty/unknown ⇒ free text yields the unknown-command message instead of being routed."
+      "description": "Name of the scripted command that handles free text (a REPL line not prefixed with `/`, nor a `!` line typed at a terminal, which runs in the operator's own shell). In the coding-agent surface this is the interactive assistant wired to the `main-loop` crew. Empty/unknown ⇒ free text yields the unknown-command message instead of being routed."
     },
     {
       "path": "Orkeon:Cli:ScriptCommands:Limits:ExecutionTimeout",

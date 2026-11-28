@@ -12,7 +12,10 @@ namespace Orkeon.Cli.Commands.Scripting.Shell;
 /// command that opens <c>/dev/tty</c> (a <c>sudo</c> or <c>ssh</c> password prompt) fails instead of reading the
 /// keyboard; without <c>setsid</c> (macOS) the shell starts directly and such a prompt can still read it.
 /// The run ends when the shell ends: a background child that keeps the output open (<c>sleep 300 &amp;</c>) is left
-/// running, and what it prints after a short grace is not read.
+/// running, and what it prints after a short grace is not read. A timeout or a cancellation kills the shell's process
+/// tree and, under <c>setsid</c>, its whole process group, so a daemonised or double-forked child that left the tree is
+/// killed too; one that starts a session of its own (<c>setsid</c>, a real daemon) escapes both, and without
+/// <c>setsid</c> only the tree is killed.
 /// </summary>
 internal sealed class ProcessOperatorShellRunner : IOperatorShellRunner
 {
@@ -39,9 +42,10 @@ internal sealed class ProcessOperatorShellRunner : IOperatorShellRunner
                 onLine(e.Data);
         }
 
+        var setsid = SetsidPath();
         using var process = new Process
         {
-            StartInfo = StartInfo(command, OperatingSystem.IsWindows(), SetsidPath()),
+            StartInfo = StartInfo(command, OperatingSystem.IsWindows(), setsid),
             EnableRaisingEvents = true,
         };
         var exited = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -64,7 +68,7 @@ internal sealed class ProcessOperatorShellRunner : IOperatorShellRunner
         }
         catch (OperationCanceledException)
         {
-            Stop(process);
+            Stop(process, leadsItsGroup: setsid is not null);
             cancellationToken.ThrowIfCancellationRequested();
             return new OperatorShellRun(null, TimedOut: true);
         }
@@ -105,8 +109,12 @@ internal sealed class ProcessOperatorShellRunner : IOperatorShellRunner
         }
     }
 
-    private static void Stop(Process process)
+    private static void Stop(Process process, bool leadsItsGroup)
     {
+        // Under setsid the shell leads its own session and group: the group holds a child that left the tree.
+        if (leadsItsGroup)
+            KillGroup(process.Id);
+
         try
         {
             process.Kill(entireProcessTree: true);
@@ -117,6 +125,31 @@ internal sealed class ProcessOperatorShellRunner : IOperatorShellRunner
         }
 
         process.WaitForExit(s_drainAfterKill);
+    }
+
+    /// <summary>Sends SIGKILL to the process group <paramref name="groupId"/> (<c>kill -KILL -- -pgid</c>).</summary>
+    private static void KillGroup(int groupId)
+    {
+        try
+        {
+            // OUT-OF-SCOPE: the system kill binary on PATH, signalling the group this runner started.
+            var info = new ProcessStartInfo("kill")
+            {
+                UseShellExecute = false,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                CreateNoWindow = true,
+            };
+            info.ArgumentList.Add("-KILL");
+            info.ArgumentList.Add("--");
+            info.ArgumentList.Add("-" + groupId.ToString(System.Globalization.CultureInfo.InvariantCulture));
+            using var kill = Process.Start(info);
+            kill?.WaitForExit(s_drainAfterKill);
+        }
+        catch (System.ComponentModel.Win32Exception)
+        {
+            // No kill on PATH: the tree is still killed below.
+        }
     }
 
     /// <summary>
