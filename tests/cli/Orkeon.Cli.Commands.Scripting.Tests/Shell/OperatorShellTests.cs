@@ -76,7 +76,7 @@ public sealed class OperatorShellTests
     [Fact]
     public async Task ASecretInTheOutput_IsMaskedInTheSession()
     {
-        const string token = "ghp_abcdefghijklmnopqrstuvwxyz0123456789";
+        var token = "ghp_" + new string('a', 36); // built at run time: a fake, never a credential
         _runner.Lines.Add($"GITHUB_TOKEN={token}");
         _runner.Lines.Add("api_key: s3cr3tValue1234567");
 

@@ -1,4 +1,5 @@
 using Jint;
+using Orkeon.Tests.Shared.Timing;
 using Jint.Runtime;
 using Orkeon.Cli.Commands.Scripting.Dispatch;
 
@@ -17,7 +18,7 @@ public sealed class LaunchStateTests
     [Trait("BR", "#493")]
     public void ShouldLetTheStatementCapEscape_WhenAToJsonRunsPastIt()
     {
-        using var engine = new Engine(o => o.MaxStatements(10_000));
+        using var engine = new Engine(o => o.MaxStatements(10_000).Constraints.PromiseTimeout = HangGuards.EnginePromise);
         var options = engine.Evaluate(LoopingState);
 
         Assert.Throws<StatementsCountOverflowException>(() => LaunchState.Read(options, "commands.post"));
@@ -28,7 +29,7 @@ public sealed class LaunchStateTests
     public void ShouldLetTheCancellationEscape_WhenTheEngineIsCancelledWhileSerialising()
     {
         using var cts = new CancellationTokenSource();
-        using var engine = new Engine(o => o.CancellationToken(cts.Token));
+        using var engine = new Engine(o => o.CancellationToken(cts.Token).Constraints.PromiseTimeout = HangGuards.EnginePromise);
         var options = engine.Evaluate(LoopingState);
         cts.Cancel();
 
@@ -39,7 +40,7 @@ public sealed class LaunchStateTests
     [Trait("BR", "#493")]
     public void ShouldStillRefuse_WhenAToJsonThrowsAScriptError()
     {
-        using var engine = new Engine();
+        using var engine = new Engine(o => o.Constraints.PromiseTimeout = HangGuards.EnginePromise);
         var options = engine.Evaluate("({ state: { toJSON() { throw new Error('no'); } } })");
 
         var refused = Assert.Throws<JavaScriptException>(() => LaunchState.Read(options, "commands.post"));

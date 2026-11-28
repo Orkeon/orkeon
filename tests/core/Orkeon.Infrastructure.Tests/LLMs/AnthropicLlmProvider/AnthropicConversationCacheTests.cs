@@ -65,7 +65,10 @@ public class AnthropicConversationCacheTests
         var ct = TestContext.Current.CancellationToken;
         if (stream)
         {
-            await foreach (var _ in provider.ChatStreamingAsync(messages, cancellationToken: ct)) { }
+            await foreach (var _ in provider.ChatStreamingAsync(messages, cancellationToken: ct))
+            {
+                // drained: only the request payload is under test
+            }
         }
         else
         {
