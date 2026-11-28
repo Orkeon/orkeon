@@ -319,7 +319,7 @@ same for a procedural crew's `budget(...)`: no wall clock, tool-call, token or `
 `budget(...)` keeps the crew's own defaults for a key left out (50 tool calls, depth 4, 10 spawns, no token cap
 and no wall time). `tokens` is a running sum of the prompt and completion of every
 call, the context counted again on each. `contextTokens` counts the context once: each call's
-completion plus the uncached part of its prompt when the provider reports cache hits, else what the
+completion plus the lesser of the part of its prompt the provider's cache did not serve and what the
 prompt grew by since the same conversation's previous call (each `ctx.llm.act` its own), so a turn of n calls on a context of c tokens spends about c plus
 its completions, not n × c; set alone it leaves `tokens` uncapped, and a declarative autonomous crew
 refuses it. Once either is reached, `ctx.llm.act` makes one last call that may

@@ -342,8 +342,8 @@ de `contextTokens`, profondeur 2 et 3 spawns, si bien que `budget({ spawnedAgent
 plafonne que les spawns. Le `budget(...)` d'une crew autonome déclarative garde, pour une clé omise, les
 défauts de la crew (50 appels d'outils, profondeur 4, 10 spawns, ni plafond de tokens ni horloge). `tokens` est une somme courante du prompt et de la complétion de
 chaque appel, le contexte compté de nouveau à chacun. `contextTokens` compte le contexte une fois : la
-complétion de chaque appel plus la part de son prompt que le cache n'a pas servie quand le fournisseur
-rapporte des hits de cache, sinon ce dont le prompt a crû depuis l'appel précédent de la même conversation (chaque `ctx.llm.act` la sienne), si bien qu'un tour de
+complétion de chaque appel plus le moindre de la part de son prompt que le cache du fournisseur n'a pas
+servie et de ce dont le prompt a crû depuis l'appel précédent de la même conversation (chaque `ctx.llm.act` la sienne), si bien qu'un tour de
 n appels sur un contexte de c tokens dépense environ c plus ses complétions, pas n × c ; seul, il laisse
 `tokens` sans plafond, et une crew autonome déclarative le refuse. Une fois l'un ou l'autre atteint, `ctx.llm.act` fait un dernier
 appel qui ne peut appeler aucun outil et se résout avec `budgetExhausted: true` ([le budget de tokens d'act](../architecture/scripting.md#le-budget-de-tokens-dact)).

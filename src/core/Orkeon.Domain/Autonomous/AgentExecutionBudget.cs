@@ -31,9 +31,10 @@ public sealed class AgentExecutionBudget
 
     /// <summary>
     /// Maximum tokens the agent may consume with its context counted once (#224): for each call recorded
-    /// through <see cref="RecordTokens(int, int)"/>, its completion plus, when the provider reports cache
-    /// hits, the part of its prompt the cache did not serve, else what its prompt grew by since the same
-    /// conversation's previous call (the first call of a conversation counts its whole prompt). A turn of n calls on a context of c tokens spends about c plus
+    /// through <see cref="RecordTokens(int, int)"/>, its completion plus the lesser of the part of its
+    /// prompt the cache did not serve and what its prompt grew by since the same conversation's previous
+    /// call (#495: a cache hit smaller than the previous prompt does not charge the conversation again; the
+    /// first call of a conversation counts its prompt less its hit). A turn of n calls on a context of c tokens spends about c plus
     /// its completions, not n times c. A call recorded without that breakdown counts whole, as in
     /// <see cref="MaxTokensConsumed"/>. Exhaustion is reported on <see cref="BudgetDimension.Tokens"/>, as
     /// the running sum's. Default: no limit.
@@ -279,7 +280,7 @@ public sealed class AgentExecutionBudget
     /// <summary>The refusal of a spent context budget (<see cref="MaxContextTokens"/>), naming what it counted.</summary>
     private BudgetExhaustedException ContextTokensExhausted(int counted, int calls) => new(
         BudgetDimension.Tokens,
-        $"Token budget exhausted: {counted} context tokens (the growth or the uncached part of each prompt, plus every completion) over {calls} {(calls == 1 ? "call" : "calls")} (limit {MaxContextTokens} contextTokens)");
+        $"Token budget exhausted: {counted} context tokens (the lesser of each prompt's growth and its uncached part, plus every completion) over {calls} {(calls == 1 ? "call" : "calls")} (limit {MaxContextTokens} contextTokens)");
 
     /// <summary>
     /// Records a sub-agent spawn and throws if the spawn limit is exceeded. A refused spawn is
