@@ -307,7 +307,7 @@ every other model takes `Orkeon:Cli:Session:ContextWindowTokens`.
 | `ApiKeyEnvVar` | string | — | The name of the environment variable that holds the API key, read when `ApiKey` resolves none: the process environment, then the Windows user scope. |
 | `AvailableModels` | list of string | `[]` | The models a scripted `/model` may offer: a list, or one comma-separated value. |
 | `BaseUrl` | string | — | The address of the provider's endpoint, `http://` or `https://`. Left out, the address of the provider the model's name or the key points to. |
-| `Cache:Conversation` | boolean | — | Marks the conversation cacheable, so each call of a tool loop reads what the previous one wrote; left out, it follows SystemPrompt and Tools. |
+| `Cache:Conversation` | boolean | — | Marks the conversation cacheable, so each call of a tool loop reads what the previous one wrote; left out, it follows SystemPrompt and Tools once the conversation holds an assistant turn. |
 | `Cache:SystemPrompt` | boolean | — | Marks the system prompt cacheable for every agent that sets no cache of its own, on a provider whose prompt cache is explicit (Anthropic). Left out, it is not. |
 | `Cache:Tools` | boolean | — | Marks the tool definitions cacheable for every agent that sets no cache of its own, on a provider whose prompt cache is explicit (Anthropic). Left out, they are not. |
 | `Cache:Ttl` | string | — | The cache lifetime, `5m` or `1h`; it needs `SystemPrompt`, `Tools` or `Conversation`, and any other value refuses the load. Left out, the vendor default (5 minutes on Anthropic). |
@@ -326,7 +326,7 @@ every other model takes `Orkeon:Cli:Session:ContextWindowTokens`.
 | `Profiles:<name>:ApiKey` | string, secret | — | The API key, in clear text. Prefer `ApiKeyEnvVar`: a key written here is in the settings file. |
 | `Profiles:<name>:ApiKeyEnvVar` | string | — | The name of the environment variable that holds the API key, read when `ApiKey` resolves none: the process environment, then the Windows user scope. |
 | `Profiles:<name>:BaseUrl` | string | — | The address of the provider's endpoint, `http://` or `https://`. Left out, the address of the provider the model's name or the key points to. |
-| `Profiles:<name>:Cache:Conversation` | boolean | — | Marks the conversation cacheable, so each call of a tool loop reads what the previous one wrote; left out, it follows SystemPrompt and Tools. |
+| `Profiles:<name>:Cache:Conversation` | boolean | — | Marks the conversation cacheable, so each call of a tool loop reads what the previous one wrote; left out, it follows SystemPrompt and Tools once the conversation holds an assistant turn. |
 | `Profiles:<name>:Cache:SystemPrompt` | boolean | — | Marks the system prompt cacheable for every agent that sets no cache of its own, on a provider whose prompt cache is explicit (Anthropic). Left out, it is not. |
 | `Profiles:<name>:Cache:Tools` | boolean | — | Marks the tool definitions cacheable for every agent that sets no cache of its own, on a provider whose prompt cache is explicit (Anthropic). Left out, they are not. |
 | `Profiles:<name>:Cache:Ttl` | string | — | The cache lifetime, `5m` or `1h`; it needs `SystemPrompt`, `Tools` or `Conversation`, and any other value refuses the load. Left out, the vendor default (5 minutes on Anthropic). |

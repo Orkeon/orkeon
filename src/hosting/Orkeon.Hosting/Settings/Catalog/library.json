@@ -638,7 +638,7 @@
       "path": "Llm:Cache:Conversation",
       "section": "Llm",
       "type": "boolean",
-      "description": "Marks the conversation cacheable, so each call of a tool loop reads what the previous one wrote; left out, it follows SystemPrompt and Tools."
+      "description": "Marks the conversation cacheable, so each call of a tool loop reads what the previous one wrote; left out, it follows SystemPrompt and Tools once the conversation holds an assistant turn."
     },
     {
       "path": "Llm:Cache:SystemPrompt",
@@ -758,7 +758,7 @@
       "path": "Llm:Profiles:<name>:Cache:Conversation",
       "section": "Llm",
       "type": "boolean",
-      "description": "Marks the conversation cacheable, so each call of a tool loop reads what the previous one wrote; left out, it follows SystemPrompt and Tools."
+      "description": "Marks the conversation cacheable, so each call of a tool loop reads what the previous one wrote; left out, it follows SystemPrompt and Tools once the conversation holds an assistant turn."
     },
     {
       "path": "Llm:Profiles:<name>:Cache:SystemPrompt",

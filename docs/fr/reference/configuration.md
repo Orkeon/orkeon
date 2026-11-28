@@ -329,7 +329,7 @@ tout autre modèle prend `Orkeon:Cli:Session:ContextWindowTokens`.
 | `ApiKeyEnvVar` | chaîne | — | Le nom de la variable d'environnement qui contient la clé d'API, lue quand `ApiKey` n'en résout aucune : l'environnement du processus, puis la portée utilisateur de Windows. |
 | `AvailableModels` | liste de chaînes | `[]` | Les modèles qu'un `/model` scripté peut proposer : une liste, ou une seule valeur séparée par des virgules. |
 | `BaseUrl` | chaîne | — | L'adresse du point d'accès du fournisseur, `http://` ou `https://`. Omise, l'adresse du fournisseur que désigne le nom du modèle ou la clé. |
-| `Cache:Conversation` | booléen | — | Met la conversation en cache, pour que chaque appel d'une boucle d'outils lise ce que le précédent a écrit ; omis, il suit SystemPrompt et Tools. |
+| `Cache:Conversation` | booléen | — | Met la conversation en cache, pour que chaque appel d'une boucle d'outils lise ce que le précédent a écrit ; omis, il suit SystemPrompt et Tools dès que la conversation contient un tour de l'assistant. |
 | `Cache:SystemPrompt` | booléen | — | Marque le prompt système comme cachable pour chaque agent qui ne fixe aucun cache, sur un fournisseur dont le cache de prompt est explicite (Anthropic). Omis, il ne l'est pas. |
 | `Cache:Tools` | booléen | — | Marque les définitions d'outils comme cachables pour chaque agent qui ne fixe aucun cache, sur un fournisseur dont le cache de prompt est explicite (Anthropic). Omis, elles ne le sont pas. |
 | `Cache:Ttl` | chaîne | — | La durée de vie du cache, `5m` ou `1h` ; elle demande `SystemPrompt`, `Tools` ou `Conversation`, et toute autre valeur refuse le chargement. Omise, celle du fournisseur (5 minutes chez Anthropic). |
@@ -348,7 +348,7 @@ tout autre modèle prend `Orkeon:Cli:Session:ContextWindowTokens`.
 | `Profiles:<nom>:ApiKey` | chaîne, secret | — | La clé d'API, en clair. Préférez `ApiKeyEnvVar` : une clé écrite ici est dans le fichier de réglages. |
 | `Profiles:<nom>:ApiKeyEnvVar` | chaîne | — | Le nom de la variable d'environnement qui contient la clé d'API, lue quand `ApiKey` n'en résout aucune : l'environnement du processus, puis la portée utilisateur de Windows. |
 | `Profiles:<nom>:BaseUrl` | chaîne | — | L'adresse du point d'accès du fournisseur, `http://` ou `https://`. Omise, l'adresse du fournisseur que désigne le nom du modèle ou la clé. |
-| `Profiles:<nom>:Cache:Conversation` | booléen | — | Met la conversation en cache, pour que chaque appel d'une boucle d'outils lise ce que le précédent a écrit ; omis, il suit SystemPrompt et Tools. |
+| `Profiles:<nom>:Cache:Conversation` | booléen | — | Met la conversation en cache, pour que chaque appel d'une boucle d'outils lise ce que le précédent a écrit ; omis, il suit SystemPrompt et Tools dès que la conversation contient un tour de l'assistant. |
 | `Profiles:<nom>:Cache:SystemPrompt` | booléen | — | Marque le prompt système comme cachable pour chaque agent qui ne fixe aucun cache, sur un fournisseur dont le cache de prompt est explicite (Anthropic). Omis, il ne l'est pas. |
 | `Profiles:<nom>:Cache:Tools` | booléen | — | Marque les définitions d'outils comme cachables pour chaque agent qui ne fixe aucun cache, sur un fournisseur dont le cache de prompt est explicite (Anthropic). Omis, elles ne le sont pas. |
 | `Profiles:<nom>:Cache:Ttl` | chaîne | — | La durée de vie du cache, `5m` ou `1h` ; elle demande `SystemPrompt`, `Tools` ou `Conversation`, et toute autre valeur refuse le chargement. Omise, celle du fournisseur (5 minutes chez Anthropic). |

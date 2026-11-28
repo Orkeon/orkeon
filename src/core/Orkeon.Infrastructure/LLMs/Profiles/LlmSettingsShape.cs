@@ -225,7 +225,7 @@ internal class LlmCacheShape
 {
     /// <summary>
     /// Marks the conversation cacheable, so each call of a tool loop reads what the previous one wrote;
-    /// left out, it follows SystemPrompt and Tools.
+    /// left out, it follows SystemPrompt and Tools once the conversation holds an assistant turn.
     /// </summary>
     public bool? Conversation { get; set; }
 

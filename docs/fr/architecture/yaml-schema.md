@@ -112,7 +112,8 @@ agents:
       cache:              # Prompt caching explicite (Anthropic) ; désactivé tant qu'aucun breakpoint n'est demandé
         system: bool      # default: false
         tools: bool       # default: false
-        ttl: string       # "5m" | "1h" ; omis = défaut du fournisseur. Sans system ni tools, il ne met rien en cache et fait échouer le chargement
+        conversation: bool # default : suit system/tools, marquée dès que la conversation contient un tour de l'assistant (une boucle d'outils) ; true la marque à chaque appel, false ne met en cache que le préfixe
+        ttl: string       # "5m" | "1h" ; omis = défaut du fournisseur. Sans system, tools ni conversation, il ne met rien en cache et fait échouer le chargement
     guardrails:           # Règles opérationnelles injectées dans le system prompt de l'agent (optionnel)
       preset: string      # "analysis" | "strict" | "creative" — tout autre nom fait échouer le chargement
       header: string      # En-tête de section — utilisé seulement sans preset (chaque preset apporte le sien)
@@ -164,7 +165,7 @@ tasks:
       max_tokens: int     # Positif ; omis = le plafond hérité, 0 ou moins fait échouer le chargement en nommant la tâche
       top_p: float
       thinking: {enabled, effort, budget_tokens} # effort: auto, sa forme map et enabled: auto comme sur l'agent ; sans choix, l'effort de l'agent s'applique
-      cache: {system, tools, ttl}  # Même forme que le cache: de l'agent — remplace le bloc de l'agent en entier ; un bloc sans point d'arrêt coupe le cache de l'agent pour cette tâche
+      cache: {system, tools, conversation, ttl}  # Même forme que le cache: de l'agent — remplace le bloc de l'agent en entier ; un bloc sans point d'arrêt coupe le cache de l'agent pour cette tâche
     guardrails:           # Guardrails au niveau tâche, même forme que le bloc agent (optionnel)
       preset: string      # "analysis" | "strict" | "creative" — tout autre nom fait échouer le chargement
       header: string

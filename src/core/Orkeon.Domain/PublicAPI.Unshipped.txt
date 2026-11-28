@@ -26,4 +26,5 @@ static Orkeon.Domain.FileSystem.PrivateMountGuard.Reached(Orkeon.Domain.FileSyst
 static Orkeon.Domain.FileSystem.PrivateMountGuard.ThrowIfReached(Orkeon.Domain.FileSystem.IFileSystemService! fileSystem, string! virtualPath) -> void
 Orkeon.Domain.SharedKernel.ValueObjects.LlmCacheConfig.CacheConversation.get -> bool
 Orkeon.Domain.SharedKernel.ValueObjects.LlmCacheConfig.CacheConversation.init -> void
+Orkeon.Domain.SharedKernel.ValueObjects.LlmCacheConfig.IsConversationExplicit.get -> bool
 static Orkeon.Domain.SharedKernel.ValueObjects.LlmCacheConfig.Request(bool systemPrompt, bool tools, bool? conversation, string? ttl) -> Orkeon.Domain.SharedKernel.ValueObjects.LlmCacheConfig?

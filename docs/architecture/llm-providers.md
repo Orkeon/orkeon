@@ -271,7 +271,9 @@ default included, where a cache left out inherits it.
 
 The conversation switch (`LlmCacheConfig.CacheConversation`, #490) caches the messages too, so that in a tool loop
 each call reads what the previous one wrote and pays full price for the new turns only. Left out, it follows the
-other two: on when the system prompt or the tools are cached; `conversation: false` caches the stable prefix
+other two: on when the system prompt or the tools are cached, and then placed only once the messages hold an
+assistant turn (a tool loop, a chat history), so a single call pays no write that no later call reads;
+`conversation: true` marks every call, single ones included, and `conversation: false` caches the stable prefix
 alone. Anthropic places explicit breakpoints, never the top-level automatic one, so the same request works on
 every endpoint that serves the Messages API. A request carries at most four (`LlmCacheConfig.MaxBreakpoints`): one
 on the system prompt, one on the last tool, and the conversation takes what they leave: one on the last cacheable

@@ -32,7 +32,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `cache.conversation` (YAML), `conversation` (script `cache({...})`) and `Llm:Cache:Conversation` (also under
   `Llm:Profiles:<name>:Cache`) mark the conversation cacheable, so each call of a tool loop reads what the previous one
-  wrote. Left out, it follows `system`/`tools`: an existing config with `system: true` now caches the conversation too.
+  wrote. Left out, it follows `system`/`tools` once the conversation holds an assistant turn: an existing config with
+  `system: true` now caches the conversation of a tool loop too, while a single call (a prompt alone) pays no
+  conversation write; `conversation: true` marks every call.
   `Cache:Ttl` accepts `Conversation` as the switch it needs.
 
 ### Changed — a read-only `shell_command` run in default mode runs without asking (#494)
