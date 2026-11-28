@@ -216,9 +216,9 @@ declare global {
          * The most tokens the run may spend with its context counted once (#224): each call's
          * completion, plus the lesser of the part of its prompt the provider's cache did not serve
          * and what the prompt grew by since the same conversation's previous call (each
-         * `ctx.llm.act` is its own conversation, its first call counting its whole prompt). A
-         * turn of n calls on a context of c tokens spends about c plus its completions, not n times
-         * c. A call whose provider reports no prompt and completion counts whole, as for `tokens`.
+         * `ctx.llm.act` is its own conversation, its first call counting its prompt less its cache
+         * hit). A turn of n calls on a context of c tokens spends about c plus its completions, not
+         * n times c. A call whose provider reports no prompt and completion counts whole, as for `tokens`.
          * Set alone, it leaves `tokens` uncapped; set both, the first spent ends the run. Its end is
          * that of `tokens`: `ctx.llm.act` wraps up with `budgetExhausted: true`, the error's
          * `dimension` is `"tokens"`, and its message starts the same, `Token budget exhausted: <n>

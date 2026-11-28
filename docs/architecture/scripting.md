@@ -212,7 +212,7 @@ of the part of its prompt the cache did not serve (`cacheHitTokens`, its whole p
 reports no hit) and what its prompt grew by since the same conversation's previous call, so a cache that
 serves only a part of the previous prompt (the system prompt and the tools) never charges the conversation
 again: each `ctx.llm.act` is its own
-conversation, its first call counting its whole prompt, so acts in a row or at once on one budget each pay
+conversation, its first call counting its prompt less its cache hit, so acts in a row or at once on one budget each pay
 their own context (never less than zero: a compacted context adds nothing). A turn of n calls on a context of c tokens spends about c plus its completions. A provider that
 reports no prompt and completion counts the call whole, as `tokens` does. Set alone, it leaves `tokens`
 uncapped; set with it, the first one spent ends the act, the same way. Each call also logs `act: agent
