@@ -89,15 +89,56 @@ public sealed class OperatorShellTests
     }
 
     [Fact]
-    public void ALongOutput_IsCutAtTheStatedLength_AndTheCutIsSaid()
+    public void ALongOutput_KeepsItsHeadAndItsTailWithinTheStatedLength_AndTheCutIsSaid()
     {
-        var output = new string('x', OperatorShell.MaxSessionOutputCharacters + 500);
+        var output = new OperatorShellOutput();
+        for (var i = 0; i < 100; i++)
+            output.AppendLine(new string('h', 99));
+        for (var i = 0; i < 100; i++)
+            output.AppendLine(new string('t', 99));
 
         var content = OperatorShell.SessionContent("cat big.log", output, "[exit code 0]");
 
-        Assert.Contains(new string('x', OperatorShell.MaxSessionOutputCharacters), content);
-        Assert.DoesNotContain(new string('x', OperatorShell.MaxSessionOutputCharacters + 1), content);
-        Assert.Contains("[output cut at 10000 of 10500 characters]", content);
+        Assert.StartsWith($"{OperatorShell.Header}\n$ cat big.log\n{new string('h', 99)}\n", content);
+        Assert.EndsWith($"{new string('t', 99)}\n[exit code 0]\n{OperatorShell.Footer}", content);
+        Assert.Contains("[output cut: 20000 characters, the first 8000 and the last 2000 kept]", content);
+        Assert.True(content.Length < OperatorShell.MaxSessionOutputCharacters + 400, $"The note holds {content.Length} characters.");
+    }
+
+    [Fact]
+    public void AnEndlessOutput_KeepsABoundedBuffer_AndCountsEveryCharacter()
+    {
+        // `! yes` for the whole timeout: the head and the tail are kept, never the middle.
+        var output = new OperatorShellOutput();
+        for (var i = 0; i < 1_000_000; i++)
+            output.AppendLine("y");
+
+        Assert.Equal(2_000_000, output.TotalCharacters);
+        Assert.True(output.RetainedCharacters <= 4 * OperatorShell.MaxSessionOutputCharacters, $"{output.RetainedCharacters} characters are kept.");
+        Assert.Contains("[output cut: 2000000 characters, the first 8000 and the last 2000 kept]", output.Render());
+    }
+
+    [Fact]
+    public void AShortOutput_IsKeptWhole()
+    {
+        var output = new OperatorShellOutput();
+        output.AppendLine("a");
+        output.AppendLine("b");
+
+        Assert.Equal("a\nb", output.Render());
+    }
+
+    [Fact]
+    public async Task AStoppedCommand_StillLeavesWhatItPrintedInTheSession_SayingTheOperatorStoppedIt()
+    {
+        _runner.Lines.Add("compiling...");
+        _runner.CancelledAfterLines = true;
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(
+            () => Shell().RunAsync("dotnet build", _console, TestContext.Current.CancellationToken));
+
+        var content = Assert.Single(_session.GetMessages()).Content;
+        Assert.Contains("$ dotnet build\ncompiling...\n[stopped by the operator]\n", content);
     }
 
     [Fact]

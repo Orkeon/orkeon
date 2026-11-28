@@ -1,4 +1,5 @@
 using Orkeon.Cli.Abstractions.Console;
+using Orkeon.Cli.Abstractions.Runners;
 
 namespace Orkeon.ConsoleApp.Tests.Fakes;
 
@@ -7,8 +8,14 @@ namespace Orkeon.ConsoleApp.Tests.Fakes;
 /// <c>default</c>); once <see cref="ScriptedLines"/> or <see cref="ScriptedKeys"/> is set, reads are
 /// served from it and an exhausted script throws, so a prompt loop cannot spin forever.
 /// </summary>
-internal sealed class FakeConsoleAdapter : IConsoleAdapter
+internal sealed class FakeConsoleAdapter : IConsoleAdapter, IReplLineOrigin
 {
+    /// <summary>Whether the lines served count as typed at an interactive terminal; false by default (a feed).</summary>
+    public bool Typed { get; set; }
+
+    /// <inheritdoc />
+    public bool LastLineTyped => Typed;
+
     public List<string> Lines { get; } = [];
 
     /// <summary>Lines served to <see cref="ReadLine"/> in order, when set.</summary>

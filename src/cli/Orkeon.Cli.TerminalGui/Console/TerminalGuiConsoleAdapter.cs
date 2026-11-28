@@ -1,4 +1,5 @@
 using Orkeon.Cli.Abstractions.Console;
+using Orkeon.Cli.Abstractions.Runners;
 using Orkeon.Cli.TerminalGui.Layout;
 using Terminal.Gui.Drivers;
 using Terminal.Gui.Input;
@@ -25,9 +26,10 @@ namespace Orkeon.Cli.TerminalGui.Console;
 ///   contract unchanged.
 /// </para>
 /// </remarks>
-public sealed class TerminalGuiConsoleAdapter : IConsoleAdapter, IThreadedConsole, IStreamConsole, IBlockConsole, IChoiceConsole, IThemeConsole
+public sealed class TerminalGuiConsoleAdapter : IConsoleAdapter, IThreadedConsole, IStreamConsole, IBlockConsole, IChoiceConsole, IThemeConsole, IReplLineOrigin
 {
     private readonly ReplPaneView _repl;
+    private volatile bool _lastLineTyped;
 
     public TerminalGuiConsoleAdapter(ReplPaneView repl)
     {
@@ -98,14 +100,28 @@ public sealed class TerminalGuiConsoleAdapter : IConsoleAdapter, IThreadedConsol
     // Assumed-blocking by design — audited (ANT-007/ANT-010, round-02); see docs/architecture/scripting.md.
     public string? ReadLine()
     {
+        _lastLineTyped = false;
         try
         {
-            return _repl.ReadLineAsync(CancellationToken.None).GetAwaiter().GetResult();
+            return Typed(_repl.ReadLineAsync(CancellationToken.None).GetAwaiter().GetResult());
         }
         catch (OperationCanceledException)
         {
             return null;
         }
+    }
+
+    /// <inheritdoc />
+    /// <remarks>
+    /// A line of the TUI comes from its input field, submitted by Enter: only the operator's keys (a paste included,
+    /// as in a terminal) fill it — the TUI starts only on an interactive terminal, and nothing else submits a line.
+    /// </remarks>
+    public bool LastLineTyped => _lastLineTyped;
+
+    private string? Typed(string? line)
+    {
+        _lastLineTyped = line is not null;
+        return line;
     }
 
     /// <summary>
@@ -116,9 +132,10 @@ public sealed class TerminalGuiConsoleAdapter : IConsoleAdapter, IThreadedConsol
     /// </summary>
     public async Task<string?> ReadLineAsync(CancellationToken cancellationToken = default)
     {
+        _lastLineTyped = false;
         try
         {
-            return await _repl.ReadLineAsync(cancellationToken).ConfigureAwait(false);
+            return Typed(await _repl.ReadLineAsync(cancellationToken).ConfigureAwait(false));
         }
         catch (OperationCanceledException)
         {

@@ -1,26 +1,20 @@
 using System.Text;
 using Orkeon.Cli.Abstractions.Console;
-using Orkeon.Cli.Abstractions.Runners;
 
 namespace Orkeon.Cli.Abstractions.Tests.Doubles;
 
 /// <summary>
-/// A console that serves queued lines then the end of the input, keeps what is written, and says whether its lines
-/// were typed (<see cref="Replayed"/> false) or came from a replay file.
+/// A console that serves queued lines then the end of the input and keeps what is written. It says nothing of where
+/// its lines came from — piped input, a feed of a host's own —, so a line that starts with <c>!</c> never runs a
+/// command; <see cref="StubTypedLineConsole"/> is the one that states its lines were typed.
 /// </summary>
-public sealed class StubLineConsole : IConsoleAdapter, IReplLineOrigin
+public class StubLineConsole : IConsoleAdapter
 {
     private readonly Queue<string> _lines;
     private readonly StringBuilder _output = new();
     private readonly Lock _gate = new();
 
     public StubLineConsole(params string[] lines) => _lines = new Queue<string>(lines);
-
-    /// <summary>Whether the lines served count as replayed.</summary>
-    public bool Replayed { get; set; }
-
-    /// <inheritdoc />
-    public bool LastLineReplayed => Replayed;
 
     public string Output
     {
