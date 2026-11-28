@@ -282,8 +282,10 @@ hérité, celui de l'hôte compris, là où un cache omis en hérite.
 
 L'interrupteur de la conversation (`LlmCacheConfig.CacheConversation`, #490) met aussi les messages en cache : dans
 une boucle d'outils, chaque appel lit ce que le précédent a écrit et ne paie plein tarif que les nouveaux tours.
-Omis, il suit les deux autres : actif quand le prompt système ou les outils sont mis en cache ; `conversation:
-false` ne met en cache que le préfixe stable. Anthropic pose des points d'arrêt explicites, jamais le point
+Omis, il suit les deux autres : actif quand le prompt système ou les outils sont mis en cache, et posé alors
+seulement quand les messages contiennent un tour de l'assistant (une boucle d'outils, un historique de chat), si
+bien qu'un appel unique ne paie aucune écriture qu'aucun appel suivant ne lit ; `conversation: true` la marque à
+chaque appel, appels uniques compris, et `conversation: false` ne met en cache que le préfixe stable. Anthropic pose des points d'arrêt explicites, jamais le point
 automatique de premier niveau, si bien que la même requête fonctionne sur tout point d'accès qui sert l'API
 Messages. Une requête en porte au plus quatre (`LlmCacheConfig.MaxBreakpoints`) : un sur le prompt système, un sur
 le dernier outil, et la conversation prend ceux qu'ils laissent : un sur le dernier bloc cachable du dernier

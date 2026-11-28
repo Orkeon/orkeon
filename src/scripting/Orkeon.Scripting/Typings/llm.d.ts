@@ -147,7 +147,8 @@ declare global {
         /**
          * Marks the conversation cacheable: in a tool loop each call reads what the previous one wrote and
          * pays full price for the new turns only. Left out, it follows `systemPrompt` and `tools`: on when
-         * either is; `false` caches the stable prefix alone.
+         * either is, placed once the messages hold an assistant turn, so a single call pays no write; `true`
+         * marks every call, `false` caches the stable prefix alone.
          */
         conversation?: boolean;
         /**

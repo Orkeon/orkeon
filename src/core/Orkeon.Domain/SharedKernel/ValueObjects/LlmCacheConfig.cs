@@ -45,8 +45,11 @@ public sealed record LlmCacheConfig
     /// </summary>
     /// <remarks>
     /// Left unset, it follows the other two switches: on when <see cref="CacheSystemPrompt"/> or
-    /// <see cref="CacheTools"/> is, off otherwise. Set it to <c>false</c> to cache the stable prefix
-    /// alone. The breakpoints are explicit ones, not top-level automatic caching, so they work on every
+    /// <see cref="CacheTools"/> is, off otherwise; and a provider then places the conversation breakpoint
+    /// only once the messages hold an assistant turn (a tool loop, a chat history), so a single call does
+    /// not pay a write no later call reads (<see cref="IsConversationExplicit"/>). Set it to <c>true</c>
+    /// to mark the conversation on every call, single ones included, or to <c>false</c> to cache the
+    /// stable prefix alone. The breakpoints are explicit ones, not top-level automatic caching, so they work on every
     /// endpoint that serves the Messages API.
     /// </remarks>
     public bool CacheConversation
@@ -54,6 +57,13 @@ public sealed record LlmCacheConfig
         get => _cacheConversation ?? (CacheSystemPrompt || CacheTools);
         init => _cacheConversation = value;
     }
+
+    /// <summary>
+    /// True when <see cref="CacheConversation"/> was set, to either value, rather than left to follow the
+    /// other two switches: an explicit <c>true</c> marks the conversation on every call, a followed one
+    /// only once the messages hold an assistant turn.
+    /// </summary>
+    public bool IsConversationExplicit => _cacheConversation is not null;
 
     /// <summary>
     /// Cache lifetime. <c>null</c> uses the vendor default (5 minutes on Anthropic);
@@ -104,7 +114,7 @@ public sealed record LlmCacheConfig
     /// <param name="tools">Whether the tool definitions are marked cacheable.</param>
     /// <param name="conversation">
     /// Whether the conversation is marked cacheable; null follows the other two switches: on when
-    /// either is.
+    /// either is, and placed only once the messages hold an assistant turn (<see cref="CacheConversation"/>).
     /// </param>
     /// <param name="ttl">The lifetime, one of <see cref="Ttls"/>; null keeps the vendor default.</param>
     /// <returns>The configuration, or null when it asks for no breakpoint.</returns>
@@ -130,9 +140,11 @@ public sealed record LlmCacheConfig
         {
             CacheSystemPrompt = systemPrompt,
             CacheTools = tools,
-            CacheConversation = cachesConversation,
             Ttl = ttl,
         };
+        // A conversation left unset stays unset: it follows the other switches, assistant turn required.
+        if (conversation is { } explicitConversation)
+            config = config with { CacheConversation = explicitConversation };
         return config.RequestsAnyBreakpoint ? config : null;
     }
 
@@ -142,9 +154,10 @@ public sealed record LlmCacheConfig
         && CacheSystemPrompt == other.CacheSystemPrompt
         && CacheTools == other.CacheTools
         && CacheConversation == other.CacheConversation
+        && IsConversationExplicit == other.IsConversationExplicit
         && string.Equals(Ttl, other.Ttl, StringComparison.Ordinal);
 
     /// <inheritdoc />
     public override int GetHashCode() =>
-        HashCode.Combine(CacheSystemPrompt, CacheTools, CacheConversation, Ttl);
+        HashCode.Combine(CacheSystemPrompt, CacheTools, CacheConversation, IsConversationExplicit, Ttl);
 }

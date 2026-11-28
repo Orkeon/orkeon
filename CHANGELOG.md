@@ -10,12 +10,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added — a shell line at the REPL prompt (#491)
 
 - A typed line that starts with `!` runs a shell command of the operator's own, without a turn of the model. Its output
-  streams to the console and joins the session as a `note` tagged as the operator's action (secrets masked, cut at
-  10 000 characters, head and tail kept). It runs only when the console states the line was typed at an interactive
+  streams to the console and joins the session store as a `note` tagged as the operator's action (secrets masked,
+  cut at 10 000 characters, its first 8 000 and last 2 000 kept); a turn sees it when the assistant's script reads
+  the session (`session_store` `read_messages`, or a prompt assembly mapping the `note` role). It runs only when the console states the line was typed at an interactive
   terminal: piped stdin, a `--replay` file or any other feed is refused with a sentence. `\!` sends a prompt starting
   with `!`. The command ends with the shell rather than its background children, runs detached from the terminal on
-  Linux when `setsid` is present, and its partial output is kept when the operator stops it.
-  `Orkeon:Cli:Repl:ShellPrefix:Enabled` and `TimeoutSeconds` turn it off and bound it.
+  Linux when `setsid` is present (a timeout or a stop then kills its whole process group), and its partial output is
+  kept when the operator stops it. `Orkeon:Cli:Repl:ShellPrefix:Enabled` and `TimeoutSeconds` (1 to 86 400) turn it
+  off and bound it.
 
 ### Added — the whole output of a cut `shell_command` run (#492)
 
@@ -33,7 +35,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `cache.conversation` (YAML), `conversation` (script `cache({...})`) and `Llm:Cache:Conversation` (also under
   `Llm:Profiles:<name>:Cache`) mark the conversation cacheable, so each call of a tool loop reads what the previous one
-  wrote. Left out, it follows `system`/`tools`: an existing config with `system: true` now caches the conversation too.
+  wrote. Left out, it follows `system`/`tools` once the conversation holds an assistant turn: an existing config with
+  `system: true` now caches the conversation of a tool loop too, while a single call (a prompt alone) pays no
+  conversation write; `conversation: true` marks every call.
   `Cache:Ttl` accepts `Conversation` as the switch it needs.
 
 ### Changed — a read-only `shell_command` run in default mode runs without asking (#494)

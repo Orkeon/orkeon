@@ -479,10 +479,8 @@ public partial class YamlCrewExporter
         {
             System = cache.CacheSystemPrompt ? true : null,
             Tools = cache.CacheTools ? true : null,
-            // Written only where it departs from its default, which follows the other two switches.
-            Conversation = cache.CacheConversation == (cache.CacheSystemPrompt || cache.CacheTools)
-                ? null
-                : cache.CacheConversation,
+            // Written only where it was set: left out, it follows the other two switches.
+            Conversation = cache.IsConversationExplicit ? cache.CacheConversation : null,
             Ttl = cache.Ttl,
         };
     }

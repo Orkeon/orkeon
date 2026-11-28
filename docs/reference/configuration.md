@@ -307,7 +307,7 @@ every other model takes `Orkeon:Cli:Session:ContextWindowTokens`.
 | `ApiKeyEnvVar` | string | — | The name of the environment variable that holds the API key, read when `ApiKey` resolves none: the process environment, then the Windows user scope. |
 | `AvailableModels` | list of string | `[]` | The models a scripted `/model` may offer: a list, or one comma-separated value. |
 | `BaseUrl` | string | — | The address of the provider's endpoint, `http://` or `https://`. Left out, the address of the provider the model's name or the key points to. |
-| `Cache:Conversation` | boolean | — | Marks the conversation cacheable, so each call of a tool loop reads what the previous one wrote; left out, it follows SystemPrompt and Tools. |
+| `Cache:Conversation` | boolean | — | Marks the conversation cacheable, so each call of a tool loop reads what the previous one wrote; left out, it follows SystemPrompt and Tools once the conversation holds an assistant turn. |
 | `Cache:SystemPrompt` | boolean | — | Marks the system prompt cacheable for every agent that sets no cache of its own, on a provider whose prompt cache is explicit (Anthropic). Left out, it is not. |
 | `Cache:Tools` | boolean | — | Marks the tool definitions cacheable for every agent that sets no cache of its own, on a provider whose prompt cache is explicit (Anthropic). Left out, they are not. |
 | `Cache:Ttl` | string | — | The cache lifetime, `5m` or `1h`; it needs `SystemPrompt`, `Tools` or `Conversation`, and any other value refuses the load. Left out, the vendor default (5 minutes on Anthropic). |
@@ -326,7 +326,7 @@ every other model takes `Orkeon:Cli:Session:ContextWindowTokens`.
 | `Profiles:<name>:ApiKey` | string, secret | — | The API key, in clear text. Prefer `ApiKeyEnvVar`: a key written here is in the settings file. |
 | `Profiles:<name>:ApiKeyEnvVar` | string | — | The name of the environment variable that holds the API key, read when `ApiKey` resolves none: the process environment, then the Windows user scope. |
 | `Profiles:<name>:BaseUrl` | string | — | The address of the provider's endpoint, `http://` or `https://`. Left out, the address of the provider the model's name or the key points to. |
-| `Profiles:<name>:Cache:Conversation` | boolean | — | Marks the conversation cacheable, so each call of a tool loop reads what the previous one wrote; left out, it follows SystemPrompt and Tools. |
+| `Profiles:<name>:Cache:Conversation` | boolean | — | Marks the conversation cacheable, so each call of a tool loop reads what the previous one wrote; left out, it follows SystemPrompt and Tools once the conversation holds an assistant turn. |
 | `Profiles:<name>:Cache:SystemPrompt` | boolean | — | Marks the system prompt cacheable for every agent that sets no cache of its own, on a provider whose prompt cache is explicit (Anthropic). Left out, it is not. |
 | `Profiles:<name>:Cache:Tools` | boolean | — | Marks the tool definitions cacheable for every agent that sets no cache of its own, on a provider whose prompt cache is explicit (Anthropic). Left out, they are not. |
 | `Profiles:<name>:Cache:Ttl` | string | — | The cache lifetime, `5m` or `1h`; it needs `SystemPrompt`, `Tools` or `Conversation`, and any other value refuses the load. Left out, the vendor default (5 minutes on Anthropic). |
@@ -2377,7 +2377,7 @@ profile tighter than the scripts' own.
 | `Enabled` | boolean | `true` | Master switch. False ⇒ discovery is skipped, registry is empty. |
 | `EsbuildTranspile` | boolean | `true` | When false, `*.cmd.js` only (no TS transpile). Test/debug; production keeps this true. |
 | `FailFastOnInvalidScript` | boolean | `false` | When true, the first invalid script aborts the loader (use in CI). |
-| `FallbackCommandName` | string | `"assistant"` | Name of the scripted command that handles free text (a REPL line not prefixed with `/`). In the coding-agent surface this is the interactive assistant wired to the `main-loop` crew. Empty/unknown ⇒ free text yields the unknown-command message instead of being routed. |
+| `FallbackCommandName` | string | `"assistant"` | Name of the scripted command that handles free text (a REPL line not prefixed with `/`, nor a `!` line typed at a terminal, which runs in the operator's own shell). In the coding-agent surface this is the interactive assistant wired to the `main-loop` crew. Empty/unknown ⇒ free text yields the unknown-command message instead of being routed. |
 | `Limits:ExecutionTimeout` | duration | `"00:05:00"` | Hard timeout for a single command invocation. Default: 5 minutes. |
 | `Limits:MemoryLimitBytes` | integer | `67108864` | Memory cap in bytes. Default: 64 MB (spec §8.1 CLI profile). |
 | `Limits:RecursionLimit` | integer | `100` | Recursion depth cap. Default: 100 (inherited from spec §8.1 — same as global). |
@@ -2434,7 +2434,7 @@ A line typed at the REPL's prompt that starts with `!` runs a shell command of t
 | Key | Type | Default | Meaning |
 |---|---|---|---|
 | `Enabled` | boolean | `true` | Whether a line typed at the prompt that starts with ! runs the rest in the operator's own shell, without a turn of the model, its output added to the session; off, the line is refused with a sentence. |
-| `TimeoutSeconds` | integer | `120` | The seconds after which a command typed after ! is stopped. |
+| `TimeoutSeconds` | integer | `120` | The seconds after which a command typed after ! is stopped, from 1 to 86400 (one day); a value outside refuses the start. |
 <!-- /settings -->
 
 ### `Orkeon:Cli:Session`

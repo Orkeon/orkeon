@@ -739,7 +739,8 @@ public partial class AnthropicLlmProvider : HttpLlmProviderBase
     internal const int CacheLookbackBlocks = 20;
 
     /// <summary>
-    /// Marks the conversation (#490): a breakpoint on the last cacheable block of the last message,
+    /// Marks the conversation (#490), when set explicitly or once the messages hold an assistant turn:
+    /// a breakpoint on the last cacheable block of the last message,
     /// so the next call of a tool loop reads what this one writes; and, when the turns added since
     /// the previous call hold <see cref="CacheLookbackBlocks"/> blocks or more (many parallel tool
     /// results), a second one on the block the previous call marked, the last cacheable block
@@ -783,6 +784,11 @@ public partial class AnthropicLlmProvider : HttpLlmProviderBase
                     break;
             }
         }
+
+        // Left unset, the conversation is marked only once it holds an assistant turn: a single call
+        // would pay a write no later call reads.
+        if (!cache.IsConversationExplicit && latestAssistant < 0)
+            return 0;
 
         var last = slots.FindLastIndex(slot => slot.Cacheable);
         if (last < 0)
@@ -1668,6 +1674,6 @@ public partial class AnthropicLlmProvider : HttpLlmProviderBase
     private partial void LogUnsupportedOption(string option, string remedy);
 
     [LoggerMessage(EventId = 111, Level = Microsoft.Extensions.Logging.LogLevel.Warning,
-        Message = "Prompt caching was requested but there was nothing to mark: the request carries no system prompt and no tools. No cache_control breakpoint was placed, so nothing will be cached.")]
+        Message = "Prompt caching was requested but there was nothing to mark: the request carries no system prompt, no tools and no conversation block to mark (a conversation left unset is marked only once it holds an assistant turn). No cache_control breakpoint was placed, so nothing will be cached.")]
     private partial void LogCacheRequestedButNothingToMark();
 }

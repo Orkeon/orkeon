@@ -19,6 +19,9 @@ public static class ReplShellPrefixExtensions
     /// <summary>The timeout a command meets when the section sets none, in seconds.</summary>
     private const int DefaultTimeoutSeconds = 120;
 
+    /// <summary>The longest timeout taken: one day, well within what a cancellation timer accepts.</summary>
+    internal const int MaxTimeoutSeconds = 86_400;
+
     /// <summary>
     /// Registers the <see cref="IOperatorShell"/> the REPL's read loop runs a <c>!</c> line with — off when
     /// <c>Orkeon:Cli:Repl:ShellPrefix:Enabled</c> is false, in which case the line is refused with a sentence naming the
@@ -26,7 +29,7 @@ public static class ReplShellPrefixExtensions
     /// </summary>
     /// <param name="services">The REPL's services.</param>
     /// <param name="configuration">The configuration the section is read from.</param>
-    /// <exception cref="InvalidOperationException"><c>TimeoutSeconds</c> is not a number of seconds above zero.</exception>
+    /// <exception cref="InvalidOperationException"><c>TimeoutSeconds</c> is not a number of seconds from 1 to 86 400.</exception>
     public static IServiceCollection AddReplShellPrefix(this IServiceCollection services, IConfiguration configuration)
     {
         ArgumentNullException.ThrowIfNull(services);
@@ -36,11 +39,11 @@ public static class ReplShellPrefixExtensions
         var section = configuration.GetSection(OperatorShell.SectionName);
         var enabled = section.GetValue("Enabled", true);
         var timeoutSeconds = section.GetValue("TimeoutSeconds", DefaultTimeoutSeconds);
-        if (timeoutSeconds < 1)
+        if (timeoutSeconds is < 1 or > MaxTimeoutSeconds)
         {
             throw new InvalidOperationException(
                 $"{OperatorShell.SectionName}:TimeoutSeconds is '{timeoutSeconds.ToString(CultureInfo.InvariantCulture)}', which is not a timeout: " +
-                $"write a number of seconds above zero, such as {DefaultTimeoutSeconds.ToString(CultureInfo.InvariantCulture)}.");
+                $"write a number of seconds from 1 to {MaxTimeoutSeconds.ToString(CultureInfo.InvariantCulture)} (one day), such as {DefaultTimeoutSeconds.ToString(CultureInfo.InvariantCulture)}.");
         }
 
         services.TryAddSingleton(new OperatorShellSettings(enabled, TimeSpan.FromSeconds(timeoutSeconds)));
@@ -60,6 +63,6 @@ internal sealed class ReplShellPrefixSettingsShape
     /// <summary>Whether a line typed at the prompt that starts with ! runs the rest in the operator's own shell, without a turn of the model, its output added to the session; off, the line is refused with a sentence.</summary>
     public bool Enabled { get; set; } = true;
 
-    /// <summary>The seconds after which a command typed after ! is stopped.</summary>
+    /// <summary>The seconds after which a command typed after ! is stopped, from 1 to 86400 (one day); a value outside refuses the start.</summary>
     public int TimeoutSeconds { get; set; } = 120;
 }

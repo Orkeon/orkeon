@@ -119,6 +119,45 @@ public sealed class OperatorShellTests
     }
 
     [Fact]
+    [Trait("BR", "CH-491")]
+    public void AnOutputJustPastTheLimit_KeepsItsLast2000Characters_NotOnlyWhatOverflowed()
+    {
+        // 101 lines of 100 characters: 10 100, just past the 10 000 kept whole.
+        var output = new OperatorShellOutput();
+        for (var i = 0; i <= 100; i++)
+            output.AppendLine(i.ToString("D3", System.Globalization.CultureInfo.InvariantCulture) + new string('.', 96));
+
+        var rendered = output.Render();
+
+        Assert.Contains("[output cut: 10100 characters, the first 8000 and the last 2000 kept]", rendered);
+        Assert.StartsWith("000", rendered);
+        Assert.Contains("\n079" + new string('.', 96) + "\n", rendered);
+        for (var i = 81; i <= 100; i++)
+            Assert.Contains(i.ToString("D3", System.Globalization.CultureInfo.InvariantCulture) + new string('.', 96), rendered);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-491")]
+    public void ASecretStraddlingTheBufferBoundary_IsStillMasked()
+    {
+        var output = new OperatorShellOutput();
+        for (var i = 0; i < 99; i++)
+            output.AppendLine(new string('h', 99));
+        output.AppendLine(new string('x', 80));
+        // Starts at 9 981: the line crosses the 10 000 the buffer keeps whole.
+        var token = "ghp_" + new string('a', 36); // built at run time: a fake, never a credential
+        output.AppendLine($"GITHUB_TOKEN={token}");
+        for (var i = 0; i < 10; i++)
+            output.AppendLine("tail");
+
+        var rendered = output.Render();
+
+        Assert.DoesNotContain(new string('a', 12), rendered);
+        Assert.Contains("***REDACTED***", rendered);
+        Assert.Contains("[output cut:", rendered);
+    }
+
+    [Fact]
     public void AShortOutput_IsKeptWhole()
     {
         var output = new OperatorShellOutput();
@@ -179,6 +218,33 @@ public sealed class OperatorShellTests
         }));
 
         Assert.Contains("Orkeon:Cli:Repl:ShellPrefix:TimeoutSeconds is '0'", ex.Message);
+    }
+
+    [Theory]
+    [InlineData("86401")]
+    [InlineData("2147484")]
+    [Trait("BR", "CH-491")]
+    public void TheRegistration_RefusesATimeoutAboveOneDay(string seconds)
+    {
+        var ex = Assert.Throws<InvalidOperationException>(() => Registered(new Dictionary<string, string?>
+        {
+            ["Orkeon:Cli:Repl:ShellPrefix:TimeoutSeconds"] = seconds,
+        }));
+
+        Assert.Contains($"Orkeon:Cli:Repl:ShellPrefix:TimeoutSeconds is '{seconds}'", ex.Message);
+        Assert.Contains("86400", ex.Message);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-491")]
+    public void TheRegistration_TakesATimeoutOfOneDay()
+    {
+        var shell = Registered(new Dictionary<string, string?>
+        {
+            ["Orkeon:Cli:Repl:ShellPrefix:TimeoutSeconds"] = "86400",
+        });
+
+        Assert.Equal(TimeSpan.FromDays(1), shell.GetRequiredService<OperatorShellSettings>().Timeout);
     }
 
     [Fact]

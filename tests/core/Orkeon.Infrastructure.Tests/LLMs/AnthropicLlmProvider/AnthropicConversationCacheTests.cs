@@ -188,6 +188,91 @@ public class AnthropicConversationCacheTests
         Assert.Equal(JsonValueKind.String, uncached.GetProperty("messages")[0].GetProperty("content").ValueKind);
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    [Trait("BR", "CH-490")]
+    public async Task ShouldMarkNoConversationBlock_WhenLeftUnsetAndNoAssistantTurnYet(bool stream)
+    {
+        // A single call (the task alone): a conversation write no later call reads would only cost.
+        var payload = await SendAsync(
+            [LlmMessage.System("You are careful."), LlmMessage.User("Task")],
+            new LlmCacheConfig { CacheSystemPrompt = true },
+            stream);
+
+        Assert.DoesNotContain(Blocks(payload), Marked);
+        Assert.Equal(1, CountBreakpoints(payload));
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    [Trait("BR", "CH-490")]
+    public async Task ShouldMarkNoConversationBlock_OnAPromptOnlyCall_WhenLeftUnset(bool stream)
+    {
+        var payload = await GenerateAsync(LlmCacheConfig.Request(systemPrompt: true, tools: false, ttl: null), stream);
+
+        Assert.DoesNotContain(Blocks(payload), Marked);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-490")]
+    public async Task ShouldMarkTheConversation_InAToolLoop_WhenLeftUnset()
+    {
+        var payload = await SendAsync(ToolLoop(rounds: 1, parallel: 1), new LlmCacheConfig { CacheSystemPrompt = true });
+
+        Assert.True(Marked(Blocks(payload)[^1]));
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    [Trait("BR", "CH-490")]
+    public async Task ShouldMarkTheConversation_OnASingleCall_WhenSetExplicitly(bool stream)
+    {
+        var payload = await SendAsync(
+            [LlmMessage.System("You are careful."), LlmMessage.User("Task")],
+            LlmCacheConfig.Request(systemPrompt: true, tools: false, conversation: true, ttl: null),
+            stream);
+        Assert.True(Marked(Blocks(payload)[^1]));
+
+        var prompt = await GenerateAsync(new LlmCacheConfig { CacheSystemPrompt = true, CacheConversation = true }, stream);
+        Assert.True(Marked(Blocks(prompt)[^1]));
+    }
+
+    /// <summary>A prompt-only call (<c>GenerateAsync</c> or its streaming form) under <paramref name="cache"/>.</summary>
+    private static async Task<JsonElement> GenerateAsync(LlmCacheConfig? cache, bool stream)
+    {
+        using var handler = new TestHttpMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = stream
+                ? new StringContent(StreamBody, Encoding.UTF8, "text/event-stream")
+                : new StringContent(OkBody, Encoding.UTF8, "application/json"),
+        });
+        var factory = new TestHttpClientFactory();
+        factory.RegisterClient("AnthropicLlmProvider", new HttpClient(handler));
+        var config = LlmConfig.Create("claude-sonnet-5", TestApiKey) with { Cache = cache };
+        using var provider = new AnthropicLlmProvider(
+            config, factory, Policy.NoOpAsync<HttpResponseMessage>(), new TestLogger<AnthropicLlmProvider>());
+
+        var ct = TestContext.Current.CancellationToken;
+        if (stream)
+        {
+            await foreach (var _ in provider.GenerateStreamingAsync("Task", cancellationToken: ct))
+            {
+                // drained: only the request payload is under test
+            }
+        }
+        else
+        {
+            await provider.GenerateAsync("Task", cancellationToken: ct);
+        }
+
+        var raw = await handler.CapturedRequests.Single().Content!.ReadAsStringAsync(ct);
+        using var doc = JsonDocument.Parse(raw);
+        return doc.RootElement.Clone();
+    }
+
     [Fact]
     [Trait("BR", "CH-490")]
     public void ShouldFollowTheOtherSwitches_WhenTheConversationIsLeftUnset()

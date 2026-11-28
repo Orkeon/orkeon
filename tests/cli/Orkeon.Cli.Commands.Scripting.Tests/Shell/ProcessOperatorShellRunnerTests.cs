@@ -132,6 +132,47 @@ public sealed class ProcessOperatorShellRunnerTests
     }
 
     [Fact]
+    [Trait("BR", "CH-491")]
+    public async Task OnLinux_ADaemonisedChild_IsKilledWithItsSession_WhenTheRunTimesOut()
+    {
+        Assert.SkipUnless(OperatingSystem.IsLinux() && ProcessOperatorShellRunner.SetsidPath() is not null, "setsid is not on PATH.");
+
+        // The subshell forks `sleep` and ends: the orphan leaves the shell's process tree but stays in its group.
+        var run = await _runner.RunAsync("(sleep 300 & echo $!); sleep 300", OnLine, TimeSpan.FromSeconds(2), TestContext.Current.CancellationToken);
+        int pid;
+        lock (_gate)
+            pid = int.Parse(Assert.Single(_lines), System.Globalization.CultureInfo.InvariantCulture);
+        try
+        {
+            Assert.True(run.TimedOut);
+            await Orkeon.Tests.Shared.Timing.Polling.WaitUntilAsync(() => !IsAlive(pid));
+        }
+        finally
+        {
+            if (IsAlive(pid))
+            {
+                try { System.Diagnostics.Process.GetProcessById(pid).Kill(); }
+                catch (ArgumentException) { /* It already ended. */ }
+                catch (InvalidOperationException) { /* It already ended. */ }
+            }
+        }
+    }
+
+    /// <summary>Whether a process runs, a zombie not counted: field 3 of /proc/&lt;pid&gt;/stat is its state.</summary>
+    private static bool IsAlive(int pid)
+    {
+        try
+        {
+            var stat = File.ReadAllText($"/proc/{pid}/stat");
+            return stat[(stat.LastIndexOf(')') + 2)] != 'Z';
+        }
+        catch (IOException)
+        {
+            return false;
+        }
+    }
+
+    [Fact]
     public void OnWindows_TheCommandIsQuotedWhole_SoCmdStripsOnlyTheOuterQuotes()
     {
         var info = ProcessOperatorShellRunner.StartInfo("\"C:\\Program Files\\x.exe\" \"a b\"", windows: true, setsid: null);

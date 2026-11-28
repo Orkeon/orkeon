@@ -5,11 +5,13 @@ using Orkeon.Infrastructure.Security;
 namespace Orkeon.Cli.Commands.Scripting.Shell;
 
 /// <summary>
-/// The output of an operator's shell command as the session will keep it, held in a bounded buffer: the whole output
-/// while it fits in <see cref="OperatorShell.MaxSessionOutputCharacters"/> characters, past that its first
+/// The output of an operator's shell command as the session will keep it, held in a bounded buffer of whole lines: the
+/// whole output while it fits in <see cref="OperatorShell.MaxSessionOutputCharacters"/> characters, past that its first
 /// <see cref="HeadCharacters"/> and its last <see cref="TailCharacters"/> — never the middle, so <c>! yes</c> run until
-/// the timeout keeps a few pages, not every line. <see cref="TotalCharacters"/> counts every character, for the cut.
-/// Not thread-safe: the caller serialises the appends.
+/// the timeout keeps a few pages, not every line. A line is never split while it is buffered, so the masking sees every
+/// secret whole before the cut; a line longer than <see cref="OperatorShell.MaxSessionOutputCharacters"/> is masked on
+/// its own when it comes and only its two ends are kept. <see cref="TotalCharacters"/> counts every character, for the
+/// cut. Not thread-safe: the caller serialises the appends.
 /// </summary>
 internal sealed class OperatorShellOutput
 {
@@ -19,39 +21,57 @@ internal sealed class OperatorShellOutput
     /// <summary>The characters a cut output keeps from its end.</summary>
     public const int TailCharacters = 2_000;
 
-    /// <summary>The characters of the tail kept before masking: the margin lets a secret cut at its start still be recognised.</summary>
+    /// <summary>The characters of whole lines the tail keeps at least: the margin keeps the line the cut falls in whole.</summary>
     private const int TailBufferCharacters = 2 * TailCharacters;
 
     private readonly StringBuilder _head = new();
-    private readonly StringBuilder _tail = new();
+    private readonly Queue<string> _tail = new();
+    private int _tailLength;
+    private bool _overflowed;
+    private bool _middleDropped;
 
     /// <summary>Every character appended, line breaks included.</summary>
     public long TotalCharacters { get; private set; }
 
     /// <summary>The characters the buffer holds now.</summary>
-    public int RetainedCharacters => _head.Length + _tail.Length;
+    public int RetainedCharacters => _head.Length + _tailLength;
 
     /// <summary>Appends one line of output and its line break.</summary>
     public void AppendLine(string line)
     {
         ArgumentNullException.ThrowIfNull(line);
         TotalCharacters += line.Length + 1;
-        var room = OperatorShell.MaxSessionOutputCharacters - _head.Length;
-        if (_tail.Length == 0 && line.Length + 1 <= room)
+        if (line.Length > OperatorShell.MaxSessionOutputCharacters)
+        {
+            // Masked alone while whole, then only its ends are kept: the cut falls inside it anyway.
+            var masked = LogSanitizer.SanitizeString(line);
+            line = masked.Length <= OperatorShell.MaxSessionOutputCharacters
+                ? masked
+                : string.Concat(masked.AsSpan(0, HeadCharacters), "\n", masked.AsSpan(masked.Length - TailCharacters));
+            _middleDropped |= masked.Length > OperatorShell.MaxSessionOutputCharacters;
+        }
+
+        if (!_overflowed && _head.Length + line.Length + 1 <= OperatorShell.MaxSessionOutputCharacters)
         {
             _head.Append(line).Append('\n');
             return;
         }
 
-        if (_tail.Length == 0 && room > 0)
+        _overflowed = true;
+        if (_head.Length < HeadCharacters)
         {
-            _head.Append(line, 0, Math.Min(room, line.Length));
-            line = line.Length > room ? line[room..] : string.Empty;
+            // The head holds whole lines up to the first HeadCharacters at least.
+            _head.Append(line).Append('\n');
+            return;
         }
 
-        _tail.Append(line).Append('\n');
-        if (_tail.Length > 2 * TailBufferCharacters)
-            _tail.Remove(0, _tail.Length - TailBufferCharacters);
+        _tail.Enqueue(line);
+        _tailLength += line.Length + 1;
+        while (_tail.Count > 1 && _tailLength - (_tail.Peek().Length + 1) >= TailBufferCharacters)
+        {
+            _tailLength -= _tail.Dequeue().Length + 1;
+            _middleDropped = true;
+        }
     }
 
     /// <summary>
@@ -60,17 +80,18 @@ internal sealed class OperatorShellOutput
     /// </summary>
     public string Render()
     {
-        if (_tail.Length == 0)
+        if (!_middleDropped)
         {
-            var whole = LogSanitizer.SanitizeString(_head.ToString().TrimEnd('\n'));
+            // The buffer holds the whole output: masked whole, then cut if it is still too long.
+            var whole = LogSanitizer.SanitizeString(string.Concat(_head.ToString(), string.Join('\n', _tail)).TrimEnd('\n'));
             return whole.Length <= OperatorShell.MaxSessionOutputCharacters
                 ? whole
-                : Cut(whole, whole, whole.Length);
+                : Cut(whole, whole, TotalCharacters);
         }
 
         var head = LogSanitizer.SanitizeString(_head.ToString());
-        var tail = LogSanitizer.SanitizeString(_tail.ToString().TrimEnd('\n'));
-        return Cut(head, tail, TotalCharacters);
+        var tail = LogSanitizer.SanitizeString(string.Join('\n', _tail).TrimEnd('\n'));
+        return Cut(head, tail.Length > 0 ? tail : head.TrimEnd('\n'), TotalCharacters);
     }
 
     private static string Cut(string head, string tail, long total) =>
