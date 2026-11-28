@@ -78,9 +78,10 @@ export interface CommandsFacade {
    * Dispatch to an agent in the background; returns a ticket immediately. Its completion drains to the
    * `completed` of the command that posted it. Called from a `completed`, the new instance is one hop deeper
    * in the chain, bounded by `MaxChainDepth` like {@link ScriptHostFacade.runCrewAsync}: at the limit it throws
-   * `chain depth 8 reached (MaxChainDepth 8, /<command>)`.
+   * `chain depth 8 reached (MaxChainDepth 8, /<command>)`. `options.state` attaches a value its `completed` receives
+   * back as `result.state`, under the rules of {@link CrewLaunchOptions.state}.
    */
-  post(agent: string, intent: string, payload: string): string;
+  post(agent: string, intent: string, payload: string, options?: PostOptions): string;
   /** List in-flight / recent instances, optionally filtered. */
   list(filter?: CommandInstanceFilter | string): readonly CommandInstanceView[];
   /** Full view for a ticket, or `undefined`. */
@@ -90,6 +91,12 @@ export interface CommandsFacade {
    * actually ended: a relaunch is refused until then.
    */
   cancel(ticket: string): boolean;
+}
+
+/** Options of {@link CommandsFacade.post}. */
+export interface PostOptions {
+  /** A JSON value handed back to the instance's `completed` as `result.state`: see {@link CrewLaunchOptions.state}. */
+  state?: unknown;
 }
 
 /** Agent response — resolved value of `request()` / argument to `completed()`. */
@@ -107,6 +114,14 @@ export interface CommandResponse {
    */
   readonly streamed: boolean;
   readonly error?: string;
+  /** In `completed`: the ticket of the instance that ended, the one its launch returned. Absent on a `request()` answer. */
+  readonly ticket?: string;
+  /**
+   * In `completed`: the value the launch attached (`runCrewAsync(name, input, { state })`, `commands.post(..., { state })`),
+   * parsed again for this call; `undefined` when the launch attached none. A launch chained from a `completed` carries
+   * the state it was given, never its parent's. Not the instance's lifecycle state (`CommandInstanceView.state`).
+   */
+  readonly state?: unknown;
 }
 
 export type CommandInstanceState = "running" | "done" | "failed" | "cancelled" | "rejected";
@@ -126,6 +141,7 @@ export interface CommandInstanceView {
   readonly targetAgent: string;
   readonly intent: string;
   readonly correlationId: string;
+  /** The lifecycle state (`running`, `done`, ...), not the value a launch attaches: that one is `result.state` in `completed`. */
   readonly state: CommandInstanceState;
   /** Launched with `{ onMain: true }`: it writes on the main screen and is no task of the list. */
   readonly onMain: boolean;
@@ -430,6 +446,14 @@ export interface CrewLaunchOptions {
    * it. Boolean or absent: any other value throws.
    */
   onMain?: boolean;
+  /**
+   * A value the instance's `completed` receives back as `result.state`, beside `result.ticket`: a fact the launcher keeps
+   * for its own completion (the mode a turn ran in, the run a batch belongs to), so two instances of one command can be
+   * in flight at once. Any JSON value of at most 16 KiB once serialised, kept in memory with the instance and parsed
+   * again for each `completed`. A value above the cap, or one JSON cannot hold (a cycle, a function), throws before
+   * anything runs. A launch chained from a `completed` carries the state it was given, never its parent's.
+   */
+  state?: unknown;
 }
 
 /**
@@ -575,7 +599,7 @@ export interface CommandUsageRow extends UsageTokens {
   readonly ticket: string;
   /** The command's name. */
   readonly name: string;
-  /** The instance's state. */
+  /** The instance's lifecycle state, not the value its launch attached (`result.state` in `completed`). */
   readonly state: CommandInstanceState;
   /** The LLM calls of the instance. */
   readonly calls: number;

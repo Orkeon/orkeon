@@ -860,7 +860,7 @@ public sealed class ShellCommandToolTests : IDisposable
 
         Assert.Equal(new string('x', 30_000), whole["stdout"]);
         var stdout = Assert.IsType<string>(cut["stdout"]);
-        Assert.StartsWith(new string('x', 50_000), stdout, StringComparison.Ordinal);
+        Assert.StartsWith(new string('x', 25_000), stdout, StringComparison.Ordinal);
         Assert.Contains("10000 chars omitted", stdout, StringComparison.Ordinal);
         Assert.DoesNotContain("[Output truncated]", stdout, StringComparison.Ordinal);
     }

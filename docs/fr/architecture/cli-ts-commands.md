@@ -53,8 +53,9 @@ scripted> /exit
 ```
 
 Dans le REPL scripté, seule une ligne qui commence par `/` est une commande. `@chemin`
-référence un fichier ou un dossier (Tab complète les noms de commandes et les chemins), et tout
-le reste est du texte libre — confié à la commande de repli (ci-dessous), ou refusé s'il n'y en
+référence un fichier ou un dossier (Tab complète les noms de commandes et les chemins), une ligne
+tapée dans un terminal qui commence par `!` s'exécute dans le shell de l'opérateur
+([référence du CLI](../reference/cli.md)), et tout le reste est du texte libre — confié à la commande de repli (ci-dessous), ou refusé s'il n'y en
 a pas. Le message qu'une commande rend via `ctx.continue(...)` est ce que le REPL affiche ;
 `ctx.log` part vers le volet des logs, que la TUI masque au démarrage.
 
@@ -387,7 +388,7 @@ defineAsyncCommand({
 });
 ```
 
-- `post(agent, intent, payload)` retourne immédiatement un **ticket** (string) et
+- `post(agent, intent, payload, options?)` retourne immédiatement un **ticket** (string) et
   exécute la requête sur une tâche d'arrière-plan.
 - `completed(result, ctx)` n'est **pas** appelé depuis le thread d'arrière-plan
   (Jint est mono-thread). Dès que le travail aboutit, l'hôte imprime une ligne
@@ -403,7 +404,7 @@ defineAsyncCommand({
   chaîne est bornée par `MaxChainDepth` (8 par défaut, `ScriptCommandsConfiguration.MaxChainDepth`) ;
   la profondeur compte combien de sauts `completed` séparent une instance de son
   lancement (`inspect` l'affiche). Un `commands.post` compte de la même façon (la
-  profondeur du parent plus un ; il ne prend pas d'options). Un `runCrewAsync` ou un
+  profondeur du parent plus un ; sa seule option est `{ state }`). Un `runCrewAsync` ou un
   `post` plus profond est refusé par une `ChainDepthExceededException`, levée en JS, dont
   le message nomme la profondeur, la limite et la commande :
   `chain depth 8 reached (MaxChainDepth 8, /dev-batches)`.
@@ -442,6 +443,17 @@ defineAsyncCommand({
   refusé ni compté ; un `exclusive` qui n'est ni absent ni booléen (`null` compris) est une erreur de script. Contrairement à `maxConcurrent` ci-dessous, elle
   borne le crew, pas la commande : un alias de la commande qui ne lance rien répond pendant
   l'exécution. Les deux options se combinent (`{ chain: "continue", exclusive: true }`).
+- **Un fait que le lancement garde pour sa fin : `{ state }`.** `completed(result, ctx)` reçoit `result.ticket`, le ticket
+  que le lancement a retourné, et `result.state`, la valeur que le lancement a attachée par
+  `runCrewAsync(name, input, { state })` ou `commands.post(agent, intent, payload, { state })` ; undefined quand il n'en a
+  attaché aucune. L'état est une valeur JSON quelconque d'au plus 16 Kio une fois sérialisée, gardée en mémoire avec
+  l'instance (perdue au redémarrage du REPL, comme l'instance) et relue pour chaque `completed`, si bien qu'une modification
+  faite là n'atteint personne. Un lancement chaîné depuis un `completed` porte l'état qu'on lui a donné, jamais celui de son
+  parent. Une valeur au-dessus du plafond, ou que JSON ne sait pas porter (un cycle, une fonction), est refusée avant que
+  rien ne tourne, levée en JS :
+  `script-host.runCrewAsync: options.state is 16395 bytes once serialised, above the cap of 16384 bytes (16 KiB).` Deux
+  instances d'une même commande peuvent ainsi être en vol à la fois (`maxConcurrent` au-dessus de 1), chaque `completed`
+  sachant quel lancement a pris fin, sans note partagée dans l'état de session.
 
 ### Quota d'admission — `maxConcurrent`
 
@@ -474,7 +486,8 @@ pendant que le travail async tourne en arrière-plan) :
 | `cancel --ticket=<t>`      | Demande l'annulation d'un ticket en vol.                      |
 
 Une `CommandInstanceView` porte : `ticket`, `name`, `kind` (`sync`/`async`),
-`targetAgent`, `intent`, `correlationId`, `state`, `onMain`, `startedAt`, `completedAt?`,
+`targetAgent`, `intent`, `correlationId`, `state` (le cycle de vie : `running`, `done`, … — pas la valeur qu'un
+lancement attache avec `{ state }`, que `completed` lit dans `result.state`), `onMain`, `startedAt`, `completedAt?`,
 `elapsedMs`, `tokens`, `result?`, `error?`, `progress?`. Les tickets s'écrivent `t1`,
 `t2`, … ; les 200 entrées terminales les plus récentes sont conservées pour que
 `result`/`inspect` puissent lire un ticket récent, puis évincées. Les quatre commandes

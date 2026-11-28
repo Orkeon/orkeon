@@ -576,7 +576,7 @@ public static class LlmSettings
     }
 
     /// <summary>
-    /// <c>Llm:Cache:{SystemPrompt,Tools,Ttl}</c>, mapped by <see cref="LlmCacheConfig.Request"/> as a
+    /// <c>Llm:Cache:{SystemPrompt,Tools,Conversation,Ttl}</c>, mapped by <see cref="LlmCacheConfig.Request(bool, bool, bool?, string?)"/> as a
     /// crew file's <c>cache:</c> block and a script's <c>cache({ ... })</c> are (#254). A block that
     /// marks nothing is no block; a <c>Ttl</c> that is not <c>5m</c> or <c>1h</c>, or one set with
     /// nothing marked, refuses the start, naming its key.
@@ -586,10 +586,12 @@ public static class LlmSettings
         var cache = section.GetSection("Cache");
         var systemPrompt = ReadBool(cache, "SystemPrompt") ?? false;
         var tools = ReadBool(cache, "Tools") ?? false;
+        // Unset, the conversation follows the other two switches (#490).
+        var conversation = ReadBool(cache, "Conversation");
         var ttl = string.IsNullOrWhiteSpace(cache["Ttl"]) ? null : cache["Ttl"]!.Trim();
         try
         {
-            return LlmCacheConfig.Request(systemPrompt, tools, ttl);
+            return LlmCacheConfig.Request(systemPrompt, tools, conversation, ttl);
         }
         catch (ArgumentException ex)
         {

@@ -224,6 +224,12 @@ internal class LlmThinkingShape
 internal class LlmCacheShape
 {
     /// <summary>
+    /// Marks the conversation cacheable, so each call of a tool loop reads what the previous one wrote;
+    /// left out, it follows SystemPrompt and Tools once the conversation holds an assistant turn.
+    /// </summary>
+    public bool? Conversation { get; set; }
+
+    /// <summary>
     /// Marks the system prompt cacheable for every agent that sets no cache of its own, on a provider
     /// whose prompt cache is explicit (Anthropic). Left out, it is not.
     /// </summary>
@@ -236,7 +242,7 @@ internal class LlmCacheShape
     public bool? Tools { get; set; }
 
     /// <summary>
-    /// The cache lifetime, <c>5m</c> or <c>1h</c>; it needs <c>SystemPrompt</c> or <c>Tools</c>, and
+    /// The cache lifetime, <c>5m</c> or <c>1h</c>; it needs <c>SystemPrompt</c>, <c>Tools</c> or <c>Conversation</c>, and
     /// any other value refuses the load. Left out, the vendor default (5 minutes on Anthropic).
     /// </summary>
     public string? Ttl { get; set; }

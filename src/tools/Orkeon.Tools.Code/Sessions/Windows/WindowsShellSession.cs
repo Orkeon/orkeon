@@ -278,8 +278,8 @@ internal sealed class WindowsShellSession : IShellSession
     private async Task<ShellRunResult> WaitAsync(WindowsLaunchedProcess process, TimeSpan timeout, CancellationToken cancellationToken)
     {
         using var readers = new CancellationTokenSource();
-        var stdout = new StringBuilder();
-        var stderr = new StringBuilder();
+        var stdout = new CapturedOutput(MaxCapturedLength);
+        var stderr = new CapturedOutput(MaxCapturedLength);
         var stdoutTask = PumpAsync(process.Stdout, stdout, readers.Token);
         var stderrTask = PumpAsync(process.Stderr, stderr, readers.Token);
 
@@ -308,19 +308,16 @@ internal sealed class WindowsShellSession : IShellSession
         // A grandchild may still hold the pipes: what came within the grace is what the command printed.
         readers.CancelAfter(s_outputGrace);
         await Task.WhenAll(stdoutTask, stderrTask).ConfigureAwait(false);
-        string stdoutText, stderrText;
-        lock (stdout)
-            stdoutText = stdout.ToString();
-        lock (stderr)
-            stderrText = stderr.ToString();
+        var (stdoutText, stdoutTail, stdoutOmitted) = stdout.Snapshot();
+        var (stderrText, stderrTail, stderrOmitted) = stderr.Snapshot();
 
-        return timedOut
-            ? new ShellRunResult(-1, stdoutText, stderrText, TimedOut: true)
-            : new ShellRunResult(process.ExitCode ?? -1, stdoutText, stderrText);
+        return new ShellRunResult(
+            timedOut ? -1 : process.ExitCode ?? -1, stdoutText, stderrText, TimedOut: timedOut,
+            StdoutTail: stdoutTail, StderrTail: stderrTail, StdoutOmitted: stdoutOmitted, StderrOmitted: stderrOmitted);
     }
 
     [SuppressMessage("Design", "CA1031", Justification = "A pipe broken or cancelled ends the capture; what was read so far is the output.")]
-    private static async Task PumpAsync(Stream stream, StringBuilder target, CancellationToken cancellationToken)
+    private static async Task PumpAsync(Stream stream, CapturedOutput target, CancellationToken cancellationToken)
     {
         var decoder = s_utf8.GetDecoder();
         var bytes = new byte[16 * 1024];
@@ -331,12 +328,7 @@ internal sealed class WindowsShellSession : IShellSession
             {
                 var read = await stream.ReadAsync(bytes, cancellationToken).ConfigureAwait(false);
                 var count = decoder.GetChars(bytes, 0, read, chars, 0, flush: read == 0);
-                lock (target)
-                {
-                    var room = MaxCapturedLength - target.Length;
-                    if (room > 0)
-                        target.Append(chars, 0, Math.Min(room, count));
-                }
+                target.Append(chars, count);
 
                 if (read == 0)
                     return;

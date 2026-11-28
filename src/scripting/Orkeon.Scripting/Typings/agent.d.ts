@@ -52,8 +52,8 @@ declare global {
          */
         effort(level: AgentEffort): this;
         /**
-         * YAML parity `cache:` — asks the provider's prompt cache to keep the system prompt and/or the
-         * tool definitions. Only a provider whose cache is explicit (Anthropic) needs it; the others cache
+         * YAML parity `cache:` — asks the provider's prompt cache to keep the system prompt, the
+         * tool definitions and the conversation. Only a provider whose cache is explicit (Anthropic) needs it; the others cache
          * by their own rules and say so in their log when a `ttl` cannot be sent. Wins over the `cache` of
          * the `LlmConfig` given to `.llm(...)` and over the host default `Llm:Cache`; an object that marks
          * nothing cacheable (`cache({})`) turns caching off, the host default included. Applies to the

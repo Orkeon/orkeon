@@ -7,6 +7,76 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — a shell line at the REPL prompt (#491)
+
+- A typed line that starts with `!` runs a shell command of the operator's own, without a turn of the model. Its output
+  streams to the console and joins the session store as a `note` tagged as the operator's action (secrets masked,
+  cut at 10 000 characters, its first 8 000 and last 2 000 kept); a turn sees it when the assistant's script reads
+  the session (`session_store` `read_messages`, or a prompt assembly mapping the `note` role). It runs only when the console states the line was typed at an interactive
+  terminal: piped stdin, a `--replay` file or any other feed is refused with a sentence. `\!` sends a prompt starting
+  with `!`. The command ends with the shell rather than its background children, runs detached from the terminal on
+  Linux when `setsid` is present (a timeout or a stop then kills its whole process group), and its partial output is
+  kept when the operator stops it. `Orkeon:Cli:Repl:ShellPrefix:Enabled` and `TimeoutSeconds` (1 to 86 400) turn it
+  off and bound it.
+
+### Added — the whole output of a cut `shell_command` run (#492)
+
+- `stdout_truncated`, `stderr_truncated`, `stdout_total_chars`, `stderr_total_chars`, and `output_path` pointing to a
+  file of the output when a run is cut: at most the first 8 MiB of each stream (a Windows session keeps the first and
+  the last million characters of each), the marker saying when the file is not whole.
+
+### Added — state on an async command's ticket (#493)
+
+- `completed(result, ctx)` of an async command receives `result.ticket` and `result.state`: the value attached with
+  `runCrewAsync(name, input, { state })` or `commands.post(agent, intent, payload, { state })`, a JSON value of at most
+  16 KiB kept with the instance, so a command can raise `maxConcurrent` above 1 without a shared note in the session.
+
+### Changed — Anthropic caches the conversation of a tool loop (#490)
+
+- `cache.conversation` (YAML), `conversation` (script `cache({...})`) and `Llm:Cache:Conversation` (also under
+  `Llm:Profiles:<name>:Cache`) mark the conversation cacheable, so each call of a tool loop reads what the previous one
+  wrote. Left out, it follows `system`/`tools` once the conversation holds an assistant turn: an existing config with
+  `system: true` now caches the conversation of a tool loop too, while a single call (a prompt alone) pays no
+  conversation write; `conversation: true` marks every call.
+  `Cache:Ttl` accepts `Conversation` as the switch it needs.
+
+### Changed — a read-only `shell_command` run in default mode runs without asking (#494)
+
+- In default mode such a run is now declared Read and runs without asking. In plan mode, `shell_command` runs a read-only
+  command (`git status`, `ls`) and the refusal says what plan mode allows.
+
+### Fixed — `shell_command` checks the command it runs (#494)
+
+- Validation, the declared access and the execution read the same parse of a command. Before, a quoted first token
+  holding a space (`"/x/ls /y/sh" -c id`) was checked as `ls` and ran `sh`: a first token holding whitespace is now
+  refused, and the blocked patterns and forbidden operators are also checked with the quotes removed.
+- Read-only git subcommands match exactly (`git STATUS` is refused), `--show-signature`, a `%G` format placeholder,
+  `--ignore-submodules`, `--submodule` and their `--no-` forms, `status -v` in every form (`-vv`, `-sv`, `--verbose`),
+  and any abbreviation of three letters or more of a refused long option (`--ignore-sub=none`) are refused. A restricted
+  git runs with `--no-pager --no-optional-locks --no-lazy-fetch`, `core.fsmonitor=false`, `core.hooksPath=/dev/null`,
+  `core.pager=cat`, `log.showSignature=false`, `gpg.program`, `gpg.ssh.program` and `gpg.x509.program` set to `false`,
+  `protocol.allow=never`, every filter driver the configuration defines emptied (read first with `git config`),
+  `--ignore-submodules=all`, and `--no-ext-diff --no-textconv` for `diff`, `show` and `log`: the repository's
+  configuration runs no program (hooks, signature verification, `.gitattributes` or `.git/info/attributes` filters, a
+  partial clone's lazy fetch). Such a call is Read only on git 2.44 or later; an older or unknown git makes it Execute.
+  A filter driver whose name cannot be passed in `-c` (it holds `=`) refuses the call.
+
+### Fixed — a cut `shell_command` run says so (#492)
+
+- It keeps the head and the tail, and its marker gives the true count of characters left out and says how much of the
+  output `output_path` holds.
+- The file behind `output_path` has its physical paths virtualized, counts characters (exact for non-ASCII output), is
+  capped at 8 MiB per stream; the 32 most recent capture files are kept and a failed run leaves none. The retention
+  reads only the capture directory itself and only the names the tool gives its files, so a user's `.log` there or
+  below stays, and never removes the file the result names. A physical path a cut splits (the session's head and tail,
+  a line past 1 MiB, the 8 MiB cap) is dropped or rewritten whole, never shown in part. Without a capture copy,
+  `stdout_total_chars` and `stderr_total_chars` count the middle the session dropped in bytes.
+
+### Fixed — `contextTokens` no longer charges the conversation again (#495)
+
+- When the provider's cache serves only part of the previous prompt (the system prompt and the tools), each call is
+  charged the lesser of its uncached prompt and its growth, plus its completion.
+
 ### Fixed — a held question is listed only once the run clock is stopped
 
 - `PendingInputBroker.HeldRequestIds` and `HeldRequestId` could show a question before the run deadline was told of it:

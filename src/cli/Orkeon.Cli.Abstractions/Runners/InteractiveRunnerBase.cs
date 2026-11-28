@@ -226,6 +226,17 @@ public abstract partial class InteractiveRunnerBase : IInteractiveRunner
         if (trimmed.Length == 0)
             return (IterationAction.Continue, null);
 
+        // `!command` runs a shell command of the operator's own; `\!text` is a prompt that starts with `!`.
+        if (trimmed.StartsWith("\\!", StringComparison.Ordinal))
+        {
+            trimmed = trimmed[1..];
+            line = trimmed;
+        }
+        else if (trimmed.StartsWith('!'))
+        {
+            return await RunOperatorShellAsync(line, trimmed[1..].Trim(), scope.ServiceProvider, ct).ConfigureAwait(false);
+        }
+
         var resolved = ResolveCommand(line, trimmed);
         if (resolved is null)
         {
@@ -243,6 +254,69 @@ public abstract partial class InteractiveRunnerBase : IInteractiveRunner
         };
 
         return await ExecuteCommandAsync(resolved.Command, ctx, ct).ConfigureAwait(false);
+    }
+
+    /// <summary>The name a line that starts with <c>!</c> is reported under.</summary>
+    internal const string OperatorShellCommandName = "!";
+
+    /// <summary>What a <c>!</c> line with no command (<c>!</c>, <c>!!</c>) prints.</summary>
+    internal const string OperatorShellUsage =
+        "Usage: ! <command> runs a shell command of your own in the working folder (e.g. ! git status); \\!text sends a prompt that starts with !.";
+
+    /// <summary>What a <c>!</c> line prints when the console does not state it was typed at an interactive terminal.</summary>
+    internal const string OperatorShellNotTypedRefusal =
+        "Refused: a line that starts with ! runs a shell command only when you type it at an interactive terminal; a replay file, piped input or a script never runs one.";
+
+    /// <summary>What a <c>!</c> line prints when the runner's services hold no <see cref="IOperatorShell"/>.</summary>
+    internal const string OperatorShellMissingRefusal =
+        "Refused: this console runs no shell command of the operator's (no operator shell is registered).";
+
+    /// <summary>
+    /// A line that starts with <c>!</c>: refused unless the console states it was typed at an interactive terminal
+    /// (<see cref="IReplLineOrigin.LastLineTyped"/>; a console that states nothing is a feed), when no shell is registered, when the
+    /// feature is off, or when no command follows; otherwise run as a command, under the per-command token Esc and
+    /// Ctrl+C cancel.
+    /// </summary>
+    private async Task<(IterationAction Action, CommandResult? Result)> RunOperatorShellAsync(
+        string line, string command, IServiceProvider scope, CancellationToken ct)
+    {
+        string? refusal = null;
+        IOperatorShell? shell = null;
+        if (Console is not IReplLineOrigin { LastLineTyped: true })
+            refusal = OperatorShellNotTypedRefusal;
+        else if ((shell = Services.GetService<IOperatorShell>()) is null)
+            refusal = OperatorShellMissingRefusal;
+        else if (shell.DisabledReason is { } disabled)
+            refusal = disabled;
+        else if (command.Length == 0 || command.StartsWith('!'))
+            refusal = OperatorShellUsage;
+
+        if (refusal is not null)
+        {
+            Console.WriteLine(refusal);
+            ReportOutcome(new CommandOutcome(line, OperatorShellCommandName, CommandOutcomeKind.Failed, refusal));
+            return (IterationAction.Continue, null);
+        }
+
+        var ctx = new CommandContext
+        {
+            RawInput = line,
+            Args = [command],
+            Console = Console,
+            Scope = scope
+        };
+        return await ExecuteCommandAsync(new OperatorShellCommand(shell!, command), ctx, ct).ConfigureAwait(false);
+    }
+
+    /// <summary>A <c>!</c> line run as a command, so it is cancelled and reported as any command is.</summary>
+    private sealed class OperatorShellCommand(IOperatorShell shell, string command) : IInteractiveCommand
+    {
+        public string Name => OperatorShellCommandName;
+        public IReadOnlyList<string> Aliases => [];
+        public string Description => "Runs a shell command of the operator's own.";
+
+        public Task<CommandResult> ExecuteAsync(CommandContext context, CancellationToken cancellationToken)
+            => shell.RunAsync(command, context.Console, cancellationToken);
     }
 
     /// <summary>The <see cref="IReplLineInterceptor"/> the runner's services hold, resolved once; null when none.</summary>

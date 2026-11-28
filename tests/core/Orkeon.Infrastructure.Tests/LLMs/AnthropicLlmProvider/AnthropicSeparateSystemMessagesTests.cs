@@ -44,9 +44,9 @@ public class AnthropicSeparateSystemMessagesTests
 
         Assert.Equal("First system.", system);
         Assert.Equal(2, conv.Count);
-        var second = (dynamic)conv[0];
-        Assert.Equal("user", (string)second.role);
-        Assert.Equal("Trim notice.", (string)second.content);
+        var second = System.Text.Json.JsonSerializer.SerializeToElement(conv[0]);
+        Assert.Equal("user", second.GetProperty("role").GetString());
+        Assert.Equal("Trim notice.", second.GetProperty("content").GetString());
     }
 
     // ── Standard messages ──────────────────────────────────────────────────

@@ -30,7 +30,7 @@ internal enum ReplayInterrupt
 /// </list>
 /// With no replay running, every member delegates to the real console.
 /// </summary>
-internal sealed class ReplayConsoleAdapter : IConsoleAdapter, IThreadedConsole, IStreamConsole, IBlockConsole, IThemeConsole, IChoiceConsole, ICommandOutcomeObserver
+internal sealed class ReplayConsoleAdapter : IConsoleAdapter, IThreadedConsole, IStreamConsole, IBlockConsole, IThemeConsole, IChoiceConsole, ICommandOutcomeObserver, IReplLineOrigin
 {
     /// <summary>The exit code of a replay whose every line passed.</summary>
     public const int PassedExitCode = 0;
@@ -47,6 +47,7 @@ internal sealed class ReplayConsoleAdapter : IConsoleAdapter, IThreadedConsole, 
     private readonly Lock _lock = new();
     private ReplayRun? _run;
     private bool _inputClosed;
+    private volatile bool _lastLineFromInner;
 
     /// <summary>Creates the decorator.</summary>
     /// <param name="inner">The real console.</param>
@@ -139,8 +140,9 @@ internal sealed class ReplayConsoleAdapter : IConsoleAdapter, IThreadedConsole, 
     /// <inheritdoc />
     public async Task<string?> ReadLineAsync(CancellationToken cancellationToken = default)
     {
+        _lastLineFromInner = false;
         if (CurrentRun() is not { } run)
-            return _inputClosed ? null : await _inner.ReadLineAsync(cancellationToken).ConfigureAwait(false);
+            return _inputClosed ? null : await ReadInnerAsync(cancellationToken).ConfigureAwait(false);
 
         if (!run.HasFailed)
         {
@@ -166,7 +168,7 @@ internal sealed class ReplayConsoleAdapter : IConsoleAdapter, IThreadedConsole, 
         }
 
         if (run.HasFailed || next is null)
-            return EndRun(run, afterPrompt: true) ? null : await _inner.ReadLineAsync(cancellationToken).ConfigureAwait(false);
+            return EndRun(run, afterPrompt: true) ? null : await ReadInnerAsync(cancellationToken).ConfigureAwait(false);
 
         // A command line is never an approval's answer (the channel leaves it to the loop): the claim is over.
         if (next.Text.TrimStart().StartsWith('/'))
@@ -178,6 +180,21 @@ internal sealed class ReplayConsoleAdapter : IConsoleAdapter, IThreadedConsole, 
         Echo(next.Text);
         return next.Text;
     }
+
+    /// <summary>A line read from the real console: what it states of its origin is what this decorator states.</summary>
+    private async Task<string?> ReadInnerAsync(CancellationToken cancellationToken)
+    {
+        var line = await _inner.ReadLineAsync(cancellationToken).ConfigureAwait(false);
+        _lastLineFromInner = true;
+        return line;
+    }
+
+    /// <inheritdoc />
+    /// <remarks>
+    /// False for a line of the replay file; a line read after it, under <c>--interactive</c>, is typed when the real
+    /// console states so (the line editor on a terminal), and never when it states nothing (piped input).
+    /// </remarks>
+    public bool LastLineTyped => _lastLineFromInner && _inner is IReplLineOrigin { LastLineTyped: true };
 
     /// <summary>
     /// A read from inside a command (the approval answered by <c>runCrew</c>, a prompt of a menu command): the next

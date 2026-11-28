@@ -394,7 +394,7 @@ public class AgentExecutionBudgetTests
         // Assert: the dimension a script and the act's wrap-up read is the same as the sum's
         Assert.Equal(BudgetDimension.Tokens, ex.Dimension);
         Assert.Equal(
-            "Token budget exhausted: 1100 context tokens (the growth or the uncached part of each prompt, plus every completion) over 2 calls (limit 1000 contextTokens)",
+            "Token budget exhausted: 1100 context tokens (the lesser of each prompt's growth and its uncached part, plus every completion) over 2 calls (limit 1000 contextTokens)",
             ex.Message);
         Assert.Equal(1_100, budget.CurrentContextTokens);
         Assert.True(budget.IsExhausted);

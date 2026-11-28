@@ -262,16 +262,33 @@ adapter marks the system prompt with that lifetime (`LlmCacheConfig.SystemPrompt
 nothing would cache nothing. The OpenAI-compatible providers and Ollama cannot honour it and log the structured unhonoured-option
 warning (event 110, `cache_ttl`) instead of dropping it silently.
 
-The request is opt-in, from YAML (`llm.cache: { system, tools, ttl }`) or from a script:
-`agentBuilder().cache({ systemPrompt, tools, ttl })` and the `cache` key of `LlmConfig.with({...})` map onto the
+The request is opt-in, from YAML (`llm.cache: { system, tools, conversation, ttl }`) or from a script:
+`agentBuilder().cache({ systemPrompt, tools, conversation, ttl })` and the `cache` key of `LlmConfig.with({...})` map onto the
 same `LlmCacheConfig` (`LlmCacheConfig.Request`). The TTL is `5m` or `1h`, anything else is refused in both, and a
-script's `ttl` without `systemPrompt` or `tools` is refused as caching nothing. An object that marks nothing
+script's `ttl` without `systemPrompt`, `tools` or `conversation` is refused as caching nothing. An object that marks nothing
 (`cache: {}`, `cache({})`) is an explicit Off (`LlmCacheConfig.Off`): it turns an inherited cache off, the host
 default included, where a cache left out inherits it.
 
-A host sets a default for every agent with `Llm:Cache` (`SystemPrompt`, `Tools`, `Ttl`), and a profile with
+The conversation switch (`LlmCacheConfig.CacheConversation`, #490) caches the messages too, so that in a tool loop
+each call reads what the previous one wrote and pays full price for the new turns only. Left out, it follows the
+other two: on when the system prompt or the tools are cached, and then placed only once the messages hold an
+assistant turn (a tool loop, a chat history), so a single call pays no write that no later call reads;
+`conversation: true` marks every call, single ones included, and `conversation: false` caches the stable prefix
+alone. Anthropic places explicit breakpoints, never the top-level automatic one, so the same request works on
+every endpoint that serves the Messages API. A request carries at most four (`LlmCacheConfig.MaxBreakpoints`): one
+on the system prompt, one on the last tool, and the conversation takes what they leave: one on the last cacheable
+block of the last message, and a second one on the block the previous call marked (the last cacheable block before
+the latest assistant turn) when the turns added since then hold 20 blocks or more, beyond the API's lookback, as a
+call returning many parallel tool results does. A thinking or redacted-thinking block and an empty text never
+carry one; a plain string content is promoted to the one text block that can. Every breakpoint of a request has
+the same lifetime, so the rule that `1h` entries come before `5m` ones holds. The wrap-up call (`tool_choice:
+none`), a change of effort, a pruning or a snip invalidate the cached messages from the point they change, and
+below the model's minimum cacheable length nothing is cached, without an error. `agent-cli` drops every breakpoint
+with its warning, and the OpenAI-compatible bases place none.
+
+A host sets a default for every agent with `Llm:Cache` (`SystemPrompt`, `Tools`, `Conversation`, `Ttl`), and a profile with
 `Llm:Profiles:<name>:Cache`. It is validated as the YAML block is (`LlmCacheConfig.Request`): a `Ttl` other than
-`5m` or `1h`, or one with neither `SystemPrompt` nor `Tools`, refuses the load and names the key. It applies only
+`5m` or `1h`, or one with nothing marked, refuses the load and names the key. It applies only
 to a provider whose cache is explicit (`LlmProviderCapabilities.ExplicitPromptCaching`, Anthropic): elsewhere the
 provider's `BaseConfig` drops it, so it neither reaches the call nor warns. An agent's or task's own cache, an
 explicit Off included, always wins. The procedural `ctx.llm` calls of a script agent run with the cache and the

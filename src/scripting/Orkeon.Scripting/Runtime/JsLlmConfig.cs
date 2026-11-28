@@ -193,20 +193,20 @@ public sealed class JsLlmConfig
                 ?? throw new InvalidScriptException(
                     $"effort must be {string.Join('|', LlmThinkingConfig.Levels)}|{LlmAutoEffort.Name}, not '{value}'.");
 
-    private static readonly string[] s_cacheKeys = ["systemPrompt", "tools", "ttl"];
+    private static readonly string[] s_cacheKeys = ["systemPrompt", "tools", "conversation", "ttl"];
 
     /// <summary>
     /// The prompt-cache request a script's <c>cache</c> option describes, mapped by
-    /// <see cref="LlmCacheConfig.Request"/> as the YAML <c>cache:</c> block is:
+    /// <see cref="LlmCacheConfig.Request(bool, bool, bool?, string?)"/> as the YAML <c>cache:</c> block is:
     /// <see cref="LlmCacheConfig.Off"/> when it marks nothing cacheable, which turns an inherited
     /// cache - the host default <c>Llm:Cache</c> included - off.
     /// </summary>
-    /// <param name="value">The <c>{ systemPrompt?, tools?, ttl? }</c> object.</param>
+    /// <param name="value">The <c>{ systemPrompt?, tools?, conversation?, ttl? }</c> object.</param>
     /// <param name="where">The call that received it, for the refusal.</param>
     internal static LlmCacheConfig CacheFrom(JsValue? value, string where)
     {
         if (value is null || !value.IsObject() || value.IsArray())
-            throw new InvalidScriptException($"{where} takes an object {{ systemPrompt?, tools?, ttl? }}.");
+            throw new InvalidScriptException($"{where} takes an object {{ systemPrompt?, tools?, conversation?, ttl? }}.");
 
         var cache = value.AsObject();
         foreach (var key in cache.GetOwnPropertyKeys())
@@ -219,6 +219,11 @@ public sealed class JsLlmConfig
 
         var systemPrompt = RequireFlag(cache.Get("systemPrompt"), where, "systemPrompt");
         var tools = RequireFlag(cache.Get("tools"), where, "tools");
+        // Left out, the conversation follows the other two switches (#490).
+        var conversationValue = cache.Get("conversation");
+        bool? conversation = conversationValue.IsUndefined()
+            ? null
+            : RequireFlag(conversationValue, where, "conversation");
         var ttlValue = cache.Get("ttl");
         string? ttl = null;
         if (!ttlValue.IsUndefined())
@@ -227,14 +232,14 @@ public sealed class JsLlmConfig
                 ? ttlValue.AsString()
                 : throw new InvalidScriptException(
                     $"{where} ttl must be {string.Join(" or ", LlmCacheConfig.Ttls)}; leave it out for the vendor default.");
-            if (!systemPrompt && !tools)
+            if (!systemPrompt && !tools && conversation != true)
                 throw new InvalidScriptException(
-                    $"{where} ttl caches nothing on its own: set systemPrompt or tools to true.");
+                    $"{where} ttl caches nothing on its own: set systemPrompt, tools or conversation to true.");
         }
 
         try
         {
-            return LlmCacheConfig.Request(systemPrompt, tools, ttl) ?? LlmCacheConfig.Off;
+            return LlmCacheConfig.Request(systemPrompt, tools, conversation, ttl) ?? LlmCacheConfig.Off;
         }
         catch (ArgumentException ex)
         {

@@ -570,6 +570,47 @@ public sealed class JsLlmFacadeBudgetTests
     }
 
     [Fact]
+    [Trait("BR", "CH-495")]
+    public void ShouldCountTheGrowth_WhenTheCacheHitCoversLessThanThePreviousPrompt()
+    {
+        var previous = 0;
+
+        var first = JsLlmFacade.ContextShare(17_100, 17_000, 100, null, ref previous);
+        var second = JsLlmFacade.ContextShare(20_100, 20_000, 100, 15_946, ref previous);
+        var third = JsLlmFacade.ContextShare(23_100, 23_000, 100, 15_946, ref previous);
+        var fourth = JsLlmFacade.ContextShare(26_100, 26_000, 100, 15_946, ref previous);
+
+        Assert.Equal(17_100, first);
+        Assert.Equal(3_100, second);
+        Assert.Equal(3_100, third);
+        Assert.Equal(3_100, fourth);
+        Assert.Equal(26_000, previous);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-495")]
+    public void ShouldCountTheCompletionAlone_WhenThePromptShrinksWithACacheHit()
+    {
+        var previous = 30_000;
+
+        var share = JsLlmFacade.ContextShare(20_080, 20_000, 80, 15_946, ref previous);
+
+        Assert.Equal(80, share);
+        Assert.Equal(20_000, previous);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-495")]
+    public void ShouldCountTheUncachedPrompt_WhenTheCacheHitCoversMoreThanThePreviousPrompt()
+    {
+        var previous = 9_000;
+
+        var share = JsLlmFacade.ContextShare(10_350, 10_300, 50, 10_000, ref previous);
+
+        Assert.Equal(350, share);
+    }
+
+    [Fact]
     [Trait("BR", "CH-224")]
     public void ShouldCountTheWholeCall_WhenTheProviderReportsNoBreakdown()
     {

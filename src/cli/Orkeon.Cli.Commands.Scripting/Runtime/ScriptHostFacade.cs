@@ -170,6 +170,8 @@ public sealed partial class ScriptHostFacade
     /// It may also carry <c>{ exclusive: true }</c>: refused, before any LLM call, while another exclusive launch of the
     /// same crew runs, as a JS throw naming the running ticket (<c>crew 'code-review' already running (ticket t2)</c>).
     /// With <c>{ onMain: true }</c> the crew writes on the console's main thread and is no task of its list.
+    /// With <c>{ state }</c> the launch attaches a JSON value (at most 16 KiB serialised) that its <c>completed</c>
+    /// receives back as <c>result.state</c>, beside <c>result.ticket</c> (#493).
     /// </summary>
     public string runCrewAsync(string name, JsValue? input = null, JsValue? options = null)
     {
@@ -180,9 +182,10 @@ public sealed partial class ScriptHostFacade
         var safeName = SanitizeName(name);
         var inputsJson = ToInputsJson(input);
         var (continueChain, exclusive, onMain) = ReadLaunchOptions(options);
+        var launchState = LaunchState.Read(options, "script-host.runCrewAsync");
         try
         {
-            return _dispatch.postWork(safeName, $"crew:{safeName}", continueChain: continueChain, exclusive: exclusive, onMain: onMain, work: async ct =>
+            return _dispatch.PostWorkCore(safeName, $"crew:{safeName}", continueChain: continueChain, exclusive: exclusive, onMain: onMain, launchState: launchState, work: async ct =>
             {
                 var output = await RunCrewCoreAsync(safeName, inputsJson, ct).ConfigureAwait(false);
                 return new CommandResponse(

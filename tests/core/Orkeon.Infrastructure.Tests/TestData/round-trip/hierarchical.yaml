@@ -24,6 +24,7 @@ llm:
   cache:
     system: true
     tools: false
+    conversation: false
     ttl: 5m
 
 rag:

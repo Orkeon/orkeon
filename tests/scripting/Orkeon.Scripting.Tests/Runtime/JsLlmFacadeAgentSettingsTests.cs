@@ -38,7 +38,9 @@ public sealed class JsLlmFacadeAgentSettingsTests
         var config = Assert.IsType<LlmConfig>(provider.LastConfig);
         Assert.Equal("boot-model", config.Model);
         Assert.Equal("high", config.Thinking?.Effort);
-        Assert.Equal(LlmCacheConfig.SystemPrompt(), config.Cache);
+        // #490: an agent's tool loop caches its conversation along with the system prompt.
+        Assert.Equal(LlmCacheConfig.Request(systemPrompt: true, tools: false, ttl: null), config.Cache);
+        Assert.True(config.Cache?.CacheConversation);
     }
 
     [Fact]

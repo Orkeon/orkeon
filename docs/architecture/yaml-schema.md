@@ -110,7 +110,8 @@ agents:
       cache:              # Explicit prompt caching (Anthropic); off unless a breakpoint is asked
         system: bool      # default: false
         tools: bool       # default: false
-        ttl: string       # "5m" | "1h"; omitted = vendor default. Without system or tools it caches nothing and fails the load
+        conversation: bool # default: follows system/tools, marked once the conversation holds an assistant turn (a tool loop); true marks every call, false caches the prefix alone
+        ttl: string       # "5m" | "1h"; omitted = vendor default. Without system, tools or conversation it caches nothing and fails the load
     guardrails:           # Operational rules injected into the agent's system prompt (optional)
       preset: string      # "analysis" | "strict" | "creative" — any other name fails the load
       header: string      # Section header — used only without a preset (every preset brings its own)
@@ -162,7 +163,7 @@ tasks:
       max_tokens: int     # Positive; omitted = the inherited cap, 0 or less fails the load naming the task
       top_p: float
       thinking: {enabled, effort, budget_tokens} # effort: auto, its map form and enabled: auto as on the agent; without a pick, the agent's own effort stands
-      cache: {system, tools, ttl}  # Same shape as the agent's cache: — replaces the agent's block whole; a block with no breakpoint turns the agent's cache off for this task
+      cache: {system, tools, conversation, ttl}  # Same shape as the agent's cache: — replaces the agent's block whole; a block with no breakpoint turns the agent's cache off for this task
     guardrails:           # Task-level guardrails, same shape as the agent block (optional)
       preset: string      # "analysis" | "strict" | "creative" — any other name fails the load
       header: string

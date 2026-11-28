@@ -157,8 +157,9 @@ public class AnthropicParityTests
         });
 
         using var handler = TestHttpMessageHandler.CreateWithResponse(HttpStatusCode.OK, body);
-        // No system prompt and no tools: the request has no stable prefix to cache.
-        var config = BaseConfig() with { Cache = LlmCacheConfig.SystemPrompt() };
+        // No system prompt and no tools: the request has no stable prefix to cache (the conversation
+        // switch is turned off here, since a conversation always has a block to mark, #490).
+        var config = BaseConfig() with { Cache = LlmCacheConfig.SystemPrompt() with { CacheConversation = false } };
         using var provider = CreateProvider(config, handler);
 
         await provider.ChatAsync(Messages, cancellationToken: TestContext.Current.CancellationToken);

@@ -154,7 +154,7 @@ Six options de `ctx.llm.act(prompt, options)` règlent la boucle elle-même (la 
   avertissement, jamais un changement silencieux.
   Le cache de prompt se demande de la même façon sur un agent, `agentBuilder().cache({ systemPrompt: true, tools: true,
   ttl: "1h" })` ou `llm.default_.with({ cache: { systemPrompt: true } })`, reporté sur le bloc YAML `cache:`
-  (`LlmCacheConfig`) ; un `ttl` autre que `5m`/`1h`, un `ttl` sur rien de mis en cache ou une clé inconnue lève une
+  (`LlmCacheConfig` ; `conversation` met aussi les messages en cache et, omis, suit les deux autres, #490) ; un `ttl` autre que `5m`/`1h`, un `ttl` sur rien de mis en cache ou une clé inconnue lève une
   erreur. Comme `effort` sur le builder, il façonne la configuration déclarée de l'agent (ses tours dans un
   équipage) et ses appels `ctx.llm`, l'option `effort` ou `cache` propre à un appel l'emportant (#254).
 - **`onToolCall(call)`** s'exécute avant chaque appel d'outil, avant la porte de permission, qui juge
@@ -215,10 +215,12 @@ avec son cache. Chaque appel journalise la somme courante à côté de la limite
 used <n> tokens, running sum <somme>/<limite> tokens over <n> calls`, Information), ou, sans plafond de
 tokens, le dit (`running sum <somme> tokens over <n> calls, no limit`).
 
-`budget({ contextTokens })` compte le contexte une fois (#224) : chaque appel ajoute sa complétion plus,
-quand le fournisseur rapporte des hits de cache (`cacheHitTokens`), la part de son prompt que le cache n'a
-pas servie, sinon ce dont son prompt a crû depuis l'appel précédent de la même conversation : chaque
-`ctx.llm.act` est sa propre conversation, dont le premier appel compte tout son prompt, si bien que des acts
+`budget({ contextTokens })` compte le contexte une fois (#224) : chaque appel ajoute sa complétion plus
+le moindre de la part de son prompt que le cache n'a pas servie (`cacheHitTokens`, tout son prompt quand le
+fournisseur ne rapporte aucun hit) et de ce dont son prompt a crû depuis l'appel précédent de la même
+conversation, si bien qu'un cache qui ne sert qu'une part du prompt précédent (le prompt système et les
+outils) ne fait jamais repayer la conversation : chaque
+`ctx.llm.act` est sa propre conversation, dont le premier appel compte son prompt moins son hit de cache, si bien que des acts
 à la suite ou en même temps sur un même budget paient chacun leur propre contexte (jamais moins que zéro :
 un contexte compacté n'ajoute rien). Un tour de n appels sur un contexte de c tokens dépense environ c plus
 ses complétions. Un fournisseur qui ne rapporte ni prompt ni complétion compte l'appel en entier, comme
@@ -239,8 +241,8 @@ tokens sont comptés mais ne lancent aucune autre conclusion, et elle est gardé
 termine après la limite de temps mural. Un avertissement journalise que le budget est épuisé. Quand ce
 dernier appel échoue, ou ne répond rien, l'act rejette avec `BudgetExhaustedError`, dont le message
 nomme ce qu'il a compté : `Token budget exhausted: <somme> tokens sent and received over <n> calls
-(limit <limite>)`, ou sous `contextTokens` `Token budget exhausted: <n> context tokens (the growth or the
-uncached part of each prompt, plus every completion) over <n> calls (limit <limite> contextTokens)` ;
+(limit <limite>)`, ou sous `contextTokens` `Token budget exhausted: <n> context tokens (the lesser of each
+prompt's growth and its uncached part, plus every completion) over <n> calls (limit <limite> contextTokens)` ;
 les deux sont sur la dimension `tokens`. Les autres dimensions (appels d'outils, temps mural, profondeur de délégation)
 rejettent toujours à la garde, et `maxIterations` termine toujours par `exhausted: true`. Un nombre
 d'enfants épuisé n'est pas vérifié à la garde : il refuse seulement le lancement suivant, un appel

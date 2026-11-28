@@ -15,3 +15,5 @@ Orkeon.Infrastructure.Configuration.CrewMappingSettings.Files.get -> System.Coll
 Orkeon.Infrastructure.Configuration.CrewMappingSettings.Files.init -> void
 Orkeon.Infrastructure.Orchestration.CrewExecutionStateDocument.InputImages.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Application.Interfaces.Services.CrewInputImage!>?
 Orkeon.Infrastructure.Orchestration.CrewExecutionStateDocument.InputImages.init -> void
+Orkeon.Infrastructure.Configuration.CacheYamlConfig.Conversation.get -> bool?
+Orkeon.Infrastructure.Configuration.CacheYamlConfig.Conversation.set -> void

@@ -55,7 +55,7 @@ inferred.
 | `tools([...])` built-ins by name | ✅ what `ctx.llm.act` may call — a name the host does not offer rejects `act` with an `UnknownToolError`, before any model call | ✅ strict: an unknown name fails the run |
 | `withAutonomousTool(s)` instances | callable from a body (`tool.execute(input)`) and offered to `ctx.llm.act`, which runs the tool's `execute` in the script | ✅ registered and resolved by name |
 | `effort(level)` — `"low"`, `"medium"`, `"high"`, `"xhigh"` or `"max"`: turns the provider's thinking on at that effort; `"auto"` leaves the level to System One at each task's start, as YAML's `effort: auto` (also `llm.profile(name, { effort: "auto" })` and `.with({ effort: "auto" })`) | ✅ sent on the agent's `ctx.llm` calls, unless a call sets its own `{ effort }`; on `"auto"` a single call gets no pick (it is no task) and runs with the thinking the agent would have had without `auto`, its profile's effort | ✅ |
-| `cache({ systemPrompt, tools, ttl })` — YAML `cache:`: asks the provider's prompt cache to keep the system prompt and/or the tool definitions (`ttl` `"5m"` or `"1h"`; `cache({})` turns caching off, the host default `Llm:Cache` included) | ✅ sent on the agent's `ctx.llm` calls, unless a call sets its own `{ cache }` | ✅ |
+| `cache({ systemPrompt, tools, conversation, ttl })` — YAML `cache:`: asks the provider's prompt cache to keep the system prompt, the tool definitions and the conversation (`conversation` left out follows the other two; `ttl` `"5m"` or `"1h"`; `cache({})` turns caching off, the host default `Llm:Cache` included) | ✅ sent on the agent's `ctx.llm` calls, unless a call sets its own `{ cache }` | ✅ |
 | `maxIterations` `verbose` `allowDelegation` | ❌ (`act` has its own `maxIterations`) | ✅ — `maxIterations` defaults to 20, as in YAML and C# |
 | `maxRpm` — YAML `maxRpm:`: at most N model requests per minute for this agent, one more waiting its turn (none by default; 0 or less refused at `build()`) | ❌ (warned: `ctx.llm` calls are no agent turns — the host's `RateLimiting` still caps them) | ✅ |
 | `maxExecutionTime(seconds)` — YAML `maxExecutionTime:`: the seconds a task may take on this agent (none by default; 0, negative, decimal or above 4294967 refused at `build()`) | ❌ (warned: the procedural engine runs no task) | ✅ |
@@ -319,7 +319,7 @@ same for a procedural crew's `budget(...)`: no wall clock, tool-call, token or `
 `budget(...)` keeps the crew's own defaults for a key left out (50 tool calls, depth 4, 10 spawns, no token cap
 and no wall time). `tokens` is a running sum of the prompt and completion of every
 call, the context counted again on each. `contextTokens` counts the context once: each call's
-completion plus the uncached part of its prompt when the provider reports cache hits, else what the
+completion plus the lesser of the part of its prompt the provider's cache did not serve and what the
 prompt grew by since the same conversation's previous call (each `ctx.llm.act` its own), so a turn of n calls on a context of c tokens spends about c plus
 its completions, not n × c; set alone it leaves `tokens` uncapped, and a declarative autonomous crew
 refuses it. Once either is reached, `ctx.llm.act` makes one last call that may

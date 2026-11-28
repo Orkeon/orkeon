@@ -563,8 +563,9 @@ No attribute carries an id of a crew, task or agent.
 - **Effect**: `ModePermissionGate` is consulted by the scripted `ctx.llm.act` loop and by
   YAML crews' tool calls (`ToolInvocationPipeline`)
   before EACH tool execution. Modes: `bypassPermissions` → allow all; `plan` → deny
-  non-reads; `dontAsk` → allow reads, deny the rest without ever asking;
-  `acceptEdits` → auto-accept reads and edits (`file_write`, `spawn_agent`, the code-graph edits, any tool declaring `ToolAccess.Edit` such as `rag_ingest`), ask for everything else (`shell_command` among them);
+  non-reads, the refusal naming what plan allows (reads, and the read-only `shell_command` runs) so the
+  model stops retrying; `dontAsk` → allow reads, deny the rest without ever asking;
+  `acceptEdits` → auto-accept reads and edits (`file_write`, `spawn_agent`, the code-graph edits, any tool declaring `ToolAccess.Edit` such as `rag_ingest`), ask for everything else (a `shell_command` that is not a read among them);
   `default` → auto-accept reads, ask for everything else. With an approval channel, an ask
   waits for the operator, and the script's `ExecutionTimeout` and the agent's wall-time budget
   (`.budget({ wallTime })`) stop meanwhile; a refusal reads
@@ -580,13 +581,38 @@ No attribute carries an id of a crew, task or agent.
   `create_pr` and any unknown or missing action; `http_api` is `Read` for `GET`, `HEAD` and
   `OPTIONS` (a missing method is its default `GET`) without a body or a method-override header
   (`X-HTTP-Method-Override`, `X-HTTP-Method`, `X-Method-Override`, any case), `Execute` for any
-  other method or for a read method that carries either. Their
+  other method or for a read method that carries either; `shell_command` is `Read` for a `run` (the
+  default action) of one of its default read-only commands (`ls`, `cat`, `pwd`, `which`, `grep`, `wc`,
+  `echo`, `dir`, `type`, `where`, and `git status`/`log`/`diff`/`show` without an option that writes,
+  runs a program or leaves the working directory, the subcommand spelt exactly) that its own checks
+  accept — the executable is read with the parse the execution uses, and a quoted executable holding
+  a space (`"/x/ls /y/sh" -c id`) is refused. A `git` call is `Read` only when the tool can
+  neutralise every program the repository could configure for it: it runs with the tool's own
+  `--no-pager --no-optional-locks --no-lazy-fetch`, `-c core.fsmonitor=false -c core.hooksPath=/dev/null -c core.pager=cat
+  -c log.showSignature=false -c gpg.program=false -c gpg.ssh.program=false -c gpg.x509.program=false
+  -c protocol.allow=never -c diff.ignoreSubmodules=all -c status.submoduleSummary=false`, an empty
+  `clean`, `smudge` and `process` for every filter driver the configuration defines (read first with
+  `git config --get-regexp`, so a driver `.gitattributes`, `.git/info/attributes` or
+  `core.attributesFile` names runs nothing), `--ignore-submodules=all` after the subcommand, and
+  `diff`/`show`/`log` with `--no-ext-diff --no-textconv`; a `%G` format placeholder on the command
+  line (one a `pretty.<name>` or `format.pretty` holds is neutralised by the `gpg` overrides),
+  `--ignore-submodules`, `--submodule`, their `--no-` forms, `status -v` in every form (`-vv`, `-sv`,
+  `--verbose`: a verbose status runs the textconv filter) and any abbreviation of a refused long option
+  of three letters or more (`--ignore-sub=none`, `--verb`) are refused. `--no-optional-locks` does not
+  keep git from rewriting `.git/index` to refresh a stat-dirty entry; no hook runs on it. `--no-lazy-fetch` needs git 2.44: an older
+  git, or one whose version the tool cannot read, makes the call `Execute`. The residual: a `Read`
+  git call still reads the repository's configuration (its aliases do not apply, its display
+  settings do), and the overrides above are what make it safe; anything they do not cover is
+  `Execute` —, `Execute` for
+  `start_job` and the job actions, a command `ExtraAllowedCommands` or `AllowedCommands` adds, an
+  interpreter, any `git` once `AllowInterpreters` lifts its restriction, and a call it would refuse —
+  so a plan turn can run `git log`, `git diff`, `ls`, `cat` or `grep`, and nothing that writes. Their
   static `Access` stays `Execute`, the most restrictive class they can take.
   The built-in read tools (file/directory/session/memory/analysis, `web_scrape`,
   `scrape_element`, `rag_search`, `web_search`), `file_write`, `rag_ingest`
   (Edit: it writes into the knowledge index, never into the workspace) and `rag_eval` (Edit: it
   ingests the dataset's corpus into the collection — `reindex` rebuilds it — and writes its
-  reports through the VFS) and `shell_command` (Execute) all declare themselves. An MCP tool
+  reports through the VFS) and `shell_command` (Execute, unless the call is a read as above) all declare themselves. An MCP tool
   takes its class from the server's `annotations` only when the operator trusts that server
   (`MCP:Servers:<name>:TrustAnnotations = true`: `readOnlyHint: true` → `Read`, other
   annotations → `Execute`); an untrusted server's tools — the default — and a server that

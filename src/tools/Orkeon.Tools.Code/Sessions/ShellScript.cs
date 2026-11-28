@@ -17,7 +17,21 @@ internal enum ShellFrameStatus
 }
 
 /// <summary>What one framed command printed: its output, its error output and its exit code.</summary>
-internal sealed record ShellFrame(string Stdout, string Stderr, int ExitCode);
+/// <param name="Stdout">The head of the standard output: all of it when it fits the cap.</param>
+/// <param name="Stderr">The head of the standard error.</param>
+/// <param name="ExitCode">The command's exit code.</param>
+/// <param name="StdoutTail">The end of the standard output when it passed the cap, empty otherwise.</param>
+/// <param name="StderrTail">The end of the standard error when it passed the cap, empty otherwise.</param>
+/// <param name="StdoutOmitted">The bytes of the standard output between its head and its tail, printed by neither.</param>
+/// <param name="StderrOmitted">The bytes of the standard error between its head and its tail.</param>
+internal sealed record ShellFrame(
+    string Stdout,
+    string Stderr,
+    int ExitCode,
+    string StdoutTail = "",
+    string StderrTail = "",
+    long StdoutOmitted = 0,
+    long StderrOmitted = 0);
 
 /// <summary>
 /// The protocol of a POSIX shell session (<c>sh -s</c>): what the host writes on the shell's input and
@@ -36,8 +50,13 @@ internal sealed record ShellFrame(string Stdout, string Stderr, int ExitCode);
 /// session starts, removed when it ends); the fragment then prints them, each cut at
 /// <see cref="ByteCap"/> bytes, framed by a nonce drawn for that command:
 /// <c>\n&lt;nonce&gt;:OUT\n</c> stdout <c>\n&lt;nonce&gt;:ERR\n</c> stderr
-/// <c>\n&lt;nonce&gt;:RC:&lt;code&gt;\n</c>. The command never writes on the session's output itself,
-/// so it cannot interleave with the frame.
+/// <c>\n&lt;nonce&gt;:RC:&lt;code&gt;\n</c>. A stream longer than the cap also prints its end, after
+/// <c>\n&lt;nonce&gt;:TAIL:&lt;bytes omitted&gt;\n</c>: the head and the tail never overlap, and the
+/// count says how many bytes lie between them, so the true length survives the cut. When the invocation
+/// names a capture path and either stream passes the tool's limit, each stream (its first
+/// <see cref="CaptureByteCap"/> bytes) and their byte sizes are copied next to it first, for the tool to
+/// build the capture file from. The command
+/// never writes on the session's output itself, so it cannot interleave with the frame.
 /// </para>
 /// </remarks>
 internal static class ShellScript
@@ -57,6 +76,27 @@ internal static class ShellScript
     private const string StderrVariable = "_ork_e";
     private const string ExitCodeVariable = "_ork_rc";
     private const string WatchdogVariable = "_ork_w";
+    private const string StdoutSizeVariable = "_ork_so";
+    private const string StderrSizeVariable = "_ork_se";
+    private const string TailSizeVariable = "_ork_t";
+
+    /// <summary>
+    /// The bytes of each stream a session copies for the capture file (8 MiB): past them the copy holds the
+    /// stream's first bytes only, and the result says so.
+    /// </summary>
+    public const int CaptureByteCap = 8 * 1024 * 1024;
+
+    /// <summary>Suffix of the raw copy of the standard output, next to the capture path.</summary>
+    public const string CaptureStdoutSuffix = ".o";
+
+    /// <summary>Suffix of the raw copy of the standard error, next to the capture path.</summary>
+    public const string CaptureStderrSuffix = ".e";
+
+    /// <summary>Suffix of the file holding the byte sizes of the two streams ("stdout stderr").</summary>
+    public const string CaptureSizesSuffix = ".n";
+
+    /// <summary>What separates the standard output from the standard error in a capture file.</summary>
+    public const string CaptureStderrHeader = "\n[stderr]\n";
 
     /// <summary>The name the watchdog runs under (its <c>$0</c>), which finds it in a process listing.</summary>
     public const string WatchdogName = "_ork_watch";
@@ -172,12 +212,54 @@ internal static class ShellScript
         builder.Append(" ) </dev/null >\"$").Append(StdoutVariable).Append("\" 2>\"$").Append(StderrVariable).Append("\"; ")
             .Append(ExitCodeVariable).Append("=$?\n");
 
+        // The true size of each stream, read before anything is cut (wc may pad it with spaces).
+        builder.Append(StdoutSizeVariable).Append("=$(wc -c <\"$").Append(StdoutVariable).Append("\"); ")
+            .Append(StdoutSizeVariable).Append("=$((").Append(StdoutSizeVariable).Append("+0)); ")
+            .Append(StderrSizeVariable).Append("=$(wc -c <\"$").Append(StderrVariable).Append("\"); ")
+            .Append(StderrSizeVariable).Append("=$((").Append(StderrSizeVariable).Append("+0))\n");
+        if (!string.IsNullOrEmpty(invocation.CapturePath))
+            AppendCapture(builder, invocation.CapturePath, invocation.OutputLimit, invocation.CaptureByteCap);
+
         builder.Append("printf '\\n%s:OUT\\n' ").Append(quotedNonce)
-            .Append("; head -c ").Append(cap).Append(" \"$").Append(StdoutVariable).Append('"')
-            .Append("; printf '\\n%s:ERR\\n' ").Append(quotedNonce)
-            .Append("; head -c ").Append(cap).Append(" \"$").Append(StderrVariable).Append('"')
-            .Append("; printf '\\n%s:RC:%s\\n' ").Append(quotedNonce).Append(" \"$").Append(ExitCodeVariable).Append("\"\n");
+            .Append("; head -c ").Append(cap).Append(" \"$").Append(StdoutVariable).Append('"');
+        AppendTail(builder, quotedNonce, cap, StdoutVariable, StdoutSizeVariable);
+        builder.Append("; printf '\\n%s:ERR\\n' ").Append(quotedNonce)
+            .Append("; head -c ").Append(cap).Append(" \"$").Append(StderrVariable).Append('"');
+        AppendTail(builder, quotedNonce, cap, StderrVariable, StderrSizeVariable);
+        builder.Append("; printf '\\n%s:RC:%s\\n' ").Append(quotedNonce).Append(" \"$").Append(ExitCodeVariable).Append("\"\n");
         return builder.ToString();
+    }
+
+    // A stream longer than the cap prints its last bytes too, never more than the cap and never a byte the head
+    // printed, after a marker naming the bytes in between.
+    private static void AppendTail(StringBuilder builder, string quotedNonce, string cap, string streamVariable, string sizeVariable)
+    {
+        builder.Append("; if [ \"$").Append(sizeVariable).Append("\" -gt ").Append(cap).Append(" ]; then ")
+            .Append(TailSizeVariable).Append("=$((").Append(sizeVariable).Append(" - ").Append(cap).Append(")); ")
+            .Append("[ \"$").Append(TailSizeVariable).Append("\" -gt ").Append(cap).Append(" ] && ")
+            .Append(TailSizeVariable).Append('=').Append(cap).Append("; ")
+            .Append("printf '\\n%s:TAIL:%s\\n' ").Append(quotedNonce)
+            .Append(" $((").Append(sizeVariable).Append(" - ").Append(cap).Append(" - ").Append(TailSizeVariable).Append(")); ")
+            .Append("tail -c \"$").Append(TailSizeVariable).Append("\" \"$").Append(streamVariable).Append("\"; fi");
+    }
+
+    // The raw streams copied next to the capture path when one passes the limit (a byte count above it is
+    // needed for a character count above it, so no cut output goes without its copy), each to at most
+    // captureCap bytes, with their true byte sizes. The tool turns them into the capture file itself, through
+    // the file system: it virtualizes the paths they hold and counts their characters.
+    private static void AppendCapture(StringBuilder builder, string capturePath, int outputLimit, int captureCap)
+    {
+        var limit = outputLimit.ToString(CultureInfo.InvariantCulture);
+        var cap = captureCap.ToString(CultureInfo.InvariantCulture);
+        var slash = capturePath.LastIndexOf('/');
+        var directory = slash > 0 ? capturePath[..slash] : "/";
+        builder.Append("if [ \"$").Append(StdoutSizeVariable).Append("\" -gt ").Append(limit)
+            .Append(" ] || [ \"$").Append(StderrSizeVariable).Append("\" -gt ").Append(limit).Append(" ]; then { ")
+            .Append("mkdir -p ").Append(Quote(directory)).Append("; ")
+            .Append("head -c ").Append(cap).Append(" \"$").Append(StdoutVariable).Append("\" >").Append(Quote(capturePath + CaptureStdoutSuffix)).Append("; ")
+            .Append("head -c ").Append(cap).Append(" \"$").Append(StderrVariable).Append("\" >").Append(Quote(capturePath + CaptureStderrSuffix)).Append("; ")
+            .Append("printf '%s %s' \"$").Append(StdoutSizeVariable).Append("\" \"$").Append(StderrSizeVariable).Append("\" >")
+            .Append(Quote(capturePath + CaptureSizesSuffix)).Append("; } 2>/dev/null; fi\n");
     }
 
     /// <summary>The start of the ready marker the preamble prints; the session's private directory follows, then a newline.</summary>
@@ -242,10 +324,31 @@ internal static class ShellScript
         if (errIndex < outMarker.Length)
             return ShellFrameStatus.Malformed;
 
-        var stdout = buffer[outMarker.Length..errIndex];
-        var stderr = buffer[(errIndex + errMarker.Length)..rcIndex];
-        frame = new ShellFrame(stdout, stderr, exitCode);
+        var tailMarker = $"\n{nonce}:TAIL:";
+        if (!TrySplitTail(buffer[outMarker.Length..errIndex], tailMarker, out var stdout, out var stdoutTail, out var stdoutOmitted)
+            || !TrySplitTail(buffer[(errIndex + errMarker.Length)..rcIndex], tailMarker, out var stderr, out var stderrTail, out var stderrOmitted))
+            return ShellFrameStatus.Malformed;
+        frame = new ShellFrame(stdout, stderr, exitCode, stdoutTail, stderrTail, stdoutOmitted, stderrOmitted);
         consumed = lineEnd + 1;
         return ShellFrameStatus.Complete;
+    }
+
+    // A stream's head, and its tail and the bytes between them when the fragment printed a tail marker.
+    private static bool TrySplitTail(string segment, string tailMarker, out string head, out string tail, out long omitted)
+    {
+        head = segment;
+        tail = "";
+        omitted = 0;
+        var index = segment.IndexOf(tailMarker, StringComparison.Ordinal);
+        if (index < 0)
+            return true;
+        var countStart = index + tailMarker.Length;
+        var lineEnd = segment.IndexOf('\n', countStart);
+        if (lineEnd < 0
+            || !long.TryParse(segment.AsSpan(countStart, lineEnd - countStart), NumberStyles.None, CultureInfo.InvariantCulture, out omitted))
+            return false;
+        head = segment[..index];
+        tail = segment[(lineEnd + 1)..];
+        return true;
     }
 }

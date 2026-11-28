@@ -145,8 +145,15 @@ declare global {
         /** Marks the tool definitions cacheable — worth it for a large, stable catalogue. */
         tools?: boolean;
         /**
-         * Cache lifetime: `"5m"` (the vendor default) or `"1h"` (billed higher on write). Needs `systemPrompt`
-         * or `tools`; on its own it throws.
+         * Marks the conversation cacheable: in a tool loop each call reads what the previous one wrote and
+         * pays full price for the new turns only. Left out, it follows `systemPrompt` and `tools`: on when
+         * either is, placed once the messages hold an assistant turn, so a single call pays no write; `true`
+         * marks every call, `false` caches the stable prefix alone.
+         */
+        conversation?: boolean;
+        /**
+         * Cache lifetime: `"5m"` (the vendor default) or `"1h"` (billed higher on write). Needs `systemPrompt`,
+         * `tools` or `conversation`; on its own it throws.
          */
         ttl?: "5m" | "1h";
     }

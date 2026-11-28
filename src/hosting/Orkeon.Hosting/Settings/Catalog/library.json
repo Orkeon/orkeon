@@ -498,6 +498,13 @@
       "description": "The `Orkeon:Cli:Memory` section: whether the typed memory behind `memory_store` outlives the process, and where it is kept."
     },
     {
+      "path": "Orkeon:Cli:Repl:ShellPrefix",
+      "category": "scripts-and-console",
+      "hosts": [],
+      "registration": "AddReplShellPrefix",
+      "description": "Whether a line typed at the REPL's prompt that starts with `!` runs a shell command of the operator's own."
+    },
+    {
       "path": "Orkeon:Cli:ScriptCommands",
       "category": "scripts-and-console",
       "hosts": [],
@@ -628,6 +635,12 @@
       "description": "The address of the provider's endpoint, `http://` or `https://`. Left out, the address of the provider the model's name or the key points to."
     },
     {
+      "path": "Llm:Cache:Conversation",
+      "section": "Llm",
+      "type": "boolean",
+      "description": "Marks the conversation cacheable, so each call of a tool loop reads what the previous one wrote; left out, it follows SystemPrompt and Tools once the conversation holds an assistant turn."
+    },
+    {
       "path": "Llm:Cache:SystemPrompt",
       "section": "Llm",
       "type": "boolean",
@@ -643,7 +656,7 @@
       "path": "Llm:Cache:Ttl",
       "section": "Llm",
       "type": "string",
-      "description": "The cache lifetime, `5m` or `1h`; it needs `SystemPrompt` or `Tools`, and any other value refuses the load. Left out, the vendor default (5 minutes on Anthropic)."
+      "description": "The cache lifetime, `5m` or `1h`; it needs `SystemPrompt`, `Tools` or `Conversation`, and any other value refuses the load. Left out, the vendor default (5 minutes on Anthropic)."
     },
     {
       "path": "Llm:CallMode",
@@ -742,6 +755,12 @@
       "description": "The address of the provider's endpoint, `http://` or `https://`. Left out, the address of the provider the model's name or the key points to."
     },
     {
+      "path": "Llm:Profiles:<name>:Cache:Conversation",
+      "section": "Llm",
+      "type": "boolean",
+      "description": "Marks the conversation cacheable, so each call of a tool loop reads what the previous one wrote; left out, it follows SystemPrompt and Tools once the conversation holds an assistant turn."
+    },
+    {
       "path": "Llm:Profiles:<name>:Cache:SystemPrompt",
       "section": "Llm",
       "type": "boolean",
@@ -757,7 +776,7 @@
       "path": "Llm:Profiles:<name>:Cache:Ttl",
       "section": "Llm",
       "type": "string",
-      "description": "The cache lifetime, `5m` or `1h`; it needs `SystemPrompt` or `Tools`, and any other value refuses the load. Left out, the vendor default (5 minutes on Anthropic)."
+      "description": "The cache lifetime, `5m` or `1h`; it needs `SystemPrompt`, `Tools` or `Conversation`, and any other value refuses the load. Left out, the vendor default (5 minutes on Anthropic)."
     },
     {
       "path": "Llm:Profiles:<name>:CallMode",
@@ -4146,6 +4165,20 @@
       "description": "Virtual directory holding one `memory.json` per project, in the project's folder of the sessions."
     },
     {
+      "path": "Orkeon:Cli:Repl:ShellPrefix:Enabled",
+      "section": "Orkeon:Cli:Repl:ShellPrefix",
+      "type": "boolean",
+      "default": true,
+      "description": "Whether a line typed at the prompt that starts with ! runs the rest in the operator's own shell, without a turn of the model, its output added to the session; off, the line is refused with a sentence."
+    },
+    {
+      "path": "Orkeon:Cli:Repl:ShellPrefix:TimeoutSeconds",
+      "section": "Orkeon:Cli:Repl:ShellPrefix",
+      "type": "integer",
+      "default": 120,
+      "description": "The seconds after which a command typed after ! is stopped, from 1 to 86400 (one day); a value outside refuses the start."
+    },
+    {
       "path": "Orkeon:Cli:ScriptCommands:ContinueOnConflict",
       "section": "Orkeon:Cli:ScriptCommands",
       "type": "boolean",
@@ -4185,7 +4218,7 @@
       "section": "Orkeon:Cli:ScriptCommands",
       "type": "string",
       "default": "assistant",
-      "description": "Name of the scripted command that handles free text (a REPL line not prefixed with `/`). In the coding-agent surface this is the interactive assistant wired to the `main-loop` crew. Empty/unknown ⇒ free text yields the unknown-command message instead of being routed."
+      "description": "Name of the scripted command that handles free text (a REPL line not prefixed with `/`, nor a `!` line typed at a terminal, which runs in the operator's own shell). In the coding-agent surface this is the interactive assistant wired to the `main-loop` crew. Empty/unknown ⇒ free text yields the unknown-command message instead of being routed."
     },
     {
       "path": "Orkeon:Cli:ScriptCommands:Limits:ExecutionTimeout",

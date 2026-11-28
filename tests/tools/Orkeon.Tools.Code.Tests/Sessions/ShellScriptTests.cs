@@ -214,4 +214,50 @@ public sealed class ShellScriptTests
         Assert.False(ShellScript.TryFindReady($"\n{Nonce}:READY:/tmp/tmp.Ab", Nonce, out _, out _));
         Assert.False(ShellScript.TryFindReady("\nother:READY:/tmp/x\n", Nonce, out _, out _));
     }
+
+    [Fact]
+    [Trait("BR", "CH-492")]
+    public void ParseFrame_ShouldReadTheTailAndTheBytesOmitted_WhenAStreamPassedTheCap()
+    {
+        var buffer = $"\n{Nonce}:OUT\nhead\n{Nonce}:TAIL:1234\nend\n{Nonce}:ERR\ne\n{Nonce}:TAIL:5\nf\n{Nonce}:RC:0\n";
+
+        var status = ShellScript.ParseFrame(buffer, Nonce, out var frame, out _);
+
+        Assert.Equal(ShellFrameStatus.Complete, status);
+        Assert.Equal(new ShellFrame("head", "e", 0, "end", "f", 1234, 5), frame);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-492")]
+    public void ParseFrame_ShouldReportTheStreamOutOfStep_WhenATailCountIsWrong()
+    {
+        var buffer = $"\n{Nonce}:OUT\nhead\n{Nonce}:TAIL:many\nend\n{Nonce}:ERR\n\n{Nonce}:RC:0\n";
+
+        Assert.Equal(ShellFrameStatus.Malformed, ShellScript.ParseFrame(buffer, Nonce, out _, out _));
+    }
+
+    [Fact]
+    [Trait("BR", "CH-492")]
+    public void Command_ShouldCountEachStreamAndPrintItsTail_WhenItPassesTheCap()
+    {
+        var fragment = ShellScript.Command(new ShellInvocation("pwd", [], null, TimeSpan.FromSeconds(5)), Nonce, byteCap: 42);
+
+        Assert.Contains("_ork_so=$(wc -c <\"$_ork_o\")", fragment, StringComparison.Ordinal);
+        Assert.Contains("if [ \"$_ork_so\" -gt 42 ]; then", fragment, StringComparison.Ordinal);
+        Assert.Contains("tail -c \"$_ork_t\" \"$_ork_o\"", fragment, StringComparison.Ordinal);
+        Assert.DoesNotContain("cat \"$_ork_o\"", fragment, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    [Trait("BR", "CH-492")]
+    public void Command_ShouldCopyEachStreamAndItsSize_WhenACapturePathIsGivenAndAStreamPassesTheLimit()
+    {
+        var fragment = ShellScript.Command(
+            new ShellInvocation("pwd", [], null, TimeSpan.FromSeconds(5), OutputLimit: 100, CapturePath: "/output/shell/it's.log", CaptureByteCap: 1000), Nonce);
+
+        Assert.Contains("if [ \"$_ork_so\" -gt 100 ] || [ \"$_ork_se\" -gt 100 ]; then { mkdir -p '/output/shell'", fragment, StringComparison.Ordinal);
+        Assert.Contains("head -c 1000 \"$_ork_o\" >'/output/shell/it'\\''s.log.o';", fragment, StringComparison.Ordinal);
+        Assert.Contains("head -c 1000 \"$_ork_e\" >'/output/shell/it'\\''s.log.e';", fragment, StringComparison.Ordinal);
+        Assert.Contains("printf '%s %s' \"$_ork_so\" \"$_ork_se\" >'/output/shell/it'\\''s.log.n'; } 2>/dev/null; fi", fragment, StringComparison.Ordinal);
+    }
 }

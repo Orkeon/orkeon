@@ -14,29 +14,44 @@ namespace Orkeon.Tools.Code.Sessions;
 /// (<see cref="Windows.WindowsCommandLine.CmdBuiltin"/>). Read by the Windows sessions only.
 /// </param>
 /// <param name="OutputLimit">The characters of each stream the tool keeps; a POSIX session caps its streams from it.</param>
+/// <param name="CapturePath">
+/// Where a POSIX session copies the whole output when a stream passes <paramref name="OutputLimit"/>, as the
+/// session sees it (virtual when confined, physical otherwise); null for no copy. A Windows session ignores it.
+/// </param>
+/// <param name="CaptureByteCap">The bytes of each stream a POSIX session copies for the capture file.</param>
 internal sealed record ShellInvocation(
     string Executable,
     IReadOnlyList<string> Arguments,
     string? WorkingDirectory,
     TimeSpan Timeout,
     bool WindowsBuiltin = false,
-    int OutputLimit = ShellCommandTool.MaxOutputLength);
+    int OutputLimit = ShellCommandTool.MaxOutputLength,
+    string? CapturePath = null,
+    int CaptureByteCap = ShellScript.CaptureByteCap);
 
 /// <summary>What a command run by a shell session produced.</summary>
 /// <param name="ExitCode">The command's exit code; -1 when it timed out.</param>
-/// <param name="Stdout">Its standard output, capped by the session.</param>
-/// <param name="Stderr">Its standard error, capped by the session.</param>
+/// <param name="Stdout">Its standard output, capped by the session: the head when the session cut it.</param>
+/// <param name="Stderr">Its standard error, capped by the session: the head when the session cut it.</param>
 /// <param name="TimedOut">Whether the command outlived its timeout.</param>
 /// <param name="SessionReset">
 /// Whether the session was killed after this command (a timeout), so the next command starts in a
 /// new one.
 /// </param>
+/// <param name="StdoutTail">The end of the standard output when the session cut it, empty otherwise.</param>
+/// <param name="StderrTail">The end of the standard error when the session cut it, empty otherwise.</param>
+/// <param name="StdoutOmitted">What the session dropped between the head and the tail of the standard output.</param>
+/// <param name="StderrOmitted">What the session dropped between the head and the tail of the standard error.</param>
 internal sealed record ShellRunResult(
     int ExitCode,
     string Stdout,
     string Stderr,
     bool TimedOut = false,
-    bool SessionReset = false);
+    bool SessionReset = false,
+    string StdoutTail = "",
+    string StderrTail = "",
+    long StdoutOmitted = 0,
+    long StderrOmitted = 0);
 
 /// <summary>
 /// A shell an agent keeps for its run: every command of the run goes through it, one at a time.

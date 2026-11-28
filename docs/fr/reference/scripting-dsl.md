@@ -59,7 +59,7 @@ déduit.
 | `tools([...])` intégrés par nom | ✅ ce que `ctx.llm.act` peut appeler — un nom que l'hôte n'offre pas fait rejeter `act` par une `UnknownToolError`, avant tout appel au modèle | ✅ strict : un nom inconnu fait échouer le run |
 | `withAutonomousTool(s)` instances | appelables depuis un `body` (`tool.execute(input)`) et proposées à `ctx.llm.act`, qui exécute le `execute` de l'outil dans le script | ✅ enregistrées et résolues par nom |
 | `effort(level)` — `"low"`, `"medium"`, `"high"`, `"xhigh"` ou `"max"` : active la réflexion du fournisseur à cet effort ; `"auto"` laisse le niveau à System One au début de chaque tâche, comme le `effort: auto` du YAML (aussi `llm.profile(nom, { effort: "auto" })` et `.with({ effort: "auto" })`) | ✅ envoyé sur les appels `ctx.llm` de l'agent, sauf si un appel fixe son propre `{ effort }` ; sur `"auto"` un appel seul n'a pas de choix (ce n'est pas une tâche) et part avec la réflexion que l'agent aurait eue sans `auto`, l'effort de son profil | ✅ |
-| `cache({ systemPrompt, tools, ttl })` — le `cache:` du YAML : demande au cache de prompt du fournisseur de garder le prompt système et/ou les définitions d'outils (`ttl` `"5m"` ou `"1h"` ; `cache({})` coupe le cache, y compris le défaut `Llm:Cache` de l'hôte) | ✅ envoyé sur les appels `ctx.llm` de l'agent, sauf si un appel fixe son propre `{ cache }` | ✅ |
+| `cache({ systemPrompt, tools, conversation, ttl })` — le `cache:` du YAML : demande au cache de prompt du fournisseur de garder le prompt système, les définitions d'outils et la conversation (`conversation` omis suit les deux autres ; `ttl` `"5m"` ou `"1h"` ; `cache({})` coupe le cache, y compris le défaut `Llm:Cache` de l'hôte) | ✅ envoyé sur les appels `ctx.llm` de l'agent, sauf si un appel fixe son propre `{ cache }` | ✅ |
 | `maxIterations` `verbose` `allowDelegation` | ❌ (`act` a son propre `maxIterations`) | ✅ — `maxIterations` vaut 20 par défaut, comme en YAML et en C# |
 | `maxRpm` — le `maxRpm:` du YAML : au plus N requêtes au modèle par minute pour cet agent, une de plus attendant son tour (aucun par défaut ; 0 ou moins refusé à `build()`) | ❌ (avertit : les appels `ctx.llm` ne sont pas des tours d'agent — le `RateLimiting` de l'hôte les plafonne toujours) | ✅ |
 | `maxExecutionTime(seconds)` — le `maxExecutionTime:` du YAML : les secondes qu'une tâche peut prendre chez cet agent (aucun par défaut ; 0, négatif, décimal ou au-dessus de 4294967 refusé à `build()`) | ❌ (avertit : le moteur procédural n'exécute aucune tâche) | ✅ |
@@ -342,8 +342,8 @@ de `contextTokens`, profondeur 2 et 3 spawns, si bien que `budget({ spawnedAgent
 plafonne que les spawns. Le `budget(...)` d'une crew autonome déclarative garde, pour une clé omise, les
 défauts de la crew (50 appels d'outils, profondeur 4, 10 spawns, ni plafond de tokens ni horloge). `tokens` est une somme courante du prompt et de la complétion de
 chaque appel, le contexte compté de nouveau à chacun. `contextTokens` compte le contexte une fois : la
-complétion de chaque appel plus la part de son prompt que le cache n'a pas servie quand le fournisseur
-rapporte des hits de cache, sinon ce dont le prompt a crû depuis l'appel précédent de la même conversation (chaque `ctx.llm.act` la sienne), si bien qu'un tour de
+complétion de chaque appel plus le moindre de la part de son prompt que le cache du fournisseur n'a pas
+servie et de ce dont le prompt a crû depuis l'appel précédent de la même conversation (chaque `ctx.llm.act` la sienne), si bien qu'un tour de
 n appels sur un contexte de c tokens dépense environ c plus ses complétions, pas n × c ; seul, il laisse
 `tokens` sans plafond, et une crew autonome déclarative le refuse. Une fois l'un ou l'autre atteint, `ctx.llm.act` fait un dernier
 appel qui ne peut appeler aucun outil et se résout avec `budgetExhausted: true` ([le budget de tokens d'act](../architecture/scripting.md#le-budget-de-tokens-dact)).

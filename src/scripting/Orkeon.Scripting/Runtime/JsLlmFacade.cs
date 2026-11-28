@@ -1557,10 +1557,12 @@ public sealed partial class JsLlmFacade
     }
 
     /// <summary>
-    /// One call's share of the context counted once (#224): its completion plus, when the provider
-    /// reports cache hits, the part of its prompt the cache did not serve, else what its prompt grew by
-    /// since the conversation's previous call - <paramref name="previousPrompt"/>, which this updates; the
-    /// first call (0) counts its whole prompt, and a prompt that shrank (compaction) counts nothing.
+    /// One call's share of the context counted once (#224, #495): its completion plus the lesser of the
+    /// part of its prompt the cache did not serve (its whole prompt when the provider reports no hit) and
+    /// what its prompt grew by since the conversation's previous call - <paramref name="previousPrompt"/>,
+    /// which this updates. A hit that covers less than the previous prompt never charges the conversation
+    /// again; the first call (0) counts its prompt less its hit, and a prompt that shrank (compaction)
+    /// counts nothing.
     /// Without a prompt or a completion count the call counts <paramref name="tokens"/> whole.
     /// </summary>
     internal static int ContextShare(int tokens, int? promptTokens, int? completionTokens, int? cacheHitTokens, ref int previousPrompt)
@@ -1569,7 +1571,7 @@ public sealed partial class JsLlmFacade
             return tokens;
         var previous = previousPrompt;
         previousPrompt = prompt;
-        var uncached = cacheHitTokens is > 0 ? prompt - cacheHitTokens.Value : prompt - previous;
+        var uncached = Math.Min(prompt - (cacheHitTokens ?? 0), prompt - previous);
         return Math.Max(0, uncached) + Math.Max(0, completion);
     }
 

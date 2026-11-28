@@ -51,8 +51,9 @@ scripted> /exit
 ```
 
 In the scripted REPL only a line that starts with `/` is a command. `@path` references a file
-or folder (Tab completes command names and paths), and anything else is free text — handed to
-the fallback command (below), or refused when there is none. The message a command returns
+or folder (Tab completes command names and paths), a line typed at a terminal that starts with `!`
+runs in the operator's own shell ([CLI reference](../reference/cli.md)), and anything else is free
+text — handed to the fallback command (below), or refused when there is none. The message a command returns
 through `ctx.continue(...)` is what the REPL prints; `ctx.log` goes to the logs pane, which the
 TUI hides at startup.
 
@@ -382,7 +383,7 @@ defineAsyncCommand({
 });
 ```
 
-- `post(agent, intent, payload)` returns a **ticket** (string) right away and runs
+- `post(agent, intent, payload, options?)` returns a **ticket** (string) right away and runs
   the request on a background task.
 - `completed(result, ctx)` is **not** called from the background thread (Jint is
   single-threaded). As soon as the work settles, the host prints a terse line
@@ -397,8 +398,8 @@ defineAsyncCommand({
   command (the same command name), whose `completed` runs in turn. The chain is
   bounded by `MaxChainDepth` (default 8, `ScriptCommandsConfiguration.MaxChainDepth`);
   the depth counts how many `completed` hops deep an instance was launched (`inspect`
-  shows it). A `commands.post` counts the same way (the parent's depth plus one; it takes
-  no options). A deeper `runCrewAsync` or `post` is refused with
+  shows it). A `commands.post` counts the same way (the parent's depth plus one; its only
+  option is `{ state }`). A deeper `runCrewAsync` or `post` is refused with
   `ChainDepthExceededException`, as a JS throw whose message names the depth, the limit
   and the command: `chain depth 8 reached (MaxChainDepth 8, /dev-batches)`.
 - **A driver that loops: `{ chain: "continue" }`.** A command that relaunches its own
@@ -435,6 +436,16 @@ defineAsyncCommand({
   `maxConcurrent` below, it bounds the crew, not the command: an alias of the command
   that launches nothing answers during the run. Both options combine
   (`{ chain: "continue", exclusive: true }`).
+- **A fact the launch keeps for its completion: `{ state }`.** `completed(result, ctx)` receives `result.ticket`, the
+  ticket the launch returned, and `result.state`, the value the launch attached with
+  `runCrewAsync(name, input, { state })` or `commands.post(agent, intent, payload, { state })`; undefined when it attached
+  none. The state is any JSON value of at most 16 KiB once serialised, kept in memory with the instance (lost at a REPL
+  restart, like the instance) and parsed again for each `completed`, so a change made there reaches nobody. A launch chained
+  from a `completed` carries the state it was given, never its parent's. A value above the cap, or one JSON cannot hold (a
+  cycle, a function), is refused before anything runs, as a JS throw:
+  `script-host.runCrewAsync: options.state is 16395 bytes once serialised, above the cap of 16384 bytes (16 KiB).` With it, two
+  instances of one command can be in flight at once (`maxConcurrent` above 1), each `completed` knowing which launch ended,
+  without a shared note in the session state.
 
 ### Admission quota — `maxConcurrent`
 
@@ -467,7 +478,8 @@ runs in the background):
 | `cancel --ticket=<t>`      | Request cancellation of an in-flight ticket.                  |
 
 A `CommandInstanceView` carries: `ticket`, `name`, `kind` (`sync`/`async`),
-`targetAgent`, `intent`, `correlationId`, `state`, `onMain`, `startedAt`, `completedAt?`,
+`targetAgent`, `intent`, `correlationId`, `state` (the lifecycle: `running`, `done`, … — not the value a launch
+attaches with `{ state }`, which `completed` reads as `result.state`), `onMain`, `startedAt`, `completedAt?`,
 `elapsedMs`, `tokens`, `result?`, `error?`, `progress?`. Tickets read `t1`, `t2`, …; the
 200 most recent terminal entries are kept so `result`/`inspect` can read a recent ticket,
 then evicted. The four built-ins are registered only when at least one `*.cmd.ts` was

@@ -681,7 +681,8 @@ public sealed class ShellCommandToolAgentRootTests : IDisposable
         var response = await tool.CallAsync(Request("git status", ""), Ct);
 
         Assert.True(response.Success, response.Error);
-        var invocation = Assert.Single(Assert.Single(sandbox.Sessions).Invocations);
+        // The git call is the last invocation: the tool reads the filter drivers first.
+        var invocation = sandbox.Sessions.SelectMany(s => s.Invocations).Last();
         Assert.Equal(workspace, invocation.WorkingDirectory);
     }
 
