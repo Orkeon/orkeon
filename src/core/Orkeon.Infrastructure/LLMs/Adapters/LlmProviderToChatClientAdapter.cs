@@ -819,7 +819,7 @@ public sealed class LlmProviderToChatClientAdapter : IChatClient
     /// configured one. Absent, the cache configuration is returned as is. Given with no cache
     /// configuration that places a breakpoint, the TTL is itself the opt-in: it requests the
     /// system-prompt breakpoint with that lifetime (#254) - a lifetime on nothing cached would
-    /// cache nothing. A provider that writes no lifetime still warns that it was not sent.
+    /// cache nothing - and the conversation stays off (#490), as for a single-shot call. A provider that writes no lifetime still warns that it was not sent.
     /// </summary>
     private static LlmCacheConfig? WithCallTtl(LlmCacheConfig? cache, ChatOptions options)
     {
