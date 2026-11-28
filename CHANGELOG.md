@@ -40,9 +40,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - In default mode such a run is now declared Read and runs without asking. In plan mode, `shell_command` runs a read-only
   command (`git status`, `ls`) and the refusal says what plan mode allows.
 
+### Fixed — `shell_command` checks the command it runs (#494)
+
+- Validation, the declared access and the execution read the same parse of a command. Before, a quoted first token
+  holding a space (`"/x/ls /y/sh" -c id`) was checked as `ls` and ran `sh`: a first token holding whitespace is now
+  refused, and the blocked patterns and forbidden operators are also checked with the quotes removed.
+- Read-only git subcommands match exactly (`git STATUS` is refused), `--show-signature` is refused, and a restricted git
+  runs with `core.fsmonitor=false`, `core.pager=cat`, `log.showSignature=false`, and `--no-ext-diff --no-textconv` for
+  `diff`, `show` and `log`. A `.gitattributes` filter driver can still run on `git status` and `git diff`.
+
 ### Fixed — a cut `shell_command` run says so (#492)
 
-- It keeps the head and the tail, and its marker gives the true count of characters left out.
+- It keeps the head and the tail, and its marker gives the true count of characters left out and says how much of the
+  output `output_path` holds.
+- The file behind `output_path` has its physical paths virtualized, counts characters (exact for non-ASCII output), is
+  capped at 8 MiB per stream; the 32 most recent capture files are kept and a failed run leaves none.
 
 ### Fixed — `contextTokens` no longer charges the conversation again (#495)
 
