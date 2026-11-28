@@ -68,7 +68,7 @@ public sealed record ShellCommandRequest
 /// <summary>Strongly-typed response for <see cref="ShellCommandTool"/>.</summary>
 public sealed record ShellCommandResponse : Orkeon.Domain.Tools.IBoundedToolResponse
 {
-    /// <summary>Gets whether the shell cut its own output.</summary>
+    /// <summary>Gets whether the shell cut its own output, so the result is not cut again. Internal to the tool: not in the return schema.</summary>
     public bool AlreadyBounded { get; init; }
 
     /// <summary>Gets the process exit code.</summary>
@@ -83,6 +83,22 @@ public sealed record ShellCommandResponse : Orkeon.Domain.Tools.IBoundedToolResp
     [ReturnSchema(Description = "Standard error output", Example = "")]
     public string Stderr { get; init; } = "";
 
+    /// <summary>Gets whether <see cref="Stdout"/> was cut: its head and its tail kept around a marker.</summary>
+    [ReturnSchema(Description = "Whether stdout was cut (head and tail kept around a marker; the whole output is in output_path)", Example = false)]
+    public bool StdoutTruncated { get; init; }
+
+    /// <summary>Gets whether <see cref="Stderr"/> was cut: its head and its tail kept around a marker.</summary>
+    [ReturnSchema(Description = "Whether stderr was cut (head and tail kept around a marker; the whole output is in output_path)", Example = false)]
+    public bool StderrTruncated { get; init; }
+
+    /// <summary>Gets the length of the whole standard output, in characters, cut or not.</summary>
+    [ReturnSchema(Description = "Length of the whole stdout in characters, cut or not", Example = 5)]
+    public long StdoutTotalChars { get; init; }
+
+    /// <summary>Gets the length of the whole standard error, in characters, cut or not.</summary>
+    [ReturnSchema(Description = "Length of the whole stderr in characters, cut or not", Example = 0)]
+    public long StderrTotalChars { get; init; }
+
     /// <summary>Gets whether the command completed within the timeout.</summary>
     [ReturnSchema(Description = "Whether the command completed within the timeout", Example = true)]
     public bool Completed { get; init; }
@@ -91,8 +107,8 @@ public sealed record ShellCommandResponse : Orkeon.Domain.Tools.IBoundedToolResp
     [ReturnSchema(Description = "Job id, for the job actions", Example = "3f9a1c0b27d4")]
     public string JobId { get; init; } = "";
 
-    /// <summary>Gets the virtual path of the job's log.</summary>
-    [ReturnSchema(Description = "Virtual path of the job's log file", Example = "/output/jobs/3f9a1c0b27d4.log")]
+    /// <summary>Gets the virtual path of the job's log, or of the whole output of a <c>run</c> whose output was cut.</summary>
+    [ReturnSchema(Description = "Virtual path of the job's log file, or of the whole output of a run whose stdout or stderr was cut (stdout, then a [stderr] line and stderr)", Example = "/output/jobs/3f9a1c0b27d4.log")]
     public string OutputPath { get; init; } = "";
 
     /// <summary>Gets the job's status: <c>running</c> or <c>exited</c>.</summary>
@@ -180,7 +196,7 @@ public sealed record ShellCommandResponse : Orkeon.Domain.Tools.IBoundedToolResp
 /// </remarks>
 [ToolContract("shell_command", ActsOnWorkspace = true,
     Name = "shell_command",
-    Description = "Runs a shell command in the working directory and returns its exit code, stdout and stderr, cut at 10 000 characters; a command the allowlist or blocklist refuses is not run. action run (default) waits up to timeout seconds; start_job starts it detached and returns a job_id, which job_status and job_tail read later in the same run. To read or search files, file_read, grep and glob cost less than cat and find.",
+    Description = "Runs a shell command in the working directory and returns its exit code, stdout and stderr, each cut at 10 000 characters keeping its head and its tail around a marker that counts what was left out; a cut run says stdout_truncated or stderr_truncated, gives the true lengths in stdout_total_chars and stderr_total_chars, and writes the whole output to output_path, which file_read reads; a command the allowlist or blocklist refuses is not run. action run (default) waits up to timeout seconds; start_job starts it detached and returns a job_id, which job_status and job_tail read later in the same run. To read or search files, file_read, grep and glob cost less than cat and find.",
     Category = "Code Operations")]
 public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellCommandResponse>
 {
@@ -688,14 +704,20 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
     /// under the first writable mount. Under a file-system scope (#349) the places are the scope's entries,
     /// and a directory the scope does not let the agent write is never chosen.
     /// </summary>
-    private string? JobDirectory()
+    private string? JobDirectory() => WritableDirectory("jobs");
+
+    /// <summary>
+    /// The virtual directory named <paramref name="leaf"/> under <c>/output</c> when writable, else under the
+    /// first writable mount, as <see cref="JobDirectory"/> chooses it.
+    /// </summary>
+    private string? WritableDirectory(string leaf)
     {
         var scope = AgentRunScope.Current?.FileSystem;
         var mounts = _fileSystem.GetAvailableMounts();
         var places = scope is null ? mounts : scope.Narrow(mounts);
         return places.Where(m => m.DefaultRights.HasFlag(FileAccessRights.Write)).Select(m => m.VirtualPath)
             .Prepend("/output")
-            .Select(place => place.TrimEnd('/') + "/jobs")
+            .Select(place => place.TrimEnd('/') + "/" + leaf)
             .FirstOrDefault(directory => (scope?.Allows(directory, FileAccessRights.Write) ?? true)
                 && _fileSystem.ResolveAndValidate(directory, FileAccessRights.Write).IsAllowed);
     }
@@ -860,8 +882,11 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
         // (WindowsCommandLine.CmdBuiltin). Forbidden operators and '%' were already rejected in
         // ValidateTypedRequest.
         var windowsBuiltin = !confined && OperatingSystem.IsWindows() && s_windowsBuiltins.Contains(executable);
+        // Where a cut output of a run is kept whole, chosen as a job log is; none when no mount takes it.
+        var capture = detached ? null : CaptureTarget(confined);
         var invocation = new ShellInvocation(
-            executable, arguments, invocationDirectory, TimeSpan.FromSeconds(request.TimeoutSeconds), windowsBuiltin, _outputLimit);
+            executable, arguments, invocationDirectory, TimeSpan.FromSeconds(request.TimeoutSeconds), windowsBuiltin, _outputLimit,
+            capture?.SeenPath);
 
         // Physical→virtual table for the output and the view of the session, built per call: mounts
         // can be swapped per async flow (IFileSystemScope), so nothing here may be cached in the ctor.
@@ -900,39 +925,127 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
             };
         }
 
-        return BuildRunResponse(request, result, outboundReplacements);
+        return await BuildRunResponseAsync(request, result, outboundReplacements, capture, cancellationToken).ConfigureAwait(false);
     }
 
-    private ShellCommandResponse BuildRunResponse(
-        ShellCommandRequest request, ShellRunResult result, IReadOnlyList<(string PhysicalBase, string VirtualPrefix)> outboundReplacements)
+    /// <summary>Where the whole output of a run goes when it is cut: its virtual path, and the path its session writes.</summary>
+    private sealed record CaptureFile(string VirtualPath, string SeenPath);
+
+    /// <summary>
+    /// A fresh capture file under <c>/output/shell</c> (or the first writable mount, as a job log is placed);
+    /// null when no place takes it. The session sees it at its virtual path when confined.
+    /// </summary>
+    private CaptureFile? CaptureTarget(bool confined)
+    {
+        if (WritableDirectory("shell") is not { } directory)
+            return null;
+        var virtualPath = $"{directory}/{Guid.NewGuid().ToString("N")[..12]}.log";
+        var resolution = _fileSystem.ResolveAndValidate(virtualPath, FileAccessRights.Write);
+        if (!resolution.IsAllowed || resolution.ResolvedPath is not { } physicalPath)
+            return null;
+        return new CaptureFile(virtualPath, confined ? virtualPath : physicalPath);
+    }
+
+    /// <summary>A stream as the result shows it: its head and its tail, the characters between them and its true length.</summary>
+    private readonly record struct BoundedStream(string Head, string Tail, long Omitted, long Total)
+    {
+        public bool Truncated => Omitted > 0;
+
+        public string Text(bool whole) => !Truncated
+            ? Head + Tail
+            : $"{Head}\n\n[... truncated, {Omitted} chars omitted{(whole ? "; output_path holds the whole output" : "")}. Use more specific parameters to narrow results.]\n\n{Tail}";
+    }
+
+    /// <summary>
+    /// Bounds one stream the session returned (its head, its tail when the session cut it, the characters
+    /// between them) to the output limit, keeping its head and its tail.
+    /// </summary>
+    private BoundedStream Bound(string head, string tail, long omitted)
+    {
+        var total = head.Length + tail.Length + omitted;
+        if (total <= _outputLimit)
+            return new BoundedStream(head + tail, "", 0, total);
+
+        var keepTail = _outputLimit / 2;
+        var keepHead = _outputLimit - keepTail;
+        var headPart = head[..Math.Min(keepHead, head.Length)];
+        var tailPart = tail.Length == 0
+            ? head[Math.Max(headPart.Length, head.Length - keepTail)..]
+            : tail[Math.Max(0, tail.Length - keepTail)..];
+        return new BoundedStream(headPart, tailPart, total - headPart.Length - tailPart.Length, total);
+    }
+
+    private async Task<ShellCommandResponse> BuildRunResponseAsync(
+        ShellCommandRequest request, ShellRunResult result, IReadOnlyList<(string PhysicalBase, string VirtualPrefix)> outboundReplacements,
+        CaptureFile? capture, CancellationToken cancellationToken)
     {
         if (result.TimedOut)
-        {
             LogCommandTimedOut(Logger, request.Command, request.TimeoutSeconds);
-            var timedOutStdout = RewriteOutboundPaths(result.Stdout, outboundReplacements);
-            var timedOutStderr = RewriteOutboundPaths(result.Stderr, outboundReplacements) + "\n[Command timed out]";
-            return new ShellCommandResponse
-            {
-                ExitCode = -1,
-                Stdout = Truncate(timedOutStdout),
-                Stderr = Truncate(timedOutStderr) + (result.SessionReset ? SessionResetNote : ""),
-                Completed = false,
-                AlreadyBounded = IsCut(timedOutStdout) || IsCut(timedOutStderr)
-            };
-        }
+        else
+            LogCommandCompleted(Logger, request.Command, result.ExitCode);
 
-        LogCommandCompleted(Logger, request.Command, result.ExitCode);
-        var completedStdout = RewriteOutboundPaths(result.Stdout, outboundReplacements);
-        var completedStderr = RewriteOutboundPaths(result.Stderr, outboundReplacements);
+        var stdout = Bound(
+            RewriteOutboundPaths(result.Stdout, outboundReplacements), RewriteOutboundPaths(result.StdoutTail, outboundReplacements), result.StdoutOmitted);
+        var stderr = Bound(
+            RewriteOutboundPaths(result.Stderr, outboundReplacements), RewriteOutboundPaths(result.StderrTail, outboundReplacements), result.StderrOmitted);
+        var outputPath = capture is null ? "" : await KeepWholeOutputAsync(capture, result, outboundReplacements, stdout, stderr, cancellationToken).ConfigureAwait(false);
+        var whole = outputPath.Length > 0;
+
         return new ShellCommandResponse
         {
-            ExitCode = result.ExitCode,
-            Stdout = Truncate(completedStdout),
-            Stderr = Truncate(completedStderr),
-            Completed = true,
-            AlreadyBounded = IsCut(completedStdout) || IsCut(completedStderr)
+            ExitCode = result.TimedOut ? -1 : result.ExitCode,
+            Stdout = stdout.Text(whole),
+            Stderr = stderr.Text(whole) + (result.TimedOut ? "\n[Command timed out]" + (result.SessionReset ? SessionResetNote : "") : ""),
+            Completed = !result.TimedOut,
+            StdoutTruncated = stdout.Truncated,
+            StderrTruncated = stderr.Truncated,
+            StdoutTotalChars = stdout.Total,
+            StderrTotalChars = stderr.Total,
+            OutputPath = outputPath,
+            AlreadyBounded = stdout.Truncated || stderr.Truncated,
         };
     }
+
+    /// <summary>
+    /// The virtual path of the whole output when a stream was cut, empty otherwise. A POSIX session copies it
+    /// there itself; when it did not (a Windows session, or a session that could not write), the tool writes
+    /// what the session returned. A copy left by an output that passed the limit in bytes only is removed.
+    /// </summary>
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "The whole output is a convenience: a file it cannot keep leaves output_path empty, never fails the command's result.")]
+    private async Task<string> KeepWholeOutputAsync(
+        CaptureFile capture, ShellRunResult result, IReadOnlyList<(string PhysicalBase, string VirtualPrefix)> outboundReplacements,
+        BoundedStream stdout, BoundedStream stderr, CancellationToken cancellationToken)
+    {
+        try
+        {
+            if (!stdout.Truncated && !stderr.Truncated)
+            {
+                // The session copies on a byte count above the limit, which up to three bytes a character can reach.
+                if ((stdout.Total > _outputLimit / 3 || stderr.Total > _outputLimit / 3)
+                    && await _fileSystem.ExistsAsync(capture.VirtualPath, cancellationToken).ConfigureAwait(false))
+                    await _fileSystem.DeleteAsync(capture.VirtualPath, recursive: false, cancellationToken).ConfigureAwait(false);
+                return "";
+            }
+
+            if (!await _fileSystem.ExistsAsync(capture.VirtualPath, cancellationToken).ConfigureAwait(false))
+            {
+                var stderrText = WholeText(result.Stderr, result.StderrTail, result.StderrOmitted);
+                var text = WholeText(result.Stdout, result.StdoutTail, result.StdoutOmitted)
+                    + (stderrText.Length > 0 ? ShellScript.CaptureStderrHeader + stderrText : "");
+                await _fileSystem.WriteAllTextAsync(capture.VirtualPath, RewriteOutboundPaths(text, outboundReplacements), cancellationToken).ConfigureAwait(false);
+            }
+
+            return capture.VirtualPath;
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            return "";
+        }
+    }
+
+    // What a session returned of a stream, its dropped middle marked when it dropped one.
+    private static string WholeText(string head, string tail, long omitted) =>
+        omitted > 0 ? $"{head}\n[... {omitted} chars not captured ...]\n{tail}" : head + tail;
 
     // ── Confinement ────────────────────────────────────────────────────────
 
@@ -1791,8 +1904,6 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
 
         return false;
     }
-
-    private bool IsCut(string value) => value.Length > _outputLimit;
 
     /// <summary>Truncates a string to the configured output limit, telling how many characters were omitted.</summary>
     private string Truncate(string value) =>

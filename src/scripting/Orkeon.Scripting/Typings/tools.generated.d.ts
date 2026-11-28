@@ -1461,7 +1461,7 @@ declare global {
             readonly values?: Record<string, string>;
         }>;
 
-        /** `shell_command` - Runs a shell command in the working directory and returns its exit code, stdout and stderr, cut at 10 000 characters; a command the allowlist or blocklist refuses is not run. action run (default) waits up to timeout seconds; start_job starts it detached and returns a job_id, which job_status and job_tail read later in the same run. To read or search files, file_read, grep and glob cost less than cat and find. */
+        /** `shell_command` - Runs a shell command in the working directory and returns its exit code, stdout and stderr, each cut at 10 000 characters keeping its head and its tail around a marker that counts what was left out; a cut run says stdout_truncated or stderr_truncated, gives the true lengths in stdout_total_chars and stderr_total_chars, and writes the whole output to output_path, which file_read reads; a command the allowlist or blocklist refuses is not run. action run (default) waits up to timeout seconds; start_job starts it detached and returns a job_id, which job_status and job_tail read later in the same run. To read or search files, file_read, grep and glob cost less than cat and find. */
         shellCommand(input: {
             /** run (default): run the command and wait; start_job: start it detached, output to a log file; job_status: running or exit code of a job; job_tail: last lines of a job's log */
             action?: "run" | "start_job" | "job_status" | "job_tail";
@@ -1482,7 +1482,11 @@ declare global {
             readonly output_path: string;
             readonly status: string;
             readonly stderr: string;
+            readonly stderr_total_chars: number;
+            readonly stderr_truncated: boolean;
             readonly stdout: string;
+            readonly stdout_total_chars: number;
+            readonly stdout_truncated: boolean;
             readonly tail: string;
         }>;
 
