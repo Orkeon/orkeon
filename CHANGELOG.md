@@ -19,8 +19,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added — the whole output of a cut `shell_command` run (#492)
 
-- `stdout_truncated`, `stderr_truncated`, `stdout_total_chars`, `stderr_total_chars`, and `output_path` pointing to the
-  whole output when a run is cut.
+- `stdout_truncated`, `stderr_truncated`, `stdout_total_chars`, `stderr_total_chars`, and `output_path` pointing to a
+  file of the output when a run is cut: at most the first 8 MiB of each stream (a Windows session keeps the first and
+  the last million characters of each), the marker saying when the file is not whole.
 
 ### Added — state on an async command's ticket (#493)
 
@@ -54,7 +55,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - It keeps the head and the tail, and its marker gives the true count of characters left out and says how much of the
   output `output_path` holds.
 - The file behind `output_path` has its physical paths virtualized, counts characters (exact for non-ASCII output), is
-  capped at 8 MiB per stream; the 32 most recent capture files are kept and a failed run leaves none.
+  capped at 8 MiB per stream; the 32 most recent capture files are kept and a failed run leaves none. The retention
+  reads only the capture directory itself and only the names the tool gives its files, so a user's `.log` there or
+  below stays, and never removes the file the result names. A physical path a cut splits (the session's head and tail,
+  a line past 1 MiB, the 8 MiB cap) is dropped or rewritten whole, never shown in part. Without a capture copy,
+  `stdout_total_chars` and `stderr_total_chars` count the middle the session dropped in bytes.
 
 ### Fixed — `contextTokens` no longer charges the conversation again (#495)
 

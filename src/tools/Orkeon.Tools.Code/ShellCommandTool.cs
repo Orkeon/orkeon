@@ -91,12 +91,18 @@ public sealed record ShellCommandResponse : Orkeon.Domain.Tools.IBoundedToolResp
     [ReturnSchema(Description = "Whether stderr was cut (head and tail kept around a marker, which says how much of the output output_path holds)", Example = false)]
     public bool StderrTruncated { get; init; }
 
-    /// <summary>Gets the length of the whole standard output, in characters, cut or not.</summary>
-    [ReturnSchema(Description = "Length of the whole stdout in characters, cut or not", Example = 5)]
+    /// <summary>
+    /// Gets the length of the whole standard output, in characters, cut or not; a middle the session dropped
+    /// and no capture copy counted (output_path empty, or holding only the first and last parts) counts in bytes.
+    /// </summary>
+    [ReturnSchema(Description = "Length of the whole stdout, cut or not: characters, except a middle the session dropped and output_path does not hold, counted in bytes", Example = 5)]
     public long StdoutTotalChars { get; init; }
 
-    /// <summary>Gets the length of the whole standard error, in characters, cut or not.</summary>
-    [ReturnSchema(Description = "Length of the whole stderr in characters, cut or not", Example = 0)]
+    /// <summary>
+    /// Gets the length of the whole standard error, in characters, cut or not; a middle the session dropped
+    /// and no capture copy counted (output_path empty, or holding only the first and last parts) counts in bytes.
+    /// </summary>
+    [ReturnSchema(Description = "Length of the whole stderr, cut or not: characters, except a middle the session dropped and output_path does not hold, counted in bytes", Example = 0)]
     public long StderrTotalChars { get; init; }
 
     /// <summary>Gets whether the command completed within the timeout.</summary>
@@ -1043,6 +1049,7 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
         else
             LogCommandCompleted(Logger, request.Command, result.ExitCode);
 
+        result = WithoutSplitPaths(result, outboundReplacements);
         var copy = capture is null ? null : await BuildCaptureFileAsync(capture, outboundReplacements, cancellationToken).ConfigureAwait(false);
         var stdout = Bound(
             RewriteOutboundPaths(result.Stdout, outboundReplacements), RewriteOutboundPaths(result.StdoutTail, outboundReplacements), result.StdoutOmitted,
@@ -1146,12 +1153,12 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
                 var writer = new StreamWriter(output, s_captureEncoding);
                 await using (writer.ConfigureAwait(false))
                 {
-                    stdoutChars = await CopyRewrittenAsync(capture.VirtualPath + ShellScript.CaptureStdoutSuffix, writer, outboundReplacements, cancellationToken).ConfigureAwait(false);
+                    stdoutChars = await CopyRewrittenAsync(capture.VirtualPath + ShellScript.CaptureStdoutSuffix, writer, outboundReplacements, stdoutBytes > CaptureByteCap, cancellationToken).ConfigureAwait(false);
                     stderrChars = 0;
                     if (stderrBytes > 0)
                     {
                         await writer.WriteAsync(ShellScript.CaptureStderrHeader.AsMemory(), cancellationToken).ConfigureAwait(false);
-                        stderrChars = await CopyRewrittenAsync(capture.VirtualPath + ShellScript.CaptureStderrSuffix, writer, outboundReplacements, cancellationToken).ConfigureAwait(false);
+                        stderrChars = await CopyRewrittenAsync(capture.VirtualPath + ShellScript.CaptureStderrSuffix, writer, outboundReplacements, stderrBytes > CaptureByteCap, cancellationToken).ConfigureAwait(false);
                     }
                 }
             }
@@ -1181,10 +1188,14 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
 
     /// <summary>
     /// Streams the raw copy at <paramref name="rawPath"/> into <paramref name="writer"/>, a line at a time so no
-    /// path is split between two rewrites, and returns the characters written. A missing copy writes nothing.
+    /// path is split between two rewrites, and returns the characters written. A line longer than
+    /// <see cref="CaptureLineCarry"/> is cut where no physical base straddles the cut (<see cref="SafeCut"/>);
+    /// a copy the cap ended (<paramref name="capped"/>) loses the base its last bytes split. A missing copy
+    /// writes nothing.
     /// </summary>
     private async Task<long> CopyRewrittenAsync(
-        string rawPath, StreamWriter writer, IReadOnlyList<(string PhysicalBase, string VirtualPrefix)> outboundReplacements, CancellationToken cancellationToken)
+        string rawPath, StreamWriter writer, IReadOnlyList<(string PhysicalBase, string VirtualPrefix)> outboundReplacements, bool capped,
+        CancellationToken cancellationToken)
     {
         if (!await _fileSystem.ExistsAsync(rawPath, cancellationToken).ConfigureAwait(false))
             return 0;
@@ -1203,15 +1214,93 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
                 var cut = text.LastIndexOf('\n');
                 if (cut < 0 && text.Length < CaptureLineCarry)
                     continue;
-                var ready = cut < 0 ? text : text[..(cut + 1)];
+                var ready = cut >= 0 ? text[..(cut + 1)] : text[..SafeCut(text, outboundReplacements)];
                 pending.Clear().Append(text, ready.Length, text.Length - ready.Length);
                 written += await WriteRewrittenAsync(writer, ready, outboundReplacements, cancellationToken).ConfigureAwait(false);
             }
 
-            if (pending.Length > 0)
-                written += await WriteRewrittenAsync(writer, pending.ToString(), outboundReplacements, cancellationToken).ConfigureAwait(false);
+            var rest = pending.ToString();
+            if (capped)
+                rest = rest[..SafeCut(rest, outboundReplacements)];
+            if (rest.Length > 0)
+                written += await WriteRewrittenAsync(writer, rest, outboundReplacements, cancellationToken).ConfigureAwait(false);
             return written;
         }
+    }
+
+    /// <summary>
+    /// The longest prefix of <paramref name="text"/> whose end splits no physical base: a base (or the start of
+    /// one) that reaches the end of the text, or ends right at it before the character that would close it,
+    /// is left after the cut. Never empty unless the text starts with such a base.
+    /// </summary>
+    internal static int SafeCut(string text, IReadOnlyList<(string PhysicalBase, string VirtualPrefix)> replacements)
+    {
+        ArgumentNullException.ThrowIfNull(text);
+        ArgumentNullException.ThrowIfNull(replacements);
+        var cut = text.Length;
+        bool moved;
+        do
+        {
+            moved = false;
+            foreach (var (physicalBase, _) in replacements)
+            {
+                for (var start = Math.Max(0, cut - physicalBase.Length); start < cut; start++)
+                {
+                    // The text from start to the cut, completed by the rest of the base: a match is a split base.
+                    if (!MatchesAt(string.Concat(text.AsSpan(start, cut - start), physicalBase.AsSpan(cut - start)), 0, physicalBase))
+                        continue;
+                    cut = start;
+                    moved = true;
+                    break;
+                }
+            }
+        }
+        while (moved && cut > 0);
+
+        return cut;
+    }
+
+    /// <summary>
+    /// <paramref name="result"/> without the pieces of a physical base its session's cut split: the end of
+    /// a head and the start of a tail around a dropped middle would each hold half of a path no rewrite
+    /// recognises. What is dropped counts with the omitted characters.
+    /// </summary>
+    private static ShellRunResult WithoutSplitPaths(
+        ShellRunResult result, IReadOnlyList<(string PhysicalBase, string VirtualPrefix)> replacements)
+    {
+        if (replacements.Count == 0)
+            return result;
+        var (stdout, stdoutTail, stdoutOmitted) = WithoutSplitPaths(result.Stdout, result.StdoutTail, result.StdoutOmitted, replacements);
+        var (stderr, stderrTail, stderrOmitted) = WithoutSplitPaths(result.Stderr, result.StderrTail, result.StderrOmitted, replacements);
+        return result with
+        {
+            Stdout = stdout, StdoutTail = stdoutTail, StdoutOmitted = stdoutOmitted,
+            Stderr = stderr, StderrTail = stderrTail, StderrOmitted = stderrOmitted,
+        };
+    }
+
+    private static (string Head, string Tail, long Omitted) WithoutSplitPaths(
+        string head, string tail, long omitted, IReadOnlyList<(string PhysicalBase, string VirtualPrefix)> replacements)
+    {
+        if (omitted <= 0)
+            return (head, tail, omitted);
+        var keptHead = head[..SafeCut(head, replacements)];
+        // The longest end of a base (two characters or more) the tail starts with.
+        var drop = 0;
+        foreach (var (physicalBase, _) in replacements)
+        {
+            for (var from = 1; from <= physicalBase.Length - 2; from++)
+            {
+                var suffix = physicalBase[from..];
+                if (suffix.Length > drop && tail.StartsWith(suffix, StringComparison.Ordinal))
+                {
+                    drop = suffix.Length;
+                    break;
+                }
+            }
+        }
+
+        return (keptHead, tail[drop..], omitted + (head.Length - keptHead.Length) + drop);
     }
 
     private static async Task<long> WriteRewrittenAsync(
@@ -1224,23 +1313,34 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
 
     /// <summary>
     /// Removes the oldest capture files of the directory <paramref name="kept"/> lies in, past
-    /// <see cref="MaxCaptureFiles"/>: their names sort by creation (<see cref="CaptureTarget"/>).
+    /// <see cref="MaxCaptureFiles"/>: their names sort by creation (<see cref="CaptureTarget"/>). Only the
+    /// directory itself is read, and only a file named as the tool names a capture is a candidate, so a
+    /// <c>.log</c> of the user's in that directory (the fallback <c>/workspace/shell</c>) or below it stays.
+    /// The file just kept is never removed, however old its name: a long run is named before it starts.
     /// </summary>
     private async Task PruneCapturesAsync(CaptureFile kept, CancellationToken cancellationToken)
     {
         var slash = kept.VirtualPath.LastIndexOf('/');
         var directory = slash > 0 ? kept.VirtualPath[..slash] : "/";
         var captures = new List<string>();
-        await foreach (var entry in _fileSystem.EnumerateFilesAsync(directory, null, cancellationToken).ConfigureAwait(false))
+        var options = new VirtualEnumerationOptions(Recursive: false);
+        await foreach (var entry in _fileSystem.EnumerateFilesAsync(directory, options, cancellationToken).ConfigureAwait(false))
         {
-            if (entry.Kind == VirtualEntryKind.File && entry.VirtualPath.EndsWith(CaptureExtension, StringComparison.Ordinal))
+            if (entry.Kind == VirtualEntryKind.File
+                && !string.Equals(entry.VirtualPath, kept.VirtualPath, StringComparison.Ordinal)
+                && IsCaptureFileName(entry.VirtualPath[(entry.VirtualPath.LastIndexOf('/') + 1)..]))
                 captures.Add(entry.VirtualPath);
         }
 
         captures.Sort(StringComparer.Ordinal);
-        foreach (var stale in captures.Take(Math.Max(0, captures.Count - Math.Max(1, MaxCaptureFiles))))
+        foreach (var stale in captures.Take(Math.Max(0, captures.Count - Math.Max(0, MaxCaptureFiles - 1))))
             await DeleteQuietlyAsync(stale).ConfigureAwait(false);
     }
+
+    /// <summary>Whether <paramref name="name"/> is a capture file's name as <see cref="CaptureTarget"/> writes it.</summary>
+    internal static bool IsCaptureFileName(string name) =>
+        System.Text.RegularExpressions.Regex.IsMatch(
+            name, @"^[0-9]{21}-[0-9a-f]{8}\.log$", System.Text.RegularExpressions.RegexOptions.CultureInvariant, TimeSpan.FromSeconds(1));
 
     /// <summary>Removes the capture file and the raw copies next to it, best effort.</summary>
     private async Task DiscardCaptureAsync(CaptureFile capture)
