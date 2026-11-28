@@ -46,9 +46,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Validation, the declared access and the execution read the same parse of a command. Before, a quoted first token
   holding a space (`"/x/ls /y/sh" -c id`) was checked as `ls` and ran `sh`: a first token holding whitespace is now
   refused, and the blocked patterns and forbidden operators are also checked with the quotes removed.
-- Read-only git subcommands match exactly (`git STATUS` is refused), `--show-signature` is refused, and a restricted git
-  runs with `core.fsmonitor=false`, `core.pager=cat`, `log.showSignature=false`, and `--no-ext-diff --no-textconv` for
-  `diff`, `show` and `log`. A `.gitattributes` filter driver can still run on `git status` and `git diff`.
+- Read-only git subcommands match exactly (`git STATUS` is refused), `--show-signature`, a `%G` format placeholder,
+  `--ignore-submodules` and `--submodule` are refused. A restricted git runs with `--no-pager --no-optional-locks
+  --no-lazy-fetch`, `core.fsmonitor=false`, `core.pager=cat`, `log.showSignature=false`, `gpg.program`,
+  `gpg.ssh.program` and `gpg.x509.program` set to `false`, `protocol.allow=never`, every filter driver the
+  configuration defines emptied (read first with `git config`), `--ignore-submodules=all`, and `--no-ext-diff
+  --no-textconv` for `diff`, `show` and `log`: the repository's configuration runs no program (signature verification,
+  `.gitattributes` or `.git/info/attributes` filters, a partial clone's lazy fetch). Such a call is Read only on git
+  2.44 or later; an older or unknown git makes it Execute. A filter driver whose name cannot be passed in `-c` (it
+  holds `=`) refuses the call.
 
 ### Fixed — a cut `shell_command` run says so (#492)
 

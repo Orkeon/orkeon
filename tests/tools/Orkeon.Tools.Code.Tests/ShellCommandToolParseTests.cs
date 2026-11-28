@@ -112,18 +112,18 @@ public sealed class ShellCommandToolParseTests
             var result = await tool.CallAsync(new ToolCallRequest("shell_command", Run(command)), Ct);
 
             Assert.True(result.Success, result.Error);
-            var arguments = Assert.Single(Assert.Single(sandbox.Sessions).Invocations).Arguments.ToList();
+            var arguments = sandbox.Sessions.SelectMany(s => s.Invocations).Last().Arguments.ToList();
             var at = arguments.IndexOf(subcommand);
             Assert.True(at > 0, string.Join(' ', arguments));
             var global = arguments[..at];
             Assert.Contains("core.fsmonitor=false", global);
             Assert.Contains("core.pager=cat", global);
             Assert.Contains("log.showSignature=false", global);
-            Assert.All(global.Where((_, i) => i % 2 == 0), option => Assert.Equal("-c", option));
+            Assert.All(global.Where(option => !option.StartsWith("--", StringComparison.Ordinal)).Where((_, i) => i % 2 == 0), option => Assert.Equal("-c", option));
             Assert.Equal(diffing, arguments.Contains("--no-ext-diff"));
             Assert.Equal(diffing, arguments.Contains("--no-textconv"));
             if (diffing)
-                Assert.Equal(subcommand, arguments[arguments.IndexOf("--no-ext-diff") - 1]);
+                Assert.Equal(subcommand, arguments[arguments.IndexOf("--no-ext-diff") - 2]);
         }
     }
 

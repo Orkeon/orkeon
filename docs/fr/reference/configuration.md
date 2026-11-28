@@ -1632,7 +1632,7 @@ est le plus grand nombre d'appels d'outils en lecture d'un même tour du modèle
 même temps ([appels parallèles](../architecture/coding-agent-ts.md#une-boucle-dagent-dans-une-crew--ctxllmact)).
 
 Un résultat qui dépasse sa borne est coupé et se termine par un avis, `N chars omitted. …`, qui dit
-combien a été retranché. `shell_command`, son plafond de flux et `job_tail` lisent la même borne, de
+combien a été retranché ; `shell_command` place plutôt son marqueur au milieu, gardant le début et la fin. `shell_command`, son plafond de flux et `job_tail` lisent la même borne, de
 même que la coupe de repli de `ctx.llm.act` quand aucun pipeline n'en applique. Un outil qui a déjà
 coupé sa propre sortie (`shell_command`, avec son avis) marque le résultat comme déjà borné, et le
 pipeline ne le coupe pas une seconde fois. Le `ResultBudget`

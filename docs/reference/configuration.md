@@ -1578,7 +1578,7 @@ The cut of a tool result and the fan-out of a tool-call batch. `Limits` maps a t
 calls of one model turn that run at once ([parallel calls](../architecture/coding-agent-ts.md#an-agent-loop-in-a-crew--ctxllmact)).
 
 A result past its bound is cut and ends with a notice, `N chars omitted. …`, naming how much was
-dropped. `shell_command`, its stream cap and `job_tail` read the same bound, and so does the cut
+dropped; `shell_command` puts its marker in the middle instead, keeping the head and the tail. `shell_command`, its stream cap and `job_tail` read the same bound, and so does the cut
 `ctx.llm.act` falls back on when no pipeline applies one. A tool that has already cut its own output
 (`shell_command` with its notice) flags the result as already bounded, and the pipeline does not cut
 it a second time. The `ResultBudget` of the Drive,

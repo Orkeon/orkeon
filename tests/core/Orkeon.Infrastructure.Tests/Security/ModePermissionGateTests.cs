@@ -253,6 +253,21 @@ public class ModePermissionGateTests
     }
 
     [Fact]
+    [Trait("BR", "CH-494")]
+    public async Task A_deny_rule_refuses_a_call_that_reads_in_plan_mode()
+    {
+        var gate = new ModePermissionGate(isInteractive: false)
+        {
+            Rules = new StubToolPermissionRules().Deny("shell_command", "command", "git *"),
+        };
+
+        var verdict = await gate.CheckAsync("shell_command", Command("git log -1"), "plan", ToolAccess.Read, Ct);
+
+        Assert.Equal(PermissionAction.Deny, verdict.Action);
+        Assert.Equal("tool 'shell_command' is denied by the session rule 'deny shell_command command=git *'.", verdict.Message);
+    }
+
+    [Fact]
     public async Task A_deny_rule_wins_over_an_allow_rule()
     {
         var gate = new ModePermissionGate(new StubToolApprovalChannel())

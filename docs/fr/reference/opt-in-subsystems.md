@@ -581,7 +581,7 @@ Aucun attribut ne porte l'identifiant d'un crew, d'une tâche ou d'un agent.
   `plan` → refuser tout ce qui n'est pas une lecture, le refus nommant ce que plan admet (les lectures,
   et les `run` en lecture seule de `shell_command`) pour que le modèle cesse de réessayer ; `dontAsk` → autoriser les
   lectures, refuser le reste sans jamais demander ; `acceptEdits` → accepter
-  d'office les lectures et les éditions (`file_write`, `spawn_agent`, les éditions du graphe de code, tout outil qui déclare `ToolAccess.Edit` comme `rag_ingest`), demander pour tout le reste (dont `shell_command`) ; `default` →
+  d'office les lectures et les éditions (`file_write`, `spawn_agent`, les éditions du graphe de code, tout outil qui déclare `ToolAccess.Edit` comme `rag_ingest`), demander pour tout le reste (dont un `shell_command` qui n'est pas une lecture) ; `default` →
   accepter les lectures, demander pour tout le reste. Avec un canal d'approbation, une demande
   attend l'opérateur, et l'`ExecutionTimeout` du script comme le budget de temps mural de l'agent
   (`.budget({ wallTime })`) s'arrêtent pendant ce temps ; un refus se lit
@@ -603,11 +603,20 @@ Aucun attribut ne porte l'identifiant d'un crew, d'une tâche ou d'un agent.
   `wc`, `echo`, `dir`, `type`, `where`, et `git status`/`log`/`diff`/`show` sans option qui écrit, lance
   un programme ou sort du répertoire de travail, la sous-commande écrite exactement) que ses propres
   contrôles acceptent — l'exécutable est lu avec l'analyse qu'emploie l'exécution, et un exécutable
-  entre guillemets contenant une espace (`"/x/ls /y/sh" -c id`) est refusé ; un tel `git` tourne avec
-  les `-c core.fsmonitor=false -c core.pager=cat -c log.showSignature=false` de l'outil, et
-  `diff`/`show`/`log` avec `--no-ext-diff --no-textconv`, pour que la configuration du dépôt ne lui
-  fasse lancer aucun programme (un pilote de filtre de `.gitattributes` peut encore tourner sur
-  `status`/`diff`) —, `Execute` pour
+  entre guillemets contenant une espace (`"/x/ls /y/sh" -c id`) est refusé. Un appel `git` n'est
+  `Read` que si l'outil peut neutraliser tout programme que le dépôt pourrait configurer pour lui : il
+  tourne avec les `--no-pager --no-optional-locks --no-lazy-fetch` de l'outil, `-c core.fsmonitor=false
+  -c core.pager=cat -c log.showSignature=false -c gpg.program=false -c gpg.ssh.program=false
+  -c gpg.x509.program=false -c protocol.allow=never -c diff.ignoreSubmodules=all
+  -c status.submoduleSummary=false`, un `clean`, un `smudge` et un `process` vides pour chaque pilote de
+  filtre que la configuration définit (lus d'abord avec `git config --get-regexp`, si bien qu'un pilote
+  que nomment `.gitattributes`, `.git/info/attributes` ou `core.attributesFile` ne lance rien),
+  `--ignore-submodules=all` après la sous-commande, et `diff`/`show`/`log` avec `--no-ext-diff
+  --no-textconv` ; un marqueur de format `%G`, `--ignore-submodules` et `--submodule` sont refusés.
+  `--no-lazy-fetch` demande git 2.44 : un git plus ancien, ou dont l'outil ne peut lire la version, rend
+  l'appel `Execute`. Le résidu : un appel git `Read` lit encore la configuration du dépôt (ses alias ne
+  s'appliquent pas, ses réglages d'affichage si), et ce sont les surcharges ci-dessus qui le rendent sûr ;
+  tout ce qu'elles ne couvrent pas est `Execute` —, `Execute` pour
   `start_job` et les actions de tâche, une commande qu'ajoute `ExtraAllowedCommands` ou
   `AllowedCommands`, un interpréteur, tout `git` dès que `AllowInterpreters` lève sa restriction, et un
   appel qu'il refuserait — un tour en plan peut donc lancer `git log`, `git diff`, `ls`, `cat` ou `grep`,
@@ -617,7 +626,7 @@ Aucun attribut ne porte l'identifiant d'un crew, d'une tâche ou d'un agent.
   `web_search`), `file_write`, `rag_ingest` (Edit : il écrit dans l'index de
   connaissances, jamais dans l'espace de travail) et `rag_eval` (Edit : il ingère le corpus du
   jeu de données dans la collection — `reindex` la reconstruit — et écrit ses rapports par le
-  VFS) et `shell_command` (Execute) se déclarent tous. Un outil MCP ne prend sa classe des
+  VFS) et `shell_command` (Execute, sauf si l'appel est une lecture comme ci-dessus) se déclarent tous. Un outil MCP ne prend sa classe des
   `annotations` du serveur que si l'opérateur fait confiance à ce serveur
   (`MCP:Servers:<name>:TrustAnnotations = true` : `readOnlyHint: true` → `Read`, d'autres
   annotations → `Execute`) ; les outils d'un serveur non fiable — le défaut — et d'un serveur

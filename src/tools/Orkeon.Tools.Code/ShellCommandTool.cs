@@ -202,7 +202,7 @@ public sealed record ShellCommandResponse : Orkeon.Domain.Tools.IBoundedToolResp
 /// </remarks>
 [ToolContract("shell_command", ActsOnWorkspace = true,
     Name = "shell_command",
-    Description = "Runs a shell command in the working directory and returns its exit code, stdout and stderr, each cut at 10 000 characters keeping its head and its tail around a marker that counts what was left out; a cut run says stdout_truncated or stderr_truncated, gives the true lengths in stdout_total_chars and stderr_total_chars, and writes the output to output_path (at most 8 MiB of each stream, the marker saying when it is not whole), which file_read reads; a command the allowlist or blocklist refuses is not run. action run (default) waits up to timeout seconds; start_job starts it detached and returns a job_id, which job_status and job_tail read later in the same run. To read or search files, file_read, grep and glob cost less than cat and find.",
+    Description = "Runs a shell command in the working directory and returns its exit code, stdout and stderr, each cut at 10 000 characters keeping its head and its tail around a marker that counts what was left out; a cut run says stdout_truncated or stderr_truncated, gives the lengths in stdout_total_chars and stderr_total_chars (characters; a middle the session dropped and output_path does not hold is counted in bytes), and writes the output to output_path (at most 8 MiB of each stream, the marker saying when it is not whole), which file_read reads; a command the allowlist or blocklist refuses is not run. git runs status, log, diff and show only, with the options the tool adds so that the repository's configuration runs no program (pager, fsmonitor, signature verification, filter and diff drivers, lazy fetch, submodules); a %G format placeholder is refused. action run (default) waits up to timeout seconds; start_job starts it detached and returns a job_id, which job_status and job_tail read later in the same run. To read or search files, file_read, grep and glob cost less than cat and find.",
     Category = "Code Operations")]
 public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellCommandResponse>
 {
@@ -433,25 +433,57 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
         // Diff two arbitrary host paths, ignoring the repository altogether.
         "--no-index",
         // Verify signatures, which runs the gpg.program the repository configures.
-        "--show-signature"
+        "--show-signature",
+        // Undo the tool's --ignore-submodules=all: a submodule's git reads its own configuration.
+        "--ignore-submodules", "--submodule"
     ];
 
     /// <summary>
-    /// The configuration the tool sets itself, before the subcommand, on every <c>git</c> call its read-only
-    /// restriction governs: the repository's own configuration must not make a read run a program
-    /// (<c>core.fsmonitor</c>, <c>core.pager</c>, <c>log.showSignature</c> and its <c>gpg.program</c>).
-    /// The caller's own <c>-c</c> stays refused (<see cref="s_forbiddenGitOptions"/>).
+    /// The options and configuration the tool sets itself, before the subcommand, on every <c>git</c> call its
+    /// read-only restriction governs: the repository's own configuration must not make a read run a program
+    /// or write. No pager, no optional lock (the index is not rewritten), no fsmonitor hook, no signature
+    /// verification program (<c>gpg.program</c>, <c>gpg.ssh.program</c>, <c>gpg.x509.program</c>: a
+    /// <c>%G</c> placeholder or a <c>format.pretty</c> that holds one runs it), no transport, and no
+    /// submodule summary. <see cref="s_gitNoLazyFetch"/> and the emptied filter drivers
+    /// (<see cref="FilterDriverOverrides"/>) complete the set. The caller's own <c>-c</c> stays refused
+    /// (<see cref="s_forbiddenGitOptions"/>).
     /// </summary>
     private static readonly string[] s_gitSafeConfiguration =
     [
-        "-c", "core.fsmonitor=false", "-c", "core.pager=cat", "-c", "log.showSignature=false"
+        "--no-pager", "--no-optional-locks",
+        "-c", "core.fsmonitor=false", "-c", "core.pager=cat", "-c", "log.showSignature=false",
+        "-c", "gpg.program=false", "-c", "gpg.ssh.program=false", "-c", "gpg.x509.program=false",
+        "-c", "protocol.allow=never", "-c", "diff.ignoreSubmodules=all", "-c", "status.submoduleSummary=false",
     ];
 
     /// <summary>
-    /// The options the tool adds after <c>diff</c>, <c>show</c> and <c>log</c>: no external diff driver
-    /// (<c>diff.external</c>, <c>diff.&lt;driver&gt;.command</c>) and no textconv filter run.
+    /// No lazy fetch of a missing object of a partial clone, which runs the transport the repository's
+    /// promisor remote names (an <c>ext::</c> URL is a command). <c>protocol.allow=never</c> alone does not
+    /// stop it: a repository's <c>protocol.&lt;name&gt;.allow</c> wins over it. Git 2.44 and later.
     /// </summary>
+    private const string s_gitNoLazyFetch = "--no-lazy-fetch";
+
+    /// <summary>
+    /// The oldest git that takes every option of the tool's safe set (<c>--no-lazy-fetch</c> came with 2.44):
+    /// an older or unknown git makes a <c>git</c> call <see cref="ToolAccess.Execute"/>.
+    /// </summary>
+    internal static readonly Version MinimumSafeGitVersion = new(2, 44, 0);
+
+    /// <summary>
+    /// The options the tool adds right after <c>status</c>, <c>diff</c>, <c>show</c> and <c>log</c>: no
+    /// submodule is entered (a submodule's git reads its own configuration, whose filter drivers the tool
+    /// did not read), and for the three that diff no external diff driver (<c>diff.external</c>,
+    /// <c>diff.&lt;driver&gt;.command</c>) and no textconv filter run.
+    /// </summary>
+    private static readonly string[] s_gitSafeSubcommandOptions = ["--ignore-submodules=all"];
+
     private static readonly string[] s_gitSafeDiffOptions = ["--no-ext-diff", "--no-textconv"];
+
+    /// <summary>The version of the <c>git</c> on the host's PATH, read once (null when there is none).</summary>
+    private static readonly Lazy<Version?> s_hostGitVersion = new(ProbeHostGitVersion);
+
+    /// <summary>The version of the git a call runs; the host's by default, null when unknown.</summary>
+    internal Func<Version?> GitVersion { get; init; } = static () => s_hostGitVersion.Value;
 
     /// <summary>
     /// Default set of blocked command patterns. Each one names a destructive command, so it
@@ -559,10 +591,12 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
     /// the executable is one of the default read-only commands (<c>ls</c>, <c>cat</c>, <c>pwd</c>,
     /// <c>which</c>, <c>grep</c>, <c>wc</c>, <c>echo</c>, <c>git</c>, <c>dir</c>, <c>type</c>,
     /// <c>where</c>), the tool's own checks accept it (no forbidden operator, in the allowlist, no
-    /// blocked pattern) and, for <c>git</c>, the read-only subcommand and option checks pass even when
-    /// interpreters are allowed. <see cref="ToolAccess.Execute"/> otherwise: <c>start_job</c> and the job
+    /// blocked pattern) and, for <c>git</c>, the read-only subcommand and option checks pass and the git is
+    /// at least <see cref="MinimumSafeGitVersion"/>, so that the tool neutralises every program the
+    /// repository configures. <see cref="ToolAccess.Execute"/> otherwise: <c>start_job</c> and the job
     /// actions, a command added by <c>ExtraAllowedCommands</c> or a custom allowlist, an interpreter,
-    /// <c>git</c> once interpreters lift its restriction, and a call the tool would refuse.
+    /// <c>git</c> once interpreters lift its restriction (they are allowed: <c>git</c> is then unrestricted),
+    /// an older or unknown git, and a call the tool would refuse.
     /// </summary>
     /// <param name="arguments">Arguments the model supplied for the call.</param>
     /// <returns>The access class of this call.</returns>
@@ -586,7 +620,10 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
             || ValidateExecutable(command, executable) is not null)
             return ToolAccess.Execute;
 
-        return executable.Equals("git", StringComparison.OrdinalIgnoreCase) && ValidateGitSubcommand(command) is not null
+        // A git call reads only when the tool can neutralise every program the repository could make it
+        // run: the read-only checks pass, and the git is recent enough for the whole safe set.
+        return executable.Equals("git", StringComparison.OrdinalIgnoreCase)
+               && (ValidateGitSubcommand(command) is not null || !(GitVersion() >= MinimumSafeGitVersion))
             ? ToolAccess.Execute
             : ToolAccess.Read;
     }
@@ -862,7 +899,8 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
     {
         var detached = request.Action == StartJobAction;
         var (executable, arguments) = ParseCommand(request.Command);
-        if (!_interpretersAllowed && executable.Equals("git", StringComparison.OrdinalIgnoreCase))
+        var restrictedGit = !_interpretersAllowed && executable.Equals("git", StringComparison.OrdinalIgnoreCase);
+        if (restrictedGit)
             arguments = WithGitSafeOptions(arguments);
         var rights = RequiredPathRights(executable);
         var sandbox = ActiveSandbox;
@@ -933,6 +971,25 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
             SessionBus = SessionBus,
         };
 
+        if (restrictedGit)
+        {
+            // The filter drivers are named by the configuration only: read them, then empty each one.
+            var overrides = await GitFilterDriverOverridesAsync(sandbox, view, invocation, cancellationToken).ConfigureAwait(false);
+            if (overrides is null)
+            {
+                await (capture is null ? Task.CompletedTask : DiscardCaptureAsync(capture)).ConfigureAwait(false);
+                return new ShellCommandResponse
+                {
+                    ExitCode = -1,
+                    Stdout = "",
+                    Stderr = "git not run: the repository's filter drivers could not be read or named, so the tool cannot keep them from running",
+                    Completed = false,
+                };
+            }
+
+            invocation = invocation with { Arguments = [.. overrides, .. invocation.Arguments] };
+        }
+
         if (detached)
             return await StartJobAsync(sandbox, view, invocation, cancellationToken).ConfigureAwait(false);
 
@@ -970,6 +1027,34 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
         }
 
         return await BuildRunResponseAsync(request, result, outboundReplacements, capture, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// The <c>-c</c> pairs that empty the filter drivers the repository's configuration defines, read by a
+    /// <c>git config</c> run in the same session and directory as the call; null when that read failed or
+    /// a driver cannot be named (the call is then not run).
+    /// </summary>
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "A failed read refuses the git call; it never throws out of the tool.")]
+    private async Task<string[]?> GitFilterDriverOverridesAsync(
+        IShellSandbox sandbox, ShellSessionView view, ShellInvocation call, CancellationToken cancellationToken)
+    {
+        string[] query = [.. GitVersion() >= MinimumSafeGitVersion ? [s_gitNoLazyFetch] : Array.Empty<string>(), .. s_gitFilterDriverQuery];
+        var invocation = new ShellInvocation(
+            "git", query, call.WorkingDirectory, call.Timeout, OutputLimit: 64 * 1024);
+        ShellRunResult result;
+        try
+        {
+            result = await Sessions.RunAsync(sandbox, view, invocation, cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            return null;
+        }
+
+        // 1: no key matched, which a directory outside any repository answers too.
+        if (result.TimedOut || result.StdoutOmitted > 0 || result.ExitCode is not (0 or 1))
+            return null;
+        return result.ExitCode == 1 ? [] : FilterDriverOverrides(result.Stdout);
     }
 
     /// <summary>Where the whole output of a run goes when it is cut: its virtual path, and the path its session writes.</summary>
@@ -2177,6 +2262,11 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
         if (forbiddenOption is not null)
             return $"git option '{forbiddenOption}' is not allowed; it would write, execute, or leave the working directory";
 
+        // A %G placeholder verifies the signature, which runs a gpg program: neutralised by the tool's
+        // configuration, and refused here so the call does not ask for what it cannot show.
+        if (tokens.Skip(2).Any(token => token.Contains("%G", StringComparison.Ordinal)))
+            return "git format placeholder '%G' is not allowed; it verifies signatures, which runs a program";
+
         return null;
     }
 
@@ -2184,13 +2274,102 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
     /// <paramref name="arguments"/> of a validated read-only <c>git</c> call with the tool's own safe
     /// configuration in front and, for a subcommand that diffs, its safe diff options right after it.
     /// </summary>
-    private static string[] WithGitSafeOptions(string[] arguments)
+    private string[] WithGitSafeOptions(string[] arguments)
     {
         if (arguments.Length == 0)
             return arguments;
         var subcommand = arguments[0];
         var diffing = subcommand is "diff" or "show" or "log";
-        return [.. s_gitSafeConfiguration, subcommand, .. diffing ? s_gitSafeDiffOptions : [], .. arguments[1..]];
+        // An older git refuses the option it does not know; its call is Execute (AccessFor) and runs without it.
+        string[] lazyFetch = GitVersion() >= MinimumSafeGitVersion ? [s_gitNoLazyFetch] : [];
+        return
+        [
+            .. lazyFetch, .. s_gitSafeConfiguration, subcommand, .. s_gitSafeSubcommandOptions,
+            .. diffing ? s_gitSafeDiffOptions : [], .. arguments[1..],
+        ];
+    }
+
+    /// <summary>
+    /// The arguments that read the names of the filter drivers the configuration defines
+    /// (<c>filter.&lt;driver&gt;.clean</c>, <c>.smudge</c>, <c>.process</c>), whichever attributes file
+    /// names them: <c>.git/info/attributes</c>, <c>core.attributesFile</c> and <c>.gitattributes</c> alike.
+    /// </summary>
+    private static readonly string[] s_gitFilterDriverQuery =
+        ["--no-pager", "--no-optional-locks", "config", "--null", "--name-only", "--get-regexp", "^filter[.]"];
+
+    /// <summary>
+    /// The <c>-c</c> pairs that empty every filter driver <paramref name="names"/> (the NUL-separated output of
+    /// <see cref="s_gitFilterDriverQuery"/>) defines, so no clean, smudge or process command runs; null when a
+    /// driver's name cannot be written in a <c>-c</c> (it holds <c>=</c>, a newline or a NUL).
+    /// </summary>
+    internal static string[]? FilterDriverOverrides(string names)
+    {
+        var drivers = new SortedSet<string>(StringComparer.Ordinal);
+        foreach (var name in names.Split('\0', StringSplitOptions.RemoveEmptyEntries))
+        {
+            if (!name.StartsWith("filter.", StringComparison.Ordinal))
+                continue;
+            var last = name.LastIndexOf('.');
+            if (last <= "filter.".Length)
+                continue;
+            var driver = name["filter.".Length..last];
+            if (driver.Contains('=', StringComparison.Ordinal) || driver.Contains('\n', StringComparison.Ordinal) || driver.Contains('\r', StringComparison.Ordinal))
+                return null;
+            drivers.Add(driver);
+        }
+
+        return [.. drivers.SelectMany(driver => new[]
+        {
+            "-c", $"filter.{driver}.clean=", "-c", $"filter.{driver}.smudge=", "-c", $"filter.{driver}.process=",
+        })];
+    }
+
+    /// <summary>The version a <c>git --version</c> banner names, null when it names none.</summary>
+    internal static Version? ParseGitVersion(string banner)
+    {
+        ArgumentNullException.ThrowIfNull(banner);
+        var match = System.Text.RegularExpressions.Regex.Match(
+            banner, @"git version (\d+)\.(\d+)(?:\.(\d+))?", System.Text.RegularExpressions.RegexOptions.CultureInvariant, TimeSpan.FromSeconds(1));
+        if (!match.Success)
+            return null;
+        var culture = System.Globalization.CultureInfo.InvariantCulture;
+        return new Version(
+            int.Parse(match.Groups[1].Value, culture),
+            int.Parse(match.Groups[2].Value, culture),
+            match.Groups[3].Success ? int.Parse(match.Groups[3].Value, culture) : 0);
+    }
+
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "A git that cannot be probed is an unknown version: its calls execute, never fail the tool.")]
+    private static Version? ProbeHostGitVersion()
+    {
+        // OUT-OF-SCOPE: system probing of the git binary on the PATH, not a VFS path.
+        try
+        {
+            var start = new System.Diagnostics.ProcessStartInfo("git")
+            {
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                RedirectStandardInput = true,
+                UseShellExecute = false,
+            };
+            start.ArgumentList.Add("--version");
+            using var process = System.Diagnostics.Process.Start(start);
+            if (process is null)
+                return null;
+            process.StandardInput.Close();
+            var banner = process.StandardOutput.ReadToEnd();
+            if (!process.WaitForExit(10_000))
+            {
+                process.Kill(entireProcessTree: true);
+                return null;
+            }
+
+            return process.ExitCode == 0 ? ParseGitVersion(banner) : null;
+        }
+        catch (Exception)
+        {
+            return null;
+        }
     }
 
     /// <summary>

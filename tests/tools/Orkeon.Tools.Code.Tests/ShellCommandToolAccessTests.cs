@@ -17,6 +17,8 @@ public sealed class ShellCommandToolAccessTests
         new(new FakeFileSystemService(), allowInterpreters: allowInterpreters, extraAllowedCommands: extra)
         {
             Confinement = TestConfinement.Off(),
+            // A git recent enough for the whole safe set, whatever the host has (see ShellCommandToolGitHardeningTests).
+            GitVersion = () => ShellCommandTool.MinimumSafeGitVersion,
         };
 
     private static ToolAccess Access(Dictionary<string, object?> arguments, bool allowInterpreters = false, IEnumerable<string>? extra = null)
@@ -122,7 +124,12 @@ public sealed class ShellCommandToolAccessTests
         Assert.Contains("plan mode", verdict.Message, StringComparison.Ordinal);
         Assert.Contains("read-only command", verdict.Message, StringComparison.Ordinal);
         Assert.Contains("git status/log/diff/show", verdict.Message, StringComparison.Ordinal);
+        foreach (var name in s_readOnlyCommands)
+            Assert.Contains($"{name}, ", verdict.Message, StringComparison.Ordinal);
     }
+
+    // Every default read-only command but git, which the message names with its subcommands.
+    private static readonly string[] s_readOnlyCommands = ["ls", "cat", "pwd", "which", "grep", "wc", "echo", "dir", "type", "where"];
 
     [Theory]
     [InlineData("git commit -m x", null)]

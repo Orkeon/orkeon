@@ -565,7 +565,7 @@ No attribute carries an id of a crew, task or agent.
   before EACH tool execution. Modes: `bypassPermissions` → allow all; `plan` → deny
   non-reads, the refusal naming what plan allows (reads, and the read-only `shell_command` runs) so the
   model stops retrying; `dontAsk` → allow reads, deny the rest without ever asking;
-  `acceptEdits` → auto-accept reads and edits (`file_write`, `spawn_agent`, the code-graph edits, any tool declaring `ToolAccess.Edit` such as `rag_ingest`), ask for everything else (`shell_command` among them);
+  `acceptEdits` → auto-accept reads and edits (`file_write`, `spawn_agent`, the code-graph edits, any tool declaring `ToolAccess.Edit` such as `rag_ingest`), ask for everything else (a `shell_command` that is not a read among them);
   `default` → auto-accept reads, ask for everything else. With an approval channel, an ask
   waits for the operator, and the script's `ExecutionTimeout` and the agent's wall-time budget
   (`.budget({ wallTime })`) stop meanwhile; a refusal reads
@@ -586,10 +586,20 @@ No attribute carries an id of a crew, task or agent.
   `echo`, `dir`, `type`, `where`, and `git status`/`log`/`diff`/`show` without an option that writes,
   runs a program or leaves the working directory, the subcommand spelt exactly) that its own checks
   accept — the executable is read with the parse the execution uses, and a quoted executable holding
-  a space (`"/x/ls /y/sh" -c id`) is refused; such a `git` runs with the tool's own
-  `-c core.fsmonitor=false -c core.pager=cat -c log.showSignature=false`, and `diff`/`show`/`log` with
-  `--no-ext-diff --no-textconv`, so the repository's configuration does not make it run a program
-  (a filter driver of `.gitattributes` can still run on `status`/`diff`) —, `Execute` for
+  a space (`"/x/ls /y/sh" -c id`) is refused. A `git` call is `Read` only when the tool can
+  neutralise every program the repository could configure for it: it runs with the tool's own
+  `--no-pager --no-optional-locks --no-lazy-fetch`, `-c core.fsmonitor=false -c core.pager=cat
+  -c log.showSignature=false -c gpg.program=false -c gpg.ssh.program=false -c gpg.x509.program=false
+  -c protocol.allow=never -c diff.ignoreSubmodules=all -c status.submoduleSummary=false`, an empty
+  `clean`, `smudge` and `process` for every filter driver the configuration defines (read first with
+  `git config --get-regexp`, so a driver `.gitattributes`, `.git/info/attributes` or
+  `core.attributesFile` names runs nothing), `--ignore-submodules=all` after the subcommand, and
+  `diff`/`show`/`log` with `--no-ext-diff --no-textconv`; a `%G` format placeholder,
+  `--ignore-submodules` and `--submodule` are refused. `--no-lazy-fetch` needs git 2.44: an older
+  git, or one whose version the tool cannot read, makes the call `Execute`. The residual: a `Read`
+  git call still reads the repository's configuration (its aliases do not apply, its display
+  settings do), and the overrides above are what make it safe; anything they do not cover is
+  `Execute` —, `Execute` for
   `start_job` and the job actions, a command `ExtraAllowedCommands` or `AllowedCommands` adds, an
   interpreter, any `git` once `AllowInterpreters` lifts its restriction, and a call it would refuse —
   so a plan turn can run `git log`, `git diff`, `ls`, `cat` or `grep`, and nothing that writes. Their
@@ -598,7 +608,7 @@ No attribute carries an id of a crew, task or agent.
   `scrape_element`, `rag_search`, `web_search`), `file_write`, `rag_ingest`
   (Edit: it writes into the knowledge index, never into the workspace) and `rag_eval` (Edit: it
   ingests the dataset's corpus into the collection — `reindex` rebuilds it — and writes its
-  reports through the VFS) and `shell_command` (Execute) all declare themselves. An MCP tool
+  reports through the VFS) and `shell_command` (Execute, unless the call is a read as above) all declare themselves. An MCP tool
   takes its class from the server's `annotations` only when the operator trusts that server
   (`MCP:Servers:<name>:TrustAnnotations = true`: `readOnlyHint: true` → `Read`, other
   annotations → `Execute`); an untrusted server's tools — the default — and a server that
