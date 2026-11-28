@@ -35,6 +35,12 @@ public sealed class CommandInstance
     /// </summary>
     internal string? LaunchInput { get; set; }
 
+    /// <summary>
+    /// The <c>state</c> the launch attached (#493), serialised as JSON; <see langword="null"/> when it attached none.
+    /// Set before the work starts and read by the <c>completed</c> drain, which hands it back as <c>result.state</c>.
+    /// </summary>
+    internal string? LaunchState { get; set; }
+
     /// <summary>Chain depth: 0 for a user-launched instance, parent depth + 1 for one launched from a <c>completed</c> handler.</summary>
     internal int Depth { get; set; }
 

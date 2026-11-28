@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using Jint.Native;
 using Orkeon.Cli.Commands.Scripting.Dispatch;
 
 namespace Orkeon.Cli.Commands.Scripting.Tests.Doubles;
@@ -38,6 +39,14 @@ internal sealed class GatedScriptHost
             await Gate(name).Task.WaitAsync(ct).ConfigureAwait(false);
             return new CommandResponse(name, name, true, name + "-out", null);
         });
+
+    /// <summary>Launches <paramref name="name"/> with the <c>{ state }</c> option, read as the real facade reads it (#493).</summary>
+    public string runCrewAsync(string name, JsValue options)
+        => _service.PostWorkCore(name, "crew:" + name, async ct =>
+        {
+            await Gate(name).Task.WaitAsync(ct).ConfigureAwait(false);
+            return new CommandResponse(name, name, true, name + "-out", null);
+        }, continueChain: false, exclusive: false, onMain: false, launchState: LaunchState.Read(options, "script-host.runCrewAsync"));
 
     public string runOnMain(string name)
         => _service.postWork(name, "crew:" + name, async ct =>

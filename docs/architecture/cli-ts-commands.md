@@ -397,8 +397,8 @@ defineAsyncCommand({
   command (the same command name), whose `completed` runs in turn. The chain is
   bounded by `MaxChainDepth` (default 8, `ScriptCommandsConfiguration.MaxChainDepth`);
   the depth counts how many `completed` hops deep an instance was launched (`inspect`
-  shows it). A `commands.post` counts the same way (the parent's depth plus one; it takes
-  no options). A deeper `runCrewAsync` or `post` is refused with
+  shows it). A `commands.post` counts the same way (the parent's depth plus one; its only
+  option is `{ state }`). A deeper `runCrewAsync` or `post` is refused with
   `ChainDepthExceededException`, as a JS throw whose message names the depth, the limit
   and the command: `chain depth 8 reached (MaxChainDepth 8, /dev-batches)`.
 - **A driver that loops: `{ chain: "continue" }`.** A command that relaunches its own
@@ -435,6 +435,16 @@ defineAsyncCommand({
   `maxConcurrent` below, it bounds the crew, not the command: an alias of the command
   that launches nothing answers during the run. Both options combine
   (`{ chain: "continue", exclusive: true }`).
+- **A fact the launch keeps for its completion: `{ state }`.** `completed(result, ctx)` receives `result.ticket`, the
+  ticket the launch returned, and `result.state`, the value the launch attached with
+  `runCrewAsync(name, input, { state })` or `commands.post(agent, intent, payload, { state })`; undefined when it attached
+  none. The state is any JSON value of at most 16 KiB once serialised, kept in memory with the instance (lost at a REPL
+  restart, like the instance) and parsed again for each `completed`, so a change made there reaches nobody. A launch chained
+  from a `completed` carries the state it was given, never its parent's. A value above the cap, or one JSON cannot hold (a
+  cycle, a function), is refused before anything runs, as a JS throw:
+  `script-host.runCrewAsync: options.state is 16395 bytes once serialised, above the cap of 16384 bytes (16 KiB).` With it, two
+  instances of one command can be in flight at once (`maxConcurrent` above 1), each `completed` knowing which launch ended,
+  without a shared note in the session state.
 
 ### Admission quota — `maxConcurrent`
 
