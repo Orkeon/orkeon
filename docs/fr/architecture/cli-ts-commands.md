@@ -53,8 +53,9 @@ scripted> /exit
 ```
 
 Dans le REPL scripté, seule une ligne qui commence par `/` est une commande. `@chemin`
-référence un fichier ou un dossier (Tab complète les noms de commandes et les chemins), et tout
-le reste est du texte libre — confié à la commande de repli (ci-dessous), ou refusé s'il n'y en
+référence un fichier ou un dossier (Tab complète les noms de commandes et les chemins), une ligne
+tapée dans un terminal qui commence par `!` s'exécute dans le shell de l'opérateur
+([référence du CLI](../reference/cli.md)), et tout le reste est du texte libre — confié à la commande de repli (ci-dessous), ou refusé s'il n'y en
 a pas. Le message qu'une commande rend via `ctx.continue(...)` est ce que le REPL affiche ;
 `ctx.log` part vers le volet des logs, que la TUI masque au démarrage.
 
@@ -387,7 +388,7 @@ defineAsyncCommand({
 });
 ```
 
-- `post(agent, intent, payload)` retourne immédiatement un **ticket** (string) et
+- `post(agent, intent, payload, options?)` retourne immédiatement un **ticket** (string) et
   exécute la requête sur une tâche d'arrière-plan.
 - `completed(result, ctx)` n'est **pas** appelé depuis le thread d'arrière-plan
   (Jint est mono-thread). Dès que le travail aboutit, l'hôte imprime une ligne
@@ -485,7 +486,8 @@ pendant que le travail async tourne en arrière-plan) :
 | `cancel --ticket=<t>`      | Demande l'annulation d'un ticket en vol.                      |
 
 Une `CommandInstanceView` porte : `ticket`, `name`, `kind` (`sync`/`async`),
-`targetAgent`, `intent`, `correlationId`, `state`, `onMain`, `startedAt`, `completedAt?`,
+`targetAgent`, `intent`, `correlationId`, `state` (le cycle de vie : `running`, `done`, … — pas la valeur qu'un
+lancement attache avec `{ state }`, que `completed` lit dans `result.state`), `onMain`, `startedAt`, `completedAt?`,
 `elapsedMs`, `tokens`, `result?`, `error?`, `progress?`. Les tickets s'écrivent `t1`,
 `t2`, … ; les 200 entrées terminales les plus récentes sont conservées pour que
 `result`/`inspect` puissent lire un ticket récent, puis évincées. Les quatre commandes

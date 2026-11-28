@@ -119,7 +119,7 @@ export interface CommandResponse {
   /**
    * In `completed`: the value the launch attached (`runCrewAsync(name, input, { state })`, `commands.post(..., { state })`),
    * parsed again for this call; `undefined` when the launch attached none. A launch chained from a `completed` carries
-   * the state it was given, never its parent's.
+   * the state it was given, never its parent's. Not the instance's lifecycle state (`CommandInstanceView.state`).
    */
   readonly state?: unknown;
 }
@@ -141,6 +141,7 @@ export interface CommandInstanceView {
   readonly targetAgent: string;
   readonly intent: string;
   readonly correlationId: string;
+  /** The lifecycle state (`running`, `done`, ...), not the value a launch attaches: that one is `result.state` in `completed`. */
   readonly state: CommandInstanceState;
   /** Launched with `{ onMain: true }`: it writes on the main screen and is no task of the list. */
   readonly onMain: boolean;
@@ -598,7 +599,7 @@ export interface CommandUsageRow extends UsageTokens {
   readonly ticket: string;
   /** The command's name. */
   readonly name: string;
-  /** The instance's state. */
+  /** The instance's lifecycle state, not the value its launch attached (`result.state` in `completed`). */
   readonly state: CommandInstanceState;
   /** The LLM calls of the instance. */
   readonly calls: number;

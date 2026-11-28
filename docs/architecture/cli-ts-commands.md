@@ -51,8 +51,9 @@ scripted> /exit
 ```
 
 In the scripted REPL only a line that starts with `/` is a command. `@path` references a file
-or folder (Tab completes command names and paths), and anything else is free text — handed to
-the fallback command (below), or refused when there is none. The message a command returns
+or folder (Tab completes command names and paths), a line typed at a terminal that starts with `!`
+runs in the operator's own shell ([CLI reference](../reference/cli.md)), and anything else is free
+text — handed to the fallback command (below), or refused when there is none. The message a command returns
 through `ctx.continue(...)` is what the REPL prints; `ctx.log` goes to the logs pane, which the
 TUI hides at startup.
 
@@ -382,7 +383,7 @@ defineAsyncCommand({
 });
 ```
 
-- `post(agent, intent, payload)` returns a **ticket** (string) right away and runs
+- `post(agent, intent, payload, options?)` returns a **ticket** (string) right away and runs
   the request on a background task.
 - `completed(result, ctx)` is **not** called from the background thread (Jint is
   single-threaded). As soon as the work settles, the host prints a terse line
@@ -477,7 +478,8 @@ runs in the background):
 | `cancel --ticket=<t>`      | Request cancellation of an in-flight ticket.                  |
 
 A `CommandInstanceView` carries: `ticket`, `name`, `kind` (`sync`/`async`),
-`targetAgent`, `intent`, `correlationId`, `state`, `onMain`, `startedAt`, `completedAt?`,
+`targetAgent`, `intent`, `correlationId`, `state` (the lifecycle: `running`, `done`, … — not the value a launch
+attaches with `{ state }`, which `completed` reads as `result.state`), `onMain`, `startedAt`, `completedAt?`,
 `elapsedMs`, `tokens`, `result?`, `error?`, `progress?`. Tickets read `t1`, `t2`, …; the
 200 most recent terminal entries are kept so `result`/`inspect` can read a recent ticket,
 then evicted. The four built-ins are registered only when at least one `*.cmd.ts` was
