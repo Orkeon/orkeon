@@ -395,7 +395,7 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
     /// (e.g. those that can spawn processes via <c>-c core.sshCommand=…</c>) are
     /// rejected unless interpreters are explicitly opted in.
     /// </summary>
-    private static readonly HashSet<string> s_allowedGitSubcommands = new(StringComparer.OrdinalIgnoreCase)
+    private static readonly HashSet<string> s_allowedGitSubcommands = new(StringComparer.Ordinal)
     {
         "status", "log", "diff", "show"
     };
@@ -425,8 +425,27 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
         // Repoint the repository or the work tree away from the validated directory.
         "-C", "--git-dir", "--work-tree",
         // Diff two arbitrary host paths, ignoring the repository altogether.
-        "--no-index"
+        "--no-index",
+        // Verify signatures, which runs the gpg.program the repository configures.
+        "--show-signature"
     ];
+
+    /// <summary>
+    /// The configuration the tool sets itself, before the subcommand, on every <c>git</c> call its read-only
+    /// restriction governs: the repository's own configuration must not make a read run a program
+    /// (<c>core.fsmonitor</c>, <c>core.pager</c>, <c>log.showSignature</c> and its <c>gpg.program</c>).
+    /// The caller's own <c>-c</c> stays refused (<see cref="s_forbiddenGitOptions"/>).
+    /// </summary>
+    private static readonly string[] s_gitSafeConfiguration =
+    [
+        "-c", "core.fsmonitor=false", "-c", "core.pager=cat", "-c", "log.showSignature=false"
+    ];
+
+    /// <summary>
+    /// The options the tool adds after <c>diff</c>, <c>show</c> and <c>log</c>: no external diff driver
+    /// (<c>diff.external</c>, <c>diff.&lt;driver&gt;.command</c>) and no textconv filter run.
+    /// </summary>
+    private static readonly string[] s_gitSafeDiffOptions = ["--no-ext-diff", "--no-textconv"];
 
     /// <summary>
     /// Default set of blocked command patterns. Each one names a destructive command, so it
@@ -554,8 +573,9 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
             || string.IsNullOrWhiteSpace(command) || FindForbiddenOperator(command) is not null)
             return ToolAccess.Execute;
 
-        var executable = ExtractExecutable(command);
+        var executable = ParseCommand(command).Executable;
         if (string.IsNullOrWhiteSpace(executable)
+            || ExecutableTokenError(command) is not null
             || RequiredPathRights(executable) != FileAccessRights.Read
             || ValidateExecutable(command, executable) is not null)
             return ToolAccess.Execute;
@@ -594,9 +614,13 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
         if (forbiddenOp is not null)
             return $"Command contains forbidden shell operator: '{forbiddenOp}'";
 
-        var executable = ExtractExecutable(request.Command);
+        // The executable is read with the parse the execution uses (ParseCommand), never a cheaper one:
+        // a reading that differs lets a command be validated as one program and run as another (#494).
+        var executable = ParseCommand(request.Command).Executable;
         if (string.IsNullOrWhiteSpace(executable))
             return "Command cannot be empty";
+        if (ExecutableTokenError(request.Command) is { } tokenError)
+            return tokenError;
 
         var error = ValidateExecutable(request.Command, executable) ?? ValidatePlacement(request, executable);
         if (error is not null)
@@ -615,7 +639,7 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
     private string? ValidateExecutable(string command, string executable)
     {
         // Reject executables that contain path separators after normalization
-        // (ExtractExecutable already strips paths, so if we still see separators
+        // (ParseCommand already strips paths, so if we still see separators
         //  something is wrong)
         if (executable.Contains('/', StringComparison.Ordinal) || executable.Contains('\\', StringComparison.Ordinal))
             return $"Invalid executable name: '{executable}'";
@@ -646,8 +670,11 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
                 return subcommandError;
         }
 
+        // The pattern is sought in the command as written and as the process receives it, quotes
+        // removed: `rm "-rf" /` runs `rm -rf /` and must not slip past the "rm -rf /" entry.
+        var unquoted = string.Join(' ', TokenizeCommand(command));
         var blockedPattern = _blockedPatterns
-            .FirstOrDefault(pattern => ContainsBlockedPattern(command, pattern));
+            .FirstOrDefault(pattern => ContainsBlockedPattern(command, pattern) || ContainsBlockedPattern(unquoted, pattern));
         return blockedPattern is null ? null : $"Command contains blocked pattern: '{blockedPattern}'";
     }
 
@@ -829,6 +856,8 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
     {
         var detached = request.Action == StartJobAction;
         var (executable, arguments) = ParseCommand(request.Command);
+        if (!_interpretersAllowed && executable.Equals("git", StringComparison.OrdinalIgnoreCase))
+            arguments = WithGitSafeOptions(arguments);
         var rights = RequiredPathRights(executable);
         var sandbox = ActiveSandbox;
         var confined = sandbox.UsesVirtualPaths;
@@ -1345,7 +1374,24 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
     /// </summary>
     public static string? FindForbiddenOperator(string command)
     {
-        return s_forbiddenOperators.FirstOrDefault(op => command.Contains(op, StringComparison.Ordinal));
+        ArgumentNullException.ThrowIfNull(command);
+        // Sought as written and with the quotes removed, the two readings a check could be made on.
+        var unquoted = string.Join(' ', TokenizeCommand(command));
+        return s_forbiddenOperators.FirstOrDefault(op =>
+            command.Contains(op, StringComparison.Ordinal) || unquoted.Contains(op, StringComparison.Ordinal));
+    }
+
+    /// <summary>
+    /// Null when the first token of <paramref name="command"/>, as <see cref="ParseCommand"/> reads it, is
+    /// one plain word: a quoted token holding whitespace (<c>"/x/ls /y/sh" -c id</c>) names a program
+    /// whose name no allowlist check can vouch for, so it is refused rather than reduced to a base name.
+    /// </summary>
+    private static string? ExecutableTokenError(string command)
+    {
+        var tokens = TokenizeCommand(command);
+        return tokens.Count > 0 && tokens[0].Any(char.IsWhiteSpace)
+            ? "Invalid executable name: a quoted executable cannot hold whitespace"
+            : null;
     }
 
     // ── VFS path rewriting ─────────────────────────────────────────────────
@@ -1838,6 +1884,19 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
             return $"git option '{forbiddenOption}' is not allowed; it would write, execute, or leave the working directory";
 
         return null;
+    }
+
+    /// <summary>
+    /// <paramref name="arguments"/> of a validated read-only <c>git</c> call with the tool's own safe
+    /// configuration in front and, for a subcommand that diffs, its safe diff options right after it.
+    /// </summary>
+    private static string[] WithGitSafeOptions(string[] arguments)
+    {
+        if (arguments.Length == 0)
+            return arguments;
+        var subcommand = arguments[0];
+        var diffing = subcommand is "diff" or "show" or "log";
+        return [.. s_gitSafeConfiguration, subcommand, .. diffing ? s_gitSafeDiffOptions : [], .. arguments[1..]];
     }
 
     /// <summary>

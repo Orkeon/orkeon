@@ -601,7 +601,13 @@ Aucun attribut ne porte l'identifiant d'un crew, d'une tâche ou d'un agent.
   une méthode de lecture qui porte l'un ou l'autre ; `shell_command` est `Read` pour un `run` (l'action
   par défaut) de l'une de ses commandes en lecture seule par défaut (`ls`, `cat`, `pwd`, `which`, `grep`,
   `wc`, `echo`, `dir`, `type`, `where`, et `git status`/`log`/`diff`/`show` sans option qui écrit, lance
-  un programme ou sort du répertoire de travail) que ses propres contrôles acceptent, `Execute` pour
+  un programme ou sort du répertoire de travail, la sous-commande écrite exactement) que ses propres
+  contrôles acceptent — l'exécutable est lu avec l'analyse qu'emploie l'exécution, et un exécutable
+  entre guillemets contenant une espace (`"/x/ls /y/sh" -c id`) est refusé ; un tel `git` tourne avec
+  les `-c core.fsmonitor=false -c core.pager=cat -c log.showSignature=false` de l'outil, et
+  `diff`/`show`/`log` avec `--no-ext-diff --no-textconv`, pour que la configuration du dépôt ne lui
+  fasse lancer aucun programme (un pilote de filtre de `.gitattributes` peut encore tourner sur
+  `status`/`diff`) —, `Execute` pour
   `start_job` et les actions de tâche, une commande qu'ajoute `ExtraAllowedCommands` ou
   `AllowedCommands`, un interpréteur, tout `git` dès que `AllowInterpreters` lève sa restriction, et un
   appel qu'il refuserait — un tour en plan peut donc lancer `git log`, `git diff`, `ls`, `cat` ou `grep`,
