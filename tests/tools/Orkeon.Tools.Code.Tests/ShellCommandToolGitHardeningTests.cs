@@ -206,6 +206,104 @@ public sealed class ShellCommandToolGitHardeningTests : IDisposable
         Assert.False(File.Exists(Marker), "the partial clone fetched through the repository's remote");
     }
 
+    [Fact]
+    [Trait("BR", "CH-494")]
+    public async Task A_diff_that_refreshes_the_index_runs_no_hook_the_repository_configures()
+    {
+        SkipUnlessGit();
+        var program = NewRepository();
+        var hooks = Path.Combine(_root, "hooks");
+        Directory.CreateDirectory(hooks);
+        File.Copy(program, Path.Combine(hooks, "post-index-change"));
+        if (!OperatingSystem.IsWindows())
+            File.SetUnixFileMode(Path.Combine(hooks, "post-index-change"), UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
+        Git(Repo, "config", "core.hooksPath", hooks);
+        // Same content, new stat data: git refreshes the index entry and rewrites the index.
+        File.SetLastWriteTimeUtc(Path.Combine(Repo, "f.txt"), DateTime.UtcNow.AddMinutes(5));
+
+        var result = await CallAsync("git diff");
+
+        Assert.True(result.Success, result.Error);
+        Assert.False(File.Exists(Marker), "the repository's post-index-change hook ran");
+    }
+
+    [Fact]
+    [Trait("BR", "CH-494")]
+    public async Task A_verbose_status_runs_no_textconv_filter()
+    {
+        SkipUnlessGit();
+        var program = NewRepository();
+        await File.WriteAllTextAsync(Path.Combine(Repo, ".git", "info", "attributes"), "*.txt diff=evil\n", Ct);
+        Git(Repo, "config", "diff.evil.textconv", program);
+        await File.AppendAllTextAsync(Path.Combine(Repo, "f.txt"), "two\n", Ct);
+        Git(Repo, "add", "f.txt");
+
+        using var tool = NewTool();
+        var result = await tool.CallAsync(new ToolCallRequest("shell_command", Run("git status -v")), Ct);
+
+        Assert.False(result.Success);
+        Assert.False(File.Exists(Marker), "the repository's diff.evil.textconv ran");
+    }
+
+    [Theory]
+    [Trait("BR", "CH-494")]
+    [InlineData("git status -v")]
+    [InlineData("git status -vv")]
+    [InlineData("git status -sv")]
+    [InlineData("git status -s -v")]
+    [InlineData("git status --verbose")]
+    [InlineData("git status --verb")]
+    [InlineData("git status --ver")]
+    [InlineData("git status --ignore-sub=none")]
+    [InlineData("git status --ignore-s=none")]
+    [InlineData("git status --ignore-sub none")]
+    [InlineData("git status --no-ignore-submodules")]
+    [InlineData("git status --no-ignore-sub")]
+    [InlineData("git diff --sub=log")]
+    [InlineData("git diff --ext")]
+    [InlineData("git diff --textc")]
+    [InlineData("git diff --no-no-ext-diff")]
+    [InlineData("git diff --no-no-textconv")]
+    [InlineData("git diff --out=/tmp/x")]
+    [InlineData("git diff --no-ind a b")]
+    [InlineData("git log --show-sig -1")]
+    [InlineData("git log --git-d=/tmp/x")]
+    [InlineData("git log --work-t=/tmp/x")]
+    [InlineData("git log --exec-p=/tmp/x")]
+    [InlineData("git log --config-e=a=b")]
+    public async Task An_abbreviated_or_verbose_option_is_refused(string command)
+    {
+        var sandbox = new FakeShellSandbox();
+        using var tool = new ShellCommandTool(new FakeFileSystemService()) { Sandbox = sandbox, Confinement = TestConfinement.Off() };
+
+        Assert.Equal(ToolAccess.Execute, tool.AccessFor(new Dictionary<string, object?> { ["command"] = command }));
+        var result = await tool.CallAsync(new ToolCallRequest("shell_command", new Dictionary<string, object?> { ["command"] = command }), Ct);
+
+        Assert.False(result.Success);
+        Assert.Empty(sandbox.Sessions.SelectMany(s => s.Invocations));
+    }
+
+    [Theory]
+    [Trait("BR", "CH-494")]
+    [InlineData("git status -s")]
+    [InlineData("git status -uno")]
+    [InlineData("git status --no-verbose")]
+    [InlineData("git status --ignored")]
+    [InlineData("git diff --text")]
+    [InlineData("git diff --stat --no-ext-diff --no-textconv")]
+    [InlineData("git diff --output-indicator-new=+")]
+    [InlineData("git log --summary --no-show-signature -1")]
+    public void An_unrestricted_option_stays_read(string command)
+    {
+        using var tool = new ShellCommandTool(new FakeFileSystemService())
+        {
+            Confinement = TestConfinement.Off(),
+            GitVersion = () => new Version(2, 53, 0),
+        };
+
+        Assert.Equal(ToolAccess.Read, tool.AccessFor(new Dictionary<string, object?> { ["command"] = command }));
+    }
+
     [Theory]
     [Trait("BR", "CH-494")]
     [InlineData("git status --ignore-submodules=none")]
@@ -246,6 +344,7 @@ public sealed class ShellCommandToolGitHardeningTests : IDisposable
         Assert.Contains("gpg.ssh.program=false", global);
         Assert.Contains("gpg.x509.program=false", global);
         Assert.Contains("protocol.allow=never", global);
+        Assert.Contains("core.hooksPath=/dev/null", global);
         Assert.Equal("--ignore-submodules=all", arguments[arguments.IndexOf(subcommand) + 1]);
     }
 

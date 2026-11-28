@@ -588,14 +588,18 @@ No attribute carries an id of a crew, task or agent.
   accept — the executable is read with the parse the execution uses, and a quoted executable holding
   a space (`"/x/ls /y/sh" -c id`) is refused. A `git` call is `Read` only when the tool can
   neutralise every program the repository could configure for it: it runs with the tool's own
-  `--no-pager --no-optional-locks --no-lazy-fetch`, `-c core.fsmonitor=false -c core.pager=cat
+  `--no-pager --no-optional-locks --no-lazy-fetch`, `-c core.fsmonitor=false -c core.hooksPath=/dev/null -c core.pager=cat
   -c log.showSignature=false -c gpg.program=false -c gpg.ssh.program=false -c gpg.x509.program=false
   -c protocol.allow=never -c diff.ignoreSubmodules=all -c status.submoduleSummary=false`, an empty
   `clean`, `smudge` and `process` for every filter driver the configuration defines (read first with
   `git config --get-regexp`, so a driver `.gitattributes`, `.git/info/attributes` or
   `core.attributesFile` names runs nothing), `--ignore-submodules=all` after the subcommand, and
-  `diff`/`show`/`log` with `--no-ext-diff --no-textconv`; a `%G` format placeholder,
-  `--ignore-submodules` and `--submodule` are refused. `--no-lazy-fetch` needs git 2.44: an older
+  `diff`/`show`/`log` with `--no-ext-diff --no-textconv`; a `%G` format placeholder on the command
+  line (one a `pretty.<name>` or `format.pretty` holds is neutralised by the `gpg` overrides),
+  `--ignore-submodules`, `--submodule`, their `--no-` forms, `status -v` in every form (`-vv`, `-sv`,
+  `--verbose`: a verbose status runs the textconv filter) and any abbreviation of a refused long option
+  of three letters or more (`--ignore-sub=none`, `--verb`) are refused. `--no-optional-locks` does not
+  keep git from rewriting `.git/index` to refresh a stat-dirty entry; no hook runs on it. `--no-lazy-fetch` needs git 2.44: an older
   git, or one whose version the tool cannot read, makes the call `Execute`. The residual: a `Read`
   git call still reads the repository's configuration (its aliases do not apply, its display
   settings do), and the overrides above are what make it safe; anything they do not cover is

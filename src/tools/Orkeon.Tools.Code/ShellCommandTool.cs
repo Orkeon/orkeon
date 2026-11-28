@@ -202,7 +202,7 @@ public sealed record ShellCommandResponse : Orkeon.Domain.Tools.IBoundedToolResp
 /// </remarks>
 [ToolContract("shell_command", ActsOnWorkspace = true,
     Name = "shell_command",
-    Description = "Runs a shell command in the working directory and returns its exit code, stdout and stderr, each cut at 10 000 characters keeping its head and its tail around a marker that counts what was left out; a cut run says stdout_truncated or stderr_truncated, gives the lengths in stdout_total_chars and stderr_total_chars (characters; a middle the session dropped and output_path does not hold is counted in bytes), and writes the output to output_path (at most 8 MiB of each stream, the marker saying when it is not whole), which file_read reads; a command the allowlist or blocklist refuses is not run. git runs status, log, diff and show only, with the options the tool adds so that the repository's configuration runs no program (pager, fsmonitor, signature verification, filter and diff drivers, lazy fetch, submodules); a %G format placeholder is refused. action run (default) waits up to timeout seconds; start_job starts it detached and returns a job_id, which job_status and job_tail read later in the same run. To read or search files, file_read, grep and glob cost less than cat and find.",
+    Description = "Runs a shell command in the working directory and returns its exit code, stdout and stderr, each cut at 10 000 characters keeping its head and its tail around a marker that counts what was left out; a cut run says stdout_truncated or stderr_truncated, gives the lengths in stdout_total_chars and stderr_total_chars (characters; a middle the session dropped and output_path does not hold is counted in bytes), and writes the output to output_path (at most 8 MiB of each stream, the marker saying when it is not whole), which file_read reads; a command the allowlist or blocklist refuses is not run. git runs status, log, diff and show only, with the options the tool adds so that the repository's configuration runs no program (pager, hooks, fsmonitor, signature verification, filter and diff drivers, lazy fetch, submodules); a %G format placeholder is refused on the command line and neutralised from the configuration (pretty.<name>, format.pretty), and an option that would undo the tool's own, written in full or abbreviated (status -v included), is refused. action run (default) waits up to timeout seconds; start_job starts it detached and returns a job_id, which job_status and job_tail read later in the same run. To read or search files, file_read, grep and glob cost less than cat and find.",
     Category = "Code Operations")]
 public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellCommandResponse>
 {
@@ -439,9 +439,38 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
     ];
 
     /// <summary>
+    /// Long options whose <c>--no-</c> form is refused too, because it undoes what the tool injects
+    /// (<c>--ignore-submodules=all</c>, <c>--no-ext-diff</c>, <c>--no-textconv</c>).
+    /// </summary>
+    private static readonly string[] s_forbiddenGitNegatedOptions =
+        ["--ignore-submodules", "--submodule", "--no-ext-diff", "--no-textconv"];
+
+    /// <summary>
+    /// The options refused after <c>status</c> alone: a verbose status shows the staged diff
+    /// (<c>-vv</c> the work tree's too), which runs the <c>diff.&lt;driver&gt;.textconv</c> filter the
+    /// repository's attributes name, and <c>status</c> takes no <c>--no-textconv</c> to stop it.
+    /// </summary>
+    private static readonly string[] s_forbiddenGitStatusOptions = ["--verbose"];
+
+    /// <summary>
+    /// Existing git options that happen to be prefixes of a forbidden one, matched exactly and let through:
+    /// <c>--text</c> (treat every file as text) is not an abbreviation of <c>--textconv</c>.
+    /// </summary>
+    private static readonly string[] s_gitOptionsBesideForbiddenOnes = ["--text"];
+
+    /// <summary>
+    /// The shortest abbreviation, after <c>--</c>, a long option is matched on. Git accepts an unambiguous
+    /// prefix of a long option for a command parsed by its parse-options (<c>status --ignore-sub=none</c>):
+    /// a name that only begins a forbidden option is refused as that option.
+    /// </summary>
+    private const int MinimumGitOptionAbbreviation = 3;
+
+    /// <summary>
     /// The options and configuration the tool sets itself, before the subcommand, on every <c>git</c> call its
     /// read-only restriction governs: the repository's own configuration must not make a read run a program
-    /// or write. No pager, no optional lock (the index is not rewritten), no fsmonitor hook, no signature
+    /// or write. No pager, no optional lock (git may still refresh a stat-dirty entry and rewrite the index
+    /// file, so no hook runs either: <c>core.hooksPath=/dev/null</c>, a directory that holds no hook on any
+    /// platform, keeps <c>post-index-change</c> from running), no fsmonitor hook, no signature
     /// verification program (<c>gpg.program</c>, <c>gpg.ssh.program</c>, <c>gpg.x509.program</c>: a
     /// <c>%G</c> placeholder or a <c>format.pretty</c> that holds one runs it), no transport, and no
     /// submodule summary. <see cref="s_gitNoLazyFetch"/> and the emptied filter drivers
@@ -451,7 +480,7 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
     private static readonly string[] s_gitSafeConfiguration =
     [
         "--no-pager", "--no-optional-locks",
-        "-c", "core.fsmonitor=false", "-c", "core.pager=cat", "-c", "log.showSignature=false",
+        "-c", "core.fsmonitor=false", "-c", "core.hooksPath=/dev/null", "-c", "core.pager=cat", "-c", "log.showSignature=false",
         "-c", "gpg.program=false", "-c", "gpg.ssh.program=false", "-c", "gpg.x509.program=false",
         "-c", "protocol.allow=never", "-c", "diff.ignoreSubmodules=all", "-c", "status.submoduleSummary=false",
     ];
@@ -2376,28 +2405,65 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
     /// Returns the first option of <see cref="s_forbiddenGitOptions"/> present in
     /// <paramref name="tokens"/>, or null when the command line carries none. A long option
     /// is matched on its name, so <c>--output=&lt;file&gt;</c> and <c>--output &lt;file&gt;</c>
-    /// are the same option; a short one is matched on its prefix, because git lets it carry
-    /// its value attached (<c>-o/tmp/x</c>).
+    /// are the same option, and on every abbreviation git could expand to it
+    /// (<see cref="MinimumGitOptionAbbreviation"/>); its <c>--no-</c> form is refused when it undoes an
+    /// option the tool injects (<see cref="s_forbiddenGitNegatedOptions"/>). A short one is matched on its
+    /// prefix, because git lets it carry its value attached (<c>-o/tmp/x</c>). After <c>status</c>,
+    /// <c>--verbose</c> and a <c>-v</c> anywhere in a bundle of short flags (<c>-sv</c>) are refused too.
     /// </summary>
     private static string? FindForbiddenGitOption(IReadOnlyList<string> tokens)
     {
+        var status = tokens.Count > 1 && string.Equals(tokens[1], "status", StringComparison.Ordinal);
         for (var i = 1; i < tokens.Count; i++)
         {
             var token = tokens[i];
             if (token.Length < 2 || token[0] != '-')
                 continue;
 
+            if (token[1] != '-')
+            {
+                if (status && token.Contains('v', StringComparison.Ordinal))
+                    return "-v";
+                foreach (var option in s_forbiddenGitOptions)
+                {
+                    if (!option.StartsWith("--", StringComparison.Ordinal) && token.StartsWith(option, StringComparison.Ordinal))
+                        return option;
+                }
+
+                continue;
+            }
+
             var equals = token.IndexOf('=', StringComparison.Ordinal);
             var name = equals > 0 ? token[..equals] : token;
+            if (s_gitOptionsBesideForbiddenOnes.Contains(name, StringComparer.Ordinal))
+                continue;
 
-            foreach (var option in s_forbiddenGitOptions)
-            {
-                var matched = option.StartsWith("--", StringComparison.Ordinal)
-                    ? string.Equals(name, option, StringComparison.Ordinal)
-                    : token.StartsWith(option, StringComparison.Ordinal);
-                if (matched)
-                    return option;
-            }
+            var forbidden = MatchLongOption(name, s_forbiddenGitOptions)
+                ?? (status ? MatchLongOption(name, s_forbiddenGitStatusOptions) : null);
+            if (forbidden is not null)
+                return forbidden;
+
+            if (name.StartsWith("--no-", StringComparison.Ordinal)
+                && MatchLongOption("--" + name["--no-".Length..], s_forbiddenGitNegatedOptions) is { } negated)
+                return "--no-" + negated[2..];
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// The long option of <paramref name="options"/> that <paramref name="name"/> names in full or abbreviates,
+    /// null when it names none.
+    /// </summary>
+    private static string? MatchLongOption(string name, string[] options)
+    {
+        foreach (var option in options)
+        {
+            if (!option.StartsWith("--", StringComparison.Ordinal))
+                continue;
+            if (string.Equals(name, option, StringComparison.Ordinal)
+                || (name.Length >= 2 + MinimumGitOptionAbbreviation && option.StartsWith(name, StringComparison.Ordinal)))
+                return option;
         }
 
         return null;

@@ -606,13 +606,20 @@ Aucun attribut ne porte l'identifiant d'un crew, d'une tâche ou d'un agent.
   entre guillemets contenant une espace (`"/x/ls /y/sh" -c id`) est refusé. Un appel `git` n'est
   `Read` que si l'outil peut neutraliser tout programme que le dépôt pourrait configurer pour lui : il
   tourne avec les `--no-pager --no-optional-locks --no-lazy-fetch` de l'outil, `-c core.fsmonitor=false
+  -c core.hooksPath=/dev/null
   -c core.pager=cat -c log.showSignature=false -c gpg.program=false -c gpg.ssh.program=false
   -c gpg.x509.program=false -c protocol.allow=never -c diff.ignoreSubmodules=all
   -c status.submoduleSummary=false`, un `clean`, un `smudge` et un `process` vides pour chaque pilote de
   filtre que la configuration définit (lus d'abord avec `git config --get-regexp`, si bien qu'un pilote
   que nomment `.gitattributes`, `.git/info/attributes` ou `core.attributesFile` ne lance rien),
   `--ignore-submodules=all` après la sous-commande, et `diff`/`show`/`log` avec `--no-ext-diff
-  --no-textconv` ; un marqueur de format `%G`, `--ignore-submodules` et `--submodule` sont refusés.
+  --no-textconv` ; un marqueur de format `%G` sur la ligne de commande (celui que porte un
+  `pretty.<nom>` ou `format.pretty` est neutralisé par les surcharges `gpg`), `--ignore-submodules`,
+  `--submodule`, leurs formes `--no-`, `status -v` sous toutes ses formes (`-vv`, `-sv`, `--verbose` :
+  un status verbeux lance le filtre textconv) et toute abréviation d'au moins trois lettres d'une option
+  longue refusée (`--ignore-sub=none`, `--verb`) sont refusés. `--no-optional-locks` n'empêche pas git
+  de réécrire `.git/index` pour rafraîchir une entrée dont les métadonnées ont changé ; aucun hook ne
+  tourne alors.
   `--no-lazy-fetch` demande git 2.44 : un git plus ancien, ou dont l'outil ne peut lire la version, rend
   l'appel `Execute`. Le résidu : un appel git `Read` lit encore la configuration du dépôt (ses alias ne
   s'appliquent pas, ses réglages d'affichage si), et ce sont les surcharges ci-dessus qui le rendent sûr ;
