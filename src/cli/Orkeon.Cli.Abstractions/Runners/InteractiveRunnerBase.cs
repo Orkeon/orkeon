@@ -263,16 +263,17 @@ public abstract partial class InteractiveRunnerBase : IInteractiveRunner
     internal const string OperatorShellUsage =
         "Usage: ! <command> runs a shell command of your own in the working folder (e.g. ! git status); \\!text sends a prompt that starts with !.";
 
-    /// <summary>What a <c>!</c> line that was not typed prints.</summary>
-    internal const string OperatorShellReplayedRefusal =
-        "Refused: a line that starts with ! runs a shell command only when the operator types it at the prompt; a replay file never runs one.";
+    /// <summary>What a <c>!</c> line prints when the console does not state it was typed at an interactive terminal.</summary>
+    internal const string OperatorShellNotTypedRefusal =
+        "Refused: a line that starts with ! runs a shell command only when you type it at an interactive terminal; a replay file, piped input or a script never runs one.";
 
     /// <summary>What a <c>!</c> line prints when the runner's services hold no <see cref="IOperatorShell"/>.</summary>
     internal const string OperatorShellMissingRefusal =
         "Refused: this console runs no shell command of the operator's (no operator shell is registered).";
 
     /// <summary>
-    /// A line that starts with <c>!</c>: refused when it was not typed (a replay), when no shell is registered, when the
+    /// A line that starts with <c>!</c>: refused unless the console states it was typed at an interactive terminal
+    /// (<see cref="IReplLineOrigin.LastLineTyped"/>; a console that states nothing is a feed), when no shell is registered, when the
     /// feature is off, or when no command follows; otherwise run as a command, under the per-command token Esc and
     /// Ctrl+C cancel.
     /// </summary>
@@ -281,8 +282,8 @@ public abstract partial class InteractiveRunnerBase : IInteractiveRunner
     {
         string? refusal = null;
         IOperatorShell? shell = null;
-        if (Console is IReplLineOrigin { LastLineReplayed: true })
-            refusal = OperatorShellReplayedRefusal;
+        if (Console is not IReplLineOrigin { LastLineTyped: true })
+            refusal = OperatorShellNotTypedRefusal;
         else if ((shell = Services.GetService<IOperatorShell>()) is null)
             refusal = OperatorShellMissingRefusal;
         else if (shell.DisabledReason is { } disabled)

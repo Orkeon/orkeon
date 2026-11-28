@@ -35,7 +35,7 @@ public sealed class OperatorShellLineTests
     [InlineData(false)]
     public async Task ATypedLine_RunsTheCommand_WithoutATurnOfTheModel(bool slashOnly)
     {
-        var console = new StubLineConsole("! echo a | tr a b");
+        var console = new StubTypedLineConsole("! echo a | tr a b");
 
         await Build(console, slashOnly: slashOnly).RunAsync(TestContext.Current.CancellationToken);
 
@@ -46,25 +46,39 @@ public sealed class OperatorShellLineTests
     }
 
     [Fact]
-    public async Task AReplayedLine_IsRefusedWithASentence()
+    public async Task ALineTheConsoleSaysWasNotTyped_IsRefusedWithASentence()
     {
-        var console = new StubLineConsole("! git status") { Replayed = true };
+        var console = new StubTypedLineConsole("! git status") { Typed = false };
 
         await Build(console).RunAsync(TestContext.Current.CancellationToken);
 
         Assert.Empty(_shell.Commands);
         Assert.Empty(_assistant.Invocations);
-        Assert.Contains(InteractiveRunnerBase.OperatorShellReplayedRefusal, console.Output);
+        Assert.Contains(InteractiveRunnerBase.OperatorShellNotTypedRefusal, console.Output);
         var outcome = Assert.Single(_outcomes);
         Assert.Equal(CommandOutcomeKind.Failed, outcome.Kind);
-        Assert.Equal(InteractiveRunnerBase.OperatorShellReplayedRefusal, outcome.Message);
+        Assert.Equal(InteractiveRunnerBase.OperatorShellNotTypedRefusal, outcome.Message);
+    }
+
+    [Fact]
+    public async Task ALineFromAConsoleThatStatesNoOrigin_IsRefused_AsPipedInputIs()
+    {
+        // printf '! rm -rf x\n' | orkeon: the dumb console reads the pipe and says nothing of where its lines came from.
+        var console = new StubLineConsole("! rm -rf x");
+
+        await Build(console).RunAsync(TestContext.Current.CancellationToken);
+
+        Assert.Empty(_shell.Commands);
+        Assert.Empty(_assistant.Invocations);
+        Assert.Contains(InteractiveRunnerBase.OperatorShellNotTypedRefusal, console.Output);
+        Assert.Equal(CommandOutcomeKind.Failed, Assert.Single(_outcomes).Kind);
     }
 
     [Fact]
     public async Task WhenTheShellIsOff_TheLineIsRefusedWithItsSentence()
     {
         _shell.Disabled = "Refused: off (Orkeon:Cli:Repl:ShellPrefix:Enabled is false).";
-        var console = new StubLineConsole("! ls");
+        var console = new StubTypedLineConsole("! ls");
 
         await Build(console).RunAsync(TestContext.Current.CancellationToken);
 
@@ -76,7 +90,7 @@ public sealed class OperatorShellLineTests
     [Fact]
     public async Task WithoutAShell_TheLineIsRefused_AndNeverReachesTheModel()
     {
-        var console = new StubLineConsole("! ls");
+        var console = new StubTypedLineConsole("! ls");
 
         await Build(console, withShell: false).RunAsync(TestContext.Current.CancellationToken);
 
@@ -91,7 +105,7 @@ public sealed class OperatorShellLineTests
     [InlineData("!!ls")]
     public async Task ALineWithNoCommand_PrintsTheUsage(string line)
     {
-        var console = new StubLineConsole(line);
+        var console = new StubTypedLineConsole(line);
 
         await Build(console).RunAsync(TestContext.Current.CancellationToken);
 
@@ -103,7 +117,7 @@ public sealed class OperatorShellLineTests
     [Fact]
     public async Task AnEscapedBang_IsAPromptThatStartsWithABang()
     {
-        var console = new StubLineConsole("\\!important: read this");
+        var console = new StubTypedLineConsole("\\!important: read this");
 
         await Build(console).RunAsync(TestContext.Current.CancellationToken);
 
@@ -114,7 +128,7 @@ public sealed class OperatorShellLineTests
     [Fact]
     public async Task TheCommand_IsCancelledAsATurnIs()
     {
-        var console = new StubLineConsole("! sleep 100");
+        var console = new StubTypedLineConsole("! sleep 100");
         var runner = Build(console);
         _shell.Started = runner.RequestCommandCancellation;
 

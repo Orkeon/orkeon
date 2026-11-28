@@ -94,4 +94,66 @@ public sealed class ProcessOperatorShellRunnerTests
 
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() => run);
     }
+
+    [Fact]
+    public async Task ABackgroundChildHoldingTheOutput_DoesNotKeepTheRunWaitingForTheTimeout()
+    {
+        Assert.SkipWhen(OperatingSystem.IsWindows(), "The command is POSIX.");
+
+        // `sleep 300 &` keeps the shell's output open after the shell ended: the run ends with the shell.
+        var run = await _runner.RunAsync("sleep 300 & echo $!", OnLine, TimeSpan.FromSeconds(60), TestContext.Current.CancellationToken);
+        try
+        {
+            Assert.Equal(new OperatorShellRun(0, TimedOut: false), run);
+        }
+        finally
+        {
+            lock (_gate)
+            {
+                if (_lines.Count > 0 && int.TryParse(_lines[0], out var pid))
+                {
+                    try { System.Diagnostics.Process.GetProcessById(pid).Kill(); }
+                    catch (ArgumentException) { /* It already ended. */ }
+                    catch (InvalidOperationException) { /* It already ended. */ }
+                }
+            }
+        }
+    }
+
+    [Fact]
+    public async Task OnLinux_TheCommandRunsInASessionOfItsOwn_DetachedFromTheControllingTerminal()
+    {
+        Assert.SkipUnless(OperatingSystem.IsLinux() && ProcessOperatorShellRunner.SetsidPath() is not null, "setsid is not on PATH.");
+
+        // Field 6 of /proc/<pid>/stat is the session id: the shell leads its own session.
+        await _runner.RunAsync("awk '{print (($6 == '$$') ? \"leader\" : \"member\")}' /proc/$$/stat", OnLine, s_timeout, TestContext.Current.CancellationToken);
+
+        Assert.Equal(["leader"], _lines);
+    }
+
+    [Fact]
+    public void OnWindows_TheCommandIsQuotedWhole_SoCmdStripsOnlyTheOuterQuotes()
+    {
+        var info = ProcessOperatorShellRunner.StartInfo("\"C:\\Program Files\\x.exe\" \"a b\"", windows: true, setsid: null);
+
+        Assert.Equal("/d /s /c \"\"C:\\Program Files\\x.exe\" \"a b\"\"", info.Arguments);
+    }
+
+    [Fact]
+    public void WithoutSetsid_ThePosixShellIsStartedDirectly()
+    {
+        var info = ProcessOperatorShellRunner.StartInfo("ls", windows: false, setsid: null);
+
+        Assert.Equal(["-c", "ls"], info.ArgumentList);
+        Assert.NotEqual("setsid", Path.GetFileName(info.FileName));
+    }
+
+    [Fact]
+    public void WithSetsid_ThePosixShellIsStartedThroughIt()
+    {
+        var info = ProcessOperatorShellRunner.StartInfo("ls", windows: false, setsid: "/usr/bin/setsid");
+
+        Assert.Equal("/usr/bin/setsid", info.FileName);
+        Assert.Equal(["-c", "ls"], info.ArgumentList.Skip(1));
+    }
 }

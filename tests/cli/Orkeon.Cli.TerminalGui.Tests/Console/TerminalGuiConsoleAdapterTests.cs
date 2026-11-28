@@ -1,4 +1,5 @@
 using Orkeon.Cli.Abstractions.Console;
+using Orkeon.Cli.Abstractions.Runners;
 using Orkeon.Cli.TerminalGui.Console;
 using Orkeon.Cli.TerminalGui.Hosting;
 using Orkeon.Cli.TerminalGui.Layout;
@@ -165,6 +166,22 @@ public class TerminalGuiConsoleAdapterTests
         repl.RaiseKeyDown(new Key(KeyCode.Enter));
 
         Assert.Equal("status", await task);
+    }
+
+    [Fact]
+    public async Task A_line_submitted_in_the_input_field_is_stated_as_typed()
+    {
+        // #491: a line of the TUI comes from its input field, which only the operator's keys fill.
+        var (adapter, repl) = Create();
+        IReplLineOrigin origin = adapter;
+        Assert.False(origin.LastLineTyped);
+
+        var task = ((IConsoleAdapter)adapter).ReadLineAsync(TestContext.Current.CancellationToken);
+        repl.CurrentInput = "! git status";
+        repl.RaiseKeyDown(new Key(KeyCode.Enter));
+
+        Assert.Equal("! git status", await task);
+        Assert.True(origin.LastLineTyped);
     }
 
     [Fact]

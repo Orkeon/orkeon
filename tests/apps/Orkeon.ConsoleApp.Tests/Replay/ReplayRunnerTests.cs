@@ -28,6 +28,9 @@ public sealed class ReplayRunnerTests : IDisposable
     private readonly StubCommand _thrown = new("crash", new InvalidOperationException("the disk is gone"));
     private readonly FakeOperatorShell _shell = new();
 
+    private const string NotTypedRefusal =
+        "Refused: a line that starts with ! runs a shell command only when you type it at an interactive terminal; a replay file, piped input or a script never runs one.";
+
     public ReplayRunnerTests() => _replay = new ReplayConsoleAdapter(_inner, _gate);
 
     public void Dispose() => _gate.Dispose();
@@ -120,18 +123,31 @@ public sealed class ReplayRunnerTests : IDisposable
         Assert.Empty(_shell.Commands);
         Assert.Equal(1, _ok.Calls);
         Assert.Equal(ReplayConsoleAdapter.FailedExitCode, _replay.Conclude());
-        Assert.True(_inner.Contains("replay stopped at line 2: Refused: a line that starts with ! runs a shell command only when the operator types it at the prompt; a replay file never runs one."));
+        Assert.True(_inner.Contains("replay stopped at line 2: " + NotTypedRefusal));
     }
 
     [Fact]
     public async Task ShouldRunAShellLine_TypedAfterTheReplay()
     {
         _replay.TryStart(Lines("ok"), closeInputAtEnd: false);
+        _inner.Typed = true;
         _inner.ScriptedLines = new Queue<string?>(["! git status", null]);
 
         await Build().RunAsync(TestContext.Current.CancellationToken);
 
         Assert.Equal(["git status"], _shell.Commands);
+    }
+
+    [Fact]
+    public async Task ShouldRefuseAShellLine_ReadAfterTheReplayFromAConsoleThatWasNotTyped()
+    {
+        _replay.TryStart(Lines("ok"), closeInputAtEnd: false);
+        _inner.ScriptedLines = new Queue<string?>(["! git status", null]);
+
+        await Build().RunAsync(TestContext.Current.CancellationToken);
+
+        Assert.Empty(_shell.Commands);
+        Assert.True(_inner.Contains(NotTypedRefusal));
     }
 
     private sealed class ReplayTestRunner(

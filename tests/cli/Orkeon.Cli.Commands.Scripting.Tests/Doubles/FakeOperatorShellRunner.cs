@@ -14,6 +14,9 @@ internal sealed class FakeOperatorShellRunner : IOperatorShellRunner
     /// <summary>The commands run, in order.</summary>
     public List<string> Commands { get; } = [];
 
+    /// <summary>Whether the run is cancelled (Esc, Ctrl+C) once the lines were handed out.</summary>
+    public bool CancelledAfterLines { get; set; }
+
     /// <summary>The timeout of the last run.</summary>
     public TimeSpan? Timeout { get; private set; }
 
@@ -23,6 +26,8 @@ internal sealed class FakeOperatorShellRunner : IOperatorShellRunner
         Timeout = timeout;
         foreach (var line in Lines)
             onLine(line);
+        if (CancelledAfterLines)
+            throw new OperationCanceledException(cancellationToken);
         return Task.FromResult(Result);
     }
 }
